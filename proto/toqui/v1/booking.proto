@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "toqui/v1/common.proto";
+
+service BookingService {
+  rpc IngestBooking(IngestBookingRequest) returns (IngestBookingResponse);
+  rpc IngestEmail(IngestEmailRequest) returns (IngestEmailResponse);
+  rpc ListBookings(ListBookingsRequest) returns (ListBookingsResponse);
+  rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
+  rpc LinkBookingToTrip(LinkBookingToTripRequest) returns (LinkBookingToTripResponse);
+  rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse);
+  rpc ExtractBookingField(ExtractBookingFieldRequest) returns (ExtractBookingFieldResponse);
+}
+
+message Booking {
+  string id = 1;
+  string trip_id = 2;
+  BookingType type = 3;
+  string confirmation_code = 4;
+  string provider = 5;
+  string title = 6;
+  google.protobuf.Timestamp start_time = 7;
+  google.protobuf.Timestamp end_time = 8;
+  LatLng location = 9;
+  string address = 10;
+  string details_json = 11 [deprecated = true];
+  string raw_source = 12;
+  BookingSource source = 13;
+  google.protobuf.Timestamp created_at = 14;
+  string departure_location = 15;
+  string arrival_location = 16;
+  int32 num_guests = 17;
+
+  oneof booking_details {
+    FlightDetails flight_details = 20;
+    HotelDetails hotel_details = 21;
+    CarRentalDetails car_rental_details = 22;
+    TrainDetails train_details = 23;
+    TourDetails tour_details = 24;
+    ActivityDetails activity_details = 25;
+    RestaurantDetails restaurant_details = 26;
+  }
+}
+
+message FlightDetails {
+  string airline = 1;
+  string flight_number = 2;
+  string departure_airport = 3;
+  string arrival_airport = 4;
+  string departure_terminal = 5;
+  string arrival_terminal = 6;
+  string seat = 7;
+  string cabin_class = 8;
+  repeated string passengers = 9;
+}
+
+message HotelDetails {
+  string hotel_name = 1;
+  string check_in_date = 2;
+  string check_out_date = 3;
+  string room_type = 4;
+  int32 num_guests = 5;
+  string address = 6;
+  string phone = 7;
+}
+
+message CarRentalDetails {
+  string company = 1;
+  string pickup_location = 2;
+  string dropoff_location = 3;
+  string pickup_time = 4;
+  string dropoff_time = 5;
+  string car_type = 6;
+  string driver_name = 7;
+}
+
+message TrainDetails {
+  string operator = 1;
+  string train_number = 2;
+  string departure_station = 3;
+  string arrival_station = 4;
+  string seat = 5;
+  string car_number = 6;
+  string class = 7;
+}
+
+message TourStop {
+  string name = 1;
+  string location = 2;
+  string duration = 3;
+  string notes = 4;
+}
+
+message TourDetails {
+  string tour_operator = 1;
+  string tour_name = 2;
+  int32 num_participants = 3;
+  string meeting_point = 4;
+  repeated TourStop stops = 5;
+}
+
+message ActivityDetails {
+  string operator = 1;
+  string activity_name = 2;
+  string location = 3;
+  int32 num_guests = 4;
+  string notes = 5;
+}
+
+message RestaurantDetails {
+  string restaurant_name = 1;
+  string cuisine = 2;
+  int32 party_size = 3;
+  string notes = 4;
+}
+
+enum BookingType {
+  BOOKING_TYPE_UNSPECIFIED = 0;
+  BOOKING_TYPE_FLIGHT = 1;
+  BOOKING_TYPE_HOTEL = 2;
+  BOOKING_TYPE_CAR_RENTAL = 3;
+  BOOKING_TYPE_TRAIN = 4;
+  BOOKING_TYPE_ACTIVITY = 5;
+  BOOKING_TYPE_RESTAURANT = 6;
+  BOOKING_TYPE_OTHER = 7;
+  BOOKING_TYPE_TOUR = 8;
+}
+
+enum BookingSource {
+  BOOKING_SOURCE_UNSPECIFIED = 0;
+  BOOKING_SOURCE_EMAIL = 1;
+  BOOKING_SOURCE_MANUAL = 2;
+  BOOKING_SOURCE_PASTE = 3;
+}
+
+message IngestBookingRequest {
+  string trip_id = 1;
+  BookingType type = 2;
+  string raw_text = 3 [(buf.validate.field).string = {min_len: 1, max_len: 50000}];
+}
+
+message IngestBookingResponse {
+  Booking booking = 1;
+}
+
+message IngestEmailRequest {
+  string raw_email = 1 [(buf.validate.field).string = {min_len: 1, max_len: 500000}];
+}
+
+message IngestEmailResponse {
+  repeated Booking bookings = 1;
+}
+
+message ListBookingsRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  PaginationRequest pagination = 2;
+}
+
+message ListBookingsResponse {
+  repeated Booking bookings = 1;
+  PaginationResponse pagination = 2;
+}
+
+message GetBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetBookingResponse {
+  Booking booking = 1;
+}
+
+message LinkBookingToTripRequest {
+  string booking_id = 1 [(buf.validate.field).string.uuid = true];
+  string trip_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message LinkBookingToTripResponse {
+  Booking booking = 1;
+}
+
+message DeleteBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message DeleteBookingResponse {}
+
+message ExtractBookingFieldRequest {
+  string booking_id = 1 [(buf.validate.field).string.uuid = true];
+  string question = 2 [(buf.validate.field).string = {min_len: 1, max_len: 1000}];
+}
+
+message ExtractBookingFieldResponse {
+  string answer = 1;
+  map<string, string> extracted_fields = 2;
+}

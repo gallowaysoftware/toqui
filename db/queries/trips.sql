@@ -1,0 +1,44 @@
+-- name: CreateTrip :one
+INSERT INTO trips (user_id, title, description, start_date, end_date)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetTripByID :one
+SELECT * FROM trips WHERE id = $1 AND user_id = $2;
+
+-- name: ListTripsByUser :many
+SELECT * FROM trips
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListTripsByUserAndStatus :many
+SELECT * FROM trips
+WHERE user_id = $1 AND status = $2
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $4;
+
+-- name: CountTripsByUser :one
+SELECT COUNT(*) FROM trips WHERE user_id = $1;
+
+-- name: CountTripsByUserAndStatus :one
+SELECT COUNT(*) FROM trips WHERE user_id = $1 AND status = $2;
+
+-- name: UpdateTrip :one
+UPDATE trips
+SET title = COALESCE(NULLIF(sqlc.arg(title)::text, ''), title),
+    description = COALESCE(sqlc.arg(description), description),
+    status = COALESCE(NULLIF(sqlc.arg(status)::text, ''), status),
+    start_date = COALESCE(sqlc.arg(start_date), start_date),
+    end_date = COALESCE(sqlc.arg(end_date), end_date),
+    updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: UpdateTripDestination :exec
+UPDATE trips
+SET destination_country = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteTrip :exec
+DELETE FROM trips WHERE id = $1 AND user_id = $2;

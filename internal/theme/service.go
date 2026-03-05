@@ -1,0 +1,87 @@
+package theme
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+)
+
+// Service coordinates AI theme tagging with database persistence.
+type Service struct {
+	queries *dbgen.Queries
+	tagger  *persona.ThemeTagger
+}
+
+func NewService(pool *pgxpool.Pool, tagger *persona.ThemeTagger) *Service {
+	return &Service{
+		queries: dbgen.New(pool),
+		tagger:  tagger,
+	}
+}
+
+// TagTrip runs the AI theme tagger and persists results to the database.
+// It clears previous AI-assigned themes before writing new ones.
+func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, description string, recentMessages []string) error {
+	result, err := s.tagger.AnalyzeTrip(ctx, title, description, recentMessages)
+	if err != nil {
+		return fmt.Errorf("tag trip: %w", err)
+	}
+
+	// Clear previous AI tags
+	if err := s.queries.ClearTripThemes(ctx, tripID); err != nil {
+		return fmt.Errorf("clear trip themes: %w", err)
+	}
+
+	// Write new tags
+	for _, ts := range result.Themes {
+		if err := s.queries.SetTripTheme(ctx, dbgen.SetTripThemeParams{
+			TripID:     tripID,
+			ThemeSlug:  ts.Slug,
+			Confidence: float32(ts.Confidence),
+			Source:     "ai",
+		}); err != nil {
+			log.Printf("set trip theme %s: %v", ts.Slug, err)
+		}
+	}
+
+	// Update destination country if detected
+	if result.DestinationCode != "" {
+		if err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
+			ID:                 tripID,
+			DestinationCountry: pgtype.Text{String: result.DestinationCode, Valid: true},
+		}); err != nil {
+			log.Printf("update trip destination: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// TagTripAsync runs TagTrip in a background goroutine. Errors are logged, not returned.
+func (s *Service) TagTripAsync(tripID uuid.UUID, title, description string) {
+	go func() {
+		ctx := context.Background()
+		if err := s.TagTrip(ctx, tripID, title, description, nil); err != nil {
+			log.Printf("async theme tagging for trip %s: %v", tripID, err)
+		}
+	}()
+}
+
+// GetTripThemes returns the current theme slugs for a trip, ordered by confidence.
+func (s *Service) GetTripThemes(ctx context.Context, tripID uuid.UUID) ([]string, error) {
+	rows, err := s.queries.GetTripThemes(ctx, tripID)
+	if err != nil {
+		return nil, fmt.Errorf("get trip themes: %w", err)
+	}
+	slugs := make([]string, len(rows))
+	for i, r := range rows {
+		slugs[i] = r.Slug
+	}
+	return slugs, nil
+}
