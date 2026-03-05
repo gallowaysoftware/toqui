@@ -19,19 +19,37 @@ make docker-up
 # 2. Run database migrations
 make migrate-up
 
-# 3. Copy .env.example and fill in credentials
-cp .env.example .env
-# Edit .env with your GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ANTHROPIC_API_KEY
+# 3. Edit env/.env.local with your API keys
+# (Google OAuth, Anthropic, etc.)
 
 # 4. Run the server
 make run
 # Server starts on http://localhost:8090
 ```
 
-## Environment Variables
+## Environment Configuration
+
+Config is loaded automatically based on `TARGET_ENV` (default: `local`):
+
+```bash
+make run                        # Local dev (loads env/.env.local)
+make run-staging                # Staging (loads env/.env.staging, resolves gcsm:// secrets)
+make run-prod                   # Production (loads env/.env.prod, resolves gcsm:// secrets)
+TARGET_ENV=staging make run     # Same as make run-staging
+```
+
+Env files live in `env/`:
+- `env/.env.local` — Local dev values (real API keys for solo dev)
+- `env/.env.staging` — Staging infrastructure + `gcsm://` secret references
+- `env/.env.prod` — Production infrastructure + `gcsm://` secret references
+
+Values prefixed with `gcsm://` are resolved from GCP Secret Manager at startup (requires `gcloud auth application-default login`). Real environment variables always take precedence over the env file.
+
+### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
+| `TARGET_ENV` | No | `local` | Environment: `local`, `staging`, `prod` |
 | `GOOGLE_CLIENT_ID` | Yes | — | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Yes | — | Google OAuth client secret |
 | `ANTHROPIC_API_KEY` | Yes* | — | Claude API key |
@@ -48,12 +66,14 @@ make run
 ## Make Targets
 
 ```bash
-make proto              # Generate Go proto code + lint
-make sqlc               # Generate Go from SQL queries
+make run                # Run server (local env, default)
+make run-staging        # Run locally against staging
+make run-prod           # Run locally against prod
 make build              # Build server binary to bin/server
-make run                # Run server (go run)
 make test               # Run unit tests
 make lint               # Run golangci-lint
+make proto              # Generate Go proto code + lint
+make sqlc               # Generate Go from SQL queries
 make docker-up          # Start Postgres + Firestore emulator
 make docker-down        # Stop Docker services
 make migrate-up         # Apply pending migrations
@@ -114,11 +134,12 @@ internal/
   trip/             # Trip service
   booking/          # Booking ingestion + AI parsing
   lifecycle/        # GDPR deletion, archival
-  config/           # Environment config
+  config/           # Three-layer config (env file → defaults → Secret Manager)
   aitest/           # AI integration test harness
   dbgen/            # Generated sqlc code
 proto/toqui/v1/     # Protobuf service definitions
 gen/toqui/v1/       # Generated Go proto code
+env/                # Environment configs (.env.local, .env.staging, .env.prod)
 db/
   migrations/       # SQL migrations (golang-migrate)
   queries/          # sqlc query definitions

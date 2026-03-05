@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -40,20 +40,23 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		slog.Error("load config failed", "error", err)
+		os.Exit(1)
 	}
 
 	// Database
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("connect to database: %v", err)
+		slog.Error("connect to database failed", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	// Firestore
 	firestoreClient, err := newFirestoreClient(ctx, cfg)
 	if err != nil {
-		log.Fatalf("connect to firestore: %v", err)
+		slog.Error("connect to firestore failed", "error", err)
+		os.Exit(1)
 	}
 	defer firestoreClient.Close()
 
@@ -72,7 +75,7 @@ func main() {
 	} else if cfg.OpenAIAPIKey != "" {
 		aiProvider = ai.NewOpenAIProvider(cfg.OpenAIAPIKey)
 	} else {
-		log.Println("WARNING: No AI provider configured. Chat will not work.")
+		slog.Warn("no AI provider configured — chat will not work")
 	}
 
 	// Tool registry
@@ -150,15 +153,16 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		log.Println("Shutting down server...")
+		slog.Info("shutting down server")
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			log.Printf("Server shutdown error: %v", err)
+			slog.Error("server shutdown error", "error", err)
 		}
 	}()
 
-	log.Printf("Server starting on :%s", cfg.Port)
+	slog.Info("server starting", "port", cfg.Port, "env", cfg.TargetEnv)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v", err)
+		slog.Error("server error", "error", err)
+		os.Exit(1)
 	}
 }
 

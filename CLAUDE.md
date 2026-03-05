@@ -43,6 +43,7 @@ graph TB
 | `internal/auth/` | Google OAuth + JWT + auth interceptor |
 | `internal/trip/` | Trip CRUD, status transitions, destination management |
 | `internal/theme/` | Trip theme tagging (AI-driven) |
+| `internal/config/` | Three-layer config: env file → os.Getenv → GCP Secret Manager |
 | `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
 | `internal/dbgen/` | Generated sqlc query code (gitignored) |
 | `proto/toqui/v1/` | Protobuf service definitions |
@@ -68,13 +69,15 @@ graph TB
 ## Development
 
 ```bash
-make proto          # Generate Go proto code + lint
-make sqlc           # Generate Go from SQL queries
-make build          # Build server binary
-make run            # Run server
-make test           # Run unit tests
-make docker-up      # Start Postgres + Firestore emulator
-make docker-down    # Tear down
+make run              # Run server (local, default)
+make run-staging      # Run locally against staging infrastructure
+make run-prod         # Run locally against prod infrastructure
+make build            # Build server binary
+make test             # Run unit tests
+make proto            # Generate Go proto code + lint
+make sqlc             # Generate Go from SQL queries
+make docker-up        # Start Postgres + Firestore emulator
+make docker-down      # Tear down
 ```
 
 TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toqui`).
@@ -89,11 +92,22 @@ make migrate-down   # Rollback one
 make migrate-create # Create new migration files
 ```
 
-### Environment Variables
+### Environment Configuration
 
-Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`)
+Config loads in three layers via `internal/config/`:
+1. **Env file**: `env/.env.{TARGET_ENV}` parsed, sets missing env vars (no overwrite)
+2. **os.Getenv with defaults**: Same as before, sane local defaults
+3. **Secret Manager resolution**: `gcsm://` prefixed values replaced by GCP Secret Manager fetch
 
-See `.env.example` for full list. Docker compose sets defaults for local dev.
+```bash
+make run                                            # TARGET_ENV=local (default)
+TARGET_ENV=staging make run                         # Uses staging infra + secrets
+FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: staging DB, local Firestore
+```
+
+Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. Staging/prod use `gcsm://secret-name` references resolved at startup (requires `gcloud auth application-default login`).
+
+Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`). See `.env.example` for full list.
 
 ## Trip Mode System
 

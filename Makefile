@@ -1,7 +1,10 @@
-.PHONY: proto proto-lint build test run lint sqlc \
+.PHONY: proto proto-lint build test run run-staging run-prod lint sqlc \
 	migrate-up migrate-down migrate-create \
 	docker-up docker-down integration-test \
 	ai-test ai-test-generative
+
+# Environment — override with TARGET_ENV=staging or TARGET_ENV=prod
+TARGET_ENV ?= local
 
 # Proto generation
 proto:
@@ -18,8 +21,15 @@ build:
 test:
 	go test ./...
 
+# Run server — loads env/.env.$(TARGET_ENV) automatically
 run:
-	go run ./cmd/server
+	TARGET_ENV=$(TARGET_ENV) go run ./cmd/server
+
+run-staging:
+	TARGET_ENV=staging go run ./cmd/server
+
+run-prod:
+	TARGET_ENV=prod go run ./cmd/server
 
 lint:
 	golangci-lint run ./...
