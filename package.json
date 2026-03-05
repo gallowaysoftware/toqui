@@ -1,0 +1,44 @@
+{
+  "name": "toqui-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "generate": "buf generate ../toqui-backend"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.0.0",
+    "@connectrpc/connect": "^2.0.0",
+    "@connectrpc/connect-web": "^2.0.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/react-query": "^5.0.0",
+    "lucide-react": "^0.460.0",
+    "next": "16.1.6",
+    "next-intl": "^4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.66.0",
+    "@bufbuild/protoc-gen-es": "^2.11.0",
+    "@connectrpc/connect-node": "^2.1.1",
+    "@eslint/eslintrc": "^3.3.4",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "15.2.1",
+    "postcss": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
+  }
+}

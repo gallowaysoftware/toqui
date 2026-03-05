@@ -1,0 +1,73 @@
+{
+  "common": {
+    "appName": "Toqui",
+    "tagline": "Your AI-powered travel companion",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "loading": "Loading...",
+    "error": "Something went wrong. Please try again.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "home": {
+    "title": "Toqui",
+    "subtitle": "Your AI-powered travel companion. Plan trips, manage bookings, and get real-time help on the go.",
+    "startPlanning": "Start Planning"
+  },
+  "trips": {
+    "title": "My Trips",
+    "newTrip": "New Trip",
+    "empty": "No trips yet. Start planning your next adventure!",
+    "createFirst": "Create Your First Trip",
+    "status": {
+      "planning": "Planning",
+      "active": "Active",
+      "completed": "Completed"
+    }
+  },
+  "tripCreate": {
+    "title": "New Trip",
+    "whereLabel": "Where are you going?",
+    "wherePlaceholder": "e.g. Two weeks in Japan",
+    "descriptionLabel": "Tell us more (optional)",
+    "descriptionPlaceholder": "e.g. First time visiting, interested in food and temples, traveling as a couple",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "submit": "Start Planning",
+    "submitting": "Creating..."
+  },
+  "tripSettings": {
+    "title": "Trip Settings",
+    "editTitle": "Title",
+    "editDescription": "Description",
+    "editStartDate": "Start date",
+    "editEndDate": "End date",
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "deleteTrip": "Delete Trip",
+    "deleteConfirm": "Yes, Delete Trip",
+    "deleteWarning": "Are you sure you want to delete this trip? This action cannot be undone.",
+    "deleting": "Deleting..."
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "deleteAccount": "Delete Account",
+    "deleteConfirm": "Delete My Account",
+    "deleteWarning": "This will permanently delete your account and all associated data. This action cannot be undone.",
+    "typeDelete": "Type DELETE to confirm",
+    "deleting": "Deleting...",
+    "exportData": "Export My Data",
+    "exporting": "Exporting...",
+    "exported": "Export Requested"
+  },
+  "chat": {
+    "planningPrompt": "Start planning your trip! Tell me where you want to go.",
+    "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
+    "inputPlaceholder": "Type a message...",
+    "errorMessage": "Sorry, something went wrong. Please try again."
+  }
+}

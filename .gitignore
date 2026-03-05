@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# env files
+.env*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# generated proto bindings
+src/gen/
+
+# misc
+*.tsbuildinfo
+next-env.d.ts

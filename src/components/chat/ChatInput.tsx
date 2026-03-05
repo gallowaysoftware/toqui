@@ -1,0 +1,61 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { Send } from "lucide-react";
+
+interface ChatInputProps {
+  onSend: (message: string) => void;
+  disabled?: boolean;
+}
+
+export function ChatInput({ onSend, disabled }: ChatInputProps) {
+  const t = useTranslations("chat");
+  const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [text]);
+
+  const handleSubmit = () => {
+    const trimmed = text.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setText("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  return (
+    <div className="border-t border-gray-200 bg-white p-4 flex-shrink-0">
+      <div className="flex items-end gap-2 max-w-4xl mx-auto">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={t("inputPlaceholder")}
+          rows={1}
+          disabled={disabled}
+          className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!text.trim() || disabled}
+          className="p-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+        >
+          <Send size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
+      "Bash(buf lint:*)",
+      "Bash(cp:*)",
+      "Bash(find .:*)",
+      "Bash(sed:*)",
+      "Bash(buf generate:*)",
+      "Bash(go install:*)",
+      "Bash(do:*)",
+      "Bash(sqlc generate:*)",
+      "Bash(go build:*)",
+      "Bash(rm:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm create:*)"
+    ]
+  }
+}
