@@ -1,23 +1,62 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { BookingType } from "@/gen/toqui/v1/booking_pb";
+import { useIngestBooking } from "@/lib/hooks/useBookings";
+import { bookingTypeLabels } from "@/lib/booking-utils";
+
+const typeOptions = [
+  BookingType.UNSPECIFIED,
+  BookingType.FLIGHT,
+  BookingType.HOTEL,
+  BookingType.CAR_RENTAL,
+  BookingType.TRAIN,
+  BookingType.ACTIVITY,
+  BookingType.RESTAURANT,
+  BookingType.TOUR,
+  BookingType.OTHER,
+] as const;
 
 interface BookingUploadProps {
   tripId: string;
+  onSuccess?: () => void;
 }
 
-export function BookingUpload({ tripId }: BookingUploadProps) {
+export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
   const [text, setText] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingType, setBookingType] = useState<BookingType>(
+    BookingType.UNSPECIFIED,
+  );
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const ingestBooking = useIngestBooking();
 
   const handleSubmit = async () => {
     if (!text.trim()) return;
-    setIsSubmitting(true);
-    // TODO: Call IngestBooking RPC with tripId
-    console.log("Ingesting booking for trip:", tripId);
-    setIsSubmitting(false);
-    setText("");
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const result = await ingestBooking.mutateAsync({
+        tripId,
+        type: bookingType,
+        rawText: text,
+      });
+      setText("");
+      setBookingType(BookingType.UNSPECIFIED);
+      setSuccessMessage(
+        result?.title
+          ? `Booking "${result.title}" created successfully.`
+          : "Booking created successfully.",
+      );
+      onSuccess?.();
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to process booking text.",
+      );
+    }
   };
 
   return (
@@ -27,6 +66,33 @@ export function BookingUpload({ tripId }: BookingUploadProps) {
           <FileText size={18} />
           Paste Booking Confirmation
         </h2>
+
+        {/* Optional type hint */}
+        <div className="mb-3">
+          <label
+            htmlFor="upload-type"
+            className="block text-sm text-[var(--color-text-secondary)] mb-1"
+          >
+            Booking type (optional hint for AI)
+          </label>
+          <select
+            id="upload-type"
+            value={bookingType}
+            onChange={(e) =>
+              setBookingType(Number(e.target.value) as BookingType)
+            }
+            className="w-full sm:w-auto rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
+          >
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t === BookingType.UNSPECIFIED
+                  ? "Auto-detect"
+                  : bookingTypeLabels[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -34,12 +100,30 @@ export function BookingUpload({ tripId }: BookingUploadProps) {
           rows={8}
           className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none"
         />
+
+        {/* Status messages */}
+        {successMessage && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-[var(--color-success)] bg-[var(--color-success-bg)] rounded-lg px-3 py-2">
+            <CheckCircle size={16} />
+            {successMessage}
+          </div>
+        )}
+        {errorMessage && (
+          <div
+            className="mt-3 flex items-center gap-2 text-sm text-[var(--color-error)] bg-[var(--color-error-bg)] rounded-lg px-3 py-2"
+            role="alert"
+          >
+            <AlertCircle size={16} />
+            {errorMessage}
+          </div>
+        )}
+
         <button
           onClick={handleSubmit}
-          disabled={!text.trim() || isSubmitting}
+          disabled={!text.trim() || ingestBooking.isPending}
           className="mt-3 bg-[var(--color-accent)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
         >
-          {isSubmitting ? "Processing..." : "Extract Booking"}
+          {ingestBooking.isPending ? "Processing..." : "Extract Booking"}
         </button>
       </div>
 
