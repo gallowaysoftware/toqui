@@ -2,9 +2,11 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { MessageSquare, Briefcase, Play, CheckCircle } from "lucide-react";
+import { MessageSquare, Briefcase, Play, CheckCircle, Map } from "lucide-react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
+import { useItinerary } from "@/lib/hooks/useItinerary";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
+import DynamicItineraryMap from "@/components/map/DynamicItineraryMap";
 
 const statusLabels: Record<number, string> = {
   [TripStatus.PLANNING]: "Planning",
@@ -21,6 +23,7 @@ const statusColors: Record<number, string> = {
 export default function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const { trip, isLoading } = useTrip(tripId);
+  const { itinerary, isLoading: itineraryLoading } = useItinerary(tripId);
   const updateTrip = useUpdateTrip();
 
   const handleStartTrip = () => {
@@ -82,7 +85,7 @@ export default function TripDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
+      <main className="max-w-4xl mx-auto p-4 space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Link
             href={`/trips/${tripId}/chat`}
@@ -108,6 +111,21 @@ export default function TripDetailPage() {
             <p className="text-sm text-[var(--color-text-secondary)]">Manage your reservations</p>
           </Link>
         </div>
+
+        {/* Itinerary Map */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <Map className="text-[var(--color-accent)]" size={20} />
+            <h2 className="font-semibold text-[var(--color-text-primary)]">Itinerary Map</h2>
+          </div>
+          <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
+            <DynamicItineraryMap
+              itinerary={itinerary}
+              isLoading={itineraryLoading}
+              className="h-[300px] md:h-[400px]"
+            />
+          </div>
+        </section>
       </main>
     </div>
   );
