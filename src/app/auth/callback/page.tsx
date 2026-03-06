@@ -1,33 +1,47 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 
-function AuthCallbackContent() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+
+export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setTokens } = useAuth();
 
   useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
-    const userId = searchParams.get("user_id");
-    const email = searchParams.get("email");
-    const name = searchParams.get("name");
+    // Exchange the temporary HttpOnly cookie for tokens.
+    // The backend set this cookie during the OAuth redirect.
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/exchange`, {
+          method: "POST",
+          credentials: "include",
+        });
 
-    if (accessToken && refreshToken && userId && email) {
-      setTokens(accessToken, refreshToken, {
-        id: userId,
-        email,
-        name: name || "",
-        avatarUrl: "",
-      });
-      router.push("/trips");
-    } else {
-      router.push("/");
-    }
-  }, [searchParams, setTokens, router]);
+        if (!res.ok) {
+          router.push("/");
+          return;
+        }
+
+        const data = await res.json();
+        if (data.access_token && data.refresh_token && data.user_id && data.email) {
+          setTokens(data.access_token, data.refresh_token, {
+            id: data.user_id,
+            email: data.email,
+            name: data.name || "",
+            avatarUrl: data.avatar_url || "",
+          });
+          router.push("/trips");
+        } else {
+          router.push("/");
+        }
+      } catch {
+        router.push("/");
+      }
+    })();
+  }, [setTokens, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -36,19 +50,5 @@ function AuthCallbackContent() {
         <p className="text-gray-500">Signing you in...</p>
       </div>
     </div>
-  );
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      }
-    >
-      <AuthCallbackContent />
-    </Suspense>
   );
 }

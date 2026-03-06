@@ -8,7 +8,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 export function useTrips() {
   const transport = useTransport();
-  const { accessToken } = useAuth();
+  const { user } = useAuth();
   const client = createClient(TripService, transport);
 
   const { data: trips = [], isLoading } = useQuery({
@@ -17,7 +17,7 @@ export function useTrips() {
       const res = await client.listTrips({ pagination: { pageSize: 50 } });
       return res.trips;
     },
-    enabled: !!accessToken,
+    enabled: !!user,
   });
 
   return { trips, isLoading };
@@ -25,7 +25,7 @@ export function useTrips() {
 
 export function useTrip(tripId: string) {
   const transport = useTransport();
-  const { accessToken } = useAuth();
+  const { user } = useAuth();
   const client = createClient(TripService, transport);
 
   const { data: trip, isLoading } = useQuery({
@@ -34,7 +34,7 @@ export function useTrip(tripId: string) {
       const res = await client.getTrip({ id: tripId });
       return res.trip;
     },
-    enabled: !!accessToken && !!tripId,
+    enabled: !!user && !!tripId,
   });
 
   return { trip, isLoading };
