@@ -277,6 +277,7 @@ go test -tags=aitest -v -timeout=30m \
 | `carol-returning-user` | Multi-trip: select_trip matching, trip switching, new trip creation |
 | `update-regression` | UpdateTrip COALESCE — status change must not wipe title/description |
 | `dave-itinerary-and-handoff` | create_itinerary_items tool usage + suggest_expert persona handoff |
+| `eve-expanded-profiles` | Expanded location/theme profiles (CZ, IS) with craft-beer and hiking expert handoff |
 
 ### Design
 
