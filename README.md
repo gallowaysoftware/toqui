@@ -125,17 +125,24 @@ cmd/
   server/           # API server entry point
   migrate/          # Database migration runner
 internal/
-  handlers/         # ConnectRPC service handlers
-  chat/             # Chat service (AI streaming, tools)
-  persona/          # Persona composition (24 locations x 15 themes)
+  handlers/         # ConnectRPC service handlers (auth, trip, chat, booking, location, persona)
+  chat/             # Chat service — AI streaming, tool execution, persona resolution
+  persona/          # Persona composition (20 locations × 15 themes)
   ai/               # AI provider abstraction (Claude, OpenAI)
-  chatstore/        # Firestore chat persistence
-  auth/             # Google OAuth + JWT
-  trip/             # Trip service
+  ai/tools/         # LLM-callable tool registry (WebSearch, Places)
+  chatstore/        # Firestore chat message persistence
+  auth/             # Google OAuth + JWT + auth interceptor
+  trip/             # Trip CRUD, status transitions
   booking/          # Booking ingestion + AI parsing
-  lifecycle/        # GDPR deletion, archival
+  location/         # Ephemeral location, nearby places
+  theme/            # Trip theme tagging (AI-driven)
+  lifecycle/        # GDPR deletion, archival, data export
   config/           # Three-layer config (env file → defaults → Secret Manager)
-  aitest/           # AI integration test harness
+  db/               # PostgreSQL connection pool + transactions
+  validate/         # Request validation interceptor (buf.validate)
+  ratelimit/        # Per-user rate limiting interceptor
+  aitest/           # AI integration test harness (build tag: aitest)
+  integration/      # Integration test suite (build tag: integration)
   dbgen/            # Generated sqlc code
 proto/toqui/v1/     # Protobuf service definitions
 gen/toqui/v1/       # Generated Go proto code

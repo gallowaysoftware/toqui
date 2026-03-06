@@ -36,17 +36,24 @@ graph TB
 | `cmd/migrate` | Database migration runner |
 | `internal/handlers/` | ConnectRPC service handlers (auth, trip, chat, booking, location, persona) |
 | `internal/chat/` | Chat service — AI streaming, tool execution, persona resolution |
-| `internal/persona/` | Persona composition — 24 locations x 15 themes = 360+ experts |
+| `internal/persona/` | Persona composition — 20 locations × 15 themes = 300 expert combos |
 | `internal/ai/` | AI provider abstraction (Claude primary, OpenAI fallback) |
+| `internal/ai/tools/` | LLM-callable tool registry (WebSearch, Places) |
 | `internal/chatstore/` | Firestore chat message persistence |
 | `internal/lifecycle/` | GDPR deletion, archival, data export |
 | `internal/auth/` | Google OAuth + JWT + auth interceptor |
 | `internal/trip/` | Trip CRUD, status transitions, destination management |
-| `internal/theme/` | Trip theme tagging (AI-driven) |
+| `internal/booking/` | Booking ingestion + AI parsing (email, paste, manual) |
+| `internal/location/` | Location service — ephemeral location, nearby places (Google Places) |
+| `internal/theme/` | Trip theme tagging (AI-driven classification) |
 | `internal/config/` | Three-layer config: env file → os.Getenv → GCP Secret Manager |
+| `internal/db/` | PostgreSQL connection pool + transaction helpers |
+| `internal/validate/` | ConnectRPC interceptor for buf.validate constraints |
+| `internal/ratelimit/` | Per-user rate limiting interceptor (token bucket, AI vs general) |
 | `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
+| `internal/integration/` | Integration test suite (build tag: `integration`) |
 | `internal/dbgen/` | Generated sqlc query code (gitignored) |
-| `proto/toqui/v1/` | Protobuf service definitions |
+| `proto/toqui/v1/` | Protobuf service definitions (7 files, 6 services, 30+ RPCs) |
 | `gen/toqui/v1/` | Generated Go proto code (gitignored) |
 
 ### Services (proto/toqui/v1/)
@@ -66,6 +73,18 @@ graph TB
 - **Firestore paths**: `users/{uid}/trips/{tripId}/chatSessions/{sessionId}/messages`
 - **SQL**: Use `sqlc.arg(name)` named parameters (not positional `$N`) for COALESCE-heavy queries.
 
+## Request Pipeline
+
+Every ConnectRPC request passes through the interceptor chain:
+
+```
+Request → validate.Interceptor → auth.Interceptor → ratelimit.Interceptor → Handler
+```
+
+- **validate**: Enforces `buf.validate` constraints on request protos (string lengths, UUID format, lat/lng bounds). Returns `InvalidArgument` on failure.
+- **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure.
+- **ratelimit**: Per-user token bucket. Separate limits for AI RPCs (SendMessage) vs general RPCs. Returns `ResourceExhausted` when exceeded.
+
 ## Development
 
 ```bash
@@ -74,6 +93,7 @@ make run-staging      # Run locally against staging infrastructure
 make run-prod         # Run locally against prod infrastructure
 make build            # Build server binary
 make test             # Run unit tests
+make lint             # Run golangci-lint
 make proto            # Generate Go proto code + lint
 make sqlc             # Generate Go from SQL queries
 make docker-up        # Start Postgres + Firestore emulator
@@ -107,7 +127,7 @@ FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: st
 
 Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. Staging/prod use `gcsm://secret-name` references resolved at startup (requires `gcloud auth application-default login`).
 
-Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`). See `.env.example` for full list.
+Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`). See `env/.env.local` for the full local dev config.
 
 ## Trip Mode System
 
@@ -134,10 +154,10 @@ graph LR
     TH[Theme Profile] --> C
     C --> E[Composed Expert]
 
-    subgraph "24 Locations"
+    subgraph "20 Locations"
         L1[Japan]
         L2[Italy]
-        L3[Scotland]
+        L3[France]
         L4[...]
     end
 
@@ -150,6 +170,10 @@ graph LR
 ```
 
 Toqui (the global orchestrator) hands off to composed experts. Each expert is dynamically built from a location profile + theme profile(s). Persona identities (names, descriptions, greetings) are AI-generated and cached for consistency.
+
+**20 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG (4 core in `profiles.go`, 16 extended in `profiles_extended.go`).
+
+**15 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury (3 core, 12 extended).
 
 ## AI Integration Tests
 

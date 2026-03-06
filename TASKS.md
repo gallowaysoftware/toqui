@@ -45,6 +45,7 @@ Prioritized backlog. Update status as work progresses.
 - [x] **Chat-first selection mode** — AI creates/selects trips via tools (`create_trip`, `select_trip`). Vague reference matching ("my Greece trip"). COALESCE fix for partial UpdateTrip.
 
 ### Backend
+- [x] **Environment configuration** — Three-layer config (env file → os.Getenv → GCP Secret Manager). `TARGET_ENV=local|staging|prod`, `gcsm://` prefix for secrets, custom .env parser, reflection-based secret resolution. `make run-staging`, `make run-prod`.
 - [ ] **Booking ingestion** — wire IngestBooking to AI parsing, store structured result
 - [ ] **Email ingestion pipeline** — receive forwarded emails, parse with AI
 - [ ] **Itinerary from chat** — AI generates structured itinerary items from planning conversation
