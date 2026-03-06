@@ -3,8 +3,9 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"log/slog"
 	"net/http"
-	"net/url"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,16 +14,18 @@ import (
 )
 
 type OAuthHandler struct {
-	authSvc     *auth.Service
-	queries     *dbgen.Queries
-	frontendURL string
+	authSvc       *auth.Service
+	queries       *dbgen.Queries
+	frontendURL   string
+	secureCookies bool
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool) *OAuthHandler {
 	return &OAuthHandler{
-		authSvc:     authSvc,
-		queries:     dbgen.New(pool),
-		frontendURL: frontendURL,
+		authSvc:       authSvc,
+		queries:       dbgen.New(pool),
+		frontendURL:   frontendURL,
+		secureCookies: secureCookies,
 	}
 }
 
@@ -34,9 +37,21 @@ func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   300,
 		HttpOnly: true,
+		Secure:   h.secureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
 	http.Redirect(w, r, h.authSvc.AuthCodeURL(state), http.StatusTemporaryRedirect)
+}
+
+// oauthResult is the JSON payload stored in the temporary cookie
+// and returned by HandleExchange.
+type oauthResult struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	UserID       string `json:"user_id"`
+	Email        string `json:"email"`
+	Name         string `json:"name,omitempty"`
+	AvatarURL    string `json:"avatar_url,omitempty"`
 }
 
 func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
@@ -89,18 +104,52 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	callbackURL, _ := url.Parse(h.frontendURL + "/auth/callback")
-	q := callbackURL.Query()
-	q.Set("access_token", accessToken)
-	q.Set("refresh_token", refreshToken)
-	q.Set("user_id", user.ID.String())
-	q.Set("email", user.Email)
-	if user.Name.Valid {
-		q.Set("name", user.Name.String)
+	// Store auth result in a short-lived HttpOnly cookie instead of URL params.
+	result := oauthResult{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		UserID:       user.ID.String(),
+		Email:        user.Email,
 	}
-	callbackURL.RawQuery = q.Encode()
+	if user.Name.Valid {
+		result.Name = user.Name.String
+	}
+	if user.AvatarUrl.Valid {
+		result.AvatarURL = user.AvatarUrl.String
+	}
 
-	http.Redirect(w, r, callbackURL.String(), http.StatusTemporaryRedirect)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		slog.Error("marshal oauth result", "error", err)
+		http.Redirect(w, r, h.frontendURL+"/?error=internal", http.StatusTemporaryRedirect)
+		return
+	}
+
+	auth.SetOAuthResultCookie(w, string(resultJSON), h.secureCookies)
+	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
+}
+
+// HandleExchange reads the temporary OAuth result cookie, returns the tokens
+// in the response body, and clears the cookie. This is the secure replacement
+// for passing tokens in URL query parameters.
+func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	resultStr := auth.OAuthResultFromCookies(r)
+	if resultStr == "" {
+		http.Error(w, "no pending auth result", http.StatusBadRequest)
+		return
+	}
+
+	// Clear the one-time cookie immediately
+	auth.ClearOAuthResultCookie(w, h.secureCookies)
+
+	w.Header().Set("Content-Type", "application/json")
+	// resultStr is already valid JSON — write it directly
+	w.Write([]byte(resultStr))
 }
 
 func generateState() string {

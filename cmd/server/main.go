@@ -123,11 +123,13 @@ func main() {
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL)
+	secureCookies := cfg.TargetEnv != "local"
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies)
 
-	// OAuth HTTP routes (outside ConnectRPC)
+	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
+	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
 
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))
 	mux.Handle(toquiv1connect.NewTripServiceHandler(tripHandler, interceptors))
