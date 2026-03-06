@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
@@ -17,6 +19,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui-backend/internal/usage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
@@ -28,15 +31,19 @@ type ChatHandler struct {
 	themeSvc      *theme.Service
 	locationCache *location.Cache
 	locationSvc   *location.Service
+	linkBuilder   *affiliate.LinkBuilder
+	usageSvc      *usage.Service
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service) *ChatHandler {
 	return &ChatHandler{
 		chatSvc:       chatSvc,
 		tripSvc:       tripSvc,
 		themeSvc:      themeSvc,
 		locationCache: locationCache,
 		locationSvc:   locationSvc,
+		linkBuilder:   linkBuilder,
+		usageSvc:      usageSvc,
 	}
 }
 
@@ -44,6 +51,24 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	userID, ok := auth.UserIDFromContext(ctx)
 	if !ok {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	// Check daily message limit before processing
+	if h.usageSvc != nil {
+		remaining, err := h.usageSvc.IncrementAndCheck(ctx, userID)
+		if err != nil {
+			if errors.Is(err, usage.ErrDailyLimitExceeded) {
+				return connect.NewError(
+					connect.CodeResourceExhausted,
+					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s",
+						h.usageSvc.Limit(), usage.ResetTime().Format("2006-01-02T15:04:05Z")),
+				)
+			}
+			// Log but don't block on usage tracking errors
+			slog.Error("usage tracking failed", "user_id", userID, "error", err)
+		} else {
+			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining)
+		}
 	}
 
 	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION || req.Msg.TripId == ""
@@ -112,6 +137,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var selectedTrips []tripCreatedInfo // reuse same struct — it has ID, Title, Description
 	var itineraryItems []dbgen.ItineraryItem
 	var pendingSwitch *personaSwitchInfo
+	var recommendations []affiliate.Recommendation
 	var mu sync.Mutex
 
 	// Suggest expert tool is available in all modes — Toqui can hand off anytime
@@ -127,6 +153,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		},
 	)
 
+	// Recommend booking tool is available in all modes — generates affiliate links
+	var recommendBookingTool tools.Tool
+	if h.linkBuilder != nil {
+		recommendBookingTool = NewRecommendBookingTool(h.linkBuilder, func(rec affiliate.Recommendation) {
+			mu.Lock()
+			recommendations = append(recommendations, rec)
+			mu.Unlock()
+		})
+	}
+
 	// Selection mode: add create_trip + select_trip tools
 	// Planning mode: add create_itinerary_items tool
 	if isSelection {
@@ -141,11 +177,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			mu.Unlock()
 		})
 		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, suggestExpertTool}
+		if recommendBookingTool != nil {
+			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
+		}
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
 		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes)
 		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
+		if recommendBookingTool != nil {
+			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
+		}
 
 		// Planning mode: inject itinerary creation tool
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
@@ -275,6 +317,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					}
 				}
 				itineraryItems = nil
+			}
+			if event.ToolName == "recommend_booking" && len(recommendations) > 0 {
+				for _, rec := range recommendations {
+					slog.Info("affiliate recommendation generated",
+						"partner", rec.Partner,
+						"category", rec.Category,
+						"title", rec.Title,
+						"user_id", userID,
+					)
+				}
+				recommendations = nil
 			}
 			mu.Unlock()
 

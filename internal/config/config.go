@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 )
 
 // Config holds all configuration for the Toqui backend.
@@ -44,6 +45,15 @@ type Config struct {
 
 	// Email ingestion
 	SendGridWebhookKey string
+
+	// Affiliate partners
+	SkyscannerAffiliateID string
+	BookingComAffiliateID string
+	GetYourGuidePartnerID string
+
+	// Capacity + usage limits
+	MaxFreeUsers      int
+	DailyMessageLimit int
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -74,6 +84,11 @@ func Load() (*Config, error) {
 		GoogleCustomSearchCX:     os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
 		SendGridWebhookKey:       os.Getenv("SENDGRID_WEBHOOK_KEY"),
+		SkyscannerAffiliateID:    os.Getenv("SKYSCANNER_AFFILIATE_ID"),
+		BookingComAffiliateID:    os.Getenv("BOOKINGCOM_AFFILIATE_ID"),
+		GetYourGuidePartnerID:    os.Getenv("GETYOURGUIDE_PARTNER_ID"),
+		MaxFreeUsers:             getEnvInt("MAX_FREE_USERS", 500),
+		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
 	}
 
 	// Layer 3: resolve gcsm:// references
@@ -94,4 +109,17 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		slog.Warn("invalid integer env var, using default", "key", key, "value", v, "default", fallback)
+		return fallback
+	}
+	return n
 }

@@ -32,6 +32,16 @@ type Booking struct {
 	NumGuests         pgtype.Int4        `json:"num_guests"`
 }
 
+type DailyUsage struct {
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	Date         *time.Time `json:"date"`
+	MessageCount int32      `json:"message_count"`
+	AiCostCents  int32      `json:"ai_cost_cents"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
 type DeletionRequest struct {
 	ID          uuid.UUID          `json:"id"`
 	UserID      uuid.UUID          `json:"user_id"`
@@ -106,4 +116,13 @@ type User struct {
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	DefaultPersonaID pgtype.Text `json:"default_persona_id"`
+}
+
+type Waitlist struct {
+	ID         uuid.UUID          `json:"id"`
+	Email      string             `json:"email"`
+	InviteCode pgtype.Text        `json:"invite_code"`
+	SignedUpAt time.Time          `json:"signed_up_at"`
+	InvitedAt  pgtype.Timestamptz `json:"invited_at"`
+	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
 }

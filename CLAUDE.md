@@ -47,10 +47,12 @@ graph TB
 | `internal/booking/` | Booking ingestion + AI parsing (email, paste, manual) |
 | `internal/location/` | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places) |
 | `internal/theme/` | Trip theme tagging (AI-driven classification) |
+| `internal/affiliate/` | Affiliate link builder — generates partner URLs for Skyscanner, Booking.com, GetYourGuide |
 | `internal/config/` | Three-layer config: env file → os.Getenv → GCP Secret Manager |
 | `internal/db/` | PostgreSQL connection pool + transaction helpers |
 | `internal/validate/` | ConnectRPC interceptor for buf.validate constraints |
 | `internal/ratelimit/` | Per-user rate limiting interceptor (token bucket, AI vs general) |
+| `internal/usage/` | Daily usage tracking + message limit enforcement per user |
 | `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
 | `internal/integration/` | Integration test suite (build tag: `integration`) |
 | `internal/dbgen/` | Generated sqlc query code (regenerate: `make sqlc`) |
@@ -199,6 +201,7 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `select_trip` | selection | AI matches vague references to existing trips | `TripSelected` |
 | `create_itinerary_items` | planning | AI adds structured day-by-day itinerary items | `ItineraryUpdate` |
 | `suggest_expert` | all modes | Toqui hands off to a composed expert persona | `PersonaSwitch` |
+| `recommend_booking` | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities) | — (logged) |
 | `nearby_places` | companion | Find nearby places using user's cached location (location-aware) | — |
 | `web_search` | all modes | Search the web for current info (global tool registry) | — |
 | `place_lookup` | all modes | Google Places API lookup (global tool registry) | — |
@@ -321,8 +324,26 @@ Google OAuth → backend callback → set temporary HttpOnly cookie → redirect
 
 HTTP routes (outside ConnectRPC):
 - `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
-- `GET /auth/google/callback` — Exchanges code, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
+- `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
 - `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name}` as JSON, clears cookie (one-time use)
+- `POST /waitlist` — Public. JSON body `{"email":"..."}`. Returns `{"position":N}`
+- `GET /waitlist/status?email=...` — Public. Returns `{"position":N,"total":M}`
+- `GET /api/usage` — Authenticated (Bearer token). Returns `{"used":N,"limit":M,"resets_at":"..."}`
+
+## Waitlist + Capacity Cap
+
+New users are subject to a capacity cap controlled by `MAX_FREE_USERS` (default: 500). When the cap is reached:
+- Existing users can still log in (upsert on google_id)
+- New users without a valid invite code are redirected to `/waitlist?reason=at_capacity`
+- New users with a valid invite code are admitted and their waitlist entry is marked as accepted
+
+Tables: `waitlist` (email, invite_code, signed_up_at, invited_at, accepted_at)
+
+## Daily Usage Limits
+
+Each user is limited to `DAILY_MESSAGE_LIMIT` (default: 30) messages per day across all chat modes. The limit is enforced at the start of `SendMessage` in the chat handler. When exceeded, a `ResourceExhausted` error is returned with the reset time (midnight UTC).
+
+Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 ## Data Lifecycle
 

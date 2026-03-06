@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"connectrpc.com/connect"
+	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
@@ -29,6 +30,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui-backend/internal/usage"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -100,6 +102,14 @@ func main() {
 		themeSvc = theme.NewService(pool, tagger)
 	}
 
+	// Affiliate link builder — generates partner URLs for booking recommendations.
+	// Empty IDs disable affiliate tracking (plain URLs still work).
+	linkBuilder := affiliate.NewLinkBuilder(
+		cfg.SkyscannerAffiliateID,
+		cfg.BookingComAffiliateID,
+		cfg.GetYourGuidePartnerID,
+	)
+
 	// Services
 	tripSvc := trip.NewService(pool)
 	chatSvc := chat.NewService(aiProvider, chatStr, toolRegistry, personaRegistry)
@@ -107,6 +117,7 @@ func main() {
 	locationSvc := location.NewService()
 	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
+	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit)
 
 	// Interceptors — handles both unary and streaming RPCs
 	interceptors := connect.WithInterceptors(
@@ -120,17 +131,26 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc)
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies)
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers)
+	waitlistHandler := handlers.NewWaitlistHandler(pool)
+	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
 	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
+
+	// Waitlist routes (public, no auth)
+	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)
+	mux.HandleFunc("/waitlist/status", waitlistHandler.HandleStatus)
+
+	// Usage route (authenticated via Bearer token)
+	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, cfg.SendGridWebhookKey)

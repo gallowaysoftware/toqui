@@ -4,9 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
@@ -18,14 +21,16 @@ type OAuthHandler struct {
 	queries       *dbgen.Queries
 	frontendURL   string
 	secureCookies bool
+	maxFreeUsers  int
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:       authSvc,
 		queries:       dbgen.New(pool),
 		frontendURL:   frontendURL,
 		secureCookies: secureCookies,
+		maxFreeUsers:  maxFreeUsers,
 	}
 }
 
@@ -79,6 +84,46 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=exchange_failed", http.StatusTemporaryRedirect)
 		return
+	}
+
+	// Capacity check: if user doesn't already exist and we're at capacity,
+	// check for a valid invite code before allowing registration.
+	if h.maxFreeUsers > 0 {
+		_, existErr := h.queries.GetUserByGoogleID(r.Context(), info.ID)
+		if errors.Is(existErr, pgx.ErrNoRows) {
+			// New user — check capacity
+			userCount, countErr := h.queries.CountUsers(r.Context())
+			if countErr != nil {
+				slog.Error("count users for capacity check failed", "error", countErr)
+				http.Redirect(w, r, h.frontendURL+"/?error=db_error", http.StatusTemporaryRedirect)
+				return
+			}
+			if int(userCount) >= h.maxFreeUsers {
+				// At capacity — check if user has a valid invite
+				waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(r.Context(), info.Email)
+				if wlErr != nil || !waitlistEntry.InviteCode.Valid {
+					slog.Info("user denied: at capacity, no invite",
+						"email", info.Email,
+						"user_count", userCount,
+						"max_free_users", h.maxFreeUsers,
+					)
+					redirectURL := h.frontendURL + "/waitlist?" + url.Values{
+						"reason": []string{"at_capacity"},
+						"email":  []string{info.Email},
+					}.Encode()
+					http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+					return
+				}
+				// Has valid invite — allow through, mark accepted
+				if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil {
+					slog.Error("mark waitlist accepted failed", "email", info.Email, "error", markErr)
+				}
+				slog.Info("user admitted via invite code",
+					"email", info.Email,
+					"invite_code", waitlistEntry.InviteCode.String,
+				)
+			}
+		}
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(r.Context(), dbgen.UpsertUserByGoogleIDParams{
