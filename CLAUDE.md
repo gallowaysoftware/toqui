@@ -4,9 +4,10 @@ AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Fi
 
 ## Project Structure
 
-This is a 3-repo project under `github.com/gallowaysoftware`:
+This is a 4-repo project under `github.com/gallowaysoftware`:
 - **toqui-backend** (this repo) — Go backend, gRPC API, AI orchestration
 - **toqui** — Next.js TypeScript web frontend
+- **toqui-terraform** — Terraform GCP infrastructure (staging + prod)
 - **toqui-site** — Astro static marketing site
 
 ## Architecture
@@ -52,9 +53,9 @@ graph TB
 | `internal/ratelimit/` | Per-user rate limiting interceptor (token bucket, AI vs general) |
 | `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
 | `internal/integration/` | Integration test suite (build tag: `integration`) |
-| `internal/dbgen/` | Generated sqlc query code (gitignored) |
+| `internal/dbgen/` | Generated sqlc query code (regenerate: `make sqlc`) |
 | `proto/toqui/v1/` | Protobuf service definitions (7 files, 6 services, 30+ RPCs) |
-| `gen/toqui/v1/` | Generated Go proto code (gitignored) |
+| `gen/toqui/v1/` | Generated Go proto code (regenerate: `make proto`) |
 
 ### Services (proto/toqui/v1/)
 
@@ -202,6 +203,34 @@ go test -tags=aitest -v -timeout=30m \
 - **LLM evaluations are informational** (response quality scored 1-5 by a judge LLM) — these log warnings but don't fail.
 - Each scenario gets its own isolated test user.
 - Reports written to `testdata/aitest-reports/` as JSON.
+
+## Infrastructure
+
+GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) repo.
+
+**Two GCP projects** under the Toqui folder in the `thegalloways.ca` org:
+- **toqui-staging** — GCE VM + Docker + Tailscale VPN (no public access), Cloud SQL `db-f1-micro`
+- **toqui-prod** — Cloud Run (public), Cloud SQL with HA + backups
+
+Both use Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, and Artifact Registry.
+
+### Deploying to Staging
+
+```bash
+# Build and push image
+docker build -t us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest .
+docker push us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest
+
+# Pull and restart on the VM
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging -- \
+  'docker pull us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest && docker restart toqui-backend'
+
+# Run migrations if needed
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging -- \
+  'docker exec toqui-backend /migrate -dir /migrations -db "$(cat /etc/toqui/database-url)" up'
+```
+
+Staging is accessible at `toqui-staging:8090` via Tailscale VPN. SSH via `gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging`.
 
 ## Auth Flow
 
