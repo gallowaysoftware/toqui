@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "generate": "buf generate ../toqui-backend"
   },
+  "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=24"
   },
