@@ -10,7 +10,7 @@ import (
 // Values are loaded in three layers:
 //  1. Parse env/.env.{TARGET_ENV} file (no-overwrite of existing env vars)
 //  2. Read os.Getenv() with defaults
-//  3. Resolve gcsm:// prefixes via GCP Secret Manager (staging/prod only)
+//  3. Resolve gcsm:// prefixes via GCP Secret Manager
 type Config struct {
 	// TargetEnv is the environment name: "local", "staging", or "prod".
 	TargetEnv string
@@ -72,11 +72,9 @@ func Load() (*Config, error) {
 		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
 	}
 
-	// Layer 3: resolve gcsm:// references (only for non-local environments)
-	if env != "local" {
-		if err := resolveSecrets(cfg); err != nil {
-			return nil, fmt.Errorf("resolve secrets: %w", err)
-		}
+	// Layer 3: resolve gcsm:// references
+	if err := resolveSecrets(cfg); err != nil {
+		return nil, fmt.Errorf("resolve secrets: %w", err)
 	}
 
 	if cfg.TargetEnv == "local" && cfg.JWTSecret == "dev-secret-change-in-production" {

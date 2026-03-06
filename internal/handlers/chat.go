@@ -12,6 +12,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
+	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -86,9 +87,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	}
 
 	// Selection mode: add create_trip + select_trip tools and trip list context
+	// Planning mode: add create_itinerary_items tool
 	// Use mutex-protected slices to collect events from tool callbacks
 	var createdTrips []tripCreatedInfo
 	var selectedTrips []tripCreatedInfo // reuse same struct — it has ID, Title, Description
+	var itineraryItems []dbgen.ItineraryItem
 	var mu sync.Mutex
 
 	if isSelection {
@@ -107,6 +110,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
 		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes)
+
+		// Planning mode: inject itinerary creation tool
+		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
+			itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
+				mu.Lock()
+				itineraryItems = append(itineraryItems, items...)
+				mu.Unlock()
+			})
+			params.ExtraTools = append(params.ExtraTools, itineraryTool)
+		}
 	}
 
 	eventCh, sessionID, err := h.chatSvc.SendMessage(ctx, params)
@@ -194,6 +207,21 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				selectedTrips = nil
 			}
+			if event.ToolName == "create_itinerary_items" && len(itineraryItems) > 0 {
+				if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
+					if allItems, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
+						_ = stream.Send(&toquiv1.SendMessageResponse{
+							Event: &toquiv1.SendMessageResponse_ItineraryUpdate{
+								ItineraryUpdate: &toquiv1.ItineraryUpdate{
+									TripId:    req.Msg.TripId,
+									Itinerary: itineraryToProto(req.Msg.TripId, allItems),
+								},
+							},
+						})
+					}
+				}
+				itineraryItems = nil
+			}
 			mu.Unlock()
 
 		case "message_complete":
@@ -267,6 +295,7 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 		sb.WriteString(fmt.Sprintf("- Trip themes: %s\n", strings.Join(themes, ", ")))
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
+	sb.WriteString("\n\nWhen you have specific activities, meals, or experiences to suggest, use the create_itinerary_items tool to add them to the itinerary. Don't just describe what the user could do — actually add it to their plan. You can add multiple items across multiple days in a single call.")
 	return sb.String()
 }
 

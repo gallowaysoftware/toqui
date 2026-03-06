@@ -51,6 +51,12 @@ Last updated: 2026-03-05
 - Proto sync script (`make proto-sync` generates TS and copies to frontend)
 - Brand site (Astro + Tailwind, landing page, privacy policy, terms of service, cookie policy)
 - Integration tests (devcontainer with Postgres + Firestore emulator, auth flow, trip CRUD, chat streaming)
+- Terraform GCP infrastructure ([toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform)):
+  - Two GCP projects (toqui-staging, toqui-prod) under Toqui folder in thegalloways.ca org
+  - Staging: GCE VM + Docker + Tailscale VPN, Cloud SQL db-f1-micro, Firestore
+  - Prod: Cloud Run (public), Cloud SQL with HA + backups, Firestore multi-region
+  - Shared modules: networking, cloudsql, firestore, secrets, artifact-registry
+  - GCS remote state with versioning
 
 ---
 
@@ -75,7 +81,6 @@ All P0 items are complete.
 - Companion mode location tracking (Geolocation API, auto-resolve local expert)
 - Group trips (shared itineraries)
 - Push notifications (trip reminders, flight status)
-- Terraform GCP (Cloud Run, Cloud SQL, Firestore, Cloud Storage)
 - CI/CD (GitHub Actions)
 - Monitoring (Cloud Logging, error alerting, AI cost tracking)
 - Model routing (Haiku for simple, Sonnet for complex)

@@ -118,6 +118,21 @@ func (s *Service) Delete(ctx context.Context, userID, tripID uuid.UUID) error {
 	return nil
 }
 
+func (s *Service) CreateItineraryItem(ctx context.Context, tripID uuid.UUID, dayNumber, orderInDay int, itemType, title, description string) (dbgen.ItineraryItem, error) {
+	item, err := s.queries.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
+		TripID:      tripID,
+		DayNumber:   int4FromInt(dayNumber),
+		OrderInDay:  int4FromInt(orderInDay),
+		Type:        textFromString(itemType),
+		Title:       textFromString(title),
+		Description: textFromString(description),
+	})
+	if err != nil {
+		return dbgen.ItineraryItem{}, fmt.Errorf("create itinerary item: %w", err)
+	}
+	return item, nil
+}
+
 func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error) {
 	items, err := s.queries.ListItineraryItemsByTrip(ctx, tripID)
 	if err != nil {
@@ -138,4 +153,11 @@ func dateFromTime(t *time.Time) pgtype.Date {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: *t, Valid: true}
+}
+
+func int4FromInt(n int) pgtype.Int4 {
+	if n == 0 {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(n), Valid: true}
 }
