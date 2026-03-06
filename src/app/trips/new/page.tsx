@@ -45,20 +45,20 @@ export default function NewTripPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
+    <div className="min-h-screen bg-[var(--color-surface-secondary)]">
+      <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/trips" className="text-gray-500 hover:text-gray-700">
+          <Link href="/trips" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
             <ArrowLeft size={20} />
           </Link>
-          <h1 className="text-xl font-semibold">{t("title")}</h1>
+          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("title")}</h1>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto p-4">
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6 space-y-5">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
               {t("whereLabel")}
             </label>
             <input
@@ -67,14 +67,14 @@ export default function NewTripPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("wherePlaceholder")}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
               autoFocus
               required
             />
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
               {t("descriptionLabel")}
             </label>
             <textarea
@@ -83,13 +83,13 @@ export default function NewTripPage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("descriptionPlaceholder")}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="startDate" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
                 {t("startDate")}
               </label>
               <input
@@ -97,11 +97,11 @@ export default function NewTripPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
               />
             </div>
             <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="endDate" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
                 {t("endDate")}
               </label>
               <input
@@ -110,7 +110,7 @@ export default function NewTripPage() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate || undefined}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
               />
             </div>
           </div>
@@ -118,13 +118,13 @@ export default function NewTripPage() {
           <button
             type="submit"
             disabled={!title.trim() || createTrip.isPending}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="w-full bg-[var(--color-accent)] text-white py-2.5 rounded-lg font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {createTrip.isPending ? t("submitting") : t("submit")}
           </button>
 
           {createTrip.isError && (
-            <p className="text-red-600 text-sm text-center">{tc("error")}</p>
+            <p className="text-[var(--color-error)] text-sm text-center">{tc("error")}</p>
           )}
         </form>
       </main>

@@ -10,9 +10,9 @@ const statusLabel: Record<number, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  planning: "bg-yellow-100 text-yellow-800",
-  active: "bg-green-100 text-green-800",
-  completed: "bg-gray-100 text-gray-800",
+  planning: "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]",
+  active: "bg-[var(--color-status-active-bg)] text-[var(--color-status-active-text)]",
+  completed: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
 };
 
 export function TripCard({ trip }: { trip: Trip }) {
@@ -21,10 +21,10 @@ export function TripCard({ trip }: { trip: Trip }) {
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md transition-shadow block"
+      className="bg-[var(--color-surface)] rounded-xl p-5 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all block"
     >
       <div className="flex items-start justify-between mb-2">
-        <h3 className="font-semibold text-gray-900">{trip.title}</h3>
+        <h3 className="font-semibold text-[var(--color-text-primary)]">{trip.title}</h3>
         <span
           className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[label]}`}
         >
@@ -33,11 +33,11 @@ export function TripCard({ trip }: { trip: Trip }) {
       </div>
 
       {trip.description && (
-        <p className="text-sm text-gray-500 mb-3 line-clamp-2">{trip.description}</p>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-3 line-clamp-2">{trip.description}</p>
       )}
 
       {trip.startDate && (
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
           <Calendar size={12} />
           <span>
             {trip.startDate}

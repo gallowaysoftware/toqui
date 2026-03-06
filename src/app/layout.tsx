@@ -17,8 +17,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={`${inter.className} antialiased`}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Prevent flash of wrong theme by applying dark class before paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("toqui_theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className={`${inter.className} antialiased bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]`}>
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

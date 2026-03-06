@@ -11,6 +11,7 @@ import type { Trip } from "@/gen/toqui/v1/trip_pb";
 import type { CreatedTrip, SelectedTrip } from "@/lib/hooks/useChat";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
+import { ThemeToggleButton } from "@/components/theme/ThemeToggle";
 
 const statusLabels: Record<number, string> = {
   [TripStatus.PLANNING]: "planning",
@@ -19,9 +20,9 @@ const statusLabels: Record<number, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  planning: "bg-blue-100 text-blue-700",
-  traveling: "bg-green-100 text-green-700",
-  completed: "bg-gray-100 text-gray-500",
+  planning: "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]",
+  traveling: "bg-[var(--color-status-active-bg)] text-[var(--color-status-active-text)]",
+  completed: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
 };
 
 export default function TripsPage() {
@@ -54,7 +55,7 @@ export default function TripsPage() {
   if (authLoading || !user) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
       </div>
     );
   }
@@ -62,13 +63,13 @@ export default function TripsPage() {
   return (
     <div className="h-screen flex">
       {/* Trip sidebar */}
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="font-semibold text-sm text-gray-500 uppercase tracking-wide">Your Trips</h2>
+      <aside className="w-64 bg-[var(--color-surface-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-[var(--color-border)]">
+          <h2 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wide">Your Trips</h2>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 space-y-1">
           {trips.length === 0 ? (
-            <p className="text-xs text-gray-400 p-2">No trips yet. Start chatting!</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] p-2">No trips yet. Start chatting!</p>
           ) : (
             trips.map((trip: Trip) => (
               <TripSidebarItem key={trip.id} trip={trip} />
@@ -79,9 +80,10 @@ export default function TripsPage() {
 
       {/* Main chat area */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0 flex items-center gap-3">
-          <MessageSquare size={20} className="text-blue-600" />
-          <h1 className="text-lg font-semibold">Toqui</h1>
+        <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-3 flex-shrink-0 flex items-center gap-3">
+          <MessageSquare size={20} className="text-[var(--color-accent)]" />
+          <h1 className="text-lg font-semibold text-[var(--color-text-primary)] flex-1">Toqui</h1>
+          <ThemeToggleButton />
         </header>
         <ChatContainer mode="selection" onTripCreated={handleTripCreated} onTripSelected={handleTripSelected} />
       </main>
@@ -96,16 +98,16 @@ function TripSidebarItem({ trip }: { trip: Trip }) {
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="block rounded-lg p-3 hover:bg-gray-100 transition-colors"
+      className="block rounded-lg p-3 hover:bg-[var(--color-surface-tertiary)] transition-colors"
     >
       <div className="flex items-center justify-between mb-0.5">
-        <span className="text-sm font-medium text-gray-900 truncate">{trip.title}</span>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{trip.title}</span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${colors}`}>
           {label}
         </span>
       </div>
       {trip.description && (
-        <p className="text-xs text-gray-400 truncate">{trip.description}</p>
+        <p className="text-xs text-[var(--color-text-tertiary)] truncate">{trip.description}</p>
       )}
     </Link>
   );

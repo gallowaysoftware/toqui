@@ -36,7 +36,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white p-4 flex-shrink-0">
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex-shrink-0">
       <div className="flex items-end gap-2 max-w-4xl mx-auto">
         <textarea
           ref={textareaRef}
@@ -46,12 +46,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder={t("inputPlaceholder")}
           rows={1}
           disabled={disabled}
-          className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          className="flex-1 resize-none rounded-xl border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent disabled:opacity-50"
         />
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || disabled}
-          className="p-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          className="p-3 rounded-xl bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
         >
           <Send size={18} />
         </button>

@@ -57,7 +57,7 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4" onScroll={handleScroll}>
         {messages.length === 0 && !isStreaming && (
-          <div className="text-center text-gray-400 py-16">
+          <div className="text-center text-[var(--color-text-tertiary)] py-16">
             <p className="text-lg mb-2">{emptyPrompt}</p>
           </div>
         )}
@@ -117,11 +117,11 @@ const toolDisplayNames: Record<string, string> = {
 function ToolActivityIndicator({ toolName, status }: { toolName: string; status: "calling" | "done" }) {
   const label = toolDisplayNames[toolName] || `Using ${toolName}`;
   return (
-    <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500">
+    <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
       {status === "calling" ? (
-        <div className="animate-spin h-3 w-3 border border-gray-400 border-t-transparent rounded-full" />
+        <div className="animate-spin h-3 w-3 border border-[var(--color-text-tertiary)] border-t-transparent rounded-full" />
       ) : (
-        <svg className="h-3 w-3 text-green-500" viewBox="0 0 12 12" fill="currentColor">
+        <svg className="h-3 w-3 text-[var(--color-success)]" viewBox="0 0 12 12" fill="currentColor">
           <path d="M10.28 2.28a.75.75 0 00-1.06-1.06L4.5 5.94 2.78 4.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l5.25-5.25z" />
         </svg>
       )}
@@ -133,7 +133,7 @@ function ToolActivityIndicator({ toolName, status }: { toolName: string; status:
 function PersonaBar({ persona }: { persona: ActivePersona }) {
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 flex-shrink-0"
+      className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex-shrink-0"
     >
       <div
         className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
@@ -141,9 +141,9 @@ function PersonaBar({ persona }: { persona: ActivePersona }) {
       >
         {persona.name[0]}
       </div>
-      <span className="text-sm font-medium text-gray-700">{persona.name}</span>
+      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{persona.name}</span>
       {persona.specialties.length > 0 && (
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-[var(--color-text-tertiary)]">
           {persona.specialties.slice(0, 3).join(" · ")}
         </span>
       )}
