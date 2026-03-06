@@ -41,6 +41,9 @@ type Config struct {
 	GoogleCustomSearchAPIKey string
 	GoogleCustomSearchCX     string
 	GooglePlacesAPIKey       string
+
+	// Email ingestion
+	SendGridWebhookKey string
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -70,6 +73,7 @@ func Load() (*Config, error) {
 		GoogleCustomSearchAPIKey: os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
 		GoogleCustomSearchCX:     os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
+		SendGridWebhookKey:       os.Getenv("SENDGRID_WEBHOOK_KEY"),
 	}
 
 	// Layer 3: resolve gcsm:// references

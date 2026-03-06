@@ -131,6 +131,10 @@ func main() {
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
 
+	// Email ingestion webhook (outside ConnectRPC)
+	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, cfg.SendGridWebhookKey)
+	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)
+
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))
 	mux.Handle(toquiv1connect.NewTripServiceHandler(tripHandler, interceptors))
 	mux.Handle(toquiv1connect.NewChatServiceHandler(chatHandler, interceptors))

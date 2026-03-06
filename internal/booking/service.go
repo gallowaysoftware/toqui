@@ -40,6 +40,15 @@ type ParsedBooking struct {
 }
 
 func (s *Service) IngestText(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*dbgen.Booking, error) {
+	return s.ingest(ctx, userID, tripID, typeHint, rawText, "paste")
+}
+
+// IngestEmail parses raw email text with AI and creates a booking record with source="email".
+func (s *Service) IngestEmail(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*dbgen.Booking, error) {
+	return s.ingest(ctx, userID, tripID, typeHint, rawText, "email")
+}
+
+func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string, source string) (*dbgen.Booking, error) {
 	parsed, err := s.parseWithAI(ctx, rawText, typeHint)
 	if err != nil {
 		return nil, fmt.Errorf("parse booking: %w", err)
@@ -62,7 +71,7 @@ func (s *Service) IngestText(ctx context.Context, userID uuid.UUID, tripID strin
 		Title:             parsed.Title,
 		DetailsJson:       parsed.Details,
 		RawSource:         pgtype.Text{String: rawText, Valid: true},
-		Source:            "paste",
+		Source:            source,
 		DepartureLocation: pgtype.Text{String: parsed.DepartureLocation, Valid: parsed.DepartureLocation != ""},
 		ArrivalLocation:   pgtype.Text{String: parsed.ArrivalLocation, Valid: parsed.ArrivalLocation != ""},
 		NumGuests:         pgtype.Int4{Int32: parsed.NumGuests, Valid: parsed.NumGuests > 0},
