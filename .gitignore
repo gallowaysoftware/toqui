@@ -1,5 +1,4 @@
 # Go
-gen/
 tmp/
 *.exe
 *.test
@@ -24,9 +23,6 @@ docker-compose.override.yml
 
 # Buf
 buf.lock
-
-# sqlc generated
-internal/dbgen/
 
 # AI test reports
 **/aitest-reports/
