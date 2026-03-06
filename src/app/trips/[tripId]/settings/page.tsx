@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,12 +21,6 @@ export default function TripSettingsPage() {
   const queryClient = useQueryClient();
   const client = createClient(TripService, transport);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const { data: trip, isLoading } = useQuery({
     queryKey: ["trip", tripId],
     queryFn: async () => {
@@ -36,14 +30,21 @@ export default function TripSettingsPage() {
     enabled: !!user,
   });
 
-  useEffect(() => {
-    if (trip) {
-      setTitle(trip.title);
-      setDescription(trip.description);
-      setStartDate(trip.startDate);
-      setEndDate(trip.endDate);
-    }
-  }, [trip]);
+  const [title, setTitle] = useState(trip?.title ?? "");
+  const [description, setDescription] = useState(trip?.description ?? "");
+  const [startDate, setStartDate] = useState(trip?.startDate ?? "");
+  const [endDate, setEndDate] = useState(trip?.endDate ?? "");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync form state once when trip data arrives (without useEffect + setState)
+  if (trip && !initialized) {
+    setTitle(trip.title);
+    setDescription(trip.description);
+    setStartDate(trip.startDate);
+    setEndDate(trip.endDate);
+    setInitialized(true);
+  }
 
   const updateTrip = useMutation({
     mutationFn: async () => {
