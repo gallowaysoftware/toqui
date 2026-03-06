@@ -9,6 +9,7 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 - Docker & Docker Compose (local Postgres + Firestore emulator)
 - [sqlc](https://sqlc.dev/) (SQL code generation)
 - [golangci-lint](https://golangci-lint.run/) (optional, for linting)
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) — required for Secret Manager resolution (`gcloud auth application-default login`)
 
 ## Quick Start
 
@@ -19,8 +20,8 @@ make docker-up
 # 2. Run database migrations
 make migrate-up
 
-# 3. Edit env/.env.local with your API keys
-# (Google OAuth, Anthropic, etc.)
+# 3. Authenticate with GCP (for Secret Manager)
+gcloud auth application-default login
 
 # 4. Run the server
 make run
@@ -32,18 +33,18 @@ make run
 Config is loaded automatically based on `TARGET_ENV` (default: `local`):
 
 ```bash
-make run                        # Local dev (loads env/.env.local)
+make run                        # Local dev (loads env/.env.local, resolves gcsm:// secrets)
 make run-staging                # Staging (loads env/.env.staging, resolves gcsm:// secrets)
 make run-prod                   # Production (loads env/.env.prod, resolves gcsm:// secrets)
 TARGET_ENV=staging make run     # Same as make run-staging
 ```
 
 Env files live in `env/`:
-- `env/.env.local` — Local dev values (real API keys for solo dev)
+- `env/.env.local` — Local dev (`gcsm://` secrets from `toqui-staging` project)
 - `env/.env.staging` — Staging infrastructure + `gcsm://` secret references
 - `env/.env.prod` — Production infrastructure + `gcsm://` secret references
 
-Values prefixed with `gcsm://` are resolved from GCP Secret Manager at startup (requires `gcloud auth application-default login`). Real environment variables always take precedence over the env file.
+All env files use `gcsm://` prefixed values which are resolved from GCP Secret Manager at startup. This means no secrets are stored in the repo. Requires `gcloud auth application-default login` for local dev. Real environment variables always take precedence over the env file.
 
 ### Environment Variables
 
@@ -127,7 +128,7 @@ cmd/
 internal/
   handlers/         # ConnectRPC service handlers (auth, trip, chat, booking, location, persona)
   chat/             # Chat service — AI streaming, tool execution, persona resolution
-  persona/          # Persona composition (20 locations × 15 themes)
+  persona/          # Persona composition (24 locations × 15 themes)
   ai/               # AI provider abstraction (Claude, OpenAI)
   ai/tools/         # LLM-callable tool registry (WebSearch, Places)
   chatstore/        # Firestore chat message persistence
@@ -155,4 +156,5 @@ db/
 ## Related Repos
 
 - [toqui](https://github.com/gallowaysoftware/toqui) — Next.js frontend
+- [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) — Terraform GCP infrastructure (staging + prod)
 - [toqui-site](https://github.com/gallowaysoftware/toqui-site) — Astro marketing site

@@ -37,7 +37,7 @@ graph TB
 | `cmd/migrate` | Database migration runner |
 | `internal/handlers/` | ConnectRPC service handlers (auth, trip, chat, booking, location, persona) |
 | `internal/chat/` | Chat service — AI streaming, tool execution, persona resolution |
-| `internal/persona/` | Persona composition — 20 locations × 15 themes = 300 expert combos |
+| `internal/persona/` | Persona composition — 24 locations × 15 themes = 360 expert combos |
 | `internal/ai/` | AI provider abstraction (Claude primary, OpenAI fallback) |
 | `internal/ai/tools/` | LLM-callable tool registry (WebSearch, Places) |
 | `internal/chatstore/` | Firestore chat message persistence |
@@ -54,7 +54,7 @@ graph TB
 | `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
 | `internal/integration/` | Integration test suite (build tag: `integration`) |
 | `internal/dbgen/` | Generated sqlc query code (regenerate: `make sqlc`) |
-| `proto/toqui/v1/` | Protobuf service definitions (7 files, 6 services, 30+ RPCs) |
+| `proto/toqui/v1/` | Protobuf service definitions (7 files, 6 services, 28 RPCs) |
 | `gen/toqui/v1/` | Generated Go proto code (regenerate: `make proto`) |
 
 ### Services (proto/toqui/v1/)
@@ -102,6 +102,17 @@ make docker-down      # Tear down
 ```
 
 TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toqui`).
+
+### CI
+
+GitHub Actions on push to `main` and all PRs (self-hosted Linux runners):
+- **toqui-backend**: build → vet → test with coverage → PR coverage comment
+- **toqui**: install → lint → build
+- **toqui-site**: install → build
+
+### Task Tracking
+
+All task tracking is in GitHub Issues: [toqui-backend issues](https://github.com/gallowaysoftware/toqui-backend/issues), [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`.
 
 ### Database
 
@@ -155,7 +166,7 @@ graph LR
     TH[Theme Profile] --> C
     C --> E[Composed Expert]
 
-    subgraph "20 Locations"
+    subgraph "24 Locations"
         L1[Japan]
         L2[Italy]
         L3[France]
@@ -172,7 +183,7 @@ graph LR
 
 Toqui (the global orchestrator) hands off to composed experts. Each expert is dynamically built from a location profile + theme profile(s). Persona identities (names, descriptions, greetings) are AI-generated and cached for consistency.
 
-**20 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG (4 core in `profiles.go`, 16 extended in `profiles_extended.go`).
+**24 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG (4 core in `profiles.go`, 20 extended in `profiles_extended.go`).
 
 **15 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury (3 core, 12 extended).
 
@@ -234,10 +245,12 @@ Staging is accessible at `toqui-staging:8090` via Tailscale VPN. SSH via `gcloud
 
 ## Auth Flow
 
-**TODO: Replace token-in-URL redirect with secure cookies + cookie auth middleware + GetTokens RPC.**
+Google OAuth → backend callback → set temporary HttpOnly cookie → redirect to frontend → frontend calls `POST /auth/exchange` (with `credentials: include`) → backend returns tokens in response body + clears cookie → frontend stores tokens in memory and uses `Authorization: Bearer` for all subsequent API calls.
 
-Current flow: Google OAuth -> backend callback -> redirect to frontend with tokens in URL params.
-Target flow: Google OAuth -> backend callback -> set secure HttpOnly cookie -> frontend calls GetTokens RPC with cookie.
+HTTP routes (outside ConnectRPC):
+- `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
+- `GET /auth/google/callback` — Exchanges code, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
+- `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name}` as JSON, clears cookie (one-time use)
 
 ## Data Lifecycle
 
