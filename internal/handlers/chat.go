@@ -13,6 +13,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -86,14 +87,28 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		params.LocationLng = req.Msg.UserLocation.Longitude
 	}
 
-	// Selection mode: add create_trip + select_trip tools and trip list context
-	// Planning mode: add create_itinerary_items tool
 	// Use mutex-protected slices to collect events from tool callbacks
 	var createdTrips []tripCreatedInfo
 	var selectedTrips []tripCreatedInfo // reuse same struct — it has ID, Title, Description
 	var itineraryItems []dbgen.ItineraryItem
+	var pendingSwitch *personaSwitchInfo
 	var mu sync.Mutex
 
+	// Suggest expert tool is available in all modes — Toqui can hand off anytime
+	suggestExpertTool := NewSuggestExpertTool(h.chatSvc.Personas(), destinationCountry,
+		func(previous, expert *persona.Persona, handoffMessage string) {
+			mu.Lock()
+			pendingSwitch = &personaSwitchInfo{
+				Previous:        previous,
+				Expert:          expert,
+				HandoffMessage:  handoffMessage,
+			}
+			mu.Unlock()
+		},
+	)
+
+	// Selection mode: add create_trip + select_trip tools
+	// Planning mode: add create_itinerary_items tool
 	if isSelection {
 		createTripTool := NewCreateTripTool(h.tripSvc, userID, func(tripID, title, description string) {
 			mu.Lock()
@@ -105,11 +120,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			selectedTrips = append(selectedTrips, tripCreatedInfo{ID: tripID, Title: title, Description: description})
 			mu.Unlock()
 		})
-		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool}
+		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, suggestExpertTool}
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
 		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes)
+		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
 
 		// Planning mode: inject itinerary creation tool
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
@@ -207,6 +223,18 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				selectedTrips = nil
 			}
+			if event.ToolName == "suggest_expert" && pendingSwitch != nil {
+				_ = stream.Send(&toquiv1.SendMessageResponse{
+					Event: &toquiv1.SendMessageResponse_PersonaSwitch{
+						PersonaSwitch: &toquiv1.PersonaSwitch{
+							PreviousPersona: personaToProto(pendingSwitch.Previous),
+							NewPersona:      personaToProto(pendingSwitch.Expert),
+							HandoffMessage:  pendingSwitch.HandoffMessage,
+						},
+					},
+				})
+				pendingSwitch = nil
+			}
 			if event.ToolName == "create_itinerary_items" && len(itineraryItems) > 0 {
 				if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 					if allItems, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
@@ -271,6 +299,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 type tripCreatedInfo struct {
 	ID, Title, Description string
+}
+
+type personaSwitchInfo struct {
+	Previous       *persona.Persona
+	Expert         *persona.Persona
+	HandoffMessage string
 }
 
 // buildTripContext returns system prompt context for planning/companion mode:

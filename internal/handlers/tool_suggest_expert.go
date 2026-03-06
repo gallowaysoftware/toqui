@@ -1,0 +1,116 @@
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+
+	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+)
+
+// SuggestExpertTool is a chat tool that lets Toqui hand off the conversation
+// to a composed expert persona. When the AI detects the user needs specialized
+// knowledge (food, history, distilleries, etc.), it calls this tool to trigger
+// a PersonaSwitch event on the frontend.
+type SuggestExpertTool struct {
+	registry           *persona.Registry
+	destinationCountry string // from current trip context
+	onSwitch           func(previous, expert *persona.Persona, handoffMessage string)
+}
+
+type suggestExpertArgs struct {
+	Themes     []string `json:"themes"`
+	RegionCode string   `json:"region_code"`
+}
+
+func NewSuggestExpertTool(registry *persona.Registry, destinationCountry string, onSwitch func(previous, expert *persona.Persona, handoffMessage string)) *SuggestExpertTool {
+	return &SuggestExpertTool{
+		registry:           registry,
+		destinationCountry: destinationCountry,
+		onSwitch:           onSwitch,
+	}
+}
+
+func (t *SuggestExpertTool) Definition() ai.ToolDefinition {
+	return ai.ToolDefinition{
+		Name:        "suggest_expert",
+		Description: "Suggest switching to a specialist expert persona for the conversation. Call this when the user's questions call for deep expertise in a specific domain (local cuisine, history, spirits, adventure, etc.) that would be better served by a dedicated local expert.",
+		Parameters: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"themes": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": ["food", "history", "distilleries", "adventure", "wellness", "wine", "architecture", "nightlife", "shopping", "family", "photography", "nature", "romance", "budget", "luxury"]
+					},
+					"description": "Theme specialties the expert should have (1-3 themes)"
+				},
+				"region_code": {
+					"type": "string",
+					"description": "ISO 3166-1 alpha-2 country code for the expert's region (e.g., 'JP', 'IT', 'FR'). Leave empty to use the trip's destination country."
+				}
+			},
+			"required": ["themes"]
+		}`),
+	}
+}
+
+func (t *SuggestExpertTool) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	var params suggestExpertArgs
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("parse args: %w", err)
+	}
+
+	if len(params.Themes) == 0 {
+		return nil, fmt.Errorf("at least one theme is required")
+	}
+
+	// Use provided region code, or fall back to trip's destination country
+	regionCode := params.RegionCode
+	if regionCode == "" {
+		regionCode = t.destinationCountry
+	}
+
+	if regionCode == "" {
+		return json.Marshal(map[string]string{
+			"error":   "no_destination",
+			"message": "Cannot resolve an expert without a destination country. Ask the user where they're going first.",
+		})
+	}
+
+	expert, err := t.registry.Resolve(ctx, regionCode, params.Themes)
+	if err != nil {
+		slog.Error("resolve expert persona", "region", regionCode, "themes", params.Themes, "error", err)
+		return json.Marshal(map[string]string{
+			"error":   "resolution_failed",
+			"message": "Could not find a matching expert. Continue helping the user yourself.",
+		})
+	}
+
+	// If we resolved back to Toqui (no matching expert), let the AI know
+	if expert.ID == "toqui" {
+		return json.Marshal(map[string]string{
+			"error":   "no_expert_available",
+			"message": "No specialist expert is available for this combination. Continue helping the user yourself.",
+		})
+	}
+
+	handoffMessage := t.registry.HandoffMessage(expert)
+
+	if t.onSwitch != nil {
+		t.onSwitch(t.registry.Default(), expert, handoffMessage)
+	}
+
+	result := map[string]any{
+		"expert_id":       expert.ID,
+		"expert_name":     expert.Name,
+		"expert_greeting": expert.Greeting,
+		"handoff_message": handoffMessage,
+		"specialties":     expert.Specialties,
+		"message":         fmt.Sprintf("Expert %s has been introduced. The user will now be chatting with them.", expert.Name),
+	}
+	return json.Marshal(result)
+}
