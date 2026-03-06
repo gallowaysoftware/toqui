@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const output = execSync('go tool cover -func=coverage.out').toString();
+
+            // Extract total line
+            const lines = output.trim().split('\n');
+            const totalLine = lines[lines.length - 1];
+            const totalMatch = totalLine.match(/([\d.]+)%/);
+            const total = totalMatch ? totalMatch[1] : '?';
+
+            // Build per-package summary
+            const pkgCoverage = {};
+            for (const line of lines) {
+              const match = line.match(/^(.+?)\/.+?\s+.+?\s+([\d.]+)%$/);
+              if (match) {
+                const pkg = match[1];
+                if (!pkgCoverage[pkg]) pkgCoverage[pkg] = [];
+                pkgCoverage[pkg].push(parseFloat(match[2]));
+              }
+            }
+
+            let table = '| Package | Coverage |\n|---------|----------|\n';
+            for (const [pkg, values] of Object.entries(pkgCoverage)) {
+              const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+              table += `| \`${pkg.replace('github.com/gallowaysoftware/toqui-backend/', '')}\` | ${avg}% |\n`;
+            }
+
+            const body = `## Test Coverage: ${total}%\n\n${table}`;
+
+            // Find existing comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.startsWith('## Test Coverage:'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
