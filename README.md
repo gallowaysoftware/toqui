@@ -4,7 +4,7 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 
 ## Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - [buf](https://buf.build/docs/installation) (proto generation)
 - Docker & Docker Compose (local Postgres + Firestore emulator)
 - [sqlc](https://sqlc.dev/) (SQL code generation)
