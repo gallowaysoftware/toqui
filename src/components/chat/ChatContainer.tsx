@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { TypingIndicator } from "./TypingIndicator";
+import { MessageLimitBanner } from "./MessageLimitBanner";
+import { AITransparencyNotice } from "./AITransparencyNotice";
 import { useChat } from "@/lib/hooks/useChat";
+import { useUsage } from "@/lib/hooks/useUsage";
 import type { ActivePersona, CreatedTrip, SelectedTrip } from "@/lib/hooks/useChat";
 
 interface ChatContainerProps {
@@ -15,9 +18,22 @@ interface ChatContainerProps {
 }
 
 export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: ChatContainerProps) {
-  const { messages, streamingText, isStreaming, activePersona, toolActivity, createdTrip, selectedTrip, sendMessage } = useChat(tripId, mode);
+  const usage = useUsage();
+  const onResourceExhausted = useCallback(() => {
+    usage.markExhausted();
+  }, [usage]);
+
+  const { messages, streamingText, isStreaming, activePersona, toolActivity, createdTrip, selectedTrip, sendMessage } = useChat(tripId, mode, { onResourceExhausted });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  const handleSend = useCallback(
+    (content: string) => {
+      usage.recordMessage();
+      sendMessage(content);
+    },
+    [usage, sendMessage],
+  );
 
   useEffect(() => {
     if (autoScroll) {
@@ -56,6 +72,8 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
       {activePersona && <PersonaBar persona={activePersona} />}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4" onScroll={handleScroll}>
+        <AITransparencyNotice />
+
         {messages.length === 0 && !isStreaming && (
           <div className="text-center text-[var(--color-text-tertiary)] py-16">
             <p className="text-lg mb-2">{emptyPrompt}</p>
@@ -102,7 +120,8 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         <div ref={messagesEndRef} />
       </div>
 
-      <ChatInput onSend={sendMessage} disabled={isStreaming} />
+      <MessageLimitBanner usage={usage} />
+      <ChatInput onSend={handleSend} disabled={isStreaming || usage.isAtLimit} />
     </div>
   );
 }

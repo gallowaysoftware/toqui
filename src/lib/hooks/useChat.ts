@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { createClient } from "@connectrpc/connect";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/components/providers/GrpcProvider";
 import { ChatService, ChatMode } from "@/gen/toqui/v1/chat_pb";
 import type { SendMessageResponse } from "@/gen/toqui/v1/chat_pb";
@@ -58,7 +58,11 @@ const modeToProto: Record<string, ChatMode> = {
   selection: ChatMode.SELECTION,
 };
 
-export function useChat(tripId: string | undefined, mode: "planning" | "companion" | "selection") {
+interface UseChatOptions {
+  onResourceExhausted?: () => void;
+}
+
+export function useChat(tripId: string | undefined, mode: "planning" | "companion" | "selection", options?: UseChatOptions) {
   const transport = useTransport();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState<string>("");
@@ -69,6 +73,10 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
   const [selectedTrip, setSelectedTrip] = useState<SelectedTrip | null>(null);
   const sessionIdRef = useRef<string>("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
+  const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
+  useEffect(() => {
+    onResourceExhaustedRef.current = options?.onResourceExhausted;
+  }, [options?.onResourceExhausted]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -192,14 +200,27 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
         }
       } catch (error) {
         console.error("Chat error:", error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "Sorry, something went wrong. Please try again.",
-          },
-        ]);
+
+        if (error instanceof ConnectError && error.code === Code.ResourceExhausted) {
+          onResourceExhaustedRef.current?.();
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
+            },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: "Sorry, something went wrong. Please try again.",
+            },
+          ]);
+        }
       } finally {
         setStreamingText("");
         setIsStreaming(false);
