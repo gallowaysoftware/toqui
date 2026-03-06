@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -68,6 +69,19 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	return ch, nil
 }
 
+// resolveModel returns the Claude model identifier for the request's tier.
+// If the request has no tier set, it falls back to the provider's default model.
+func (c *ClaudeProvider) resolveModel(req *ChatRequest) string {
+	tier := req.ModelTier
+	if tier == "" {
+		// No tier set — use provider default (backward compatible).
+		return c.model
+	}
+	model := ConfigForTier(tier).ClaudeModel
+	slog.Info("claude model resolved", "tier", tier, "model", model)
+	return model
+}
+
 func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 	messages := make([]map[string]any, 0, len(req.Messages))
 	for _, msg := range req.Messages {
@@ -78,8 +92,10 @@ func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 		messages = append(messages, m)
 	}
 
+	model := c.resolveModel(req)
+
 	body := map[string]any{
-		"model":      c.model,
+		"model":      model,
 		"max_tokens": req.MaxTokens,
 		"messages":   messages,
 		"stream":     true,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -150,7 +151,29 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		Tools:        toolDefs,
 		MaxTokens:    4096,
 		Temperature:  0.7,
+		Mode:         params.Mode,
 	}
+
+	// Classify the request to determine model tier. This uses deterministic
+	// heuristics based on mode, message length, and tool availability.
+	tier := ai.ClassifyRequest(aiReq)
+	aiReq.ModelTier = tier
+
+	// Apply tier-specific defaults for max tokens and temperature if the
+	// caller did not explicitly set them.
+	tierCfg := ai.ConfigForTier(tier)
+	if aiReq.MaxTokens == 4096 {
+		// Only override from the tier config when using the default value,
+		// so explicit caller overrides are preserved.
+		aiReq.MaxTokens = tierCfg.MaxTokens
+	}
+
+	slog.Info("chat request classified",
+		"mode", params.Mode,
+		"tier", tier,
+		"provider", s.provider.Name(),
+		"has_tools", len(toolDefs) > 0,
+	)
 
 	// Start streaming
 	eventCh, err := s.provider.ChatStream(ctx, aiReq)

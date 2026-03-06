@@ -26,6 +26,16 @@ type ChatRequest struct {
 	Tools        []ToolDefinition
 	MaxTokens    int
 	Temperature  float64
+
+	// ModelTier is an explicit override for model selection. When set, the
+	// classifier is bypassed and this tier is used directly. When empty,
+	// ClassifyRequest determines the tier from heuristics.
+	ModelTier ModelTier
+
+	// Mode is the chat mode ("selection", "planning", "companion") used by
+	// the classifier to pick an appropriate model tier. This is informational
+	// for routing purposes and does not affect the AI request payload.
+	Mode string
 }
 
 type Message struct {

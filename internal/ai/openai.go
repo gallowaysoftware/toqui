@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -66,6 +67,18 @@ func (o *OpenAIProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	return ch, nil
 }
 
+// resolveModel returns the OpenAI model identifier for the request's tier.
+// If the request has no tier set, it falls back to the provider's default model.
+func (o *OpenAIProvider) resolveModel(req *ChatRequest) string {
+	tier := req.ModelTier
+	if tier == "" {
+		return o.model
+	}
+	model := ConfigForTier(tier).OpenAIModel
+	slog.Info("openai model resolved", "tier", tier, "model", model)
+	return model
+}
+
 func (o *OpenAIProvider) buildRequest(req *ChatRequest) map[string]any {
 	messages := make([]map[string]any, 0, len(req.Messages)+1)
 
@@ -84,8 +97,10 @@ func (o *OpenAIProvider) buildRequest(req *ChatRequest) map[string]any {
 		messages = append(messages, m)
 	}
 
+	model := o.resolveModel(req)
+
 	body := map[string]any{
-		"model":    o.model,
+		"model":    model,
 		"messages": messages,
 		"stream":   true,
 	}
