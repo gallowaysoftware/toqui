@@ -37,7 +37,7 @@ graph TB
 | `cmd/migrate` | Database migration runner |
 | `internal/handlers/` | ConnectRPC service handlers (auth, trip, chat, booking, location, persona) |
 | `internal/chat/` | Chat service — AI streaming, tool execution, persona resolution |
-| `internal/persona/` | Persona composition — 24 locations × 15 themes = 360 expert combos |
+| `internal/persona/` | Persona composition — 40 locations × 20 themes = 800 expert combos |
 | `internal/ai/` | AI provider abstraction (Claude primary, OpenAI fallback) |
 | `internal/ai/tools/` | LLM-callable tool registry (WebSearch, Places) |
 | `internal/chatstore/` | Firestore chat message persistence |
@@ -166,14 +166,14 @@ graph LR
     TH[Theme Profile] --> C
     C --> E[Composed Expert]
 
-    subgraph "24 Locations"
+    subgraph "40 Locations"
         L1[Japan]
         L2[Italy]
         L3[France]
         L4[...]
     end
 
-    subgraph "15 Themes"
+    subgraph "20 Themes"
         TH1[Food]
         TH2[History]
         TH3[Distilleries]
@@ -183,9 +183,9 @@ graph LR
 
 Toqui (the global orchestrator) hands off to composed experts. Each expert is dynamically built from a location profile + theme profile(s). Persona identities (names, descriptions, greetings) are AI-generated and cached for consistency.
 
-**24 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG (4 core in `profiles.go`, 20 extended in `profiles_extended.go`).
+**40 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG, ID, PH, CN, CZ, AT, CH, IE, SE, AR, CL, JO, TZ, IS, SG, HK, KH (4 core in `profiles.go`, 36 extended in `profiles_extended.go`).
 
-**15 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury (3 core, 12 extended).
+**20 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury, art, music, craft-beer, diving, hiking (3 core, 17 extended).
 
 ## Chat Tool System
 

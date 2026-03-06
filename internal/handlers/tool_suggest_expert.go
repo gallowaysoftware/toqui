@@ -44,7 +44,7 @@ func (t *SuggestExpertTool) Definition() ai.ToolDefinition {
 					"type": "array",
 					"items": {
 						"type": "string",
-						"enum": ["food", "history", "distilleries", "adventure", "wellness", "wine", "architecture", "nightlife", "shopping", "family", "photography", "nature", "romance", "budget", "luxury"]
+						"enum": ["food", "history", "distilleries", "adventure", "wellness", "wine", "architecture", "nightlife", "shopping", "family", "photography", "nature", "romance", "budget", "luxury", "art", "music", "craft-beer", "diving", "hiking"]
 					},
 					"description": "Theme specialties the expert should have (1-3 themes)"
 				},
