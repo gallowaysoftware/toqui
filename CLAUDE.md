@@ -187,6 +187,75 @@ Toqui (the global orchestrator) hands off to composed experts. Each expert is dy
 
 **15 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury (3 core, 12 extended).
 
+## Chat Tool System
+
+The AI in chat mode has access to tools injected by the handler layer. Tools are mode-specific and follow a callback pattern for emitting stream events to the frontend.
+
+### Available Chat Tools
+
+| Tool | Modes | What it does | Stream Event |
+|------|-------|-------------|--------------|
+| `create_trip` | selection | AI creates a new trip when user describes travel plans | `TripCreated` |
+| `select_trip` | selection | AI matches vague references to existing trips | `TripSelected` |
+| `create_itinerary_items` | planning | AI adds structured day-by-day itinerary items | `ItineraryUpdate` |
+| `suggest_expert` | all modes | Toqui hands off to a composed expert persona | `PersonaSwitch` |
+| `web_search` | all modes | Search the web for current info (global tool registry) | — |
+| `place_lookup` | all modes | Google Places API lookup (global tool registry) | — |
+
+### Adding a New Chat Tool
+
+Follow the pattern in `internal/handlers/tool_create_itinerary.go`:
+
+1. **Create** `internal/handlers/tool_<name>.go` implementing `tools.Tool` interface:
+   - `Definition() ai.ToolDefinition` — name, description, JSON Schema parameters
+   - `Execute(ctx, args) (json.RawMessage, error)` — business logic + callback
+2. **Wire** the tool in `internal/handlers/chat.go` `SendMessage()`:
+   - Create a mutex-protected callback to collect results
+   - Instantiate the tool with service dependencies + callback
+   - Append to `params.ExtraTools`
+3. **Emit** the stream event in the `tool_result` handler block in `chat.go`
+4. **Write tests**:
+   - Unit tests in `internal/handlers/tool_<name>_test.go` (arg parsing, edge cases)
+   - Integration test in `internal/integration/` (DB operations with real Postgres)
+   - AI scenario in `internal/aitest/` (end-to-end with real LLM)
+5. **Update** system prompt in the relevant mode (e.g., `buildTripContext()` for planning)
+6. **Update** this CLAUDE.md doc and the aitest scenario table
+
+### Tool Injection Pattern
+
+```
+ChatHandler.SendMessage()
+  ├── Create mutex + callback slices
+  ├── Instantiate tools with service deps + callbacks
+  ├── params.ExtraTools = [tool1, tool2, ...]
+  ├── chatSvc.SendMessage(params) → eventCh
+  └── for event := range eventCh:
+        case "tool_result":
+          mu.Lock()
+          if event.ToolName == "my_tool" && len(collected) > 0:
+            stream.Send(MyProtoEvent{...})
+          mu.Unlock()
+```
+
+## Feature Implementation Checklist
+
+Every new feature must include all of the following. Do not merge without completing each item:
+
+1. **Implementation** — The feature code itself
+2. **Unit tests** — In the same package (`*_test.go`), test arg parsing, edge cases, error handling
+3. **Integration tests** — In `internal/integration/` (build tag `integration`), test DB operations with real Postgres via docker-compose
+4. **AI integration test enhancement** — In `internal/aitest/`, either:
+   - Add a new regression scenario (if the feature is significant enough)
+   - Or extend an existing scenario with new steps/assertions that exercise the feature
+5. **Documentation** — Update CLAUDE.md with the feature (tool table, scenario table, any new patterns)
+6. **Commit + push** — All of the above in one commit
+
+### Testing Approach
+
+- **Unit tests**: No DB required. Test JSON parsing, validation, error paths. Use `persona.NewComposer(nil)` for template-based persona tests.
+- **Integration tests**: Real Postgres via `docker compose up -d`. Build tag `integration`. Use `TestEnv.CleanDB()` for isolation.
+- **AI tests**: Real LLM calls via `docker compose up -d` + API key. Build tag `aitest`. Each scenario gets an isolated test user. Structural assertions are hard failures; LLM evaluations are informational.
+
 ## AI Integration Tests
 
 End-to-end test harness that exercises the full trip lifecycle through the AI. Uses real LLM calls.
@@ -207,6 +276,7 @@ go test -tags=aitest -v -timeout=30m \
 | `bob-family-planner` | Planning context injection — AI must know destination without asking |
 | `carol-returning-user` | Multi-trip: select_trip matching, trip switching, new trip creation |
 | `update-regression` | UpdateTrip COALESCE — status change must not wipe title/description |
+| `dave-itinerary-and-handoff` | create_itinerary_items tool usage + suggest_expert persona handoff |
 
 ### Design
 

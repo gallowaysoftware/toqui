@@ -31,6 +31,7 @@ func TestAIScenarios(t *testing.T) {
 		BobFamilyPlanner(),
 		CarolReturningUser(),
 		UpdateRegressionTests(),
+		DaveItineraryAndHandoff(),
 	}
 
 	// Filter by name if specified

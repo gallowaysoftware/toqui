@@ -13,7 +13,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
+	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
+	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 )
 
 // ─── Scenario & Step Types ──────────────────────────────────────────────────
@@ -83,6 +85,10 @@ type StepResult struct {
 	// For non-chat steps:
 	TripState *TripInfo
 	TripList  []TripInfo
+	// Itinerary and persona events
+	ItineraryItemsCreated int
+	PersonaSwitched       bool
+	PersonaSwitchedTo     string // expert persona name
 }
 
 // ToolCallInfo records a single tool invocation.
@@ -131,12 +137,28 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 		Mode:      a.Mode,
 	}
 
+	// Mutex-protected state for tool callbacks
+	var mu sync.Mutex
+	var itineraryItems []dbgen.ItineraryItem
+	var pendingSwitch *personaSwitchEvent
+
+	// Suggest expert tool is available in all modes (mirrors chat.go)
+	suggestExpertTool := handlers.NewSuggestExpertTool(env.PersonaReg, "",
+		func(previous, expert *persona.Persona, handoffMessage string) {
+			mu.Lock()
+			pendingSwitch = &personaSwitchEvent{
+				ExpertName:     expert.Name,
+				HandoffMessage: handoffMessage,
+			}
+			mu.Unlock()
+		},
+	)
+
 	// Replicate handler-level wiring depending on mode
 	switch a.Mode {
 	case "selection":
-		// Inject create_trip + select_trip tools
+		// Inject create_trip + select_trip + suggest_expert tools
 		var createdTrips, selectedTrips []tripEventInfo
-		var mu sync.Mutex
 
 		createTool := handlers.NewCreateTripTool(env.TripSvc, state.UserID, func(id, title, desc string) {
 			mu.Lock()
@@ -148,10 +170,11 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 			selectedTrips = append(selectedTrips, tripEventInfo{ID: id, Title: title, Description: desc})
 			mu.Unlock()
 		})
-		params.ExtraTools = []tools.Tool{createTool, selectTool}
+		params.ExtraTools = []tools.Tool{createTool, selectTool, suggestExpertTool}
 		params.ExtraSystemContext = env.BuildSelectionContext(ctx, state.UserID)
 
 	case "planning", "companion":
+		var destinationCountry string
 		if tripID != "" {
 			if tid, err := uuid.Parse(tripID); err == nil {
 				if t, err := env.TripSvc.GetByID(ctx, state.UserID, tid); err == nil {
@@ -169,9 +192,31 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 					params.ExtraSystemContext = BuildTripContext(t.Title, desc, country, themes)
 					params.DestinationCountry = country
 					params.TripThemes = themes
+					destinationCountry = country
 				}
+
+				// Planning mode: inject itinerary creation tool
+				itineraryTool := handlers.NewCreateItineraryTool(env.TripSvc, tid, func(items []dbgen.ItineraryItem) {
+					mu.Lock()
+					itineraryItems = append(itineraryItems, items...)
+					mu.Unlock()
+				})
+				params.ExtraTools = append(params.ExtraTools, itineraryTool)
 			}
 		}
+
+		// Update suggest_expert with the destination country
+		suggestExpertTool = handlers.NewSuggestExpertTool(env.PersonaReg, destinationCountry,
+			func(previous, expert *persona.Persona, handoffMessage string) {
+				mu.Lock()
+				pendingSwitch = &personaSwitchEvent{
+					ExpertName:     expert.Name,
+					HandoffMessage: handoffMessage,
+				}
+				mu.Unlock()
+			},
+		)
+		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
 	}
 
 	eventCh, newSessionID, err := env.ChatSvc.SendMessage(ctx, params)
@@ -231,6 +276,21 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 						state.Trips[ti.ID] = *ti
 					}
 				}
+			}
+			if event.ToolName == "create_itinerary_items" {
+				mu.Lock()
+				result.ItineraryItemsCreated += len(itineraryItems)
+				itineraryItems = nil
+				mu.Unlock()
+			}
+			if event.ToolName == "suggest_expert" {
+				mu.Lock()
+				if pendingSwitch != nil {
+					result.PersonaSwitched = true
+					result.PersonaSwitchedTo = pendingSwitch.ExpertName
+					pendingSwitch = nil
+				}
+				mu.Unlock()
 			}
 		case "message_complete":
 			result.FullResponse = event.Text
@@ -374,6 +434,11 @@ func (a *CreateTripAction) Execute(ctx context.Context, env *TestEnv, state *Sce
 
 type tripEventInfo struct {
 	ID, Title, Description string
+}
+
+type personaSwitchEvent struct {
+	ExpertName     string
+	HandoffMessage string
 }
 
 // ─── Assertions ─────────────────────────────────────────────────────────────
@@ -561,6 +626,45 @@ func AssertTripCount(expected int) Assertion {
 				return AssertionResult{Passed: true, Message: fmt.Sprintf("user has %d trips", expected), Severity: "error"}
 			}
 			return AssertionResult{Passed: false, Message: fmt.Sprintf("user has %d trips, expected %d", actual, expected), Severity: "error"}
+		},
+	}
+}
+
+// AssertItineraryItemsCreated checks that at least minCount itinerary items were created.
+func AssertItineraryItemsCreated(minCount int) Assertion {
+	return Assertion{
+		Name: fmt.Sprintf("itinerary_items_created:%d+", minCount),
+		Check: func(r *StepResult, _ *ScenarioState) AssertionResult {
+			if r.ItineraryItemsCreated >= minCount {
+				return AssertionResult{Passed: true, Message: fmt.Sprintf("%d itinerary items created (min %d)", r.ItineraryItemsCreated, minCount), Severity: "error"}
+			}
+			return AssertionResult{Passed: false, Message: fmt.Sprintf("%d itinerary items created, expected at least %d", r.ItineraryItemsCreated, minCount), Severity: "error"}
+		},
+	}
+}
+
+// AssertPersonaSwitched checks that a persona switch occurred during the step.
+func AssertPersonaSwitched() Assertion {
+	return Assertion{
+		Name: "persona_switched",
+		Check: func(r *StepResult, _ *ScenarioState) AssertionResult {
+			if r.PersonaSwitched {
+				return AssertionResult{Passed: true, Message: fmt.Sprintf("persona switched to %s", r.PersonaSwitchedTo), Severity: "error"}
+			}
+			return AssertionResult{Passed: false, Message: "expected persona switch but none occurred", Severity: "error"}
+		},
+	}
+}
+
+// AssertPersonaNotSwitched checks that NO persona switch occurred.
+func AssertPersonaNotSwitched() Assertion {
+	return Assertion{
+		Name: "persona_not_switched",
+		Check: func(r *StepResult, _ *ScenarioState) AssertionResult {
+			if !r.PersonaSwitched {
+				return AssertionResult{Passed: true, Message: "no persona switch (expected)", Severity: "error"}
+			}
+			return AssertionResult{Passed: false, Message: fmt.Sprintf("unexpected persona switch to %s", r.PersonaSwitchedTo), Severity: "error"}
 		},
 	}
 }

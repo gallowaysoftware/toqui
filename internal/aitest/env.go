@@ -239,6 +239,7 @@ func BuildTripContext(title, description, destinationCountry string, themes []st
 		sb.WriteString(fmt.Sprintf("- Trip themes: %s\n", strings.Join(themes, ", ")))
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
+	sb.WriteString("\n\nWhen you have specific activities, meals, or experiences to suggest, use the create_itinerary_items tool to add them to the itinerary. Don't just describe what the user could do — actually add it to their plan. You can add multiple items across multiple days in a single call.")
 	return sb.String()
 }
 
