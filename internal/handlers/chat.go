@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
@@ -22,13 +23,21 @@ import (
 )
 
 type ChatHandler struct {
-	chatSvc  *chat.Service
-	tripSvc  *trip.Service
-	themeSvc *theme.Service
+	chatSvc       *chat.Service
+	tripSvc       *trip.Service
+	themeSvc      *theme.Service
+	locationCache *location.Cache
+	locationSvc   *location.Service
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service) *ChatHandler {
-	return &ChatHandler{chatSvc: chatSvc, tripSvc: tripSvc, themeSvc: themeSvc}
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service) *ChatHandler {
+	return &ChatHandler{
+		chatSvc:       chatSvc,
+		tripSvc:       tripSvc,
+		themeSvc:      themeSvc,
+		locationCache: locationCache,
+		locationSvc:   locationSvc,
+	}
 }
 
 func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toquiv1.SendMessageRequest], stream *connect.ServerStream[toquiv1.SendMessageResponse]) error {
@@ -81,10 +90,21 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		TripThemes:         tripThemes,
 	}
 
-	// Inject ephemeral location (companion mode only)
+	// Inject ephemeral location (companion mode only).
+	// Priority: request-level location > cached location from UpdateLocation RPC.
 	if req.Msg.UserLocation != nil {
 		params.LocationLat = req.Msg.UserLocation.Latitude
 		params.LocationLng = req.Msg.UserLocation.Longitude
+	} else if mode == "companion" && h.locationCache != nil {
+		if cached := h.locationCache.Get(userID); cached != nil {
+			params.LocationLat = cached.Lat
+			params.LocationLng = cached.Lng
+			slog.Debug("injected cached location into companion chat",
+				"user_id", userID,
+				"lat", cached.Lat,
+				"lng", cached.Lng,
+			)
+		}
 	}
 
 	// Use mutex-protected slices to collect events from tool callbacks
@@ -135,6 +155,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				mu.Unlock()
 			})
 			params.ExtraTools = append(params.ExtraTools, itineraryTool)
+		}
+
+		// Companion mode: inject nearby_places tool with user's cached location
+		if mode == "companion" && h.locationSvc != nil {
+			nearbyTool := NewNearbyPlacesTool(h.locationSvc, params.LocationLat, params.LocationLng)
+			params.ExtraTools = append(params.ExtraTools, nearbyTool)
 		}
 	}
 
@@ -286,7 +312,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					recentMessages := []string{req.Msg.Content, fullContent}
 					go func() {
 						if err := h.themeSvc.TagTrip(context.Background(), tripID, t.Title, t.Description.String, recentMessages); err != nil {
-							log.Printf("chat retag trip %s: %v", tripID, err)
+							slog.Error("chat retag trip failed", "trip_id", tripID, "error", err)
 						}
 					}()
 				}

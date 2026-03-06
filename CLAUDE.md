@@ -45,7 +45,7 @@ graph TB
 | `internal/auth/` | Google OAuth + JWT + auth interceptor |
 | `internal/trip/` | Trip CRUD, status transitions, destination management |
 | `internal/booking/` | Booking ingestion + AI parsing (email, paste, manual) |
-| `internal/location/` | Location service — ephemeral location, nearby places (Google Places) |
+| `internal/location/` | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places) |
 | `internal/theme/` | Trip theme tagging (AI-driven classification) |
 | `internal/config/` | Three-layer config: env file → os.Getenv → GCP Secret Manager |
 | `internal/db/` | PostgreSQL connection pool + transaction helpers |
@@ -199,6 +199,7 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `select_trip` | selection | AI matches vague references to existing trips | `TripSelected` |
 | `create_itinerary_items` | planning | AI adds structured day-by-day itinerary items | `ItineraryUpdate` |
 | `suggest_expert` | all modes | Toqui hands off to a composed expert persona | `PersonaSwitch` |
+| `nearby_places` | companion | Find nearby places using user's cached location (location-aware) | — |
 | `web_search` | all modes | Search the web for current info (global tool registry) | — |
 | `place_lookup` | all modes | Google Places API lookup (global tool registry) | — |
 
@@ -325,7 +326,7 @@ HTTP routes (outside ConnectRPC):
 
 ## Data Lifecycle
 
-- **Location data**: Ephemeral (request-scoped only, never stored)
+- **Location data**: Ephemeral in-memory cache (30 min TTL), never persisted to database
 - **Trip archival**: 90 days after completion, chat messages purged from Firestore
 - **User deletion**: GDPR Article 17 — CASCADE deletes in Postgres + Firestore purge, within 30 days
 - **Data export**: GDPR Article 20 — async job generates downloadable archive

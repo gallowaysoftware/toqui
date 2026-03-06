@@ -105,6 +105,7 @@ func main() {
 	chatSvc := chat.NewService(aiProvider, chatStr, toolRegistry, personaRegistry)
 	bookingSvc := booking.NewService(pool, aiProvider)
 	locationSvc := location.NewService()
+	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
 
 	// Interceptors — handles both unary and streaming RPCs
@@ -119,9 +120,9 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc)
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
-	locationHandler := handlers.NewLocationHandler(locationSvc)
+	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies)
