@@ -7,6 +7,8 @@ import { ChatService, ChatMode } from "@/gen/toqui/v1/chat_pb";
 import type { SendMessageResponse } from "@/gen/toqui/v1/chat_pb";
 import type { Persona } from "@/gen/toqui/v1/persona_pb";
 
+import type { Recommendation } from "@/components/chat/RecommendationCard";
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -15,6 +17,7 @@ export interface ChatMessage {
   personaName?: string;
   personaAvatar?: string;
   personaAccentColor?: string;
+  recommendation?: Recommendation;
 }
 
 export interface ToolActivity {
@@ -119,12 +122,43 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
               });
               break;
 
-            case "toolResult":
+            case "toolResult": {
+              const toolResult = resp.event.value;
               setToolActivity({
-                toolName: resp.event.value.toolName,
+                toolName: toolResult.toolName,
                 status: "done",
               });
+
+              // Parse recommend_booking results into recommendation cards
+              if (toolResult.toolName === "recommend_booking" && toolResult.resultJson) {
+                try {
+                  const parsed = JSON.parse(toolResult.resultJson);
+                  const rec = parsed.recommendation;
+                  if (rec?.url && rec?.title) {
+                    setMessages((prev) => [
+                      ...prev,
+                      {
+                        id: crypto.randomUUID(),
+                        role: "assistant",
+                        content: "",
+                        recommendation: {
+                          partner: rec.partner ?? "",
+                          category: rec.category ?? "",
+                          title: rec.title,
+                          description: rec.description ?? "",
+                          url: rec.url,
+                          price: rec.price,
+                          disclosure: rec.disclosure,
+                        },
+                      },
+                    ]);
+                  }
+                } catch {
+                  // Ignore malformed recommendation JSON
+                }
+              }
               break;
+            }
 
             case "tripCreated": {
               const trip = resp.event.value.trip;

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageBubble } from "./MessageBubble";
+import { RecommendationCard } from "./RecommendationCard";
 import { ChatInput } from "./ChatInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { MessageLimitBanner } from "./MessageLimitBanner";
@@ -81,6 +82,16 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         )}
 
         {messages.map((msg, i) => {
+          // Render recommendation cards for tool results
+          if (msg.recommendation) {
+            return (
+              <RecommendationCard
+                key={msg.id}
+                recommendation={msg.recommendation}
+              />
+            );
+          }
+
           const prevMsg = messages[i - 1];
           const showBadge = msg.role === "assistant" && (
             !prevMsg ||
@@ -131,6 +142,7 @@ const toolDisplayNames: Record<string, string> = {
   web_search: "Searching the web",
   create_trip: "Creating trip",
   select_trip: "Finding trip",
+  recommend_booking: "Finding recommendations",
 };
 
 function ToolActivityIndicator({ toolName, status }: { toolName: string; status: "calling" | "done" }) {
