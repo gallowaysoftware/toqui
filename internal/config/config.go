@@ -30,7 +30,13 @@ type Config struct {
 
 	// AI providers
 	AnthropicAPIKey string
-	OpenAIAPIKey    string
+
+	// Vertex AI (Gemini fallback) — uses ADC, no API key needed
+	VertexAIProjectID string // GCP project for Vertex AI calls
+	VertexAILocation  string // Region (default: us-central1)
+
+	// Cost control
+	DailyAITokenBudget int // Max total tokens per day (0 = unlimited)
 
 	// Firestore
 	FirestoreProjectID    string
@@ -81,7 +87,9 @@ func Load() (*Config, error) {
 		GoogleRedirectURI:        getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
 		JWTSecret:                getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		AnthropicAPIKey:          os.Getenv("ANTHROPIC_API_KEY"),
-		OpenAIAPIKey:             os.Getenv("OPENAI_API_KEY"),
+		VertexAIProjectID:       os.Getenv("VERTEX_AI_PROJECT_ID"),
+		VertexAILocation:        getEnv("VERTEX_AI_LOCATION", "us-central1"),
+		DailyAITokenBudget:      getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
 		FirestoreProjectID:       getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
 		FirestoreEmulatorHost:    os.Getenv("FIRESTORE_EMULATOR_HOST"),
 		FrontendURL:              getEnv("FRONTEND_URL", "http://localhost:3000"),

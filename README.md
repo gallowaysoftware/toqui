@@ -53,8 +53,10 @@ All env files use `gcsm://` prefixed values which are resolved from GCP Secret M
 | `TARGET_ENV` | No | `local` | Environment: `local`, `staging`, `prod` |
 | `GOOGLE_CLIENT_ID` | Yes | — | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Yes | — | Google OAuth client secret |
-| `ANTHROPIC_API_KEY` | Yes* | — | Claude API key |
-| `OPENAI_API_KEY` | Yes* | — | OpenAI API key (fallback) |
+| `ANTHROPIC_API_KEY` | Yes* | — | Claude API key (primary AI provider) |
+| `VERTEX_AI_PROJECT_ID` | Yes* | — | GCP project for Vertex AI Gemini (fallback) |
+| `VERTEX_AI_LOCATION` | No | `us-central1` | Vertex AI region |
+| `DAILY_AI_TOKEN_BUDGET` | No | `0` | Max total AI tokens/day (0 = unlimited) |
 | `DATABASE_URL` | No | `postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable` | PostgreSQL connection |
 | `PORT` | No | `8090` | Server port |
 | `JWT_SECRET` | No | dev default | JWT signing secret |
@@ -62,7 +64,7 @@ All env files use `gcsm://` prefixed values which are resolved from GCP Secret M
 | `FIRESTORE_EMULATOR_HOST` | No | — | Firestore emulator address |
 | `FRONTEND_URL` | No | `http://localhost:3000` | CORS origin |
 
-*At least one AI provider key is required.
+*At least one AI provider is required. If `ANTHROPIC_API_KEY` is set, Claude is used. Otherwise, Gemini via Vertex AI is used (requires `gcloud auth application-default login` and `VERTEX_AI_PROJECT_ID` or `FIRESTORE_PROJECT_ID`).
 
 ## Make Targets
 
@@ -103,7 +105,7 @@ make integration-test
 
 ### AI Integration Tests
 
-End-to-end tests that exercise the full trip lifecycle through the AI with real LLM calls. Requires Docker services running and an AI provider key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`).
+End-to-end tests that exercise the full trip lifecycle through the AI with real LLM calls. Requires Docker services running and an AI provider (`ANTHROPIC_API_KEY` for Claude, or `VERTEX_AI_PROJECT_ID` for Gemini via Vertex AI).
 
 ```bash
 docker compose up -d    # Start Postgres + Firestore emulator
@@ -254,7 +256,7 @@ internal/
   handlers/         # ConnectRPC service handlers (auth, trip, chat, booking, location, persona)
   chat/             # Chat service — AI streaming, tool execution, persona resolution
   persona/          # Persona composition (24 locations × 15 themes)
-  ai/               # AI provider abstraction (Claude, OpenAI)
+  ai/               # AI provider abstraction (Claude, Gemini/Vertex AI)
   ai/tools/         # LLM-callable tool registry (WebSearch, Places)
   chatstore/        # Firestore chat message persistence
   auth/             # Google OAuth + JWT + auth interceptor

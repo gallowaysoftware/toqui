@@ -169,60 +169,60 @@ func TestResolveModel_FastTier(t *testing.T) {
 	t.Setenv("AI_MODEL_FAST", "")
 
 	// Reinitialize configs to pick up the cleared env.
-	ModelConfigs = defaultModelConfigs()
+
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierFast}
 
 	model := provider.resolveModel(req)
-	if model != defaultClaudeFast {
-		t.Errorf("resolveModel with fast tier = %q, want %q", model, defaultClaudeFast)
+	if model != claudeModels[ModelTierFast] {
+		t.Errorf("resolveModel with fast tier = %q, want %q", model, claudeModels[ModelTierFast])
 	}
 }
 
 func TestResolveModel_SmartTier(t *testing.T) {
 	t.Setenv("AI_MODEL_SMART", "")
-	ModelConfigs = defaultModelConfigs()
+
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierSmart}
 
 	model := provider.resolveModel(req)
-	if model != defaultClaudeSmart {
-		t.Errorf("resolveModel with smart tier = %q, want %q", model, defaultClaudeSmart)
+	if model != claudeModels[ModelTierSmart] {
+		t.Errorf("resolveModel with smart tier = %q, want %q", model, claudeModels[ModelTierSmart])
 	}
 }
 
 func TestResolveModel_BestTier(t *testing.T) {
 	t.Setenv("AI_MODEL_BEST", "")
-	ModelConfigs = defaultModelConfigs()
+
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierBest}
 
 	model := provider.resolveModel(req)
-	if model != defaultClaudeBest {
-		t.Errorf("resolveModel with best tier = %q, want %q", model, defaultClaudeBest)
+	if model != claudeModels[ModelTierBest] {
+		t.Errorf("resolveModel with best tier = %q, want %q", model, claudeModels[ModelTierBest])
 	}
 }
 
 func TestResolveModel_UnknownTierFallsBackToSmart(t *testing.T) {
 	t.Setenv("AI_MODEL_SMART", "")
-	ModelConfigs = defaultModelConfigs()
+
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTier("ultra")}
 
 	model := provider.resolveModel(req)
-	if model != defaultClaudeSmart {
-		t.Errorf("resolveModel with unknown tier = %q, want smart default %q", model, defaultClaudeSmart)
+	if model != claudeModels[ModelTierSmart] {
+		t.Errorf("resolveModel with unknown tier = %q, want smart default %q", model, claudeModels[ModelTierSmart])
 	}
 }
 
 func TestBuildRequest_ModelTierSelectsCorrectModel(t *testing.T) {
 	t.Setenv("AI_MODEL_FAST", "")
 	t.Setenv("AI_MODEL_SMART", "")
-	ModelConfigs = defaultModelConfigs()
+
 
 	provider := NewClaudeProvider("test-key")
 
@@ -231,8 +231,8 @@ func TestBuildRequest_ModelTierSelectsCorrectModel(t *testing.T) {
 		tier      ModelTier
 		wantModel string
 	}{
-		{"fast tier uses Haiku", ModelTierFast, defaultClaudeFast},
-		{"smart tier uses Sonnet", ModelTierSmart, defaultClaudeSmart},
+		{"fast tier uses Haiku", ModelTierFast, claudeModels[ModelTierFast]},
+		{"smart tier uses Sonnet", ModelTierSmart, claudeModels[ModelTierSmart]},
 		{"no tier uses provider default", "", "claude-sonnet-4-20250514"},
 	}
 

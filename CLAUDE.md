@@ -1,6 +1,6 @@
 # Toqui Backend
 
-AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Firestore, and Claude/OpenAI.
+AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Firestore, and Claude/Gemini.
 
 ## Project Structure
 
@@ -38,7 +38,7 @@ graph TB
 | `internal/handlers/` | ConnectRPC service handlers (auth, trip, chat, booking, location, persona) |
 | `internal/chat/` | Chat service — AI streaming, tool execution, persona resolution |
 | `internal/persona/` | Persona composition — 40 locations × 20 themes = 800 expert combos |
-| `internal/ai/` | AI provider abstraction (Claude primary, OpenAI fallback) |
+| `internal/ai/` | AI provider abstraction (Claude primary, Gemini/Vertex AI fallback) |
 | `internal/ai/tools/` | LLM-callable tool registry (WebSearch, Places) |
 | `internal/chatstore/` | Firestore chat message persistence |
 | `internal/lifecycle/` | GDPR deletion, archival, data export |
@@ -143,7 +143,7 @@ FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: st
 
 Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. All environments use `gcsm://secret-name` references resolved at startup via GCP Secret Manager (requires `gcloud auth application-default login`).
 
-Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`). See `env/.env.local` for the full local dev config.
+Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). See `env/.env.local` for the full local dev config.
 
 ## Trip Mode System
 
@@ -254,7 +254,7 @@ The chat service implements an agentic tool loop (`processEventsWithToolLoop` in
 
 This is critical for tools like `recommend_booking` where the AI must see the tool result to include disclosure text in its response. Side-effect tools (like `create_trip`, `create_itinerary_items`) also benefit — the AI can confirm what was created.
 
-The Claude provider (`internal/ai/claude.go`) parses `message_delta` events to extract `stop_reason` and serializes multi-part content blocks (tool_use, tool_result) for continuation messages.
+Both providers parse streaming events to extract stop reasons and serialize tool call/result content blocks for continuation. The Claude provider uses `message_delta` events; the Gemini provider uses `finishReason` in `candidates[]`.
 
 ## Feature Implementation Checklist
 
@@ -404,19 +404,37 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 ## Cost Management
 
-### Anthropic API Spend Cap
-Set a monthly spend cap in the Anthropic Console (console.anthropic.com):
-1. Go to Settings → Billing → Spend Limits
-2. Set a monthly limit appropriate for your user base
-3. Recommended: $50/month for staging, $500/month for initial prod launch
-4. The API will return 429 errors when the cap is reached
+### AI Provider Architecture
+
+**Claude (primary)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
+
+**Gemini (fallback)** — Google Vertex AI with Application Default Credentials (ADC). No API key needed — uses the same `gcloud auth application-default login` as Secret Manager. Billing is per-GCP-project, providing natural environment separation. Requires `aiplatform.googleapis.com` API enabled and `roles/aiplatform.user` IAM role on the calling identity.
+
+| Model Tier | Claude | Gemini (Vertex AI) |
+|------------|--------|-------------------|
+| fast | `claude-3-5-haiku-latest` | `gemini-2.5-flash-lite` |
+| smart | `claude-sonnet-4-20250514` | `gemini-2.5-flash` |
+| best | `claude-sonnet-4-20250514` | `gemini-2.5-pro` |
+
+Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
+
+### Token Usage Tracking
+
+Every AI request logs token usage with environment label via slog:
+```
+INFO ai request completed provider=gemini env=staging input_tokens=2662 output_tokens=200 total_tokens=2862 tool_loop_iterations=2
+```
+
+Token counts are accumulated across tool loop iterations. Usage is parsed from Claude's `message_start`/`message_delta` events and Gemini's `usageMetadata`.
 
 ### Cost Controls (implemented)
-- Prompt caching: system prompts cached for 5 min (90% cheaper on cache hits)
-- Model routing: simple tasks → Haiku (2048 max tokens), complex → Sonnet (8192 max tokens)
-- Daily message limit: 30 msgs/user/day (configurable via DAILY_MESSAGE_LIMIT)
-- Response caching: popular destination intros cached for 1 hour (configurable via LLM_CACHE_TTL)
-- Per-user rate limiting: 10 requests per 60 seconds via ConnectRPC interceptor
+- **Daily token budget**: `DAILY_AI_TOKEN_BUDGET` — soft limit per environment (default: 0 = unlimited). 1M staging, 5M prod.
+- **Prompt caching**: system prompts cached for 5 min (90% cheaper on cache hits, Claude only)
+- **Model routing**: simple tasks → fast tier (2048 max tokens), complex → smart tier (8192 max tokens)
+- **Daily message limit**: 30 msgs/user/day (configurable via `DAILY_MESSAGE_LIMIT`)
+- **Response caching**: popular destination intros cached for 1 hour (configurable via `LLM_CACHE_TTL`)
+- **Per-user rate limiting**: 10 requests per 60 seconds via ConnectRPC interceptor
+- **GCP project separation**: toqui-staging vs toqui-prod — billing differentiation at the infra level
 
 ## Data Lifecycle
 

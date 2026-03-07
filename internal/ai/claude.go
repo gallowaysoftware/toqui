@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -11,6 +10,13 @@ import (
 	"net/http"
 	"strings"
 )
+
+// Claude model defaults per tier. Override via AI_MODEL_FAST, AI_MODEL_SMART, AI_MODEL_BEST.
+var claudeModels = map[ModelTier]string{
+	ModelTierFast:  getEnvOrDefault("AI_MODEL_FAST", "claude-3-5-haiku-latest"),
+	ModelTierSmart: getEnvOrDefault("AI_MODEL_SMART", "claude-sonnet-4-20250514"),
+	ModelTierBest:  getEnvOrDefault("AI_MODEL_BEST", "claude-sonnet-4-20250514"),
+}
 
 type ClaudeProvider struct {
 	apiKey string
@@ -74,12 +80,14 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 func (c *ClaudeProvider) resolveModel(req *ChatRequest) string {
 	tier := req.ModelTier
 	if tier == "" {
-		// No tier set — use provider default (backward compatible).
 		return c.model
 	}
-	model := ConfigForTier(tier).ClaudeModel
-	slog.Info("claude model resolved", "tier", tier, "model", model)
-	return model
+	if model, ok := claudeModels[tier]; ok {
+		slog.Info("claude model resolved", "tier", tier, "model", model)
+		return model
+	}
+	slog.Warn("unknown tier for claude, using default", "tier", tier)
+	return c.model
 }
 
 func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
@@ -149,8 +157,6 @@ func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 
 	if req.SystemPrompt != "" {
 		// Use structured system format with cache_control for prompt caching.
-		// The system prompt (persona identity + trip context) is stable across
-		// messages in a session, so caching it saves significant cost.
 		body["system"] = []map[string]any{
 			{
 				"type": "text",
@@ -197,33 +203,32 @@ type pendingTool struct {
 }
 
 func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch chan<- Event) {
-	scanner := bufio.NewScanner(body)
+	reader := NewSSEReader(body)
 	// Track pending tool calls by content block index
 	toolBlocks := make(map[int]*pendingTool)
 	var stopReason string
+	var usage *Usage
 
-	for scanner.Scan() {
-		select {
-		case <-ctx.Done():
-			ch <- Event{Type: EventError, Error: ctx.Err()}
+	for {
+		data, done, err := reader.Next(ctx)
+		if err != nil {
+			ch <- Event{Type: EventError, Error: err}
 			return
-		default:
 		}
-
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-
-		data := strings.TrimPrefix(line, "data: ")
-		if data == "[DONE]" {
-			ch <- Event{Type: EventDone, StopReason: stopReason}
+		if done {
+			ch <- Event{Type: EventDone, StopReason: stopReason, Usage: usage}
 			return
 		}
 
 		var event struct {
-			Type  string `json:"type"`
-			Index int    `json:"index"`
+			Type    string `json:"type"`
+			Index   int    `json:"index"`
+			Message struct {
+				Usage struct {
+					InputTokens  int `json:"input_tokens"`
+					OutputTokens int `json:"output_tokens"`
+				} `json:"usage"`
+			} `json:"message"`
 			Delta struct {
 				Type        string `json:"type"`
 				Text        string `json:"text"`
@@ -236,12 +241,24 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 				Name  string `json:"name"`
 				Input any    `json:"input"`
 			} `json:"content_block"`
+			Usage struct {
+				OutputTokens int `json:"output_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
 			continue
 		}
 
 		switch event.Type {
+		case "message_start":
+			// Capture initial usage (input tokens).
+			if event.Message.Usage.InputTokens > 0 {
+				usage = &Usage{
+					InputTokens:  event.Message.Usage.InputTokens,
+					OutputTokens: event.Message.Usage.OutputTokens,
+				}
+			}
+
 		case "content_block_start":
 			if event.ContentBlock.Type == "tool_use" {
 				toolBlocks[event.Index] = &pendingTool{
@@ -280,9 +297,13 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 			if event.Delta.StopReason != "" {
 				stopReason = event.Delta.StopReason
 			}
+			// Update output tokens from message_delta.
+			if event.Usage.OutputTokens > 0 && usage != nil {
+				usage.OutputTokens = event.Usage.OutputTokens
+			}
 
 		case "message_stop":
-			ch <- Event{Type: EventDone, StopReason: stopReason}
+			ch <- Event{Type: EventDone, StopReason: stopReason, Usage: usage}
 			return
 		}
 	}

@@ -44,7 +44,8 @@ services:
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
       GOOGLE_REDIRECT_URI: "http://localhost:3000/auth/callback"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      VERTEX_AI_PROJECT_ID: "${VERTEX_AI_PROJECT_ID:-toqui-staging}"
+      VERTEX_AI_LOCATION: "${VERTEX_AI_LOCATION:-us-central1}"
       FRONTEND_URL: "http://localhost:3000"
     depends_on:
       postgres:

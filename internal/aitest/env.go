@@ -44,7 +44,7 @@ type TestEnv struct {
 
 	// AI providers
 	Provider      ai.Provider // System-under-test AND judge (same provider)
-	ProviderName  string      // "claude" or "openai"
+	ProviderName  string      // "claude" or "gemini"
 	ToolRegistry  *tools.Registry
 	PersonaReg    *persona.Registry
 }
@@ -94,11 +94,11 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("aitest: create firestore client: %v", err)
 	}
 
-	// AI provider
+	// AI provider — Claude primary, Gemini (Vertex AI) fallback
 	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
-	openaiKey := os.Getenv("OPENAI_API_KEY")
-	if anthropicKey == "" && openaiKey == "" {
-		t.Skip("No AI provider key set (ANTHROPIC_API_KEY or OPENAI_API_KEY) — skipping AI test")
+	vertexProject := os.Getenv("VERTEX_AI_PROJECT_ID")
+	if vertexProject == "" {
+		vertexProject = projectID // fall back to Firestore project
 	}
 
 	var provider ai.Provider
@@ -107,8 +107,16 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		provider = ai.NewClaudeProvider(anthropicKey)
 		providerName = "claude"
 	} else {
-		provider = ai.NewOpenAIProvider(openaiKey)
-		providerName = "openai"
+		var err error
+		location := os.Getenv("VERTEX_AI_LOCATION")
+		if location == "" {
+			location = "us-central1"
+		}
+		provider, err = ai.NewGeminiProvider(vertexProject, location)
+		if err != nil {
+			t.Skipf("No ANTHROPIC_API_KEY and Gemini ADC failed: %v — skipping AI test", err)
+		}
+		providerName = "gemini"
 	}
 	slog.Info("aitest: AI provider configured", "provider", providerName)
 

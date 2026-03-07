@@ -70,14 +70,24 @@ func main() {
 		cfg.JWTSecret,
 	)
 
-	// AI Provider
+	// AI Provider — Claude primary, Gemini (Vertex AI) fallback
 	var aiProvider ai.Provider
 	if cfg.AnthropicAPIKey != "" {
 		aiProvider = ai.NewClaudeProvider(cfg.AnthropicAPIKey)
-	} else if cfg.OpenAIAPIKey != "" {
-		aiProvider = ai.NewOpenAIProvider(cfg.OpenAIAPIKey)
+		slog.Info("AI provider configured", "provider", "claude")
 	} else {
-		slog.Warn("no AI provider configured — chat will not work")
+		// Vertex AI fallback — uses Application Default Credentials, no API key needed.
+		projectID := cfg.VertexAIProjectID
+		if projectID == "" {
+			projectID = cfg.FirestoreProjectID // reasonable default — same GCP project
+		}
+		var err error
+		aiProvider, err = ai.NewGeminiProvider(projectID, cfg.VertexAILocation)
+		if err != nil {
+			slog.Warn("failed to initialize Gemini provider — chat will not work", "error", err)
+		} else {
+			slog.Info("AI provider configured", "provider", "gemini", "project", projectID, "location", cfg.VertexAILocation)
+		}
 	}
 
 	// Tool registry

@@ -6,41 +6,25 @@ import (
 )
 
 func TestDefaultModelConfigs(t *testing.T) {
-	// Ensure no env overrides are set for this test.
-	for _, key := range []string{
-		"AI_MODEL_FAST", "AI_MODEL_SMART", "AI_MODEL_BEST",
-		"AI_OPENAI_MODEL_FAST", "AI_OPENAI_MODEL_SMART", "AI_OPENAI_MODEL_BEST",
-	} {
-		t.Setenv(key, "")
-	}
-
 	configs := defaultModelConfigs()
 
 	tests := []struct {
-		tier        ModelTier
-		wantClaude  string
-		wantOpenAI  string
-		wantMaxTok  int
-		wantTemp    float64
+		tier       ModelTier
+		wantMaxTok int
+		wantTemp   float64
 	}{
 		{
 			tier:       ModelTierFast,
-			wantClaude: defaultClaudeFast,
-			wantOpenAI: defaultOpenAIFast,
 			wantMaxTok: 2048,
 			wantTemp:   0.7,
 		},
 		{
 			tier:       ModelTierSmart,
-			wantClaude: defaultClaudeSmart,
-			wantOpenAI: defaultOpenAISmart,
 			wantMaxTok: 8192,
 			wantTemp:   0.7,
 		},
 		{
 			tier:       ModelTierBest,
-			wantClaude: defaultClaudeBest,
-			wantOpenAI: defaultOpenAIBest,
 			wantMaxTok: 8192,
 			wantTemp:   0.7,
 		},
@@ -52,12 +36,6 @@ func TestDefaultModelConfigs(t *testing.T) {
 			if !ok {
 				t.Fatalf("no config for tier %q", tt.tier)
 			}
-			if cfg.ClaudeModel != tt.wantClaude {
-				t.Errorf("ClaudeModel = %q, want %q", cfg.ClaudeModel, tt.wantClaude)
-			}
-			if cfg.OpenAIModel != tt.wantOpenAI {
-				t.Errorf("OpenAIModel = %q, want %q", cfg.OpenAIModel, tt.wantOpenAI)
-			}
 			if cfg.MaxTokens != tt.wantMaxTok {
 				t.Errorf("MaxTokens = %d, want %d", cfg.MaxTokens, tt.wantMaxTok)
 			}
@@ -68,74 +46,43 @@ func TestDefaultModelConfigs(t *testing.T) {
 	}
 }
 
-func TestModelConfigEnvOverride(t *testing.T) {
-	t.Setenv("AI_MODEL_FAST", "claude-3-custom-fast")
-	t.Setenv("AI_MODEL_SMART", "claude-3-custom-smart")
-	t.Setenv("AI_MODEL_BEST", "claude-3-custom-best")
-	t.Setenv("AI_OPENAI_MODEL_FAST", "gpt-custom-fast")
-	t.Setenv("AI_OPENAI_MODEL_SMART", "gpt-custom-smart")
-	t.Setenv("AI_OPENAI_MODEL_BEST", "gpt-custom-best")
-
-	configs := defaultModelConfigs()
-
-	if configs[ModelTierFast].ClaudeModel != "claude-3-custom-fast" {
-		t.Errorf("fast Claude = %q, want %q", configs[ModelTierFast].ClaudeModel, "claude-3-custom-fast")
-	}
-	if configs[ModelTierSmart].ClaudeModel != "claude-3-custom-smart" {
-		t.Errorf("smart Claude = %q, want %q", configs[ModelTierSmart].ClaudeModel, "claude-3-custom-smart")
-	}
-	if configs[ModelTierBest].ClaudeModel != "claude-3-custom-best" {
-		t.Errorf("best Claude = %q, want %q", configs[ModelTierBest].ClaudeModel, "claude-3-custom-best")
-	}
-	if configs[ModelTierFast].OpenAIModel != "gpt-custom-fast" {
-		t.Errorf("fast OpenAI = %q, want %q", configs[ModelTierFast].OpenAIModel, "gpt-custom-fast")
-	}
-	if configs[ModelTierSmart].OpenAIModel != "gpt-custom-smart" {
-		t.Errorf("smart OpenAI = %q, want %q", configs[ModelTierSmart].OpenAIModel, "gpt-custom-smart")
-	}
-	if configs[ModelTierBest].OpenAIModel != "gpt-custom-best" {
-		t.Errorf("best OpenAI = %q, want %q", configs[ModelTierBest].OpenAIModel, "gpt-custom-best")
-	}
-}
-
-func TestModelConfigPartialEnvOverride(t *testing.T) {
-	// Only override fast Claude model — everything else should be default.
-	t.Setenv("AI_MODEL_FAST", "claude-3-haiku-custom")
-	// Explicitly clear others.
-	for _, key := range []string{
-		"AI_MODEL_SMART", "AI_MODEL_BEST",
-		"AI_OPENAI_MODEL_FAST", "AI_OPENAI_MODEL_SMART", "AI_OPENAI_MODEL_BEST",
-	} {
-		t.Setenv(key, "")
-	}
-
-	configs := defaultModelConfigs()
-
-	if configs[ModelTierFast].ClaudeModel != "claude-3-haiku-custom" {
-		t.Errorf("fast Claude = %q, want %q", configs[ModelTierFast].ClaudeModel, "claude-3-haiku-custom")
-	}
-	// Smart should still be default.
-	if configs[ModelTierSmart].ClaudeModel != defaultClaudeSmart {
-		t.Errorf("smart Claude = %q, want default %q", configs[ModelTierSmart].ClaudeModel, defaultClaudeSmart)
-	}
-	// OpenAI fast should still be default.
-	if configs[ModelTierFast].OpenAIModel != defaultOpenAIFast {
-		t.Errorf("fast OpenAI = %q, want default %q", configs[ModelTierFast].OpenAIModel, defaultOpenAIFast)
-	}
-}
-
 func TestConfigForTier(t *testing.T) {
 	// Known tier returns correct config.
 	cfg := ConfigForTier(ModelTierFast)
-	if cfg.ClaudeModel == "" {
-		t.Error("ConfigForTier(fast) returned empty ClaudeModel")
+	if cfg.MaxTokens == 0 {
+		t.Error("ConfigForTier(fast) returned zero MaxTokens")
 	}
 
 	// Unknown tier falls back to smart.
 	cfg = ConfigForTier(ModelTier("unknown"))
 	smartCfg := ConfigForTier(ModelTierSmart)
-	if cfg.ClaudeModel != smartCfg.ClaudeModel {
-		t.Errorf("unknown tier ClaudeModel = %q, want smart default %q", cfg.ClaudeModel, smartCfg.ClaudeModel)
+	if cfg.MaxTokens != smartCfg.MaxTokens {
+		t.Errorf("unknown tier MaxTokens = %d, want smart default %d", cfg.MaxTokens, smartCfg.MaxTokens)
+	}
+}
+
+func TestClaudeModelMapping(t *testing.T) {
+	// Default models should be set.
+	if claudeModels[ModelTierFast] == "" {
+		t.Error("claudeModels[fast] is empty")
+	}
+	if claudeModels[ModelTierSmart] == "" {
+		t.Error("claudeModels[smart] is empty")
+	}
+	if claudeModels[ModelTierBest] == "" {
+		t.Error("claudeModels[best] is empty")
+	}
+}
+
+func TestGeminiModelMapping(t *testing.T) {
+	if geminiModels[ModelTierFast] == "" {
+		t.Error("geminiModels[fast] is empty")
+	}
+	if geminiModels[ModelTierSmart] == "" {
+		t.Error("geminiModels[smart] is empty")
+	}
+	if geminiModels[ModelTierBest] == "" {
+		t.Error("geminiModels[best] is empty")
 	}
 }
 

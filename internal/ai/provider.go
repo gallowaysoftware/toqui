@@ -51,6 +51,14 @@ type Event struct {
 	Tool       *ToolCall
 	Error      error
 	StopReason string // "end_turn", "tool_use" — set on EventDone
+	Usage      *Usage // token counts — populated on EventDone
+}
+
+// Usage holds token counts from a provider response.
+// Both Claude and Gemini populate this on the final EventDone event.
+type Usage struct {
+	InputTokens  int
+	OutputTokens int
 }
 
 type ToolCall struct {

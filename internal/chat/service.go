@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -228,6 +229,7 @@ const maxToolLoopIterations = 5
 // response (stop_reason=end_turn) or the iteration limit is reached.
 func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) {
 	var fullResponse strings.Builder
+	var totalInputTokens, totalOutputTokens int
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
 		// Start (or continue) streaming
@@ -238,8 +240,14 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 
 		// Process this turn's events
-		turnText, toolCalls, toolResults, stopReason, streamErr := s.processOneTurn(ctx, eventCh, outCh, extraTools)
+		turnText, toolCalls, toolResults, stopReason, turnUsage, streamErr := s.processOneTurn(ctx, eventCh, outCh, extraTools)
 		fullResponse.WriteString(turnText)
+
+		// Accumulate token usage across tool loop iterations.
+		if turnUsage != nil {
+			totalInputTokens += turnUsage.InputTokens
+			totalOutputTokens += turnUsage.OutputTokens
+		}
 
 		if streamErr != nil {
 			outCh <- StreamEvent{Type: "error", Error: streamErr.Error()}
@@ -284,6 +292,9 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			SessionID: sessionID,
 			MessageID: assistantMsg.ID,
 		}
+
+		// Log usage with environment label for cost tracking.
+		s.logUsage(iteration+1, totalInputTokens, totalOutputTokens)
 		return
 	}
 
@@ -301,17 +312,36 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		SessionID: sessionID,
 		MessageID: assistantMsg.ID,
 	}
+
+	s.logUsage(maxToolLoopIterations, totalInputTokens, totalOutputTokens)
+}
+
+// logUsage logs token usage with provider and environment labels for cost tracking.
+func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
+	if inputTokens == 0 && outputTokens == 0 {
+		return
+	}
+	slog.Info("ai request completed",
+		"provider", s.provider.Name(),
+		"env", os.Getenv("TARGET_ENV"),
+		"input_tokens", inputTokens,
+		"output_tokens", outputTokens,
+		"total_tokens", inputTokens+outputTokens,
+		"tool_loop_iterations", iterations,
+	)
 }
 
 // processOneTurn drains a single AI stream, executing any tool calls.
-// Returns the text produced, tool calls made, tool results, stop reason, and any error.
-func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, outCh chan<- StreamEvent, extraTools map[string]tools.Tool) (text string, toolCalls []ai.ToolCall, toolResults []ai.ToolResult, stopReason string, err error) {
+// Returns the text produced, tool calls made, tool results, stop reason, usage, and any error.
+func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, outCh chan<- StreamEvent, extraTools map[string]tools.Tool) (text string, toolCalls []ai.ToolCall, toolResults []ai.ToolResult, stopReason string, usage *ai.Usage, err error) {
 	var turnText strings.Builder
+
+	var turnUsage *ai.Usage
 
 	for event := range eventCh {
 		select {
 		case <-ctx.Done():
-			return turnText.String(), toolCalls, toolResults, "", ctx.Err()
+			return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
 		default:
 		}
 
@@ -363,15 +393,16 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 
 		case ai.EventDone:
 			stopReason = event.StopReason
-			return turnText.String(), toolCalls, toolResults, stopReason, nil
+			turnUsage = event.Usage
+			return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 
 		case ai.EventError:
 			outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}
-			return turnText.String(), toolCalls, toolResults, "", event.Error
+			return turnText.String(), toolCalls, toolResults, "", turnUsage, event.Error
 		}
 	}
 
-	return turnText.String(), toolCalls, toolResults, stopReason, nil
+	return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 }
 
 // syntheticCacheResponse creates a channel that emits a cached response as if it
