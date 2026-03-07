@@ -42,3 +42,16 @@ WHERE id = $1;
 
 -- name: DeleteTrip :exec
 DELETE FROM trips WHERE id = $1 AND user_id = $2;
+
+-- name: EnableTripSharing :one
+UPDATE trips SET share_token = sqlc.arg(share_token), updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: DisableTripSharing :one
+UPDATE trips SET share_token = NULL, updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: GetTripByShareToken :one
+SELECT * FROM trips WHERE share_token = sqlc.arg(share_token);

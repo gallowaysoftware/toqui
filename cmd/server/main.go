@@ -140,6 +140,9 @@ func main() {
 	waitlistHandler := handlers.NewWaitlistHandler(pool)
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
+	// Shared trip handler (public + authenticated routes)
+	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc)
+
 	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
@@ -151,6 +154,11 @@ func main() {
 
 	// Usage route (authenticated via Bearer token)
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
+
+	// Shared trip routes
+	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
+	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
+	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, cfg.SendGridWebhookKey)

@@ -2,7 +2,9 @@ package trip
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
+
+// shareTokenAlphabet is the character set for generating share tokens.
+const shareTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+// shareTokenLength is the length of generated share tokens.
+const shareTokenLength = 12
 
 type Service struct {
 	queries *dbgen.Queries
@@ -116,6 +124,57 @@ func (s *Service) Delete(ctx context.Context, userID, tripID uuid.UUID) error {
 		return fmt.Errorf("delete trip: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) EnableSharing(ctx context.Context, userID, tripID uuid.UUID) (string, error) {
+	token, err := generateShareToken()
+	if err != nil {
+		return "", fmt.Errorf("generate share token: %w", err)
+	}
+
+	_, err = s.queries.EnableTripSharing(ctx, dbgen.EnableTripSharingParams{
+		ShareToken: pgtype.Text{String: token, Valid: true},
+		ID:         tripID,
+		UserID:     userID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("enable trip sharing: %w", err)
+	}
+
+	return token, nil
+}
+
+func (s *Service) DisableSharing(ctx context.Context, userID, tripID uuid.UUID) error {
+	_, err := s.queries.DisableTripSharing(ctx, dbgen.DisableTripSharingParams{
+		ID:     tripID,
+		UserID: userID,
+	})
+	if err != nil {
+		return fmt.Errorf("disable trip sharing: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) GetByShareToken(ctx context.Context, token string) (*dbgen.Trip, error) {
+	trip, err := s.queries.GetTripByShareToken(ctx, pgtype.Text{String: token, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("get trip by share token: %w", err)
+	}
+	return &trip, nil
+}
+
+// generateShareToken produces a cryptographically random 12-character alphanumeric string.
+func generateShareToken() (string, error) {
+	result := make([]byte, shareTokenLength)
+	alphabetLen := big.NewInt(int64(len(shareTokenAlphabet)))
+	for i := range result {
+		n, err := rand.Int(rand.Reader, alphabetLen)
+		if err != nil {
+			return "", err
+		}
+		result[i] = shareTokenAlphabet[n.Int64()]
+	}
+	return string(result), nil
 }
 
 func (s *Service) CreateItineraryItem(ctx context.Context, tripID uuid.UUID, dayNumber, orderInDay int, itemType, title, description string) (dbgen.ItineraryItem, error) {

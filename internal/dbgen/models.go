@@ -97,6 +97,7 @@ type Trip struct {
 	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
 	ArchiveAfter       pgtype.Timestamptz `json:"archive_after"`
 	ArchivedAt         pgtype.Timestamptz `json:"archived_at"`
+	ShareToken         pgtype.Text        `json:"share_token"`
 }
 
 type TripTheme struct {
