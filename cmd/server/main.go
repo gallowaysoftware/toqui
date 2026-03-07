@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -189,8 +190,8 @@ func main() {
 	mux.Handle(toquiv1connect.NewLocationServiceHandler(locationHandler, interceptors))
 	mux.Handle(toquiv1connect.NewPersonaServiceHandler(personaHandler, interceptors))
 
-	// CORS middleware
-	handler := corsMiddleware(mux, cfg.FrontendURL)
+	// Middleware chain: recovery → CORS → handler
+	handler := recoveryMiddleware(corsMiddleware(mux, cfg.FrontendURL))
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -287,6 +288,23 @@ func newSimpleChatFn(provider ai.Provider) func(ctx context.Context, system, pro
 		}
 		return response.String(), nil
 	}
+}
+
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("panic recovered",
+					"error", rec,
+					"method", r.Method,
+					"path", r.URL.Path,
+					"stack", string(debug.Stack()),
+				)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 func corsMiddleware(next http.Handler, allowedOrigin string) http.Handler {

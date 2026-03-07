@@ -125,13 +125,28 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		return nil, "", fmt.Errorf("load history: %w", err)
 	}
 
-	// Build AI request
+	// Build AI request — reconstruct full messages including tool call/result data
 	messages := make([]ai.Message, 0, len(history))
 	for _, msg := range history {
-		messages = append(messages, ai.Message{
+		m := ai.Message{
 			Role:    msg.Role,
 			Content: msg.Content,
-		})
+		}
+		for _, tc := range msg.ToolCalls {
+			m.ToolCalls = append(m.ToolCalls, ai.ToolCall{
+				ID:        tc.ID,
+				Name:      tc.Name,
+				Arguments: tc.Arguments,
+			})
+		}
+		for _, tr := range msg.ToolResults {
+			m.ToolResults = append(m.ToolResults, ai.ToolResult{
+				ToolCallID: tr.ToolCallID,
+				Name:       tr.Name,
+				Content:    tr.Content,
+			})
+		}
+		messages = append(messages, m)
 	}
 
 	systemPrompt := activePersona.SystemPrompt(params.Mode)
@@ -275,6 +290,32 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				ToolResults: toolResults,
 			}
 			aiReq.Messages = append(aiReq.Messages, toolResultMsg)
+
+			// Persist intermediate messages so history reconstruction includes tool data
+			storedAssistant := &chatstore.ChatMessage{
+				Role:    "assistant",
+				Content: turnText,
+			}
+			for _, tc := range toolCalls {
+				storedAssistant.ToolCalls = append(storedAssistant.ToolCalls, chatstore.StoredToolCall{
+					ID:        tc.ID,
+					Name:      tc.Name,
+					Arguments: tc.Arguments,
+				})
+			}
+			_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedAssistant)
+
+			storedToolResult := &chatstore.ChatMessage{
+				Role: "user",
+			}
+			for _, tr := range toolResults {
+				storedToolResult.ToolResults = append(storedToolResult.ToolResults, chatstore.StoredToolResult{
+					ToolCallID: tr.ToolCallID,
+					Name:       tr.Name,
+					Content:    tr.Content,
+				})
+			}
+			_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedToolResult)
 
 			continue // Next iteration of the tool loop
 		}

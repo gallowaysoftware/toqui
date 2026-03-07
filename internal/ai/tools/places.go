@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 )
@@ -49,7 +50,7 @@ func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.R
 
 	// Use Google Places Text Search API
 	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/place/textsearch/json?query=%s&key=%s",
-		input.Query, p.apiKey)
+		url.QueryEscape(input.Query), p.apiKey)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

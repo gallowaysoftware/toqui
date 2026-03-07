@@ -27,6 +27,28 @@ type ChatMessage struct {
 	Metadata  map[string]string `firestore:"metadata"`
 	CreatedAt time.Time         `firestore:"createdAt"`
 	ExpireAt  *time.Time        `firestore:"expireAt,omitempty"`
+
+	// ToolCalls stores tool calls made by the assistant in this message.
+	// Each entry has ID, Name, and Arguments (JSON string).
+	ToolCalls []StoredToolCall `firestore:"toolCalls,omitempty"`
+
+	// ToolResults stores tool execution results returned to the AI.
+	// Each entry has ToolCallID, Name, and Content (JSON string).
+	ToolResults []StoredToolResult `firestore:"toolResults,omitempty"`
+}
+
+// StoredToolCall is a Firestore-friendly representation of an AI tool call.
+type StoredToolCall struct {
+	ID        string `firestore:"id"`
+	Name      string `firestore:"name"`
+	Arguments string `firestore:"arguments"` // JSON string
+}
+
+// StoredToolResult is a Firestore-friendly representation of a tool execution result.
+type StoredToolResult struct {
+	ToolCallID string `firestore:"toolCallId"`
+	Name       string `firestore:"name"`
+	Content    string `firestore:"content"` // JSON string
 }
 
 type Store struct {

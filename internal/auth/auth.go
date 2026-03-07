@@ -123,11 +123,32 @@ func (s *Service) ValidateToken(tokenString string) (uuid.UUID, error) {
 }
 
 func (s *Service) ValidateRefreshToken(tokenString string) (uuid.UUID, error) {
-	userID, err := s.ValidateToken(tokenString)
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return s.jwtSecret, nil
+	})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("parse token: %w", err)
 	}
-	return userID, nil
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return uuid.Nil, fmt.Errorf("invalid token")
+	}
+
+	tokenType, _ := claims["type"].(string)
+	if tokenType != "refresh" {
+		return uuid.Nil, fmt.Errorf("invalid token type: expected refresh token")
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok {
+		return uuid.Nil, fmt.Errorf("missing sub claim")
+	}
+
+	return uuid.Parse(sub)
 }
 
 func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
