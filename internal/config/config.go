@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"time"
 )
 
 // Config holds all configuration for the Toqui backend.
@@ -54,6 +55,10 @@ type Config struct {
 	// Capacity + usage limits
 	MaxFreeUsers      int
 	DailyMessageLimit int
+
+	// LLM response caching
+	LLMCacheEnabled bool
+	LLMCacheTTL     time.Duration
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -89,6 +94,8 @@ func Load() (*Config, error) {
 		GetYourGuidePartnerID:    os.Getenv("GETYOURGUIDE_PARTNER_ID"),
 		MaxFreeUsers:             getEnvInt("MAX_FREE_USERS", 500),
 		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
+		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
+		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
 	}
 
 	// Layer 3: resolve gcsm:// references
@@ -122,4 +129,30 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		slog.Warn("invalid boolean env var, using default", "key", key, "value", v, "default", fallback)
+		return fallback
+	}
+	return b
+}
+
+func getEnvDuration(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		slog.Warn("invalid duration env var, using default", "key", key, "value", v, "default", fallback)
+		return fallback
+	}
+	return d
 }

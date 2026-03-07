@@ -19,6 +19,7 @@ type Service struct {
 	chatStore *chatstore.Store
 	tools     *tools.Registry
 	personas  *persona.Registry
+	cache     *ai.ResponseCache // nil when caching is disabled
 }
 
 func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *tools.Registry, personas *persona.Registry) *Service {
@@ -28,6 +29,11 @@ func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *
 		tools:     toolRegistry,
 		personas:  personas,
 	}
+}
+
+// SetCache enables LLM response caching. Pass nil to disable.
+func (s *Service) SetCache(cache *ai.ResponseCache) {
+	s.cache = cache
 }
 
 type StreamEvent struct {
@@ -175,6 +181,17 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		"has_tools", len(toolDefs) > 0,
 	)
 
+	// Check response cache before calling the LLM.
+	if s.cache != nil && s.cache.Eligible(aiReq) {
+		if cached, ok := s.cache.Get(aiReq); ok {
+			slog.Info("llm cache hit, returning cached response",
+				"mode", params.Mode,
+				"msg_len", len(params.Content),
+			)
+			return s.syntheticCacheResponse(ctx, cached, params.UserID, storeTripID, sessionID), sessionID, nil
+		}
+	}
+
 	// Start streaming
 	eventCh, err := s.provider.ChatStream(ctx, aiReq)
 	if err != nil {
@@ -191,6 +208,24 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	go func() {
 		defer close(outCh)
 		s.processEvents(ctx, eventCh, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
+
+		// Cache the response after streaming completes (only for eligible requests).
+		if s.cache != nil && s.cache.Eligible(aiReq) {
+			// Collect the full response text from the last message_complete event.
+			// We do this by reading from the chatstore since processEvents already stored it.
+			msgs, mErr := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, 1)
+			if mErr == nil && len(msgs) > 0 {
+				// The latest message should be the assistant response.
+				latest := msgs[len(msgs)-1]
+				if latest.Role == "assistant" && latest.Content != "" {
+					s.cache.Put(aiReq, latest.Content)
+					slog.Debug("llm response cached",
+						"mode", params.Mode,
+						"response_len", len(latest.Content),
+					)
+				}
+			}
+		}
 	}()
 
 	return outCh, sessionID, nil
@@ -262,6 +297,33 @@ func (s *Service) processEvents(ctx context.Context, eventCh <-chan ai.Event, ou
 			outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}
 		}
 	}
+}
+
+// syntheticCacheResponse creates a channel that emits a cached response as if it
+// were streamed from the LLM. It also stores the assistant message in the chat store.
+func (s *Service) syntheticCacheResponse(ctx context.Context, cachedText string, userID uuid.UUID, tripID, sessionID string) <-chan StreamEvent {
+	outCh := make(chan StreamEvent, 4)
+	go func() {
+		defer close(outCh)
+
+		// Emit the full text as a single delta (no need to chunk for cached responses).
+		outCh <- StreamEvent{Type: "text_delta", Text: cachedText}
+
+		// Store the assistant message.
+		assistantMsg := &chatstore.ChatMessage{
+			Role:    "assistant",
+			Content: cachedText,
+		}
+		_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+
+		outCh <- StreamEvent{
+			Type:      "message_complete",
+			Text:      cachedText,
+			SessionID: sessionID,
+			MessageID: assistantMsg.ID,
+		}
+	}()
+	return outCh
 }
 
 // Personas returns the persona registry for use by handlers.

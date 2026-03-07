@@ -113,6 +113,14 @@ func main() {
 	// Services
 	tripSvc := trip.NewService(pool)
 	chatSvc := chat.NewService(aiProvider, chatStr, toolRegistry, personaRegistry)
+
+	// LLM response cache — avoids redundant LLM calls for popular destination intros.
+	if cfg.LLMCacheEnabled {
+		responseCache := ai.NewResponseCache(ai.WithTTL(cfg.LLMCacheTTL))
+		chatSvc.SetCache(responseCache)
+		slog.Info("llm response cache enabled", "ttl", cfg.LLMCacheTTL)
+	}
+
 	bookingSvc := booking.NewService(pool, aiProvider)
 	locationSvc := location.NewService()
 	locationCache := location.NewCache(location.DefaultCacheTTL)

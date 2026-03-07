@@ -346,6 +346,22 @@ Each user is limited to `DAILY_MESSAGE_LIMIT` (default: 30) messages per day acr
 
 Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
+## Cost Management
+
+### Anthropic API Spend Cap
+Set a monthly spend cap in the Anthropic Console (console.anthropic.com):
+1. Go to Settings → Billing → Spend Limits
+2. Set a monthly limit appropriate for your user base
+3. Recommended: $50/month for staging, $500/month for initial prod launch
+4. The API will return 429 errors when the cap is reached
+
+### Cost Controls (implemented)
+- Prompt caching: system prompts cached for 5 min (90% cheaper on cache hits)
+- Model routing: simple tasks → Haiku (~$0.25/M tokens), complex → Sonnet (~$3/M tokens)
+- Daily message limit: 30 msgs/user/day (configurable via DAILY_MESSAGE_LIMIT)
+- Response caching: popular destination intros cached for 1 hour (configurable via LLM_CACHE_TTL)
+- Per-user rate limiting: 10 requests per 60 seconds via ConnectRPC interceptor
+
 ## Data Lifecycle
 
 - **Location data**: Ephemeral in-memory cache (30 min TTL), never persisted to database
