@@ -21,7 +21,13 @@ func main() {
 		databaseURL = "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"
 	}
 
-	m, err := migrate.New("file://db/migrations", databaseURL)
+	// Docker image has migrations at /migrations; local dev at db/migrations.
+	migrationsPath := "file://db/migrations"
+	if _, err := os.Stat("/migrations"); err == nil {
+		migrationsPath = "file:///migrations"
+	}
+
+	m, err := migrate.New(migrationsPath, databaseURL)
 	if err != nil {
 		log.Fatalf("create migrator: %v", err)
 	}
