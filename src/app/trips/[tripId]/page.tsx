@@ -36,8 +36,9 @@ export default function TripDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center" aria-busy="true" role="status">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
+        <span className="sr-only">Loading trip details...</span>
       </div>
     );
   }
@@ -66,7 +67,7 @@ export default function TripDetailPage() {
                   disabled={updateTrip.isPending}
                   className="flex items-center gap-1.5 bg-[var(--color-success)] text-white px-4 py-2 rounded-lg hover:opacity-90 transition-colors text-sm font-medium disabled:opacity-50"
                 >
-                  <Play size={14} />
+                  <Play size={14} aria-hidden="true" />
                   Start Trip
                 </button>
               )}
@@ -76,7 +77,7 @@ export default function TripDetailPage() {
                   disabled={updateTrip.isPending}
                   className="flex items-center gap-1.5 bg-[var(--color-text-secondary)] text-white px-4 py-2 rounded-lg hover:opacity-90 transition-colors text-sm font-medium disabled:opacity-50"
                 >
-                  <CheckCircle size={14} />
+                  <CheckCircle size={14} aria-hidden="true" />
                   Complete Trip
                 </button>
               )}
@@ -85,13 +86,13 @@ export default function TripDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 space-y-6">
+      <main id="main-content" className="max-w-4xl mx-auto p-4 space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Link
             href={`/trips/${tripId}/chat`}
             className="bg-[var(--color-surface)] rounded-xl p-6 hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all border border-[var(--color-border)]"
           >
-            <MessageSquare className="text-[var(--color-accent)] mb-3" size={24} />
+            <MessageSquare className="text-[var(--color-accent)] mb-3" size={24} aria-hidden="true" />
             <h2 className="font-semibold mb-1 text-[var(--color-text-primary)]">
               {isActive ? "Travel Companion" : "Plan with AI"}
             </h2>
@@ -106,7 +107,7 @@ export default function TripDetailPage() {
             href={`/trips/${tripId}/bookings`}
             className="bg-[var(--color-surface)] rounded-xl p-6 hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all border border-[var(--color-border)]"
           >
-            <Briefcase className="text-[var(--color-success)] mb-3" size={24} />
+            <Briefcase className="text-[var(--color-success)] mb-3" size={24} aria-hidden="true" />
             <h2 className="font-semibold mb-1 text-[var(--color-text-primary)]">Bookings</h2>
             <p className="text-sm text-[var(--color-text-secondary)]">Manage your reservations</p>
           </Link>
@@ -115,7 +116,7 @@ export default function TripDetailPage() {
         {/* Itinerary Map */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <Map className="text-[var(--color-accent)]" size={20} />
+            <Map className="text-[var(--color-accent)]" size={20} aria-hidden="true" />
             <h2 className="font-semibold text-[var(--color-text-primary)]">Itinerary Map</h2>
           </div>
           <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">

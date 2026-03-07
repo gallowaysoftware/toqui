@@ -21,7 +21,7 @@ export function TripCard({ trip }: { trip: Trip }) {
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="bg-[var(--color-surface)] rounded-xl p-5 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all block"
+      className="bg-[var(--color-surface)] rounded-xl p-5 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-semibold text-[var(--color-text-primary)]">{trip.title}</h3>
@@ -38,7 +38,7 @@ export function TripCard({ trip }: { trip: Trip }) {
 
       {trip.startDate && (
         <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
-          <Calendar size={12} />
+          <Calendar size={12} aria-hidden="true" />
           <span>
             {trip.startDate}
             {trip.endDate && ` - ${trip.endDate}`}

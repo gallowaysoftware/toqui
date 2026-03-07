@@ -12,7 +12,7 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
 
   if (role === "system") {
     return (
-      <div className="flex justify-center">
+      <div className="flex justify-center" role="status">
         <p className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-tertiary)] rounded-full px-4 py-1.5 max-w-[80%] text-center">
           {content}
         </p>
@@ -32,6 +32,7 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
               <div
                 className="w-5 h-5 rounded-full bg-[var(--color-surface-tertiary)] flex items-center justify-center text-[10px] font-bold text-white"
                 style={accentColor ? { backgroundColor: accentColor } : undefined}
+                aria-hidden="true"
               >
                 {message.personaName[0]}
               </div>
@@ -52,7 +53,7 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
           ) : (
             <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-2 prose-a:text-[var(--color-accent)] dark:prose-invert">
               <Markdown>{content}</Markdown>
-              {isStreaming && <span className="inline-block w-1.5 h-4 bg-[var(--color-text-tertiary)] ml-0.5 animate-pulse align-text-bottom" />}
+              {isStreaming && <span className="inline-block w-1.5 h-4 bg-[var(--color-text-tertiary)] ml-0.5 animate-pulse align-text-bottom" aria-hidden="true" />}
             </div>
           )}
         </div>

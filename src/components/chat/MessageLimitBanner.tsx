@@ -17,16 +17,16 @@ export function MessageLimitBanner({ usage }: MessageLimitBannerProps) {
         role="alert"
       >
         <div className="flex items-center gap-2 text-sm text-[var(--color-error)]">
-          <MessageCircle size={14} />
+          <MessageCircle size={14} aria-hidden="true" />
           <span>Daily message limit reached</span>
         </div>
         <button
-          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--color-accent)] text-white text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--color-accent)] text-white text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
           onClick={() => {
             // Upgrade flow will be wired up in a future issue
           }}
         >
-          <Zap size={12} />
+          <Zap size={12} aria-hidden="true" />
           Upgrade to Trip Pro
         </button>
       </div>
@@ -43,7 +43,7 @@ export function MessageLimitBanner({ usage }: MessageLimitBannerProps) {
       role="status"
       aria-live="polite"
     >
-      <MessageCircle size={12} />
+      <MessageCircle size={12} aria-hidden="true" />
       <span>
         {remaining} of {limit} messages remaining today
       </span>

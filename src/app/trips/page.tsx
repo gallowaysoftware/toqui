@@ -54,8 +54,9 @@ export default function TripsPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center" aria-busy="true" role="status">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
+        <span className="sr-only">Loading...</span>
       </div>
     );
   }
@@ -67,7 +68,7 @@ export default function TripsPage() {
         <div className="p-4 border-b border-[var(--color-border)]">
           <h2 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wide">Your Trips</h2>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-2" aria-label="Trip list">
           {trips.length === 0 ? (
             <p className="text-xs text-[var(--color-text-tertiary)] p-2">No trips yet. Start chatting!</p>
           ) : (
@@ -79,9 +80,9 @@ export default function TripsPage() {
       </aside>
 
       {/* Main chat area */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main id="main-content" className="flex-1 flex flex-col min-w-0">
         <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-3 flex-shrink-0 flex items-center gap-3">
-          <MessageSquare size={20} className="text-[var(--color-accent)]" />
+          <MessageSquare size={20} className="text-[var(--color-accent)]" aria-hidden="true" />
           <h1 className="text-lg font-semibold text-[var(--color-text-primary)] flex-1">Toqui</h1>
           <ThemeToggleButton />
         </header>
@@ -98,7 +99,7 @@ function TripSidebarItem({ trip }: { trip: Trip }) {
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="block rounded-lg p-3 hover:bg-[var(--color-surface-tertiary)] transition-colors"
+      className="block rounded-lg p-3 hover:bg-[var(--color-surface-tertiary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <div className="flex items-center justify-between mb-0.5">
         <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{trip.title}</span>

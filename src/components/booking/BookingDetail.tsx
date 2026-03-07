@@ -221,10 +221,10 @@ export function BookingDetail({
         <button
           type="button"
           onClick={onBack}
-          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
           aria-label="Back to bookings"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} aria-hidden="true" />
         </button>
         <h2 className="font-semibold text-lg text-[var(--color-text-primary)] flex-1">Booking Details</h2>
         {onDelete && (
@@ -232,10 +232,10 @@ export function BookingDetail({
             type="button"
             onClick={() => onDelete(booking)}
             disabled={isDeleting}
-            className="text-[var(--color-error)] hover:opacity-80 transition-colors disabled:opacity-50"
+            className="text-[var(--color-error)] hover:opacity-80 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
             aria-label="Delete booking"
           >
-            <Trash2 size={18} />
+            <Trash2 size={18} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -247,7 +247,7 @@ export function BookingDetail({
           <div
             className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${typeColor}`}
           >
-            <Icon size={24} />
+            <Icon size={24} aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">

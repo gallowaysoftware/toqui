@@ -30,13 +30,13 @@ export function AITransparencyNotice() {
       role="note"
       aria-label="AI transparency notice"
     >
-      <Info size={14} className="text-[var(--color-text-secondary)] mt-0.5 flex-shrink-0" />
+      <Info size={14} className="text-[var(--color-text-secondary)] mt-0.5 flex-shrink-0" aria-hidden="true" />
       <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed flex-1">
         Toqui uses AI to generate responses. Information may not always be accurate. Verify important details before making travel decisions.
       </p>
       <button
         onClick={handleDismiss}
-        className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors flex-shrink-0 mt-0.5"
+        className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors flex-shrink-0 mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
         aria-label="Dismiss AI notice"
       >
         <X size={14} />

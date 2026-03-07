@@ -28,11 +28,11 @@ export function ThemeToggleButton() {
   return (
     <button
       onClick={cycle}
-      className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
+      className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-tertiary)] hover:text-[var(--color-text-primary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       aria-label={`Theme: ${current.label}. Click to change.`}
       title={`Theme: ${current.label}`}
     >
-      <Icon size={18} />
+      <Icon size={18} aria-hidden="true" />
     </button>
   );
 }
@@ -45,19 +45,19 @@ export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden">
+    <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="Theme selection">
       {options.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
           onClick={() => setTheme(value)}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors flex-1 justify-center ${
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors flex-1 justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
             theme === value
               ? "bg-[var(--color-accent)] text-white"
               : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-tertiary)]"
           }`}
           aria-pressed={theme === value}
         >
-          <Icon size={16} />
+          <Icon size={16} aria-hidden="true" />
           {label}
         </button>
       ))}

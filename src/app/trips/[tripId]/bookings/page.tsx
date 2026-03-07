@@ -48,10 +48,10 @@ export default function BookingsPage() {
             <div className="flex items-center gap-3">
               <Link
                 href={`/trips/${tripId}`}
-                className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
                 aria-label="Back to trip"
               >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={20} aria-hidden="true" />
               </Link>
               <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Bookings</h1>
               {!isLoading && bookings.length > 0 && (
@@ -69,7 +69,7 @@ export default function BookingsPage() {
                   onClick={() => setViewMode("upload")}
                   className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-2 rounded-lg hover:bg-[var(--color-surface-tertiary)] transition-colors"
                 >
-                  <FileText size={16} />
+                  <FileText size={16} aria-hidden="true" />
                   <span className="hidden sm:inline">Paste</span>
                 </button>
                 <button
@@ -77,7 +77,7 @@ export default function BookingsPage() {
                   onClick={() => setViewMode("manual")}
                   className="flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
                 >
-                  <Plus size={16} />
+                  <Plus size={16} aria-hidden="true" />
                   <span className="hidden sm:inline">Add Booking</span>
                 </button>
               </div>
@@ -86,7 +86,7 @@ export default function BookingsPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
+      <main id="main-content" className="max-w-4xl mx-auto p-4">
         {viewMode === "list" && (
           <BookingList
             bookings={bookings}
@@ -133,7 +133,7 @@ export default function BookingsPage() {
                 <ArrowLeft size={20} />
               </button>
               <h2 className="font-semibold text-lg flex items-center gap-2 text-[var(--color-text-primary)]">
-                <PenLine size={18} />
+                <PenLine size={18} aria-hidden="true" />
                 Manual Entry
               </h2>
             </div>

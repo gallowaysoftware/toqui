@@ -56,7 +56,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-tertiary)] border-b border-[var(--color-border)]">
-            <Icon size={16} className="text-[var(--color-accent)] flex-shrink-0" />
+            <Icon size={16} className="text-[var(--color-accent)] flex-shrink-0" aria-hidden="true" />
             <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
               {partnerLabel}
             </span>
@@ -86,10 +86,10 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
               href={url}
               target="_blank"
               rel="noopener noreferrer sponsored"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--color-accent)] text-white text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--color-accent)] text-white text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             >
               View on {partnerLabel}
-              <ExternalLink size={14} />
+              <ExternalLink size={14} aria-hidden="true" />
             </a>
           </div>
         </div>

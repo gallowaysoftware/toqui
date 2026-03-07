@@ -84,10 +84,10 @@ export function BookingForm({ tripId, onClose, onSuccess }: BookingFormProps) {
         <button
           type="button"
           onClick={onClose}
-          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
           aria-label="Close form"
         >
-          <X size={20} />
+          <X size={20} aria-hidden="true" />
         </button>
       </div>
 
@@ -128,6 +128,7 @@ export function BookingForm({ tripId, onClose, onSuccess }: BookingFormProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Flight to Paris, Hotel Marriott..."
+            aria-required="true"
             className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
           />
         </div>
@@ -240,7 +241,7 @@ export function BookingForm({ tripId, onClose, onSuccess }: BookingFormProps) {
 
         {/* Error */}
         {formError && (
-          <p className="text-sm text-[var(--color-error)]" role="alert">
+          <p id="booking-form-error" className="text-sm text-[var(--color-error)]" role="alert">
             {formError}
           </p>
         )}

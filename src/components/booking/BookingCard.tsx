@@ -50,7 +50,7 @@ export function BookingCard({ booking, onClick }: BookingCardProps) {
     <button
       type="button"
       onClick={() => onClick?.(booking)}
-      className="w-full text-left bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md transition-shadow"
+      className="w-full text-left bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       data-testid="booking-card"
     >
       <div className="flex items-start gap-3">
@@ -59,7 +59,7 @@ export function BookingCard({ booking, onClick }: BookingCardProps) {
           className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${typeColor}`}
           data-testid="booking-type-icon"
         >
-          <Icon size={20} />
+          <Icon size={20} aria-hidden="true" />
         </div>
 
         {/* Content */}
@@ -86,13 +86,13 @@ export function BookingCard({ booking, onClick }: BookingCardProps) {
           <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-tertiary)]">
             {dateRange && (
               <span className="flex items-center gap-1">
-                <Calendar size={12} />
+                <Calendar size={12} aria-hidden="true" />
                 {dateRange}
               </span>
             )}
             {booking.confirmationCode && (
               <span className="flex items-center gap-1">
-                <Hash size={12} />
+                <Hash size={12} aria-hidden="true" />
                 {booking.confirmationCode}
               </span>
             )}

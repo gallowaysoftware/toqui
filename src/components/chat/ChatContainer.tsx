@@ -72,7 +72,14 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     <div className="flex-1 flex flex-col min-h-0">
       {activePersona && <PersonaBar persona={activePersona} />}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" onScroll={handleScroll}>
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        onScroll={handleScroll}
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+        aria-busy={isStreaming}
+      >
         <AITransparencyNotice />
 
         {messages.length === 0 && !isStreaming && (
@@ -148,11 +155,11 @@ const toolDisplayNames: Record<string, string> = {
 function ToolActivityIndicator({ toolName, status }: { toolName: string; status: "calling" | "done" }) {
   const label = toolDisplayNames[toolName] || `Using ${toolName}`;
   return (
-    <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-secondary)]">
+    <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-secondary)]" role="status" aria-live="polite">
       {status === "calling" ? (
-        <div className="animate-spin h-3 w-3 border border-[var(--color-text-tertiary)] border-t-transparent rounded-full" />
+        <div className="animate-spin h-3 w-3 border border-[var(--color-text-tertiary)] border-t-transparent rounded-full" aria-hidden="true" />
       ) : (
-        <svg className="h-3 w-3 text-[var(--color-success)]" viewBox="0 0 12 12" fill="currentColor">
+        <svg className="h-3 w-3 text-[var(--color-success)]" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
           <path d="M10.28 2.28a.75.75 0 00-1.06-1.06L4.5 5.94 2.78 4.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l5.25-5.25z" />
         </svg>
       )}
@@ -165,17 +172,20 @@ function PersonaBar({ persona }: { persona: ActivePersona }) {
   return (
     <div
       className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex-shrink-0"
+      role="status"
+      aria-label={`Active persona: ${persona.name}`}
     >
       <div
         className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
         style={{ backgroundColor: persona.accentColor || "#6b7280" }}
+        aria-hidden="true"
       >
         {persona.name[0]}
       </div>
       <span className="text-sm font-medium text-[var(--color-text-secondary)]">{persona.name}</span>
       {persona.specialties.length > 0 && (
         <span className="text-xs text-[var(--color-text-tertiary)]">
-          {persona.specialties.slice(0, 3).join(" · ")}
+          {persona.specialties.slice(0, 3).join(" \u00b7 ")}
         </span>
       )}
     </div>

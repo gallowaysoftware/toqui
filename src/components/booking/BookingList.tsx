@@ -12,7 +12,7 @@ interface BookingListProps {
 
 function BookingListSkeleton() {
   return (
-    <div className="space-y-3" data-testid="booking-list-skeleton">
+    <div className="space-y-3" data-testid="booking-list-skeleton" aria-busy="true" role="status">
       {[1, 2, 3].map((i) => (
         <div
           key={i}
@@ -62,14 +62,15 @@ export function BookingList({
   }
 
   return (
-    <div className="space-y-3" data-testid="booking-list">
+    <ul className="space-y-3" data-testid="booking-list" role="list">
       {bookings.map((booking) => (
-        <BookingCard
-          key={booking.id}
-          booking={booking}
-          onClick={onBookingClick}
-        />
+        <li key={booking.id}>
+          <BookingCard
+            booking={booking}
+            onClick={onBookingClick}
+          />
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

@@ -27,6 +27,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className={`${inter.className} antialiased bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-[var(--color-surface)] focus:px-4 focus:py-2 focus:rounded-lg focus:z-50 focus:text-[var(--color-text-primary)] focus:shadow-lg focus:ring-2 focus:ring-[var(--color-accent)]"
+        >
+          Skip to content
+        </a>
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

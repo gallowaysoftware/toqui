@@ -63,7 +63,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
     <div className="space-y-6">
       <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]">
         <h2 className="font-semibold mb-4 flex items-center gap-2 text-[var(--color-text-primary)]">
-          <FileText size={18} />
+          <FileText size={18} aria-hidden="true" />
           Paste Booking Confirmation
         </h2>
 
@@ -97,6 +97,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste your booking confirmation email or text here. Our AI will extract the details automatically."
+          aria-label="Booking confirmation text"
           rows={8}
           className="w-full rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none"
         />
@@ -104,7 +105,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
         {/* Status messages */}
         {successMessage && (
           <div className="mt-3 flex items-center gap-2 text-sm text-[var(--color-success)] bg-[var(--color-success-bg)] rounded-lg px-3 py-2">
-            <CheckCircle size={16} />
+            <CheckCircle size={16} aria-hidden="true" />
             {successMessage}
           </div>
         )}
@@ -113,7 +114,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
             className="mt-3 flex items-center gap-2 text-sm text-[var(--color-error)] bg-[var(--color-error-bg)] rounded-lg px-3 py-2"
             role="alert"
           >
-            <AlertCircle size={16} />
+            <AlertCircle size={16} aria-hidden="true" />
             {errorMessage}
           </div>
         )}
@@ -121,7 +122,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || ingestBooking.isPending}
-          className="mt-3 bg-[var(--color-accent)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
+          className="mt-3 bg-[var(--color-accent)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
         >
           {ingestBooking.isPending ? "Processing..." : "Extract Booking"}
         </button>
@@ -129,7 +130,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
 
       <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]">
         <h2 className="font-semibold mb-4 flex items-center gap-2 text-[var(--color-text-primary)]">
-          <Upload size={18} />
+          <Upload size={18} aria-hidden="true" />
           Forward Booking Emails
         </h2>
         <p className="text-sm text-[var(--color-text-secondary)]">

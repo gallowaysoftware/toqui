@@ -88,14 +88,14 @@ export default function TripSettingsPage() {
     <div className="min-h-screen bg-[var(--color-surface-secondary)]">
       <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href={`/trips/${tripId}`} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-            <ArrowLeft size={20} />
+          <Link href={`/trips/${tripId}`} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded" aria-label="Back to trip">
+            <ArrowLeft size={20} aria-hidden="true" />
           </Link>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("title")}</h1>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto p-4 space-y-4">
+      <main id="main-content" className="max-w-lg mx-auto p-4 space-y-4">
         <form onSubmit={handleSubmit} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6 space-y-5">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
@@ -161,7 +161,7 @@ export default function TripSettingsPage() {
           </button>
 
           {updateTrip.isError && (
-            <p className="text-[var(--color-error)] text-sm text-center">{tc("error")}</p>
+            <p className="text-[var(--color-error)] text-sm text-center" role="alert">{tc("error")}</p>
           )}
         </form>
 
@@ -169,9 +169,9 @@ export default function TripSettingsPage() {
           {!showDeleteConfirm ? (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 text-[var(--color-error)] hover:opacity-80 text-sm font-medium"
+              className="flex items-center gap-2 text-[var(--color-error)] hover:opacity-80 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
             >
-              <Trash2 size={16} />
+              <Trash2 size={16} aria-hidden="true" />
               {t("deleteTrip")}
             </button>
           ) : (
@@ -193,7 +193,7 @@ export default function TripSettingsPage() {
                 </button>
               </div>
               {deleteTrip.isError && (
-                <p className="text-[var(--color-error)] text-sm">{tc("error")}</p>
+                <p className="text-[var(--color-error)] text-sm" role="alert">{tc("error")}</p>
               )}
             </div>
           )}
