@@ -107,7 +107,7 @@ End-to-end tests that exercise the full trip lifecycle through the AI with real 
 
 ```bash
 docker compose up -d    # Start Postgres + Firestore emulator
-make ai-test            # Run 6 regression scenarios
+make ai-test            # Run 7 regression scenarios
 make ai-test-generative # Run regression + LLM-generated exploratory scenarios
 ```
 

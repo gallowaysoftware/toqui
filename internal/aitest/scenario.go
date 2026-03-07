@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 // ─── Scenario & Step Types ──────────────────────────────────────────────────
@@ -56,6 +58,7 @@ type ScenarioState struct {
 	CurrentTripID    uuid.UUID
 	CurrentSessionID string
 	CurrentMode      string              // tracks mode to detect mode changes
+	ActivePersonaID  string              // tracks active persona across steps (like the frontend does)
 	Trips            map[string]TripInfo // tripID -> info
 	StepResults      []*StepResult
 }
@@ -135,6 +138,7 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 		SessionID: sessionID,
 		Content:   a.Content,
 		Mode:      a.Mode,
+		PersonaID: state.ActivePersonaID, // persist active persona across steps (like frontend does)
 	}
 
 	// Mutex-protected state for tool callbacks
@@ -147,6 +151,7 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 		func(previous, expert *persona.Persona, handoffMessage string) {
 			mu.Lock()
 			pendingSwitch = &personaSwitchEvent{
+				ExpertID:       expert.ID,
 				ExpertName:     expert.Name,
 				HandoffMessage: handoffMessage,
 			}
@@ -170,7 +175,9 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 			selectedTrips = append(selectedTrips, tripEventInfo{ID: id, Title: title, Description: desc})
 			mu.Unlock()
 		})
-		params.ExtraTools = []tools.Tool{createTool, selectTool, suggestExpertTool}
+		linkBuilder := affiliate.NewLinkBuilder("", "", "")
+		recommendTool := handlers.NewRecommendBookingTool(linkBuilder, tier.Free, nil)
+		params.ExtraTools = []tools.Tool{createTool, selectTool, suggestExpertTool, recommendTool}
 		params.ExtraSystemContext = env.BuildSelectionContext(ctx, state.UserID)
 
 	case "planning", "companion":
@@ -210,6 +217,7 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 			func(previous, expert *persona.Persona, handoffMessage string) {
 				mu.Lock()
 				pendingSwitch = &personaSwitchEvent{
+					ExpertID:       expert.ID,
 					ExpertName:     expert.Name,
 					HandoffMessage: handoffMessage,
 				}
@@ -217,6 +225,11 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 			},
 		)
 		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
+
+		// Booking recommendation tool (mirrors chat.go — free tier in tests)
+		linkBuilder := affiliate.NewLinkBuilder("", "", "")
+		recommendTool := handlers.NewRecommendBookingTool(linkBuilder, tier.Free, nil)
+		params.ExtraTools = append(params.ExtraTools, recommendTool)
 	}
 
 	eventCh, newSessionID, err := env.ChatSvc.SendMessage(ctx, params)
@@ -288,6 +301,9 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 				if pendingSwitch != nil {
 					result.PersonaSwitched = true
 					result.PersonaSwitchedTo = pendingSwitch.ExpertName
+					// Persist active persona so subsequent steps use the expert
+					// (mirrors how the frontend sends persona_id with each message)
+					state.ActivePersonaID = pendingSwitch.ExpertID
 					pendingSwitch = nil
 				}
 				mu.Unlock()
@@ -437,6 +453,7 @@ type tripEventInfo struct {
 }
 
 type personaSwitchEvent struct {
+	ExpertID       string
 	ExpertName     string
 	HandoffMessage string
 }
@@ -665,6 +682,47 @@ func AssertPersonaNotSwitched() Assertion {
 				return AssertionResult{Passed: true, Message: "no persona switch (expected)", Severity: "error"}
 			}
 			return AssertionResult{Passed: false, Message: fmt.Sprintf("unexpected persona switch to %s", r.PersonaSwitchedTo), Severity: "error"}
+		},
+	}
+}
+
+// AssertToolNotCalled checks that a specific tool was NOT invoked during the step.
+func AssertToolNotCalled(toolName string) Assertion {
+	return Assertion{
+		Name: "tool_not_called:" + toolName,
+		Check: func(r *StepResult, _ *ScenarioState) AssertionResult {
+			for _, tc := range r.ToolCalls {
+				if tc.Name == toolName {
+					return AssertionResult{
+						Passed:   false,
+						Message:  fmt.Sprintf("tool %s was unexpectedly called with args: %s", toolName, tc.Input),
+						Severity: "error",
+					}
+				}
+			}
+			return AssertionResult{Passed: true, Message: fmt.Sprintf("tool %s was not called (expected)", toolName), Severity: "error"}
+		},
+	}
+}
+
+// AssertToolResultContains checks that a tool's result JSON contains a substring (case-insensitive).
+func AssertToolResultContains(toolName, substring string) Assertion {
+	return Assertion{
+		Name: fmt.Sprintf("tool_result:%s contains %q", toolName, substring),
+		Check: func(r *StepResult, _ *ScenarioState) AssertionResult {
+			for _, tc := range r.ToolCalls {
+				if tc.Name == toolName {
+					if strings.Contains(strings.ToLower(tc.Result), strings.ToLower(substring)) {
+						return AssertionResult{Passed: true, Message: fmt.Sprintf("tool %s result contains %q", toolName, substring), Severity: "error"}
+					}
+					return AssertionResult{
+						Passed:   false,
+						Message:  fmt.Sprintf("tool %s result does not contain %q", toolName, substring),
+						Severity: "error",
+					}
+				}
+			}
+			return AssertionResult{Passed: false, Message: fmt.Sprintf("tool %s not called", toolName), Severity: "error"}
 		},
 	}
 }

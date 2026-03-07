@@ -17,6 +17,7 @@ go.work.sum
 # Environment
 .env
 /.env.local
+env/.env.local
 
 # Docker
 docker-compose.override.yml

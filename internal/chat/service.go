@@ -155,7 +155,6 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		SystemPrompt: systemPrompt,
 		Messages:     messages,
 		Tools:        toolDefs,
-		MaxTokens:    4096,
 		Temperature:  0.7,
 		Mode:         params.Mode,
 	}
@@ -165,14 +164,9 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	tier := ai.ClassifyRequest(aiReq)
 	aiReq.ModelTier = tier
 
-	// Apply tier-specific defaults for max tokens and temperature if the
-	// caller did not explicitly set them.
+	// Apply tier-specific max tokens from model config.
 	tierCfg := ai.ConfigForTier(tier)
-	if aiReq.MaxTokens == 4096 {
-		// Only override from the tier config when using the default value,
-		// so explicit caller overrides are preserved.
-		aiReq.MaxTokens = tierCfg.MaxTokens
-	}
+	aiReq.MaxTokens = tierCfg.MaxTokens
 
 	slog.Info("chat request classified",
 		"mode", params.Mode,
@@ -192,12 +186,6 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		}
 	}
 
-	// Start streaming
-	eventCh, err := s.provider.ChatStream(ctx, aiReq)
-	if err != nil {
-		return nil, "", fmt.Errorf("start chat stream: %w", err)
-	}
-
 	// Build extra tools map for execution
 	extraToolsMap := make(map[string]tools.Tool, len(params.ExtraTools))
 	for _, t := range params.ExtraTools {
@@ -207,7 +195,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	outCh := make(chan StreamEvent, 64)
 	go func() {
 		defer close(outCh)
-		s.processEvents(ctx, eventCh, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
+		s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
 
 		// Cache the response after streaming completes (only for eligible requests).
 		if s.cache != nil && s.cache.Eligible(aiReq) {
@@ -231,19 +219,105 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	return outCh, sessionID, nil
 }
 
-func (s *Service) processEvents(ctx context.Context, eventCh <-chan ai.Event, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) {
+// maxToolLoopIterations prevents infinite tool call loops.
+const maxToolLoopIterations = 5
+
+// processEventsWithToolLoop handles the AI stream and implements the tool call
+// continuation loop. When the AI stops for tool use, tool results are sent back
+// and the AI continues generating. This loops until the AI produces a final
+// response (stop_reason=end_turn) or the iteration limit is reached.
+func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) {
 	var fullResponse strings.Builder
+
+	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
+		// Start (or continue) streaming
+		eventCh, err := s.provider.ChatStream(ctx, aiReq)
+		if err != nil {
+			outCh <- StreamEvent{Type: "error", Error: fmt.Sprintf("start chat stream: %v", err)}
+			return
+		}
+
+		// Process this turn's events
+		turnText, toolCalls, toolResults, stopReason, streamErr := s.processOneTurn(ctx, eventCh, outCh, extraTools)
+		fullResponse.WriteString(turnText)
+
+		if streamErr != nil {
+			outCh <- StreamEvent{Type: "error", Error: streamErr.Error()}
+			return
+		}
+
+		// If the AI stopped for tool use and we have results, continue the loop
+		if stopReason == "tool_use" && len(toolCalls) > 0 {
+			slog.Info("tool loop: continuing after tool use",
+				"iteration", iteration+1,
+				"tools_called", len(toolCalls),
+			)
+
+			// Append the assistant message (with text + tool_use blocks) to the request
+			assistantMsg := ai.Message{
+				Role:      "assistant",
+				Content:   turnText,
+				ToolCalls: toolCalls,
+			}
+			aiReq.Messages = append(aiReq.Messages, assistantMsg)
+
+			// Append the user message with tool results
+			toolResultMsg := ai.Message{
+				Role:        "user",
+				ToolResults: toolResults,
+			}
+			aiReq.Messages = append(aiReq.Messages, toolResultMsg)
+
+			continue // Next iteration of the tool loop
+		}
+
+		// AI finished (end_turn) — store and emit the final response
+		assistantMsg := &chatstore.ChatMessage{
+			Role:    "assistant",
+			Content: fullResponse.String(),
+		}
+		_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+
+		outCh <- StreamEvent{
+			Type:      "message_complete",
+			Text:      fullResponse.String(),
+			SessionID: sessionID,
+			MessageID: assistantMsg.ID,
+		}
+		return
+	}
+
+	// Hit iteration limit — store what we have
+	slog.Warn("tool loop: hit max iterations", "max", maxToolLoopIterations)
+	assistantMsg := &chatstore.ChatMessage{
+		Role:    "assistant",
+		Content: fullResponse.String(),
+	}
+	_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+
+	outCh <- StreamEvent{
+		Type:      "message_complete",
+		Text:      fullResponse.String(),
+		SessionID: sessionID,
+		MessageID: assistantMsg.ID,
+	}
+}
+
+// processOneTurn drains a single AI stream, executing any tool calls.
+// Returns the text produced, tool calls made, tool results, stop reason, and any error.
+func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, outCh chan<- StreamEvent, extraTools map[string]tools.Tool) (text string, toolCalls []ai.ToolCall, toolResults []ai.ToolResult, stopReason string, err error) {
+	var turnText strings.Builder
 
 	for event := range eventCh {
 		select {
 		case <-ctx.Done():
-			return
+			return turnText.String(), toolCalls, toolResults, "", ctx.Err()
 		default:
 		}
 
 		switch event.Type {
 		case ai.EventTextDelta:
-			fullResponse.WriteString(event.Text)
+			turnText.WriteString(event.Text)
 			outCh <- StreamEvent{Type: "text_delta", Text: event.Text}
 
 		case ai.EventToolCall:
@@ -254,6 +328,9 @@ func (s *Service) processEvents(ctx context.Context, eventCh <-chan ai.Event, ou
 					ToolInput: event.Tool.Arguments,
 				}
 
+				// Track this tool call for the continuation message
+				toolCalls = append(toolCalls, *event.Tool)
+
 				// Execute tool — check extra tools first, then global registry
 				var result json.RawMessage
 				var execErr error
@@ -263,40 +340,38 @@ func (s *Service) processEvents(ctx context.Context, eventCh <-chan ai.Event, ou
 					result, execErr = s.tools.Execute(ctx, event.Tool.Name, []byte(event.Tool.Arguments))
 				}
 
+				var resultStr string
 				if execErr != nil {
-					outCh <- StreamEvent{
-						Type:       "tool_result",
-						ToolName:   event.Tool.Name,
-						ToolResult: fmt.Sprintf(`{"error": "%s"}`, execErr.Error()),
-					}
+					resultStr = fmt.Sprintf(`{"error": "%s"}`, execErr.Error())
 				} else {
-					outCh <- StreamEvent{
-						Type:       "tool_result",
-						ToolName:   event.Tool.Name,
-						ToolResult: string(result),
-					}
+					resultStr = string(result)
 				}
+
+				outCh <- StreamEvent{
+					Type:       "tool_result",
+					ToolName:   event.Tool.Name,
+					ToolResult: resultStr,
+				}
+
+				// Collect tool result for the continuation message
+				toolResults = append(toolResults, ai.ToolResult{
+					ToolCallID: event.Tool.ID,
+					Name:       event.Tool.Name,
+					Content:    resultStr,
+				})
 			}
 
 		case ai.EventDone:
-			// Store assistant message
-			assistantMsg := &chatstore.ChatMessage{
-				Role:    "assistant",
-				Content: fullResponse.String(),
-			}
-			_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
-
-			outCh <- StreamEvent{
-				Type:      "message_complete",
-				Text:      fullResponse.String(),
-				SessionID: sessionID,
-				MessageID: assistantMsg.ID,
-			}
+			stopReason = event.StopReason
+			return turnText.String(), toolCalls, toolResults, stopReason, nil
 
 		case ai.EventError:
 			outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}
+			return turnText.String(), toolCalls, toolResults, "", event.Error
 		}
 	}
+
+	return turnText.String(), toolCalls, toolResults, stopReason, nil
 }
 
 // syntheticCacheResponse creates a channel that emits a cached response as if it

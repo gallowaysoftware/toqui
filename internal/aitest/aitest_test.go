@@ -33,6 +33,7 @@ func TestAIScenarios(t *testing.T) {
 		UpdateRegressionTests(),
 		DaveItineraryAndHandoff(),
 		EveExpandedProfiles(),
+		FrankBookingRecommendations(),
 	}
 
 	// Filter by name if specified

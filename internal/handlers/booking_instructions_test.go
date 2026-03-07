@@ -10,11 +10,14 @@ import (
 func TestBookingInstructionsForTier_Free(t *testing.T) {
 	instructions := bookingInstructionsForTier(tier.Free)
 
-	if !strings.Contains(instructions, "affiliate") {
-		t.Errorf("free tier instructions should mention affiliate links, got %q", instructions)
-	}
 	if !strings.Contains(instructions, "recommend_booking") {
 		t.Errorf("free tier instructions should mention the recommend_booking tool, got %q", instructions)
+	}
+	if !strings.Contains(instructions, "disclosure") {
+		t.Errorf("free tier instructions should mention disclosure requirement, got %q", instructions)
+	}
+	if !strings.Contains(instructions, "legal requirement") {
+		t.Errorf("free tier instructions should mention legal requirement, got %q", instructions)
 	}
 	if strings.Contains(instructions, "regardless of affiliate") {
 		t.Errorf("free tier instructions should not mention ignoring affiliate partnerships, got %q", instructions)
@@ -41,8 +44,8 @@ func TestBuildTripContext_IncludesBookingInstructions(t *testing.T) {
 	if !strings.Contains(ctx, "BOOKING RECOMMENDATIONS") {
 		t.Error("trip context should include booking recommendations section")
 	}
-	if !strings.Contains(ctx, "affiliate") {
-		t.Error("free tier trip context should mention affiliate links")
+	if !strings.Contains(ctx, "disclosure") {
+		t.Error("free tier trip context should mention disclosure requirement")
 	}
 }
 

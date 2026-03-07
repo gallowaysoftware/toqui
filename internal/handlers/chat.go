@@ -424,7 +424,7 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 		sb.WriteString(fmt.Sprintf("- Trip themes: %s\n", strings.Join(themes, ", ")))
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
-	sb.WriteString("\n\nWhen you have specific activities, meals, or experiences to suggest, use the create_itinerary_items tool to add them to the itinerary. Don't just describe what the user could do — actually add it to their plan. You can add multiple items across multiple days in a single call.")
+	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()
@@ -487,7 +487,7 @@ func bookingInstructionsForTier(userTier tier.UserTier) string {
 	if userTier.IsPro() {
 		return "BOOKING RECOMMENDATIONS: Recommend the best options regardless of affiliate partnerships. Use the recommend_booking tool when the user asks about flights, hotels, or activities."
 	}
-	return "BOOKING RECOMMENDATIONS: When recommending bookings, always use the recommend_booking tool to generate affiliate links. Present these recommendations helpfully and include the disclosure text."
+	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, or activities to book, use the recommend_booking tool. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement."
 }
 
 func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[toquiv1.GetChatHistoryRequest]) (*connect.Response[toquiv1.GetChatHistoryResponse], error) {

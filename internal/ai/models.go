@@ -56,7 +56,7 @@ func defaultModelConfigs() map[ModelTier]ModelConfig {
 		ModelTierSmart: {
 			ClaudeModel: getEnvOrDefault("AI_MODEL_SMART", defaultClaudeSmart),
 			OpenAIModel: getEnvOrDefault("AI_OPENAI_MODEL_SMART", defaultOpenAISmart),
-			MaxTokens:   4096,
+			MaxTokens:   8192,
 			Temperature: 0.7,
 		},
 		ModelTierBest: {

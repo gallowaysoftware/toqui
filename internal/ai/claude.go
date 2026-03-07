@@ -85,10 +85,56 @@ func (c *ClaudeProvider) resolveModel(req *ChatRequest) string {
 func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 	messages := make([]map[string]any, 0, len(req.Messages))
 	for _, msg := range req.Messages {
-		m := map[string]any{
-			"role":    msg.Role,
-			"content": msg.Content,
+		var m map[string]any
+
+		if len(msg.ToolCalls) > 0 || len(msg.ToolResults) > 0 {
+			// Multi-part content for tool_use (assistant) or tool_result (user) messages
+			var content []map[string]any
+
+			// Include text content if present
+			if msg.Content != "" {
+				content = append(content, map[string]any{
+					"type": "text",
+					"text": msg.Content,
+				})
+			}
+
+			// Assistant messages include tool_use blocks
+			for _, tc := range msg.ToolCalls {
+				var input json.RawMessage
+				if tc.Arguments != "" {
+					input = json.RawMessage(tc.Arguments)
+				} else {
+					input = json.RawMessage("{}")
+				}
+				content = append(content, map[string]any{
+					"type":  "tool_use",
+					"id":    tc.ID,
+					"name":  tc.Name,
+					"input": input,
+				})
+			}
+
+			// User messages include tool_result blocks
+			for _, tr := range msg.ToolResults {
+				content = append(content, map[string]any{
+					"type":        "tool_result",
+					"tool_use_id": tr.ToolCallID,
+					"content":     tr.Content,
+				})
+			}
+
+			m = map[string]any{
+				"role":    msg.Role,
+				"content": content,
+			}
+		} else {
+			m = map[string]any{
+				"role":    msg.Role,
+				"content": msg.Content,
+			}
 		}
+
 		messages = append(messages, m)
 	}
 
@@ -154,6 +200,7 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 	scanner := bufio.NewScanner(body)
 	// Track pending tool calls by content block index
 	toolBlocks := make(map[int]*pendingTool)
+	var stopReason string
 
 	for scanner.Scan() {
 		select {
@@ -170,7 +217,7 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 
 		data := strings.TrimPrefix(line, "data: ")
 		if data == "[DONE]" {
-			ch <- Event{Type: EventDone}
+			ch <- Event{Type: EventDone, StopReason: stopReason}
 			return
 		}
 
@@ -181,6 +228,7 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 				Type        string `json:"type"`
 				Text        string `json:"text"`
 				PartialJSON string `json:"partial_json"`
+				StopReason  string `json:"stop_reason"`
 			} `json:"delta"`
 			ContentBlock struct {
 				Type  string `json:"type"`
@@ -228,8 +276,13 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 				delete(toolBlocks, event.Index)
 			}
 
+		case "message_delta":
+			if event.Delta.StopReason != "" {
+				stopReason = event.Delta.StopReason
+			}
+
 		case "message_stop":
-			ch <- Event{Type: EventDone}
+			ch <- Event{Type: EventDone, StopReason: stopReason}
 			return
 		}
 	}

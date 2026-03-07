@@ -203,7 +203,7 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `select_trip` | selection | AI matches vague references to existing trips | `TripSelected` |
 | `create_itinerary_items` | planning | AI adds structured day-by-day itinerary items | `ItineraryUpdate` |
 | `suggest_expert` | all modes | Toqui hands off to a composed expert persona | `PersonaSwitch` |
-| `recommend_booking` | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities) | — (logged) |
+| `recommend_booking` | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
 | `nearby_places` | companion | Find nearby places using user's cached location (location-aware) | — |
 | `web_search` | all modes | Search the web for current info (global tool registry) | — |
 | `place_lookup` | all modes | Google Places API lookup (global tool registry) | — |
@@ -242,6 +242,19 @@ ChatHandler.SendMessage()
             stream.Send(MyProtoEvent{...})
           mu.Unlock()
 ```
+
+### Tool Call → Result → Continue Loop
+
+The chat service implements an agentic tool loop (`processEventsWithToolLoop` in `internal/chat/service.go`). When the AI makes a tool call:
+
+1. Tool is executed immediately and `tool_call`/`tool_result` events are emitted to the frontend
+2. The AI's stop reason is checked — if `"tool_use"`, the tool results are sent back to the AI
+3. The AI continues generating with access to the tool results (e.g., including FTC disclosure text from `recommend_booking`)
+4. This loops up to `maxToolLoopIterations` (5) until the AI produces a final response (`"end_turn"`)
+
+This is critical for tools like `recommend_booking` where the AI must see the tool result to include disclosure text in its response. Side-effect tools (like `create_trip`, `create_itinerary_items`) also benefit — the AI can confirm what was created.
+
+The Claude provider (`internal/ai/claude.go`) parses `message_delta` events to extract `stop_reason` and serializes multi-part content blocks (tool_use, tool_result) for continuation messages.
 
 ## Feature Implementation Checklist
 
@@ -284,6 +297,7 @@ go test -tags=aitest -v -timeout=30m \
 | `update-regression` | UpdateTrip COALESCE — status change must not wipe title/description |
 | `dave-itinerary-and-handoff` | create_itinerary_items tool usage + suggest_expert persona handoff |
 | `eve-expanded-profiles` | Expanded location/theme profiles (CZ, IS) with craft-beer and hiking expert handoff |
+| `frank-booking-recommendations` | recommend_booking tool across all categories (flights, hotels, activities) + FTC disclosure + negative test |
 
 ### Design
 
@@ -399,7 +413,7 @@ Set a monthly spend cap in the Anthropic Console (console.anthropic.com):
 
 ### Cost Controls (implemented)
 - Prompt caching: system prompts cached for 5 min (90% cheaper on cache hits)
-- Model routing: simple tasks → Haiku (~$0.25/M tokens), complex → Sonnet (~$3/M tokens)
+- Model routing: simple tasks → Haiku (2048 max tokens), complex → Sonnet (8192 max tokens)
 - Daily message limit: 30 msgs/user/day (configurable via DAILY_MESSAGE_LIMIT)
 - Response caching: popular destination intros cached for 1 hour (configurable via LLM_CACHE_TTL)
 - Per-user rate limiting: 10 requests per 60 seconds via ConnectRPC interceptor

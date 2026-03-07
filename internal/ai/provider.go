@@ -46,10 +46,11 @@ type Message struct {
 }
 
 type Event struct {
-	Type    EventType
-	Text    string
-	Tool    *ToolCall
-	Error   error
+	Type       EventType
+	Text       string
+	Tool       *ToolCall
+	Error      error
+	StopReason string // "end_turn", "tool_use" — set on EventDone
 }
 
 type ToolCall struct {

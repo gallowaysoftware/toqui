@@ -34,7 +34,7 @@ func TestDefaultModelConfigs(t *testing.T) {
 			tier:       ModelTierSmart,
 			wantClaude: defaultClaudeSmart,
 			wantOpenAI: defaultOpenAISmart,
-			wantMaxTok: 4096,
+			wantMaxTok: 8192,
 			wantTemp:   0.7,
 		},
 		{
