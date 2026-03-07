@@ -16,33 +16,25 @@ export default function WaitlistPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const emailParam = searchParams.get("email");
   const [view, setView] = useState<WaitlistView>("join");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam || "");
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
-  const [position, setPosition] = useState<number | null>(null);
+  const [joinPosition, setJoinPosition] = useState<number | null>(null);
 
   const joinMutation = useJoinWaitlist();
   const { data: statusData } = useWaitlistStatus(submittedEmail);
 
-  // Check for pre-filled email from auth redirect
-  useEffect(() => {
-    const emailParam = searchParams.get("email");
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-  }, [searchParams]);
+  // Position: use polled status if available, otherwise the initial join position
+  const position = statusData?.position ?? joinPosition;
 
-  // Update position from status polling
+  // Redirect when accepted
   useEffect(() => {
-    if (statusData) {
-      setPosition(statusData.position);
-      if (statusData.accepted) {
-        // User has been accepted — redirect to login
-        router.push(`${API_URL}/auth/google/login`);
-      }
+    if (statusData?.accepted) {
+      router.push(`${API_URL}/auth/google/login`);
     }
-  }, [statusData, router]);
+  }, [statusData?.accepted, router]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +42,7 @@ export default function WaitlistPage() {
 
     try {
       const result = await joinMutation.mutateAsync({ email: email.trim() });
-      setPosition(result.position);
+      setJoinPosition(result.position);
       setSubmittedEmail(email.trim());
       setView("status");
     } catch {

@@ -56,6 +56,7 @@ export function useUsage(): UsageInfo {
 
   useEffect(() => {
     const stored = loadUsage();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage not available during SSR
     setUsed(stored.count);
   }, []);
 

@@ -14,11 +14,13 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 
 // Mock lucide-react to avoid SVG rendering issues in tests
 vi.mock("lucide-react", () => {
-  const makeIcon =
-    (name: string) =>
-    (props: Record<string, unknown>) => (
+  const makeIcon = (name: string) => {
+    const IconComponent = (props: Record<string, unknown>) => (
       <svg data-testid={`icon-${name}`} {...(props as React.SVGAttributes<SVGSVGElement>)} />
     );
+    IconComponent.displayName = name;
+    return IconComponent;
+  };
   return {
     Plane: makeIcon("Plane"),
     Hotel: makeIcon("Hotel"),

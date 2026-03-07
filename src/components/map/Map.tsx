@@ -27,7 +27,9 @@ export function Map({ onMapReady, className }: MapProps) {
   const onMapReadyRef = useRef(onMapReady);
 
   // Keep the callback ref up to date without retriggering the effect
-  onMapReadyRef.current = onMapReady;
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+  });
 
   const initMap = useCallback(() => {
     if (!containerRef.current || mapRef.current) return;

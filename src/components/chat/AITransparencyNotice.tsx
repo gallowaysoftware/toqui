@@ -11,6 +11,7 @@ export function AITransparencyNotice() {
   useEffect(() => {
     const dismissed = localStorage.getItem(DISMISSED_KEY);
     if (!dismissed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage not available during SSR
       setVisible(true);
     }
   }, []);

@@ -59,8 +59,21 @@ function formatDate(dateStr?: string): string {
   }
 }
 
+function ItemTypeIcon({ type }: { type?: string }) {
+  const iconProps = { size: 16, className: "text-[var(--color-accent)]", "aria-hidden": true as const };
+  const key = type?.toLowerCase() || "";
+  switch (key) {
+    case "activity": return <Compass {...iconProps} />;
+    case "food": case "restaurant": case "dining": return <Utensils {...iconProps} />;
+    case "sightseeing": case "attraction": case "museum": return <Landmark {...iconProps} />;
+    case "shopping": return <ShoppingBag {...iconProps} />;
+    case "accommodation": case "hotel": return <Bed {...iconProps} />;
+    case "transport": case "flight": case "transit": return <Plane {...iconProps} />;
+    default: return <Clock {...iconProps} />;
+  }
+}
+
 function ItineraryItemCard({ item }: { item: SharedItineraryItem }) {
-  const Icon = getItemIcon(item.type);
   const typeLabel = item.type
     ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
     : null;
@@ -69,7 +82,7 @@ function ItineraryItemCard({ item }: { item: SharedItineraryItem }) {
     <div className="flex gap-3 py-3 px-4 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)]">
       <div className="flex-shrink-0 mt-0.5">
         <div className="w-8 h-8 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center">
-          <Icon size={16} className="text-[var(--color-accent)]" aria-hidden="true" />
+          <ItemTypeIcon type={item.type} />
         </div>
       </div>
       <div className="min-w-0 flex-1">
@@ -184,6 +197,7 @@ export default function SharedTripPage() {
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guard clause, no async
       setStatus("not_found");
       return;
     }
