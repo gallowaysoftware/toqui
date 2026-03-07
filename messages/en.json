@@ -69,5 +69,22 @@
     "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again."
+  },
+  "waitlist": {
+    "title": "We're at capacity!",
+    "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",
+    "emailPlaceholder": "Enter your email",
+    "joinButton": "Join the Waitlist",
+    "joining": "Joining...",
+    "haveInvite": "Have an invite code?",
+    "joinedTitle": "You're on the list!",
+    "joinedDescription": "We'll notify you by email when your spot is ready.",
+    "positionLabel": "Your position",
+    "estimatedWait": "We're letting people in as fast as we can.",
+    "notifyMessage": "Keep an eye on your inbox — we'll email you when it's your turn.",
+    "inviteTitle": "Enter Invite Code",
+    "inviteDescription": "If you received an invite code, enter it below to skip the waitlist.",
+    "inviteCodePlaceholder": "e.g. TOQUI-XXXX",
+    "redeemButton": "Redeem Invite"
   }
 }

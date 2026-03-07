@@ -21,6 +21,21 @@ export default function AuthCallbackPage() {
         });
 
         if (!res.ok) {
+          // Check if the error is a waitlist/capacity response
+          const errorData = await res.json().catch(() => null);
+          if (
+            res.status === 503 ||
+            errorData?.error === "waitlist" ||
+            errorData?.error === "capacity" ||
+            errorData?.code === "WAITLIST" ||
+            errorData?.code === "CAPACITY"
+          ) {
+            const emailParam = errorData?.email
+              ? `?email=${encodeURIComponent(errorData.email)}`
+              : "";
+            router.push(`/waitlist${emailParam}`);
+            return;
+          }
           router.push("/");
           return;
         }
