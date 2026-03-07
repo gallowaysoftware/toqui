@@ -2,11 +2,13 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { MessageSquare, Briefcase, Play, CheckCircle, Map } from "lucide-react";
+import { MessageSquare, Briefcase, Play, CheckCircle, Map, Printer, CalendarDays, Download } from "lucide-react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
 import DynamicItineraryMap from "@/components/map/DynamicItineraryMap";
+import { exportItineraryPDF } from "@/lib/export/pdf-export";
+import { exportItineraryICal } from "@/lib/export/calendar-export";
 
 const statusLabels: Record<number, string> = {
   [TripStatus.PLANNING]: "Planning",
@@ -33,6 +35,20 @@ export default function TripDetailPage() {
   const handleCompleteTrip = () => {
     updateTrip.mutate({ id: tripId, status: TripStatus.COMPLETED });
   };
+
+  const handleExportPDF = () => {
+    if (trip && itinerary) {
+      exportItineraryPDF(trip, itinerary);
+    }
+  };
+
+  const handleExportCalendar = () => {
+    if (trip && itinerary) {
+      exportItineraryICal(trip, itinerary);
+    }
+  };
+
+  const hasItinerary = itinerary && itinerary.days.length > 0;
 
   if (isLoading) {
     return (
@@ -127,6 +143,42 @@ export default function TripDetailPage() {
             />
           </div>
         </section>
+
+        {/* Export */}
+        {hasItinerary && (
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <Download className="text-[var(--color-accent)]" size={20} aria-hidden="true" />
+              <h2 className="font-semibold text-[var(--color-text-primary)]">Export Itinerary</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center gap-3 bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center">
+                  <Printer size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">Export PDF</h3>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Print-friendly itinerary</p>
+                </div>
+              </button>
+              <button
+                onClick={handleExportCalendar}
+                className="flex items-center gap-3 bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center">
+                  <CalendarDays size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">Export Calendar</h3>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Download .ics file</p>
+                </div>
+              </button>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
