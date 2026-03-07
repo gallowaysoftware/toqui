@@ -119,6 +119,131 @@ go test -tags=aitest -v -timeout=30m ./internal/aitest/... -run TestAIScenarios/
 
 Reports are written to `testdata/aitest-reports/`.
 
+## CI/CD
+
+GitHub Actions runs on push to `main` and all PRs (self-hosted Linux runners):
+
+1. **Build & Test** — `go build`, `go vet`, `go test` with coverage
+2. **Deploy to Staging** (main only) — build Docker image → push to Artifact Registry → redeploy GCE VM → run migrations
+
+Uses **Workload Identity Federation** for keyless GCP auth — no service account keys.
+
+### Deploying to Staging
+
+**Automatic**: Push to `main`. That's it. GitHub Actions handles everything.
+
+**Manual deploy** (if CI is broken):
+
+```bash
+IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+
+# Build and push
+docker build --platform linux/amd64 -t $IMAGE:latest .
+docker push $IMAGE:latest
+
+# Redeploy on the VM
+gcloud compute instances update-container toqui-staging-vm \
+  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:latest
+
+# Run migrations
+DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
+gcloud compute ssh toqui-staging-vm \
+  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
+  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
+```
+
+### Rolling Back
+
+```bash
+IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+
+# List available image tags
+gcloud artifacts docker tags list \
+  us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend \
+  --project=toqui-staging
+
+# Redeploy to a previous version
+gcloud compute instances update-container toqui-staging-vm \
+  --zone=us-central1-a --project=toqui-staging \
+  --container-image=$IMAGE:<previous-sha>
+
+# Roll back one database migration
+DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
+gcloud compute ssh toqui-staging-vm \
+  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
+  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction down -steps 1"
+```
+
+### Database Migrations
+
+```bash
+# Create a new migration
+make migrate-create
+# Produces: db/migrations/YYYYMMDDHHMMSS_name.up.sql + .down.sql
+
+# Apply locally
+make migrate-up
+
+# Rollback locally
+make migrate-down
+
+# Run on staging
+DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
+gcloud compute ssh toqui-staging-vm \
+  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
+  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
+```
+
+**Note**: The `cmd/migrate` binary auto-detects migration files at `/migrations` (Docker) or `db/migrations/` (local).
+
+### Checking Logs
+
+```bash
+# App container logs on staging
+gcloud compute ssh toqui-staging-vm \
+  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
+  -- "docker logs --tail 100 -f \$(docker ps -q --filter name=klt)"
+
+# Container status
+gcloud compute ssh toqui-staging-vm \
+  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
+  -- "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'"
+
+# Cloud Logging
+gcloud logging read 'resource.type="gce_instance"' --project=toqui-staging --limit=50
+```
+
+### Accessing Staging
+
+Staging is behind Tailscale VPN at `toqui-staging:8090`. No public IP.
+
+```bash
+# API request (requires Tailscale connected)
+curl http://toqui-staging:8090/toqui.v1.TripService/ListTrips
+
+# SSH via GCP IAP tunnel (no Tailscale needed)
+gcloud compute ssh toqui-staging-vm --project=toqui-staging --zone=us-central1-a --tunnel-through-iap
+```
+
+### Docker Image
+
+The Dockerfile produces a distroless image with two binaries:
+- `/server` — main API server (entrypoint)
+- `/migrate` — database migration runner
+
+Migrations are copied to `/migrations` in the image.
+
+```bash
+# Build locally (for Apple Silicon, cross-compile for Linux)
+docker build --platform linux/amd64 -t toqui-backend .
+
+# Test locally
+docker run -p 8090:8090 \
+  -e DATABASE_URL=postgres://toqui:toqui@host.docker.internal:5432/toqui?sslmode=disable \
+  -e FIRESTORE_EMULATOR_HOST=host.docker.internal:8080 \
+  toqui-backend
+```
+
 ## Project Structure
 
 ```

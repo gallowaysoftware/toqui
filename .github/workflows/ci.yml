@@ -127,9 +127,16 @@ jobs:
         run: |
           # Wait for new container to start
           sleep 15
+          # Fetch DATABASE_URL from Secret Manager (container env has gcsm:// reference
+          # which only the server binary resolves — migrate binary needs the real URL)
+          DB_URL=$(gcloud secrets versions access latest \
+            --secret=staging-database-url \
+            --project=toqui-staging)
+          # Find the app container (filter out tailscale) and run migrations
           gcloud compute ssh toqui-staging-vm \
             --zone=us-central1-a \
             --project=toqui-staging \
             --tunnel-through-iap \
-            --command='docker exec $(docker ps -q -l) /migrate -dir /migrations -db "$(cat /etc/toqui/database-url)" up' \
+            -- "CID=\$(docker ps -q --filter 'ancestor=$IMAGE:${{ github.sha }}') && \
+                docker exec -e DATABASE_URL='${DB_URL}' \$CID /migrate -direction up" \
             || echo "⚠ Migration skipped or no new migrations"

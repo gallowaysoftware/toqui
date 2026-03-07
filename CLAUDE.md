@@ -304,20 +304,62 @@ Both use Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret M
 
 ### Deploying to Staging
 
-**Automatic**: Push to `main` → GitHub Actions builds, pushes to Artifact Registry, redeploys the VM, runs migrations. See CI/CD section above.
+**Automatic**: Push to `main` → GitHub Actions builds Docker image, pushes to Artifact Registry, redeploys the GCE VM, fetches DATABASE_URL from Secret Manager, runs migrations. Uses WIF (keyless GCP auth).
 
 **Manual** (if needed):
 
 ```bash
 IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
-docker build -t $IMAGE:latest .
-docker push $IMAGE:latest
 
+# Build, push, redeploy
+docker build --platform linux/amd64 -t $IMAGE:latest .
+docker push $IMAGE:latest
 gcloud compute instances update-container toqui-staging-vm \
   --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:latest
+
+# Run migrations (must fetch real DB URL — container env has gcsm:// reference)
+DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
+  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
+```
+
+### Rolling Back
+
+```bash
+# List available image tags
+gcloud artifacts docker tags list us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend --project=toqui-staging
+
+# Redeploy to previous version
+gcloud compute instances update-container toqui-staging-vm \
+  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:<previous-sha>
+
+# Roll back one database migration
+DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
+  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction down -steps 1"
+```
+
+### Checking Staging Logs
+
+```bash
+# App container logs
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
+  -- "docker logs --tail 100 -f \$(docker ps -q --filter name=klt)"
+
+# Container status (should show app + tailscale containers)
+gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
+  -- "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'"
 ```
 
 Staging is accessible at `toqui-staging:8090` via Tailscale VPN. SSH via `gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging`.
+
+### Docker Image
+
+The Dockerfile produces a distroless image with two binaries:
+- `/server` — main API server (entrypoint)
+- `/migrate` — database migration runner (auto-detects `/migrations` in Docker, `db/migrations/` locally)
+
+Migrations are copied to `/migrations` in the image. The `cmd/migrate` binary reads `DATABASE_URL` from the environment and uses `golang-migrate`.
 
 ## Auth Flow
 
