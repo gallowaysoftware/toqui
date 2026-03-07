@@ -176,6 +176,7 @@ func (e *TestEnv) CleanupUser(ctx context.Context, userID uuid.UUID) {
 
 // BuildSelectionContext replicates handlers.ChatHandler.buildSelectionContext
 // for use in test scenarios that need handler-level wiring.
+// AI tests always use the free tier (no Pro infrastructure in test env).
 func (e *TestEnv) BuildSelectionContext(ctx context.Context, userID uuid.UUID) string {
 	trips, _, err := e.TripSvc.ListByUser(ctx, userID, "", 20, 0)
 	if err != nil || len(trips) == 0 {
@@ -187,7 +188,9 @@ Help the user decide on a trip. You can:
 
 The user has no existing trips yet. Help them get started!
 
-When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.`
+When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.
+
+BOOKING RECOMMENDATIONS: When recommending bookings, always use the recommend_booking tool to generate affiliate links. Present these recommendations helpfully and include the disclosure text.`
 	}
 
 	var sb strings.Builder
@@ -215,10 +218,14 @@ The user's existing trips:
 		}
 		sb.WriteString("\n")
 	}
+
+	sb.WriteString("\nBOOKING RECOMMENDATIONS: When recommending bookings, always use the recommend_booking tool to generate affiliate links. Present these recommendations helpfully and include the disclosure text.")
+
 	return sb.String()
 }
 
 // BuildTripContext replicates handlers.buildTripContext for planning/companion modes.
+// AI tests always use the free tier (no Pro infrastructure in test env).
 func BuildTripContext(title, description, destinationCountry string, themes []string) string {
 	if title == "" && description == "" && destinationCountry == "" {
 		return ""
@@ -240,6 +247,7 @@ func BuildTripContext(title, description, destinationCountry string, themes []st
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
 	sb.WriteString("\n\nWhen you have specific activities, meals, or experiences to suggest, use the create_itinerary_items tool to add them to the itinerary. Don't just describe what the user could do — actually add it to their plan. You can add multiple items across multiple days in a single call.")
+	sb.WriteString("\n\nBOOKING RECOMMENDATIONS: When recommending bookings, always use the recommend_booking tool to generate affiliate links. Present these recommendations helpfully and include the disclosure text.")
 	return sb.String()
 }
 

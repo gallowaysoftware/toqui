@@ -116,6 +116,7 @@ type User struct {
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	DefaultPersonaID pgtype.Text `json:"default_persona_id"`
+	SubscriptionTier string      `json:"subscription_tier"`
 }
 
 type Waitlist struct {

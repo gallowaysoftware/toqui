@@ -18,6 +18,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,9 +34,10 @@ type ChatHandler struct {
 	locationSvc   *location.Service
 	linkBuilder   *affiliate.LinkBuilder
 	usageSvc      *usage.Service
+	queries       *dbgen.Queries
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, db dbgen.DBTX) *ChatHandler {
 	return &ChatHandler{
 		chatSvc:       chatSvc,
 		tripSvc:       tripSvc,
@@ -44,6 +46,7 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 		locationSvc:   locationSvc,
 		linkBuilder:   linkBuilder,
 		usageSvc:      usageSvc,
+		queries:       dbgen.New(db),
 	}
 }
 
@@ -68,6 +71,18 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			slog.Error("usage tracking failed", "user_id", userID, "error", err)
 		} else {
 			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining)
+		}
+	}
+
+	// Look up the user's subscription tier for booking recommendation gating.
+	// Default to free tier if the lookup fails so we never block the chat flow.
+	userTier := tier.Free
+	if h.queries != nil {
+		if raw, err := h.queries.GetUserSubscriptionTier(ctx, userID); err == nil {
+			userTier = tier.Parse(raw)
+		} else {
+			slog.Warn("failed to look up user subscription tier, defaulting to free",
+				"user_id", userID, "error", err)
 		}
 	}
 
@@ -153,10 +168,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		},
 	)
 
-	// Recommend booking tool is available in all modes — generates affiliate links
+	// Recommend booking tool is available in all modes. Free-tier users get
+	// affiliate-linked results; Pro-tier users get unbiased recommendations.
 	var recommendBookingTool tools.Tool
 	if h.linkBuilder != nil {
-		recommendBookingTool = NewRecommendBookingTool(h.linkBuilder, func(rec affiliate.Recommendation) {
+		recommendBookingTool = NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
 			mu.Lock()
 			recommendations = append(recommendations, rec)
 			mu.Unlock()
@@ -180,10 +196,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
-		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID)
+		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes, userTier)
 		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
@@ -388,7 +404,7 @@ type personaSwitchInfo struct {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry string, themes []string) string {
+func buildTripContext(title, description, destinationCountry string, themes []string, userTier tier.UserTier) string {
 	if title == "" && description == "" && destinationCountry == "" {
 		return ""
 	}
@@ -409,15 +425,17 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
 	sb.WriteString("\n\nWhen you have specific activities, meals, or experiences to suggest, use the create_itinerary_items tool to add them to the itinerary. Don't just describe what the user could do — actually add it to their plan. You can add multiple items across multiple days in a single call.")
+	sb.WriteString("\n\n")
+	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()
 }
 
 // buildSelectionContext returns system prompt context for selection mode:
 // the user's existing trips so Toqui can help them find or create one.
-func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID) string {
+func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID, userTier tier.UserTier) string {
 	trips, _, err := h.tripSvc.ListByUser(ctx, userID, "", 20, 0)
 	if err != nil || len(trips) == 0 {
-		return `You are in SELECTION mode — no trip is selected yet.
+		return fmt.Sprintf(`You are in SELECTION mode — no trip is selected yet.
 
 Help the user decide on a trip. You can:
 - Help them brainstorm destinations and trip ideas
@@ -425,7 +443,9 @@ Help the user decide on a trip. You can:
 
 The user has no existing trips yet. Help them get started!
 
-When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.`
+When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.
+
+%s`, bookingInstructionsForTier(userTier))
 	}
 
 	var sb strings.Builder
@@ -455,7 +475,19 @@ The user's existing trips:
 		sb.WriteString("\n")
 	}
 
+	sb.WriteString("\n")
+	sb.WriteString(bookingInstructionsForTier(userTier))
+
 	return sb.String()
+}
+
+// bookingInstructionsForTier returns the system prompt snippet that tells the
+// AI how to handle booking recommendations based on the user's subscription tier.
+func bookingInstructionsForTier(userTier tier.UserTier) string {
+	if userTier.IsPro() {
+		return "BOOKING RECOMMENDATIONS: Recommend the best options regardless of affiliate partnerships. Use the recommend_booking tool when the user asks about flights, hotels, or activities."
+	}
+	return "BOOKING RECOMMENDATIONS: When recommending bookings, always use the recommend_booking tool to generate affiliate links. Present these recommendations helpfully and include the disclosure text."
 }
 
 func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[toquiv1.GetChatHistoryRequest]) (*connect.Response[toquiv1.GetChatHistoryResponse], error) {

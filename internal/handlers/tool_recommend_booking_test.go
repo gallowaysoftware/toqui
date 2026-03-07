@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 func TestRecommendBookingTool_Definition(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 	def := tool.Definition()
 
 	if def.Name != "recommend_booking" {
@@ -47,7 +48,7 @@ func TestRecommendBookingTool_Definition(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_InvalidJSON(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`not json`))
 	if err == nil {
@@ -57,7 +58,7 @@ func TestRecommendBookingTool_Execute_InvalidJSON(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_MissingCategory(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{"category": "", "query": "hotels in Prague"}`))
 	if err == nil {
@@ -67,7 +68,7 @@ func TestRecommendBookingTool_Execute_MissingCategory(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_MissingQuery(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{"category": "hotel", "query": ""}`))
 	if err == nil {
@@ -78,7 +79,7 @@ func TestRecommendBookingTool_Execute_MissingQuery(t *testing.T) {
 func TestRecommendBookingTool_Execute_Flight(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("sky123", "", "")
 	var captured affiliate.Recommendation
-	tool := NewRecommendBookingTool(lb, func(rec affiliate.Recommendation) {
+	tool := NewRecommendBookingTool(lb, tier.Free, func(rec affiliate.Recommendation) {
 		captured = rec
 	})
 
@@ -122,7 +123,7 @@ func TestRecommendBookingTool_Execute_Flight(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_Hotel(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "book456", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "hotel",
@@ -162,7 +163,7 @@ func TestRecommendBookingTool_Execute_Hotel(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_Activity(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "gyg789")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "activity",
@@ -196,7 +197,7 @@ func TestRecommendBookingTool_Execute_Activity(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_FlightNoOrigin(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("sky123", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "flight",
@@ -220,7 +221,7 @@ func TestRecommendBookingTool_Execute_FlightNoOrigin(t *testing.T) {
 
 func TestRecommendBookingTool_Execute_HotelNoDates(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "book456", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "hotel",
@@ -248,7 +249,7 @@ func TestRecommendBookingTool_Execute_HotelNoDates(t *testing.T) {
 func TestRecommendBookingTool_Execute_NoCallback(t *testing.T) {
 	lb := affiliate.NewLinkBuilder("", "", "")
 	// nil callback should not panic
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "activity",
@@ -271,7 +272,7 @@ func TestRecommendBookingTool_Execute_NoCallback(t *testing.T) {
 func TestRecommendBookingTool_Execute_NoAffiliateIDs(t *testing.T) {
 	// All empty IDs — URLs still work, just without affiliate tracking
 	lb := affiliate.NewLinkBuilder("", "", "")
-	tool := NewRecommendBookingTool(lb, nil)
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "flight",
@@ -295,5 +296,128 @@ func TestRecommendBookingTool_Execute_NoAffiliateIDs(t *testing.T) {
 	}
 	if strings.Contains(rec.URL, "associateid") {
 		t.Errorf("should not contain affiliate param when ID is empty: %s", rec.URL)
+	}
+}
+
+// --- Tier-gated tests ---
+
+func TestRecommendBookingTool_FreeTier_DefinitionDescription(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("", "", "")
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	def := tool.Definition()
+
+	if !strings.Contains(def.Description, "affiliate") {
+		t.Errorf("free tier description should mention affiliate links, got %q", def.Description)
+	}
+	if strings.Contains(def.Description, "best available sources") {
+		t.Errorf("free tier description should not mention best available sources, got %q", def.Description)
+	}
+}
+
+func TestRecommendBookingTool_ProTier_DefinitionDescription(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("", "", "")
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+	def := tool.Definition()
+
+	if !strings.Contains(def.Description, "best available sources") {
+		t.Errorf("pro tier description should mention best available sources, got %q", def.Description)
+	}
+	if strings.Contains(def.Description, "affiliate") {
+		t.Errorf("pro tier description should not mention affiliate links, got %q", def.Description)
+	}
+}
+
+func TestRecommendBookingTool_FreeTier_Disclosure(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("sky123", "", "")
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to Paris",
+		"origin": "JFK",
+		"destination": "CDG",
+		"date_from": "2026-08-01"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Disclosure != affiliate.FTCDisclosure {
+		t.Errorf("free tier should have FTC disclosure, got %q", rec.Disclosure)
+	}
+}
+
+func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("sky123", "", "")
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to Paris",
+		"origin": "JFK",
+		"destination": "CDG",
+		"date_from": "2026-08-01"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Disclosure != affiliate.ProDisclosure {
+		t.Errorf("pro tier should have pro disclosure, got %q", rec.Disclosure)
+	}
+}
+
+func TestRecommendBookingTool_ProTier_HotelDisclosure(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("", "book456", "")
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "hotel",
+		"query": "hotels in Berlin",
+		"destination": "Berlin"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Disclosure != affiliate.ProDisclosure {
+		t.Errorf("pro tier hotel should have pro disclosure, got %q", rec.Disclosure)
+	}
+}
+
+func TestRecommendBookingTool_ProTier_ActivityDisclosure(t *testing.T) {
+	lb := affiliate.NewLinkBuilder("", "", "gyg789")
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "activity",
+		"query": "wine tasting in Bordeaux"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Disclosure != affiliate.ProDisclosure {
+		t.Errorf("pro tier activity should have pro disclosure, got %q", rec.Disclosure)
 	}
 }

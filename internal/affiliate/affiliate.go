@@ -30,6 +30,10 @@ type Recommendation struct {
 // FTCDisclosure is the standard disclosure text included with every affiliate recommendation.
 const FTCDisclosure = "This is a partner link. Toqui may earn a commission at no extra cost to you."
 
+// ProDisclosure is the disclosure text for Pro-tier users who receive unbiased
+// recommendations with no affiliate links attached.
+const ProDisclosure = "Unbiased recommendation \u2014 no affiliate links."
+
 // LinkBuilder generates affiliate URLs for each supported partner.
 type LinkBuilder struct {
 	skyscannerID   string

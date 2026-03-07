@@ -21,3 +21,6 @@ RETURNING *;
 
 -- name: GetUserDefaultPersona :one
 SELECT default_persona_id FROM users WHERE id = $1;
+
+-- name: GetUserSubscriptionTier :one
+SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1;

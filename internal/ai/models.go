@@ -32,7 +32,7 @@ type ModelConfig struct {
 
 // Default model identifiers per tier.
 const (
-	defaultClaudeFast  = "claude-haiku-3-5-20241022"
+	defaultClaudeFast  = "claude-3-5-haiku-latest"
 	defaultClaudeSmart = "claude-sonnet-4-20250514"
 	defaultClaudeBest  = "claude-sonnet-4-20250514"
 

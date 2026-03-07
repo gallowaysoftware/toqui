@@ -131,7 +131,7 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc)
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, pool)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
@@ -217,6 +217,7 @@ func newAIIdentityGenerator(provider ai.Provider) persona.IdentityGenerator {
 			},
 			MaxTokens:   256,
 			Temperature: 0.8,
+			ModelTier:   ai.ModelTierFast,
 		}
 
 		eventCh, err := provider.ChatStream(ctx, aiReq)
@@ -244,6 +245,7 @@ func newSimpleChatFn(provider ai.Provider) func(ctx context.Context, system, pro
 			Messages:     []ai.Message{{Role: "user", Content: prompt}},
 			MaxTokens:    256,
 			Temperature:  0.3,
+			ModelTier:    ai.ModelTierFast,
 		}
 
 		eventCh, err := provider.ChatStream(ctx, req)

@@ -13,7 +13,7 @@ import (
 )
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id FROM users WHERE email = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -28,12 +28,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
+		&i.SubscriptionTier,
 	)
 	return i, err
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id FROM users WHERE google_id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier FROM users WHERE google_id = $1
 `
 
 func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User, error) {
@@ -48,12 +49,13 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
+		&i.SubscriptionTier,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id FROM users WHERE id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -68,6 +70,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
+		&i.SubscriptionTier,
 	)
 	return i, err
 }
@@ -83,10 +86,21 @@ func (q *Queries) GetUserDefaultPersona(ctx context.Context, id uuid.UUID) (pgty
 	return default_persona_id, err
 }
 
+const getUserSubscriptionTier = `-- name: GetUserSubscriptionTier :one
+SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserSubscriptionTier(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getUserSubscriptionTier, id)
+	var subscription_tier string
+	err := row.Scan(&subscription_tier)
+	return subscription_tier, err
+}
+
 const setUserDefaultPersona = `-- name: SetUserDefaultPersona :one
 UPDATE users SET default_persona_id = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier
 `
 
 type SetUserDefaultPersonaParams struct {
@@ -106,6 +120,7 @@ func (q *Queries) SetUserDefaultPersona(ctx context.Context, arg SetUserDefaultP
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
+		&i.SubscriptionTier,
 	)
 	return i, err
 }
@@ -115,7 +130,7 @@ INSERT INTO users (google_id, email, name, avatar_url)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (google_id)
 DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url, updated_at = NOW()
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier
 `
 
 type UpsertUserByGoogleIDParams struct {
@@ -142,6 +157,7 @@ func (q *Queries) UpsertUserByGoogleID(ctx context.Context, arg UpsertUserByGoog
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
+		&i.SubscriptionTier,
 	)
 	return i, err
 }

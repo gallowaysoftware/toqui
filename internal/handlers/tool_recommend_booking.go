@@ -8,13 +8,15 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
-// RecommendBookingTool is a chat tool that generates booking recommendations
-// with affiliate links. The AI calls this when a user asks about flights,
-// hotels, or activities to book.
+// RecommendBookingTool is a chat tool that generates booking recommendations.
+// For free-tier users the recommendations include affiliate links and an FTC
+// disclosure. Pro-tier users receive unbiased recommendations instead.
 type RecommendBookingTool struct {
 	linkBuilder *affiliate.LinkBuilder
+	userTier    tier.UserTier
 	onRecommend func(rec affiliate.Recommendation)
 }
 
@@ -28,18 +30,25 @@ type recommendBookingArgs struct {
 }
 
 // NewRecommendBookingTool creates a recommend_booking tool with the given
-// affiliate link builder and an optional callback invoked on each recommendation.
-func NewRecommendBookingTool(linkBuilder *affiliate.LinkBuilder, onRecommend func(rec affiliate.Recommendation)) *RecommendBookingTool {
+// affiliate link builder, user tier, and an optional callback invoked on each
+// recommendation.
+func NewRecommendBookingTool(linkBuilder *affiliate.LinkBuilder, userTier tier.UserTier, onRecommend func(rec affiliate.Recommendation)) *RecommendBookingTool {
 	return &RecommendBookingTool{
 		linkBuilder: linkBuilder,
+		userTier:    userTier,
 		onRecommend: onRecommend,
 	}
 }
 
 func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
+	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, or activities to book. Returns partner-linked search results with disclosure."
+	if t.userTier.IsPro() {
+		description = "Generate booking recommendations from the best available sources. Use when the user asks about flights, hotels, or activities to book. Returns search results from the best sources."
+	}
+
 	return ai.ToolDefinition{
 		Name:        "recommend_booking",
-		Description: "Generate booking recommendations with links. Use when the user asks about flights, hotels, or activities to book. Returns affiliate-linked search results.",
+		Description: description,
 		Parameters: json.RawMessage(`{
 			"type": "object",
 			"properties": {
@@ -94,6 +103,7 @@ func (t *RecommendBookingTool) Execute(ctx context.Context, args json.RawMessage
 		"destination", params.Destination,
 		"date_from", params.DateFrom,
 		"date_to", params.DateTo,
+		"user_tier", string(t.userTier),
 	)
 
 	rec := t.buildRecommendation(params)
@@ -106,7 +116,7 @@ func (t *RecommendBookingTool) Execute(ctx context.Context, args json.RawMessage
 }
 
 // buildRecommendation constructs an affiliate Recommendation based on the
-// parsed tool arguments and the configured link builder.
+// parsed tool arguments, user tier, and the configured link builder.
 func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) affiliate.Recommendation {
 	partner := affiliate.PartnerForCategory(params.Category)
 
@@ -159,12 +169,17 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		description = params.Query
 	}
 
+	disclosure := affiliate.FTCDisclosure
+	if t.userTier.IsPro() {
+		disclosure = affiliate.ProDisclosure
+	}
+
 	return affiliate.Recommendation{
 		Partner:     partner,
 		Title:       title,
 		Description: description,
 		URL:         searchURL,
 		Category:    params.Category,
-		Disclosure:  affiliate.FTCDisclosure,
+		Disclosure:  disclosure,
 	}
 }
