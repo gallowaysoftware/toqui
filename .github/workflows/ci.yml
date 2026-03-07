@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
 
 jobs:
   build-and-test:
@@ -85,3 +86,50 @@ jobs:
                 body,
               });
             }
+
+  deploy-staging:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux]
+
+    env:
+      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build and push
+        run: |
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Deploy to staging VM
+        run: |
+          gcloud compute instances update-container toqui-staging-vm \
+            --zone=us-central1-a \
+            --project=toqui-staging \
+            --container-image=$IMAGE:${{ github.sha }}
+
+      - name: Run migrations
+        run: |
+          # Wait for new container to start
+          sleep 15
+          gcloud compute ssh toqui-staging-vm \
+            --zone=us-central1-a \
+            --project=toqui-staging \
+            --tunnel-through-iap \
+            --command='docker exec $(docker ps -q -l) /migrate -dir /migrations -db "$(cat /etc/toqui/database-url)" up' \
+            || echo "⚠ Migration skipped or no new migrations"

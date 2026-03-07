@@ -105,12 +105,14 @@ make docker-down      # Tear down
 
 TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toqui`).
 
-### CI
+### CI/CD
 
 GitHub Actions on push to `main` and all PRs (self-hosted Linux runners):
-- **toqui-backend**: build → vet → test with coverage → PR coverage comment
+- **toqui-backend**: build → vet → test with coverage → PR coverage comment → **deploy to staging** (main only)
 - **toqui**: install → lint → build
 - **toqui-site**: install → build
+
+**Staging auto-deploy**: Push to `main` triggers a `deploy-staging` job that builds a Docker image, pushes to Artifact Registry, redeploys the GCE VM via `gcloud compute instances update-container`, and runs migrations. Uses Workload Identity Federation (keyless GCP auth).
 
 ### Task Tracking
 
@@ -139,7 +141,7 @@ TARGET_ENV=staging make run                         # Uses staging infra + secre
 FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: staging DB, local Firestore
 ```
 
-Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. Staging/prod use `gcsm://secret-name` references resolved at startup (requires `gcloud auth application-default login`).
+Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. All environments use `gcsm://secret-name` references resolved at startup via GCP Secret Manager (requires `gcloud auth application-default login`).
 
 Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`). See `env/.env.local` for the full local dev config.
 
@@ -296,24 +298,23 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 
 **Two GCP projects** under the Toqui folder in the `thegalloways.ca` org:
 - **toqui-staging** — GCE VM + Docker + Tailscale VPN (no public access), Cloud SQL `db-f1-micro`
-- **toqui-prod** — Cloud Run (public), Cloud SQL with HA + backups
+- **toqui-prod** — 3 Cloud Run services behind global HTTPS LB, Cloud SQL `db-g1-small`, custom domains (`api.toqui.travel`, `app.toqui.travel`, `toqui.travel`)
 
 Both use Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, and Artifact Registry.
 
 ### Deploying to Staging
 
+**Automatic**: Push to `main` → GitHub Actions builds, pushes to Artifact Registry, redeploys the VM, runs migrations. See CI/CD section above.
+
+**Manual** (if needed):
+
 ```bash
-# Build and push image
-docker build -t us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest .
-docker push us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest
+IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+docker build -t $IMAGE:latest .
+docker push $IMAGE:latest
 
-# Pull and restart on the VM
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging -- \
-  'docker pull us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend:latest && docker restart toqui-backend'
-
-# Run migrations if needed
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging -- \
-  'docker exec toqui-backend /migrate -dir /migrations -db "$(cat /etc/toqui/database-url)" up'
+gcloud compute instances update-container toqui-staging-vm \
+  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:latest
 ```
 
 Staging is accessible at `toqui-staging:8090` via Tailscale VPN. SSH via `gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging`.
