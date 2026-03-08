@@ -8,6 +8,24 @@ import type { Persona } from "@/gen/toqui/v1/persona_pb";
 
 import type { Recommendation } from "@/components/chat/RecommendationCard";
 
+/**
+ * Generate a UUID v4, with fallback for non-secure contexts (HTTP).
+ * uuid() requires a secure context (HTTPS or localhost).
+ * crypto.getRandomValues() works everywhere.
+ */
+function uuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return uuid();
+  }
+  // Fallback: build a v4 UUID from crypto.getRandomValues
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 1
+  const h = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -87,7 +105,7 @@ export function useChat(
   const sendMessage = useCallback(
     async (content: string) => {
       const userMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: uuid(),
         role: "user",
         content,
       };
@@ -141,7 +159,7 @@ export function useChat(
                     setMessages((prev) => [
                       ...prev,
                       {
-                        id: crypto.randomUUID(),
+                        id: uuid(),
                         role: "assistant",
                         content: "",
                         recommendation: {
@@ -205,7 +223,7 @@ export function useChat(
                 setMessages((prev) => [
                   ...prev,
                   {
-                    id: crypto.randomUUID(),
+                    id: uuid(),
                     role: "system",
                     content: ps.handoffMessage,
                   },
@@ -225,7 +243,7 @@ export function useChat(
           setMessages((prev) => [
             ...prev,
             {
-              id: crypto.randomUUID(),
+              id: uuid(),
               role: "assistant",
               content: fullText,
               personaId: persona?.id,
@@ -243,7 +261,7 @@ export function useChat(
           setMessages((prev) => [
             ...prev,
             {
-              id: crypto.randomUUID(),
+              id: uuid(),
               role: "assistant",
               content:
                 "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
@@ -253,7 +271,7 @@ export function useChat(
           setMessages((prev) => [
             ...prev,
             {
-              id: crypto.randomUUID(),
+              id: uuid(),
               role: "assistant",
               content: "Sorry, something went wrong. Please try again.",
             },
