@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   lint:
     runs-on: [self-hosted, linux]
@@ -62,3 +66,59 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  deploy-staging:
+    needs: [lint, test, build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux]
+
+    env:
+      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build and push
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=http://toqui-staging:8090 \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:latest \
+            .
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Deploy to staging VM
+        run: |
+          gcloud compute ssh toqui-staging-vm \
+            --zone=us-central1-a \
+            --project=toqui-staging \
+            --tunnel-through-iap \
+            -- bash -c '
+              set -euo pipefail
+              ACCESS_TOKEN=$(curl -s -H "Metadata-Flavor: Google" \
+                "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" | \
+                python3 -c "import sys,json; print(json.load(sys.stdin)[\"access_token\"])")
+              echo "$ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
+              docker pull '"$IMAGE:${{ github.sha }}"'
+              docker rm -f toqui-frontend 2>/dev/null || true
+              docker run -d \
+                --name toqui-frontend \
+                --restart=always \
+                --network=host \
+                -e PORT=3000 \
+                -e HOSTNAME=0.0.0.0 \
+                '"$IMAGE:${{ github.sha }}"'
+            '
