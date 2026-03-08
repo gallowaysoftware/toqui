@@ -37,9 +37,7 @@ export function useWaitlistStatus(email: string | null) {
   return useQuery<WaitlistStatusResponse>({
     queryKey: ["waitlist-status", email],
     queryFn: async () => {
-      const res = await fetch(
-        `${API_URL}/waitlist/status?email=${encodeURIComponent(email!)}`,
-      );
+      const res = await fetch(`${API_URL}/waitlist/status?email=${encodeURIComponent(email!)}`);
 
       if (!res.ok) {
         throw new Error(`Failed to check waitlist status (${res.status})`);

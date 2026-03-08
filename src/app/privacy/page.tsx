@@ -30,10 +30,9 @@ export default function PrivacyPolicyPage() {
               1. Who We Are
             </h2>
             <p>
-              Toqui is an AI-powered travel planning service operated by Galloway
-              Software (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). This
-              policy explains how we collect, use, and protect your information
-              when you use the Toqui application.
+              Toqui is an AI-powered travel planning service operated by Galloway Software
+              (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). This policy explains how we
+              collect, use, and protect your information when you use the Toqui application.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
@@ -43,27 +42,25 @@ export default function PrivacyPolicyPage() {
               Account Information
             </h3>
             <p>
-              When you sign in with Google, we receive your name, email address,
-              and profile picture. We use this to create and maintain your account.
+              When you sign in with Google, we receive your name, email address, and profile
+              picture. We use this to create and maintain your account.
             </p>
 
             <h3 className="text-lg font-medium text-[var(--color-text-primary)] mt-4 mb-2">
               Trip &amp; Chat Data
             </h3>
             <p>
-              We store the trips you create, itinerary items, bookings, and chat
-              messages so you can access them across sessions. Chat messages are
-              sent to third-party AI providers (see Section 5) to generate
-              responses.
+              We store the trips you create, itinerary items, bookings, and chat messages so you can
+              access them across sessions. Chat messages are sent to third-party AI providers (see
+              Section 5) to generate responses.
             </p>
 
             <h3 className="text-lg font-medium text-[var(--color-text-primary)] mt-4 mb-2">
               Usage Data
             </h3>
             <p>
-              We collect basic usage metrics such as message counts and feature
-              usage to improve the service. We do not use third-party analytics
-              trackers.
+              We collect basic usage metrics such as message counts and feature usage to improve the
+              service. We do not use third-party analytics trackers.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
@@ -81,12 +78,11 @@ export default function PrivacyPolicyPage() {
               4. AI-Generated Content
             </h2>
             <p>
-              Toqui uses artificial intelligence to generate travel
-              recommendations, itinerary suggestions, and conversational
-              responses. AI-generated content may not always be accurate or
-              up-to-date. You should verify important details — such as prices,
-              availability, visa requirements, and safety information — before
-              making travel decisions.
+              Toqui uses artificial intelligence to generate travel recommendations, itinerary
+              suggestions, and conversational responses. AI-generated content may not always be
+              accurate or up-to-date. You should verify important details — such as prices,
+              availability, visa requirements, and safety information — before making travel
+              decisions.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
@@ -95,33 +91,30 @@ export default function PrivacyPolicyPage() {
             <p>We use the following third-party services to operate Toqui:</p>
             <ul className="list-disc pl-6 space-y-1">
               <li>
-                <strong>Google Cloud Platform</strong> — hosting, database
-                storage, and authentication
+                <strong>Google Cloud Platform</strong> — hosting, database storage, and
+                authentication
               </li>
               <li>
-                <strong>Anthropic (Claude)</strong> and{" "}
-                <strong>Google Vertex AI (Gemini)</strong> — AI language models
-                that process your chat messages to generate responses
+                <strong>Anthropic (Claude)</strong> and <strong>Google Vertex AI (Gemini)</strong> —
+                AI language models that process your chat messages to generate responses
               </li>
               <li>
-                <strong>Affiliate partners</strong> (e.g., Booking.com,
-                GetYourGuide) — when you click booking links, those partners may
-                collect data per their own privacy policies
+                <strong>Affiliate partners</strong> (e.g., Booking.com, GetYourGuide) — when you
+                click booking links, those partners may collect data per their own privacy policies
               </li>
             </ul>
             <p>
-              Your chat messages are sent to AI providers to generate responses.
-              We do not sell your data to any third party.
+              Your chat messages are sent to AI providers to generate responses. We do not sell your
+              data to any third party.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
               6. Cookies &amp; Local Storage
             </h2>
             <p>
-              We use a secure, HTTP-only cookie solely to maintain your
-              authentication session. This cookie does not track you across other
-              websites. We also use your browser&apos;s local storage to remember
-              preferences (such as dark/light mode) and age verification status.
+              We use a secure, HTTP-only cookie solely to maintain your authentication session. This
+              cookie does not track you across other websites. We also use your browser&apos;s local
+              storage to remember preferences (such as dark/light mode) and age verification status.
               We do not use third-party tracking cookies or analytics.
             </p>
 
@@ -129,19 +122,17 @@ export default function PrivacyPolicyPage() {
               7. Data Storage &amp; Security
             </h2>
             <p>
-              Your data is stored on Google Cloud Platform servers. We use
-              encryption in transit (TLS) and at rest. Access to production
-              systems is restricted to authorized personnel.
+              Your data is stored on Google Cloud Platform servers. We use encryption in transit
+              (TLS) and at rest. Access to production systems is restricted to authorized personnel.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
               8. Data Retention
             </h2>
             <p>
-              We retain your account data and trip history for as long as your
-              account is active. Chat messages are retained to provide
-              conversation continuity. You may request deletion of your data at
-              any time by contacting us.
+              We retain your account data and trip history for as long as your account is active.
+              Chat messages are retained to provide conversation continuity. You may request
+              deletion of your data at any time by contacting us.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
@@ -169,17 +160,17 @@ export default function PrivacyPolicyPage() {
               10. Children
             </h2>
             <p>
-              Toqui is not intended for anyone under the age of 18. We do not
-              knowingly collect information from children.
+              Toqui is not intended for anyone under the age of 18. We do not knowingly collect
+              information from children.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
               11. Changes to This Policy
             </h2>
             <p>
-              We may update this policy from time to time. We will notify you of
-              significant changes via the application or email. Continued use of
-              Toqui after changes constitutes acceptance of the updated policy.
+              We may update this policy from time to time. We will notify you of significant changes
+              via the application or email. Continued use of Toqui after changes constitutes
+              acceptance of the updated policy.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">

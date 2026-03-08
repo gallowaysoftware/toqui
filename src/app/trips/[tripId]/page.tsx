@@ -2,7 +2,16 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { MessageSquare, Briefcase, Play, CheckCircle, Map, Printer, CalendarDays, Download } from "lucide-react";
+import {
+  MessageSquare,
+  Briefcase,
+  Play,
+  CheckCircle,
+  Map,
+  Printer,
+  CalendarDays,
+  Download,
+} from "lucide-react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
@@ -17,9 +26,11 @@ const statusLabels: Record<number, string> = {
 };
 
 const statusColors: Record<number, string> = {
-  [TripStatus.PLANNING]: "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]",
+  [TripStatus.PLANNING]:
+    "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]",
   [TripStatus.ACTIVE]: "bg-[var(--color-status-active-bg)] text-[var(--color-status-active-text)]",
-  [TripStatus.COMPLETED]: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+  [TripStatus.COMPLETED]:
+    "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
 };
 
 export default function TripDetailPage() {
@@ -52,7 +63,11 @@ export default function TripDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center" aria-busy="true" role="status">
+      <div
+        className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center"
+        aria-busy="true"
+        role="status"
+      >
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
         <span className="sr-only">Loading trip details...</span>
       </div>
@@ -68,13 +83,19 @@ export default function TripDetailPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{trip?.title ?? "Trip Details"}</h1>
+              <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+                {trip?.title ?? "Trip Details"}
+              </h1>
               {trip?.description && (
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1">{trip.description}</p>
+                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                  {trip.description}
+                </p>
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[status] ?? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[status] ?? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"}`}
+              >
                 {statusLabels[status] ?? "Unknown"}
               </span>
               {status === TripStatus.PLANNING && (
@@ -108,14 +129,16 @@ export default function TripDetailPage() {
             href={`/trips/${tripId}/chat`}
             className="bg-[var(--color-surface)] rounded-xl p-6 hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all border border-[var(--color-border)]"
           >
-            <MessageSquare className="text-[var(--color-accent)] mb-3" size={24} aria-hidden="true" />
+            <MessageSquare
+              className="text-[var(--color-accent)] mb-3"
+              size={24}
+              aria-hidden="true"
+            />
             <h2 className="font-semibold mb-1 text-[var(--color-text-primary)]">
               {isActive ? "Travel Companion" : "Plan with AI"}
             </h2>
             <p className="text-sm text-[var(--color-text-secondary)]">
-              {isActive
-                ? "Get real-time help while traveling"
-                : "Chat to build your itinerary"}
+              {isActive ? "Get real-time help while traveling" : "Chat to build your itinerary"}
             </p>
           </Link>
 
@@ -160,8 +183,12 @@ export default function TripDetailPage() {
                   <Printer size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">Export PDF</h3>
-                  <p className="text-xs text-[var(--color-text-tertiary)]">Print-friendly itinerary</p>
+                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">
+                    Export PDF
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">
+                    Print-friendly itinerary
+                  </p>
                 </div>
               </button>
               <button
@@ -169,10 +196,16 @@ export default function TripDetailPage() {
                 className="flex items-center gap-3 bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md dark:hover:shadow-black/25 hover:border-[var(--color-border-strong)] transition-all text-left"
               >
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center">
-                  <CalendarDays size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <CalendarDays
+                    size={18}
+                    className="text-[var(--color-accent)]"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
-                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">Export Calendar</h3>
+                  <h3 className="font-medium text-sm text-[var(--color-text-primary)]">
+                    Export Calendar
+                  </h3>
                   <p className="text-xs text-[var(--color-text-tertiary)]">Download .ics file</p>
                 </div>
               </button>

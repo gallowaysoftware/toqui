@@ -51,7 +51,11 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-[var(--color-surface-secondary)]">
       <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/trips" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded" aria-label="Back to trips">
+          <Link
+            href="/trips"
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
+            aria-label="Back to trips"
+          >
             <ArrowLeft size={20} aria-hidden="true" />
           </Link>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("title")}</h1>
@@ -60,7 +64,9 @@ export default function SettingsPage() {
 
       <main id="main-content" className="max-w-lg mx-auto p-4 space-y-4">
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">{t("account")}</h2>
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">
+            {t("account")}
+          </h2>
           <div className="flex items-center gap-4">
             {user.avatarUrl ? (
               <Image
@@ -85,7 +91,9 @@ export default function SettingsPage() {
 
         {/* Appearance */}
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">Appearance</h2>
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">
+            Appearance
+          </h2>
           <ThemeSelector />
         </div>
 
@@ -96,10 +104,16 @@ export default function SettingsPage() {
             className="flex items-center gap-2 text-[var(--color-accent)] hover:opacity-80 text-sm font-medium disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
           >
             <Download size={16} aria-hidden="true" />
-            {exportData.isPending ? t("exporting") : exportData.isSuccess ? t("exported") : t("exportData")}
+            {exportData.isPending
+              ? t("exporting")
+              : exportData.isSuccess
+                ? t("exported")
+                : t("exportData")}
           </button>
           {exportData.isError && (
-            <p className="text-[var(--color-error)] text-sm mt-2" role="alert">{tc("error")}</p>
+            <p className="text-[var(--color-error)] text-sm mt-2" role="alert">
+              {tc("error")}
+            </p>
           )}
         </div>
 
@@ -116,7 +130,10 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <p className="text-sm text-[var(--color-text-secondary)]">{t("deleteWarning")}</p>
               <div>
-                <label htmlFor="deleteConfirm" className="block text-sm text-[var(--color-text-secondary)] mb-1">
+                <label
+                  htmlFor="deleteConfirm"
+                  className="block text-sm text-[var(--color-text-secondary)] mb-1"
+                >
                   {t("typeDelete")}
                 </label>
                 <input
@@ -146,7 +163,9 @@ export default function SettingsPage() {
                 </button>
               </div>
               {deleteAccount.isError && (
-                <p className="text-[var(--color-error)] text-sm" role="alert">{tc("error")}</p>
+                <p className="text-[var(--color-error)] text-sm" role="alert">
+                  {tc("error")}
+                </p>
               )}
             </div>
           )}

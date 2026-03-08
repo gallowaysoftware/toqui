@@ -28,11 +28,13 @@ export default function ChatPage() {
           {mode === "companion" ? "Travel Companion" : "Trip Planning"}
         </h1>
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            mode === "companion"
-              ? "bg-[var(--color-status-active-bg)] text-[var(--color-status-active-text)]"
-              : "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]"
-          }`}>
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              mode === "companion"
+                ? "bg-[var(--color-status-active-bg)] text-[var(--color-status-active-text)]"
+                : "bg-[var(--color-status-planning-bg)] text-[var(--color-status-planning-text)]"
+            }`}
+          >
             {mode === "companion" ? "Traveling" : "Planning"}
           </span>
           <ThemeToggleButton />

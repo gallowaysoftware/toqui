@@ -36,17 +36,13 @@ describe("MessageLimitBanner", () => {
   });
 
   it("shows limit reached banner with upgrade CTA", () => {
-    render(
-      <MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />,
-    );
+    render(<MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />);
     expect(screen.getByText("Daily message limit reached")).toBeInTheDocument();
     expect(screen.getByText("Upgrade to Trip Pro")).toBeInTheDocument();
   });
 
   it("has alert role when at limit", () => {
-    render(
-      <MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />,
-    );
+    render(<MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />);
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 

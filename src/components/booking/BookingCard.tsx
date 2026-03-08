@@ -42,7 +42,9 @@ interface BookingCardProps {
 export function BookingCard({ booking, onClick }: BookingCardProps) {
   const Icon = iconMap[booking.type] || Package;
   const typeLabel = bookingTypeLabels[booking.type] || "Other";
-  const typeColor = bookingTypeColors[booking.type] || "bg-[var(--color-surface-tertiary)] text-[var(--color-text-secondary)]";
+  const typeColor =
+    bookingTypeColors[booking.type] ||
+    "bg-[var(--color-surface-tertiary)] text-[var(--color-text-secondary)]";
   const dateRange = formatDateRange(booking.startTime, booking.endTime);
   const subtitle = getBookingSubtitle(booking);
 

@@ -32,9 +32,7 @@ function createMarkerElement(color: string, label: string): HTMLDivElement {
 
 /** Build popup HTML for an itinerary item */
 function buildPopupHTML(item: ItineraryItem, dayNumber: number, color: string): string {
-  const typeLabel = item.type
-    ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-    : "";
+  const typeLabel = item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : "";
   return `
     <div style="min-width: 180px; max-width: 260px;">
       <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
@@ -151,9 +149,7 @@ export function ItineraryMap({ itinerary, isLoading, className }: ItineraryMapPr
         <div className="text-center text-[var(--color-text-tertiary)] px-4">
           <MapPin className="mx-auto mb-2" size={24} />
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">No locations yet</p>
-          <p className="text-xs mt-1">
-            Chat with the AI to add places to your itinerary
-          </p>
+          <p className="text-xs mt-1">Chat with the AI to add places to your itinerary</p>
         </div>
       </div>
     );
@@ -168,10 +164,7 @@ export function ItineraryMap({ itinerary, isLoading, className }: ItineraryMapPr
           {itinerary?.days
             ?.filter((d) =>
               d.items.some(
-                (i) =>
-                  i.location &&
-                  i.location.latitude !== 0 &&
-                  i.location.longitude !== 0,
+                (i) => i.location && i.location.latitude !== 0 && i.location.longitude !== 0,
               ),
             )
             .map((day) => (

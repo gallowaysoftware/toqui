@@ -154,9 +154,7 @@ describe("ThemeProvider", () => {
     // Suppress the expected error from console
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(() => render(<ThemeConsumer />)).toThrow(
-      "useTheme must be used within a ThemeProvider",
-    );
+    expect(() => render(<ThemeConsumer />)).toThrow("useTheme must be used within a ThemeProvider");
 
     spy.mockRestore();
   });

@@ -24,7 +24,16 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     usage.markExhausted();
   }, [usage]);
 
-  const { messages, streamingText, isStreaming, activePersona, toolActivity, createdTrip, selectedTrip, sendMessage } = useChat(tripId, mode, { onResourceExhausted });
+  const {
+    messages,
+    streamingText,
+    isStreaming,
+    activePersona,
+    toolActivity,
+    createdTrip,
+    selectedTrip,
+    sendMessage,
+  } = useChat(tripId, mode, { onResourceExhausted });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
@@ -62,11 +71,12 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     setAutoScroll(atBottom);
   };
 
-  const emptyPrompt = mode === "selection"
-    ? "Hey! Where are we headed? Tell me about your next trip idea."
-    : mode === "companion"
-      ? "I'm here to help while you travel. What do you need?"
-      : "Let's plan your trip. What would you like to figure out?";
+  const emptyPrompt =
+    mode === "selection"
+      ? "Hey! Where are we headed? Tell me about your next trip idea."
+      : mode === "companion"
+        ? "I'm here to help while you travel. What do you need?"
+        : "Let's plan your trip. What would you like to figure out?";
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -91,28 +101,15 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         {messages.map((msg, i) => {
           // Render recommendation cards for tool results
           if (msg.recommendation) {
-            return (
-              <RecommendationCard
-                key={msg.id}
-                recommendation={msg.recommendation}
-              />
-            );
+            return <RecommendationCard key={msg.id} recommendation={msg.recommendation} />;
           }
 
           const prevMsg = messages[i - 1];
-          const showBadge = msg.role === "assistant" && (
-            !prevMsg ||
-            prevMsg.role !== "assistant" ||
-            prevMsg.personaId !== msg.personaId
-          );
+          const showBadge =
+            msg.role === "assistant" &&
+            (!prevMsg || prevMsg.role !== "assistant" || prevMsg.personaId !== msg.personaId);
 
-          return (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              showPersonaBadge={showBadge}
-            />
-          );
+          return <MessageBubble key={msg.id} message={msg} showPersonaBadge={showBadge} />;
         })}
 
         {isStreaming && toolActivity && (
@@ -152,18 +149,39 @@ const toolDisplayNames: Record<string, string> = {
   recommend_booking: "Finding recommendations",
 };
 
-function ToolActivityIndicator({ toolName, status }: { toolName: string; status: "calling" | "done" }) {
+function ToolActivityIndicator({
+  toolName,
+  status,
+}: {
+  toolName: string;
+  status: "calling" | "done";
+}) {
   const label = toolDisplayNames[toolName] || `Using ${toolName}`;
   return (
-    <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-secondary)]" role="status" aria-live="polite">
+    <div
+      className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-secondary)]"
+      role="status"
+      aria-live="polite"
+    >
       {status === "calling" ? (
-        <div className="animate-spin h-3 w-3 border border-[var(--color-text-tertiary)] border-t-transparent rounded-full" aria-hidden="true" />
+        <div
+          className="animate-spin h-3 w-3 border border-[var(--color-text-tertiary)] border-t-transparent rounded-full"
+          aria-hidden="true"
+        />
       ) : (
-        <svg className="h-3 w-3 text-[var(--color-success)]" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+        <svg
+          className="h-3 w-3 text-[var(--color-success)]"
+          viewBox="0 0 12 12"
+          fill="currentColor"
+          aria-hidden="true"
+        >
           <path d="M10.28 2.28a.75.75 0 00-1.06-1.06L4.5 5.94 2.78 4.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l5.25-5.25z" />
         </svg>
       )}
-      <span>{label}{status === "calling" ? "..." : ""}</span>
+      <span>
+        {label}
+        {status === "calling" ? "..." : ""}
+      </span>
     </div>
   );
 }

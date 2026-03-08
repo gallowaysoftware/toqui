@@ -25,15 +25,15 @@ export function TripCard({ trip }: { trip: Trip }) {
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-semibold text-[var(--color-text-primary)]">{trip.title}</h3>
-        <span
-          className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[label]}`}
-        >
+        <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[label]}`}>
           {label}
         </span>
       </div>
 
       {trip.description && (
-        <p className="text-sm text-[var(--color-text-secondary)] mb-3 line-clamp-2">{trip.description}</p>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-3 line-clamp-2">
+          {trip.description}
+        </p>
       )}
 
       {trip.startDate && (

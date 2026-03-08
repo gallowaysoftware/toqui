@@ -59,9 +59,17 @@ export default function AuthCallbackPage() {
   }, [setTokens, router]);
 
   return (
-    <main id="main-content" className="min-h-screen flex items-center justify-center" aria-busy="true" role="status">
+    <main
+      id="main-content"
+      className="min-h-screen flex items-center justify-center"
+      aria-busy="true"
+      role="status"
+    >
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)] mx-auto mb-4" aria-hidden="true" />
+        <div
+          className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)] mx-auto mb-4"
+          aria-hidden="true"
+        />
         <p className="text-[var(--color-text-secondary)]">Signing you in...</p>
       </div>
     </main>

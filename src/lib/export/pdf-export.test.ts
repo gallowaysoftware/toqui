@@ -9,7 +9,14 @@ import {
 } from "@/gen/toqui/v1/trip_pb";
 import { exportItineraryPDF, buildPrintHTML, getTypeLabel } from "./pdf-export";
 
-function makeTrip(overrides: Partial<{ title: string; description: string; startDate: string; endDate: string }> = {}) {
+function makeTrip(
+  overrides: Partial<{
+    title: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+  }> = {},
+) {
   return create(TripSchema, {
     id: "trip-1",
     title: overrides.title ?? "Tokyo Adventure",
@@ -72,9 +79,7 @@ describe("pdf-export", () => {
   describe("buildPrintHTML", () => {
     it("includes trip title", () => {
       const trip = makeTrip({ title: "Paris Getaway" });
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Arrive" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Arrive" }] }]);
 
       const html = buildPrintHTML(trip, itinerary);
       expect(html).toContain("Paris Getaway");
@@ -82,9 +87,7 @@ describe("pdf-export", () => {
 
     it("includes trip description", () => {
       const trip = makeTrip({ description: "A wonderful trip" });
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Arrive" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Arrive" }] }]);
 
       const html = buildPrintHTML(trip, itinerary);
       expect(html).toContain("A wonderful trip");
@@ -95,9 +98,7 @@ describe("pdf-export", () => {
         startDate: "2026-04-01",
         endDate: "2026-04-14",
       });
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Arrive" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Arrive" }] }]);
 
       const html = buildPrintHTML(trip, itinerary);
       expect(html).toContain("2026-04-01 to 2026-04-14");
@@ -134,9 +135,7 @@ describe("pdf-export", () => {
 
     it("includes Toqui branding", () => {
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test" }] }]);
 
       const html = buildPrintHTML(trip, itinerary);
       expect(html).toContain("TOQUI");
@@ -144,9 +143,7 @@ describe("pdf-export", () => {
 
     it("includes print media query", () => {
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test" }] }]);
 
       const html = buildPrintHTML(trip, itinerary);
       expect(html).toContain("@media print");
@@ -207,9 +204,7 @@ describe("pdf-export", () => {
       vi.spyOn(window, "open").mockReturnValue(mockWindow as unknown as Window);
 
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test" }] }]);
 
       exportItineraryPDF(trip, itinerary);
 
@@ -238,14 +233,18 @@ describe("pdf-export", () => {
         },
       };
 
-      vi.spyOn(document, "createElement").mockReturnValue(mockIframe as unknown as HTMLIFrameElement);
-      vi.spyOn(document.body, "appendChild").mockImplementation(() => mockIframe as unknown as HTMLIFrameElement);
-      vi.spyOn(document.body, "removeChild").mockImplementation(() => mockIframe as unknown as HTMLIFrameElement);
+      vi.spyOn(document, "createElement").mockReturnValue(
+        mockIframe as unknown as HTMLIFrameElement,
+      );
+      vi.spyOn(document.body, "appendChild").mockImplementation(
+        () => mockIframe as unknown as HTMLIFrameElement,
+      );
+      vi.spyOn(document.body, "removeChild").mockImplementation(
+        () => mockIframe as unknown as HTMLIFrameElement,
+      );
 
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test" }] }]);
 
       exportItineraryPDF(trip, itinerary);
 

@@ -25,9 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <AgeGate>
-            <GrpcProvider>
-              {children}
-            </GrpcProvider>
+            <GrpcProvider>{children}</GrpcProvider>
           </AgeGate>
         </AuthProvider>
       </QueryClientProvider>

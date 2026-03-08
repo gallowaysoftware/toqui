@@ -25,9 +25,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ tripId, onClose, onSuccess }: BookingFormProps) {
-  const [bookingType, setBookingType] = useState<BookingType>(
-    BookingType.FLIGHT,
-  );
+  const [bookingType, setBookingType] = useState<BookingType>(BookingType.FLIGHT);
   const [title, setTitle] = useState("");
   const [provider, setProvider] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
@@ -71,16 +69,16 @@ export function BookingForm({ tripId, onClose, onSuccess }: BookingFormProps) {
       onSuccess?.();
       onClose();
     } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Failed to create booking.",
-      );
+      setFormError(err instanceof Error ? err.message : "Failed to create booking.");
     }
   };
 
   return (
     <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Add Booking Manually</h2>
+        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">
+          Add Booking Manually
+        </h2>
         <button
           type="button"
           onClick={onClose}

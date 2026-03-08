@@ -45,7 +45,11 @@ export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="Theme selection">
+    <div
+      className="flex rounded-lg border border-[var(--color-border)] overflow-hidden"
+      role="group"
+      aria-label="Theme selection"
+    >
       {options.map(({ value, label, icon: Icon }) => (
         <button
           key={value}

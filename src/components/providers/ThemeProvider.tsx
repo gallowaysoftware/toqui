@@ -35,7 +35,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Initialize from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const initial: Theme = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+    const initial: Theme =
+      stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage not available during SSR
     setThemeState(initial);
 

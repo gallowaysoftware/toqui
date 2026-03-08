@@ -66,14 +66,22 @@ const sampleResponse: SharedTripResponse = {
     {
       day_number: 1,
       items: [
-        { title: "Arrive at Narita Airport", type: "transport", description: "International flight" },
+        {
+          title: "Arrive at Narita Airport",
+          type: "transport",
+          description: "International flight",
+        },
         { title: "Check into hotel", type: "accommodation" },
       ],
     },
     {
       day_number: 2,
       items: [
-        { title: "Visit Senso-ji Temple", type: "sightseeing", description: "Oldest temple in Tokyo" },
+        {
+          title: "Visit Senso-ji Temple",
+          type: "sightseeing",
+          description: "Oldest temple in Tokyo",
+        },
         { title: "Ramen for lunch", type: "food" },
       ],
     },
@@ -133,9 +141,7 @@ describe("SharedTripPage", () => {
       expect(screen.getByText("Trip not found")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/This shared trip link may have expired/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/This shared trip link may have expired/)).toBeInTheDocument();
   });
 
   it("shows error page on server error", async () => {
@@ -211,9 +217,7 @@ describe("SharedTripPage", () => {
       expect(screen.getByText("Empty Trip")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText("No itinerary has been added to this trip yet."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No itinerary has been added to this trip yet.")).toBeInTheDocument();
   });
 
   it("fetches from the correct API endpoint", async () => {
@@ -226,9 +230,7 @@ describe("SharedTripPage", () => {
     render(<SharedTripPage />);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/shared/${mockToken}`),
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining(`/shared/${mockToken}`));
     });
   });
 });

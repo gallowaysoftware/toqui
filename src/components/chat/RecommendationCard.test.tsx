@@ -34,7 +34,9 @@ describe("RecommendationCard", () => {
     render(<RecommendationCard recommendation={skyscannerRec} />);
 
     expect(screen.getByText("London to Tokyo flights")).toBeInTheDocument();
-    expect(screen.getByText("Find the best deals on flights from London to Tokyo")).toBeInTheDocument();
+    expect(
+      screen.getByText("Find the best deals on flights from London to Tokyo"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Skyscanner")).toBeInTheDocument();
     expect(screen.getByText("Flight")).toBeInTheDocument();
   });

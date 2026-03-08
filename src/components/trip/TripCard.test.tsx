@@ -6,19 +6,19 @@ import { TripSchema, TripStatus } from "@/gen/toqui/v1/trip_pb";
 
 // Mock lucide-react Calendar icon to avoid SVG rendering issues
 vi.mock("lucide-react", () => ({
-  Calendar: (props: Record<string, unknown>) => (
-    <svg data-testid="calendar-icon" {...props} />
-  ),
+  Calendar: (props: Record<string, unknown>) => <svg data-testid="calendar-icon" {...props} />,
 }));
 
-function makeTrip(overrides: Partial<{
-  id: string;
-  title: string;
-  description: string;
-  status: TripStatus;
-  startDate: string;
-  endDate: string;
-}> = {}) {
+function makeTrip(
+  overrides: Partial<{
+    id: string;
+    title: string;
+    description: string;
+    status: TripStatus;
+    startDate: string;
+    endDate: string;
+  }> = {},
+) {
   return create(TripSchema, {
     id: overrides.id ?? "trip-1",
     title: overrides.title ?? "Tokyo Adventure",
@@ -62,33 +62,23 @@ describe("TripCard", () => {
   });
 
   it("shows date range when start and end dates are provided", () => {
-    render(
-      <TripCard
-        trip={makeTrip({ startDate: "2026-04-01", endDate: "2026-04-15" })}
-      />,
-    );
+    render(<TripCard trip={makeTrip({ startDate: "2026-04-01", endDate: "2026-04-15" })} />);
     expect(screen.getByText("2026-04-01 - 2026-04-15")).toBeInTheDocument();
   });
 
   it("shows only start date when no end date", () => {
-    render(
-      <TripCard trip={makeTrip({ startDate: "2026-04-01", endDate: "" })} />,
-    );
+    render(<TripCard trip={makeTrip({ startDate: "2026-04-01", endDate: "" })} />);
     expect(screen.getByText("2026-04-01")).toBeInTheDocument();
   });
 
   it("does not show dates section when no dates provided", () => {
-    render(
-      <TripCard trip={makeTrip({ startDate: "", endDate: "" })} />,
-    );
+    render(<TripCard trip={makeTrip({ startDate: "", endDate: "" })} />);
     expect(screen.queryByTestId("calendar-icon")).not.toBeInTheDocument();
   });
 
   it("does not render description when empty", () => {
     render(<TripCard trip={makeTrip({ description: "" })} />);
     // Should only have title and status badge, no description paragraph
-    expect(
-      screen.queryByText("Two weeks exploring Japan"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Two weeks exploring Japan")).not.toBeInTheDocument();
   });
 });

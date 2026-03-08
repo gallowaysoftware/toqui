@@ -46,7 +46,14 @@ export function useUpdateTrip() {
   const client = createClient(TripService, transport);
 
   return useMutation({
-    mutationFn: async (params: { id: string; title?: string; description?: string; status?: number; startDate?: string; endDate?: string }) => {
+    mutationFn: async (params: {
+      id: string;
+      title?: string;
+      description?: string;
+      status?: number;
+      startDate?: string;
+      endDate?: string;
+    }) => {
       const res = await client.updateTrip(params);
       return res.trip;
     },
@@ -65,7 +72,12 @@ export function useCreateTrip() {
   const client = createClient(TripService, transport);
 
   return useMutation({
-    mutationFn: async (params: { title: string; description?: string; startDate?: string; endDate?: string }) => {
+    mutationFn: async (params: {
+      title: string;
+      description?: string;
+      startDate?: string;
+      endDate?: string;
+    }) => {
       const res = await client.createTrip(params);
       return res.trip;
     },

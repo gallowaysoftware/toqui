@@ -114,11 +114,7 @@ function buildVEvent(
 
   const typeTag = item.type ? ` [${item.type}]` : "";
 
-  const lines: string[] = [
-    "BEGIN:VEVENT",
-    foldLine(`UID:${uid}`),
-    foldLine(`DTSTAMP:${now}`),
-  ];
+  const lines: string[] = ["BEGIN:VEVENT", foldLine(`UID:${uid}`), foldLine(`DTSTAMP:${now}`)];
 
   if (item.startTime && item.endTime) {
     // Use explicit times from the itinerary item

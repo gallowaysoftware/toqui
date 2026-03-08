@@ -115,7 +115,9 @@ export default function BookingsPage() {
               >
                 <ArrowLeft size={20} />
               </button>
-              <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Upload Booking</h2>
+              <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">
+                Upload Booking
+              </h2>
             </div>
             <BookingUpload tripId={tripId} onSuccess={handleBackToList} />
           </div>
@@ -137,11 +139,7 @@ export default function BookingsPage() {
                 Manual Entry
               </h2>
             </div>
-            <BookingForm
-              tripId={tripId}
-              onClose={handleBackToList}
-              onSuccess={handleBackToList}
-            />
+            <BookingForm tripId={tripId} onClose={handleBackToList} onSuccess={handleBackToList} />
           </div>
         )}
       </main>

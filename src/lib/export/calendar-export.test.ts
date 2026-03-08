@@ -215,9 +215,7 @@ describe("calendar-export", () => {
 
     it("includes calendar name", () => {
       const trip = makeTrip({ title: "Tokyo Trip" });
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Arrive" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Arrive" }] }]);
 
       const ics = buildICSContent(trip, itinerary);
       expect(ics).toContain("X-WR-CALNAME:");
@@ -250,9 +248,7 @@ describe("calendar-export", () => {
 
     it("ends with CRLF", () => {
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test" }] }]);
 
       const ics = buildICSContent(trip, itinerary);
       expect(ics.endsWith("\r\n")).toBe(true);
@@ -276,9 +272,7 @@ describe("calendar-export", () => {
 
     it("is callable and creates a download", () => {
       const trip = makeTrip();
-      const itinerary = makeItinerary([
-        { dayNumber: 1, items: [{ title: "Test Activity" }] },
-      ]);
+      const itinerary = makeItinerary([{ dayNumber: 1, items: [{ title: "Test Activity" }] }]);
 
       const clickSpy = vi.fn();
       vi.spyOn(document, "createElement").mockReturnValue({

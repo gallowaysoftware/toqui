@@ -92,9 +92,7 @@ describe("useJoinWaitlist", () => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(result.current.error?.message).toBe(
-      "Failed to join waitlist (400)",
-    );
+    expect(result.current.error?.message).toBe("Failed to join waitlist (400)");
   });
 });
 
@@ -109,19 +107,16 @@ describe("useWaitlistStatus", () => {
       json: async () => ({ position: 3, accepted: false }),
     });
 
-    const { result } = renderHook(
-      () => useWaitlistStatus("user@example.com"),
-      { wrapper: createWrapper() },
-    );
+    const { result } = renderHook(() => useWaitlistStatus("user@example.com"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "/waitlist/status?email=user%40example.com",
-      ),
+      expect.stringContaining("/waitlist/status?email=user%40example.com"),
     );
 
     expect(result.current.data).toEqual({ position: 3, accepted: false });
@@ -141,17 +136,14 @@ describe("useWaitlistStatus", () => {
       status: 404,
     });
 
-    const { result } = renderHook(
-      () => useWaitlistStatus("user@example.com"),
-      { wrapper: createWrapper() },
-    );
+    const { result } = renderHook(() => useWaitlistStatus("user@example.com"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(result.current.error?.message).toBe(
-      "Failed to check waitlist status (404)",
-    );
+    expect(result.current.error?.message).toBe("Failed to check waitlist status (404)");
   });
 });

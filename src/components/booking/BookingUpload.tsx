@@ -25,9 +25,7 @@ interface BookingUploadProps {
 
 export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
   const [text, setText] = useState("");
-  const [bookingType, setBookingType] = useState<BookingType>(
-    BookingType.UNSPECIFIED,
-  );
+  const [bookingType, setBookingType] = useState<BookingType>(BookingType.UNSPECIFIED);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -53,9 +51,7 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
       );
       onSuccess?.();
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Failed to process booking text.",
-      );
+      setErrorMessage(err instanceof Error ? err.message : "Failed to process booking text.");
     }
   };
 
@@ -78,16 +74,12 @@ export function BookingUpload({ tripId, onSuccess }: BookingUploadProps) {
           <select
             id="upload-type"
             value={bookingType}
-            onChange={(e) =>
-              setBookingType(Number(e.target.value) as BookingType)
-            }
+            onChange={(e) => setBookingType(Number(e.target.value) as BookingType)}
             className="w-full sm:w-auto rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
           >
             {typeOptions.map((t) => (
               <option key={t} value={t}>
-                {t === BookingType.UNSPECIFIED
-                  ? "Auto-detect"
-                  : bookingTypeLabels[t]}
+                {t === BookingType.UNSPECIFIED ? "Auto-detect" : bookingTypeLabels[t]}
               </option>
             ))}
           </select>

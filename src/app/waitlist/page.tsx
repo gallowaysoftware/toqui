@@ -79,9 +79,7 @@ function WaitlistContent() {
         <h1 className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)] mb-2">
           {tc("appName")}
         </h1>
-        <p className="text-lg text-[var(--color-text-tertiary)] mb-8">
-          {tc("tagline")}
-        </p>
+        <p className="text-lg text-[var(--color-text-tertiary)] mb-8">{tc("tagline")}</p>
 
         {/* Card */}
         <div className="rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] p-8 shadow-sm">
@@ -95,9 +93,7 @@ function WaitlistContent() {
               <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">
                 {t("title")}
               </h2>
-              <p className="text-[var(--color-text-secondary)] mb-6">
-                {t("description")}
-              </p>
+              <p className="text-[var(--color-text-secondary)] mb-6">{t("description")}</p>
 
               <form onSubmit={handleJoin} className="space-y-4">
                 <div className="relative">
@@ -115,7 +111,10 @@ function WaitlistContent() {
                 </div>
 
                 {joinMutation.isError && (
-                  <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-bg)] rounded-lg px-3 py-2" role="alert">
+                  <p
+                    className="text-sm text-[var(--color-error)] bg-[var(--color-error-bg)] rounded-lg px-3 py-2"
+                    role="alert"
+                  >
                     {joinMutation.error?.message || tc("error")}
                   </p>
                 )}
@@ -162,9 +161,7 @@ function WaitlistContent() {
               <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">
                 {t("joinedTitle")}
               </h2>
-              <p className="text-[var(--color-text-secondary)] mb-6">
-                {t("joinedDescription")}
-              </p>
+              <p className="text-[var(--color-text-secondary)] mb-6">{t("joinedDescription")}</p>
 
               {position !== null && (
                 <div className="rounded-xl bg-[var(--color-surface-tertiary)] p-4 mb-6">
@@ -174,7 +171,10 @@ function WaitlistContent() {
                       {t("positionLabel")}
                     </span>
                   </div>
-                  <p className="text-3xl font-bold text-[var(--color-accent)]" data-testid="waitlist-position">
+                  <p
+                    className="text-3xl font-bold text-[var(--color-accent)]"
+                    data-testid="waitlist-position"
+                  >
                     #{position}
                   </p>
                   <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
@@ -183,9 +183,7 @@ function WaitlistContent() {
                 </div>
               )}
 
-              <p className="text-sm text-[var(--color-text-tertiary)]">
-                {t("notifyMessage")}
-              </p>
+              <p className="text-sm text-[var(--color-text-tertiary)]">{t("notifyMessage")}</p>
 
               {/* Invite code link */}
               <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
@@ -210,9 +208,7 @@ function WaitlistContent() {
               <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">
                 {t("inviteTitle")}
               </h2>
-              <p className="text-[var(--color-text-secondary)] mb-6">
-                {t("inviteDescription")}
-              </p>
+              <p className="text-[var(--color-text-secondary)] mb-6">{t("inviteDescription")}</p>
 
               <form onSubmit={handleInviteSubmit} className="space-y-4">
                 <input

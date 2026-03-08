@@ -3,11 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { ItineraryMap } from "./ItineraryMap";
 import { getDayColor, DAY_COLORS } from "./colors";
 import { create } from "@bufbuild/protobuf";
-import {
-  ItinerarySchema,
-  ItineraryDaySchema,
-  ItineraryItemSchema,
-} from "@/gen/toqui/v1/trip_pb";
+import { ItinerarySchema, ItineraryDaySchema, ItineraryItemSchema } from "@/gen/toqui/v1/trip_pb";
 import { LatLngSchema } from "@/gen/toqui/v1/common_pb";
 
 // Mock maplibre-gl since it requires WebGL/DOM APIs not available in jsdom
@@ -224,10 +220,7 @@ describe("ItineraryMap", () => {
 
   it("applies custom className", () => {
     const { container } = render(
-      <ItineraryMap
-        itinerary={makeItineraryWithLocations()}
-        className="h-[400px]"
-      />,
+      <ItineraryMap itinerary={makeItineraryWithLocations()} className="h-[400px]" />,
     );
     const wrapper = container.firstElementChild;
     expect(wrapper?.className).toContain("h-[400px]");

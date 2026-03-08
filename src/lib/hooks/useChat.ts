@@ -64,7 +64,11 @@ interface UseChatOptions {
   onResourceExhausted?: () => void;
 }
 
-export function useChat(tripId: string | undefined, mode: "planning" | "companion" | "selection", options?: UseChatOptions) {
+export function useChat(
+  tripId: string | undefined,
+  mode: "planning" | "companion" | "selection",
+  options?: UseChatOptions,
+) {
   const transport = useTransport();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState<string>("");
@@ -241,7 +245,8 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
             {
               id: crypto.randomUUID(),
               role: "assistant",
-              content: "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
+              content:
+                "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
             },
           ]);
         } else {
@@ -263,5 +268,14 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
     [tripId, mode, transport],
   );
 
-  return { messages, streamingText, isStreaming, activePersona, toolActivity, createdTrip, selectedTrip, sendMessage };
+  return {
+    messages,
+    streamingText,
+    isStreaming,
+    activePersona,
+    toolActivity,
+    createdTrip,
+    selectedTrip,
+    sendMessage,
+  };
 }

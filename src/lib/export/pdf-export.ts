@@ -28,9 +28,7 @@ function getTypeLabel(type?: string): string {
  */
 function buildPrintHTML(trip: Trip, itinerary: Itinerary): string {
   const dateRange =
-    trip.startDate && trip.endDate
-      ? `${trip.startDate} to ${trip.endDate}`
-      : trip.startDate || "";
+    trip.startDate && trip.endDate ? `${trip.startDate} to ${trip.endDate}` : trip.startDate || "";
 
   const daysHTML = itinerary.days
     .map((day) => {

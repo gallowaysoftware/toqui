@@ -38,23 +38,39 @@ function formatDate(dateStr?: string): string {
 }
 
 function ItemTypeIcon({ type }: { type?: string }) {
-  const iconProps = { size: 16, className: "text-[var(--color-accent)]", "aria-hidden": true as const };
+  const iconProps = {
+    size: 16,
+    className: "text-[var(--color-accent)]",
+    "aria-hidden": true as const,
+  };
   const key = type?.toLowerCase() ?? "";
   switch (key) {
-    case "activity": return <Compass {...iconProps} />;
-    case "food": case "restaurant": case "dining": return <Utensils {...iconProps} />;
-    case "sightseeing": case "attraction": case "museum": return <Landmark {...iconProps} />;
-    case "shopping": return <ShoppingBag {...iconProps} />;
-    case "accommodation": case "hotel": return <Bed {...iconProps} />;
-    case "transport": case "flight": case "transit": return <Plane {...iconProps} />;
-    default: return <Clock {...iconProps} />;
+    case "activity":
+      return <Compass {...iconProps} />;
+    case "food":
+    case "restaurant":
+    case "dining":
+      return <Utensils {...iconProps} />;
+    case "sightseeing":
+    case "attraction":
+    case "museum":
+      return <Landmark {...iconProps} />;
+    case "shopping":
+      return <ShoppingBag {...iconProps} />;
+    case "accommodation":
+    case "hotel":
+      return <Bed {...iconProps} />;
+    case "transport":
+    case "flight":
+    case "transit":
+      return <Plane {...iconProps} />;
+    default:
+      return <Clock {...iconProps} />;
   }
 }
 
 function ItineraryItemCard({ item }: { item: SharedItineraryItem }) {
-  const typeLabel = item.type
-    ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-    : null;
+  const typeLabel = item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : null;
 
   return (
     <div className="flex gap-3 py-3 px-4 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)]">
@@ -65,9 +81,7 @@ function ItineraryItemCard({ item }: { item: SharedItineraryItem }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h4 className="font-medium text-[var(--color-text-primary)] text-sm">
-            {item.title}
-          </h4>
+          <h4 className="font-medium text-[var(--color-text-primary)] text-sm">{item.title}</h4>
           {typeLabel && (
             <span className="text-xs text-[var(--color-text-tertiary)] bg-[var(--color-surface-tertiary)] px-2 py-0.5 rounded-full">
               {typeLabel}
@@ -237,9 +251,7 @@ export default function SharedTripPage() {
       <main id="main-content" className="max-w-3xl mx-auto p-4 space-y-6">
         {/* Trip info card */}
         <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">
-            {trip.title}
-          </h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">{trip.title}</h1>
           {trip.description && (
             <p className="text-[var(--color-text-secondary)] mb-4 leading-relaxed">
               {trip.description}

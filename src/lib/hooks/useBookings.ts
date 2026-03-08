@@ -52,9 +52,7 @@ export function useBooking(bookingId: string) {
   } = useQuery({
     queryKey: ["booking", bookingId],
     queryFn: async () => {
-      const res = await client.getBooking(
-        create(GetBookingRequestSchema, { id: bookingId }),
-      );
+      const res = await client.getBooking(create(GetBookingRequestSchema, { id: bookingId }));
       return res.booking;
     },
     enabled: !!user && !!bookingId,
@@ -69,14 +67,8 @@ export function useIngestBooking() {
   const client = createClient(BookingService, transport);
 
   return useMutation({
-    mutationFn: async (params: {
-      tripId: string;
-      type: BookingType;
-      rawText: string;
-    }) => {
-      const res = await client.ingestBooking(
-        create(IngestBookingRequestSchema, params),
-      );
+    mutationFn: async (params: { tripId: string; type: BookingType; rawText: string }) => {
+      const res = await client.ingestBooking(create(IngestBookingRequestSchema, params));
       return res.booking;
     },
     onSuccess: (_booking, variables) => {
@@ -94,9 +86,7 @@ export function useDeleteBooking() {
 
   return useMutation({
     mutationFn: async (params: { id: string; tripId: string }) => {
-      await client.deleteBooking(
-        create(DeleteBookingRequestSchema, { id: params.id }),
-      );
+      await client.deleteBooking(create(DeleteBookingRequestSchema, { id: params.id }));
       return params;
     },
     onSuccess: (_result, variables) => {

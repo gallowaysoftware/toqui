@@ -57,12 +57,8 @@ function makeBooking(
     confirmationCode: overrides.confirmationCode ?? "ABC123",
     provider: overrides.provider ?? "Air France",
     source: overrides.source ?? BookingSource.MANUAL,
-    startTime: overrides.startTime
-      ? timestampFromDate(overrides.startTime)
-      : undefined,
-    endTime: overrides.endTime
-      ? timestampFromDate(overrides.endTime)
-      : undefined,
+    startTime: overrides.startTime ? timestampFromDate(overrides.startTime) : undefined,
+    endTime: overrides.endTime ? timestampFromDate(overrides.endTime) : undefined,
     bookingDetails: overrides.bookingDetails ?? { case: undefined, value: undefined },
   });
 }
@@ -79,7 +75,9 @@ describe("BookingCard", () => {
   });
 
   it("renders hotel type badge", () => {
-    render(<BookingCard booking={makeBooking({ type: BookingType.HOTEL, title: "Hilton Stay" })} />);
+    render(
+      <BookingCard booking={makeBooking({ type: BookingType.HOTEL, title: "Hilton Stay" })} />,
+    );
     expect(screen.getByText("Hotel")).toBeInTheDocument();
     expect(screen.getByText("Hilton Stay")).toBeInTheDocument();
   });
@@ -97,16 +95,12 @@ describe("BookingCard", () => {
   });
 
   it("renders confirmation code", () => {
-    render(
-      <BookingCard booking={makeBooking({ confirmationCode: "XYZ789" })} />,
-    );
+    render(<BookingCard booking={makeBooking({ confirmationCode: "XYZ789" })} />);
     expect(screen.getByText("XYZ789")).toBeInTheDocument();
   });
 
   it("does not render confirmation code when empty", () => {
-    render(
-      <BookingCard booking={makeBooking({ confirmationCode: "" })} />,
-    );
+    render(<BookingCard booking={makeBooking({ confirmationCode: "" })} />);
     expect(screen.queryByText("ABC123")).not.toBeInTheDocument();
   });
 
@@ -122,11 +116,7 @@ describe("BookingCard", () => {
   });
 
   it("uses type label as title when title is empty", () => {
-    render(
-      <BookingCard
-        booking={makeBooking({ title: "", type: BookingType.TRAIN })}
-      />,
-    );
+    render(<BookingCard booking={makeBooking({ title: "", type: BookingType.TRAIN })} />);
     // Should show "Train" as the heading since title is empty
     const headings = screen.getAllByText("Train");
     expect(headings.length).toBeGreaterThanOrEqual(1);

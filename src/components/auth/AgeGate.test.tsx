@@ -94,7 +94,9 @@ describe("AgeGate", () => {
     );
 
     submitForm();
-    expect(screen.getByRole("alert")).toHaveTextContent("Please enter your complete date of birth.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Please enter your complete date of birth.",
+    );
   });
 
   it("shows error for unreasonably old date", () => {

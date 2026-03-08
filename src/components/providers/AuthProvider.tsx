@@ -75,7 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void doRefresh();
       return;
     }
-    refreshTimerRef.current = setTimeout(() => { void doRefresh(); }, delay);
+    refreshTimerRef.current = setTimeout(() => {
+      void doRefresh();
+    }, delay);
   }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
@@ -103,7 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshTokenRef.current = res.refreshToken;
         localStorage.setItem(
           "toqui_auth",
-          JSON.stringify({ accessToken: res.accessToken, refreshToken: res.refreshToken, user: newUser }),
+          JSON.stringify({
+            accessToken: res.accessToken,
+            refreshToken: res.refreshToken,
+            user: newUser,
+          }),
         );
 
         scheduleRefresh(res.accessToken, refreshAccessToken);
@@ -149,19 +155,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${API_URL}/auth/google/login`;
   }, []);
 
-  const setTokens = useCallback((accessToken: string, refreshToken: string, user: User) => {
-    setUser(user);
-    setAccessToken(accessToken);
-    refreshTokenRef.current = refreshToken;
-    localStorage.setItem(
-      "toqui_auth",
-      JSON.stringify({ accessToken, refreshToken, user }),
-    );
-    scheduleRefresh(accessToken, refreshAccessToken);
-  }, [scheduleRefresh, refreshAccessToken]);
+  const setTokens = useCallback(
+    (accessToken: string, refreshToken: string, user: User) => {
+      setUser(user);
+      setAccessToken(accessToken);
+      refreshTokenRef.current = refreshToken;
+      localStorage.setItem("toqui_auth", JSON.stringify({ accessToken, refreshToken, user }));
+      scheduleRefresh(accessToken, refreshAccessToken);
+    },
+    [scheduleRefresh, refreshAccessToken],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, login, logout: clearAuth, setTokens, refreshAccessToken }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        accessToken,
+        isLoading,
+        login,
+        logout: clearAuth,
+        setTokens,
+        refreshAccessToken,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

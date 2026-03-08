@@ -27,8 +27,23 @@ export default function GlobalError({
           }}
         />
       </head>
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#FAF8F5", color: "#2D2D2D" }}>
-        <main style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <body
+        style={{
+          margin: 0,
+          fontFamily: "system-ui, sans-serif",
+          background: "#FAF8F5",
+          color: "#2D2D2D",
+        }}
+      >
+        <main
+          style={{
+            display: "flex",
+            minHeight: "100vh",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2rem",
+          }}
+        >
           <div style={{ maxWidth: "28rem", textAlign: "center" }}>
             <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
               Something went wrong

@@ -22,10 +22,7 @@ function getVerifiedServerSnapshot(): boolean {
 }
 
 function isExemptPath(pathname: string): boolean {
-  return (
-    EXEMPT_PATHS.includes(pathname) ||
-    EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
-  );
+  return EXEMPT_PATHS.includes(pathname) || EXEMPT_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
 function calculateAge(dob: Date): number {
@@ -97,9 +94,7 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, "true");
       // Dispatch synthetic storage event so useSyncExternalStore picks up the
       // change in the same tab (the native "storage" event only fires cross-tab).
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: STORAGE_KEY, newValue: "true" }),
-      );
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: "true" }));
       setVerified(true);
     },
     [year, month, day],
@@ -122,8 +117,8 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
             Age Requirement Not Met
           </h1>
           <p className="text-[var(--color-text-secondary)]">
-            Toqui is only available to users who are 18 years of age or older.
-            Thank you for your interest.
+            Toqui is only available to users who are 18 years of age or older. Thank you for your
+            interest.
           </p>
         </div>
       </div>
@@ -138,8 +133,8 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
             Welcome to Toqui
           </h1>
           <p className="text-[var(--color-text-secondary)]">
-            Please confirm your date of birth to continue. You must be at least
-            18 years old to use this service.
+            Please confirm your date of birth to continue. You must be at least 18 years old to use
+            this service.
           </p>
         </div>
 
@@ -153,7 +148,9 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
 
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div>
-              <label htmlFor="age-month" className="sr-only">Month</label>
+              <label htmlFor="age-month" className="sr-only">
+                Month
+              </label>
               <input
                 id="age-month"
                 type="number"
@@ -168,7 +165,9 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
             </div>
 
             <div>
-              <label htmlFor="age-day" className="sr-only">Day</label>
+              <label htmlFor="age-day" className="sr-only">
+                Day
+              </label>
               <input
                 id="age-day"
                 type="number"
@@ -183,7 +182,9 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
             </div>
 
             <div>
-              <label htmlFor="age-year" className="sr-only">Year</label>
+              <label htmlFor="age-year" className="sr-only">
+                Year
+              </label>
               <input
                 id="age-year"
                 type="number"

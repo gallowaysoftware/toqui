@@ -12,8 +12,12 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/location.proto.
  */
-export const file_toqui_v1_location: GenFile = /*@__PURE__*/
-  fileDesc("Chd0b3F1aS92MS9sb2NhdGlvbi5wcm90bxIIdG9xdWkudjEiXgoVVXBkYXRlTG9jYXRpb25SZXF1ZXN0EioKCGxvY2F0aW9uGAEgASgLMhAudG9xdWkudjEuTGF0TG5nQga6SAPIAQESGQoHdHJpcF9pZBgCIAEoCUIIukgFcgOwAQEiRAoWVXBkYXRlTG9jYXRpb25SZXNwb25zZRIqCgtzdWdnZXN0aW9ucxgBIAMoCzIVLnRvcXVpLnYxLk5lYXJieVBsYWNlInQKEEdldE5lYXJieVJlcXVlc3QSKgoIbG9jYXRpb24YASABKAsyEC50b3F1aS52MS5MYXRMbmdCBrpIA8gBARIQCghjYXRlZ29yeRgCIAEoCRIiCg1yYWRpdXNfbWV0ZXJzGAMgASgFQgu6SAgaBhjQhgMoACI6ChFHZXROZWFyYnlSZXNwb25zZRIlCgZwbGFjZXMYASADKAsyFS50b3F1aS52MS5OZWFyYnlQbGFjZSK5AQoLTmVhcmJ5UGxhY2USDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIQCghjYXRlZ29yeRgDIAEoCRIiCghsb2NhdGlvbhgEIAEoCzIQLnRvcXVpLnYxLkxhdExuZxIPCgdhZGRyZXNzGAUgASgJEhcKD2Rpc3RhbmNlX21ldGVycxgGIAEoARIOCgZyYXRpbmcYByABKAESFwoPZ29vZ2xlX3BsYWNlX2lkGAggASgJMqwBCg9Mb2NhdGlvblNlcnZpY2USUwoOVXBkYXRlTG9jYXRpb24SHy50b3F1aS52MS5VcGRhdGVMb2NhdGlvblJlcXVlc3QaIC50b3F1aS52MS5VcGRhdGVMb2NhdGlvblJlc3BvbnNlEkQKCUdldE5lYXJieRIaLnRvcXVpLnYxLkdldE5lYXJieVJlcXVlc3QaGy50b3F1aS52MS5HZXROZWFyYnlSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_toqui_v1_common]);
+export const file_toqui_v1_location: GenFile =
+  /*@__PURE__*/
+  fileDesc(
+    "Chd0b3F1aS92MS9sb2NhdGlvbi5wcm90bxIIdG9xdWkudjEiXgoVVXBkYXRlTG9jYXRpb25SZXF1ZXN0EioKCGxvY2F0aW9uGAEgASgLMhAudG9xdWkudjEuTGF0TG5nQga6SAPIAQESGQoHdHJpcF9pZBgCIAEoCUIIukgFcgOwAQEiRAoWVXBkYXRlTG9jYXRpb25SZXNwb25zZRIqCgtzdWdnZXN0aW9ucxgBIAMoCzIVLnRvcXVpLnYxLk5lYXJieVBsYWNlInQKEEdldE5lYXJieVJlcXVlc3QSKgoIbG9jYXRpb24YASABKAsyEC50b3F1aS52MS5MYXRMbmdCBrpIA8gBARIQCghjYXRlZ29yeRgCIAEoCRIiCg1yYWRpdXNfbWV0ZXJzGAMgASgFQgu6SAgaBhjQhgMoACI6ChFHZXROZWFyYnlSZXNwb25zZRIlCgZwbGFjZXMYASADKAsyFS50b3F1aS52MS5OZWFyYnlQbGFjZSK5AQoLTmVhcmJ5UGxhY2USDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIQCghjYXRlZ29yeRgDIAEoCRIiCghsb2NhdGlvbhgEIAEoCzIQLnRvcXVpLnYxLkxhdExuZxIPCgdhZGRyZXNzGAUgASgJEhcKD2Rpc3RhbmNlX21ldGVycxgGIAEoARIOCgZyYXRpbmcYByABKAESFwoPZ29vZ2xlX3BsYWNlX2lkGAggASgJMqwBCg9Mb2NhdGlvblNlcnZpY2USUwoOVXBkYXRlTG9jYXRpb24SHy50b3F1aS52MS5VcGRhdGVMb2NhdGlvblJlcXVlc3QaIC50b3F1aS52MS5VcGRhdGVMb2NhdGlvblJlc3BvbnNlEkQKCUdldE5lYXJieRIaLnRvcXVpLnYxLkdldE5lYXJieVJlcXVlc3QaGy50b3F1aS52MS5HZXROZWFyYnlSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z",
+    [file_buf_validate_validate, file_toqui_v1_common],
+  );
 
 /**
  * @generated from message toqui.v1.UpdateLocationRequest
@@ -34,7 +38,8 @@ export type UpdateLocationRequest = Message<"toqui.v1.UpdateLocationRequest"> & 
  * Describes the message toqui.v1.UpdateLocationRequest.
  * Use `create(UpdateLocationRequestSchema)` to create a new message.
  */
-export const UpdateLocationRequestSchema: GenMessage<UpdateLocationRequest> = /*@__PURE__*/
+export const UpdateLocationRequestSchema: GenMessage<UpdateLocationRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_location, 0);
 
 /**
@@ -51,7 +56,8 @@ export type UpdateLocationResponse = Message<"toqui.v1.UpdateLocationResponse"> 
  * Describes the message toqui.v1.UpdateLocationResponse.
  * Use `create(UpdateLocationResponseSchema)` to create a new message.
  */
-export const UpdateLocationResponseSchema: GenMessage<UpdateLocationResponse> = /*@__PURE__*/
+export const UpdateLocationResponseSchema: GenMessage<UpdateLocationResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_location, 1);
 
 /**
@@ -80,7 +86,8 @@ export type GetNearbyRequest = Message<"toqui.v1.GetNearbyRequest"> & {
  * Describes the message toqui.v1.GetNearbyRequest.
  * Use `create(GetNearbyRequestSchema)` to create a new message.
  */
-export const GetNearbyRequestSchema: GenMessage<GetNearbyRequest> = /*@__PURE__*/
+export const GetNearbyRequestSchema: GenMessage<GetNearbyRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_location, 2);
 
 /**
@@ -97,7 +104,8 @@ export type GetNearbyResponse = Message<"toqui.v1.GetNearbyResponse"> & {
  * Describes the message toqui.v1.GetNearbyResponse.
  * Use `create(GetNearbyResponseSchema)` to create a new message.
  */
-export const GetNearbyResponseSchema: GenMessage<GetNearbyResponse> = /*@__PURE__*/
+export const GetNearbyResponseSchema: GenMessage<GetNearbyResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_location, 3);
 
 /**
@@ -149,7 +157,8 @@ export type NearbyPlace = Message<"toqui.v1.NearbyPlace"> & {
  * Describes the message toqui.v1.NearbyPlace.
  * Use `create(NearbyPlaceSchema)` to create a new message.
  */
-export const NearbyPlaceSchema: GenMessage<NearbyPlace> = /*@__PURE__*/
+export const NearbyPlaceSchema: GenMessage<NearbyPlace> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_location, 4);
 
 /**
@@ -163,7 +172,7 @@ export const LocationService: GenService<{
     methodKind: "unary";
     input: typeof UpdateLocationRequestSchema;
     output: typeof UpdateLocationResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.LocationService.GetNearby
    */
@@ -171,7 +180,5 @@ export const LocationService: GenService<{
     methodKind: "unary";
     input: typeof GetNearbyRequestSchema;
     output: typeof GetNearbyResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_toqui_v1_location, 0);
-
+  };
+}> = /*@__PURE__*/ serviceDesc(file_toqui_v1_location, 0);

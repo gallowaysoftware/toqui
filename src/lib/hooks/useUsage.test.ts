@@ -46,10 +46,7 @@ describe("useUsage", () => {
   });
 
   it("loads existing usage from localStorage", () => {
-    localStorage.setItem(
-      "toqui_daily_usage",
-      JSON.stringify({ date: "2026-03-06", count: 15 }),
-    );
+    localStorage.setItem("toqui_daily_usage", JSON.stringify({ date: "2026-03-06", count: 15 }));
 
     const { result } = renderHook(() => useUsage());
     expect(result.current.used).toBe(15);
@@ -57,10 +54,7 @@ describe("useUsage", () => {
   });
 
   it("resets count when date changes", () => {
-    localStorage.setItem(
-      "toqui_daily_usage",
-      JSON.stringify({ date: "2026-03-05", count: 25 }),
-    );
+    localStorage.setItem("toqui_daily_usage", JSON.stringify({ date: "2026-03-05", count: 25 }));
 
     const { result } = renderHook(() => useUsage());
     expect(result.current.used).toBe(0);
@@ -68,10 +62,7 @@ describe("useUsage", () => {
   });
 
   it("shows warning when remaining <= 5", () => {
-    localStorage.setItem(
-      "toqui_daily_usage",
-      JSON.stringify({ date: "2026-03-06", count: 25 }),
-    );
+    localStorage.setItem("toqui_daily_usage", JSON.stringify({ date: "2026-03-06", count: 25 }));
 
     const { result } = renderHook(() => useUsage());
     expect(result.current.isWarning).toBe(true);
@@ -80,10 +71,7 @@ describe("useUsage", () => {
   });
 
   it("shows at limit when remaining is 0", () => {
-    localStorage.setItem(
-      "toqui_daily_usage",
-      JSON.stringify({ date: "2026-03-06", count: 30 }),
-    );
+    localStorage.setItem("toqui_daily_usage", JSON.stringify({ date: "2026-03-06", count: 30 }));
 
     const { result } = renderHook(() => useUsage());
     expect(result.current.isAtLimit).toBe(true);
@@ -104,10 +92,7 @@ describe("useUsage", () => {
   });
 
   it("remaining never goes below 0", () => {
-    localStorage.setItem(
-      "toqui_daily_usage",
-      JSON.stringify({ date: "2026-03-06", count: 35 }),
-    );
+    localStorage.setItem("toqui_daily_usage", JSON.stringify({ date: "2026-03-06", count: 35 }));
 
     const { result } = renderHook(() => useUsage());
     expect(result.current.remaining).toBe(0);

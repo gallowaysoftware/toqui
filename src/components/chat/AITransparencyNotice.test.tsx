@@ -9,9 +9,7 @@ describe("AITransparencyNotice", () => {
 
   it("renders the AI notice on first visit", () => {
     render(<AITransparencyNotice />);
-    expect(
-      screen.getByText(/Toqui uses AI to generate responses/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Toqui uses AI to generate responses/)).toBeInTheDocument();
   });
 
   it("has a dismiss button with accessible label", () => {

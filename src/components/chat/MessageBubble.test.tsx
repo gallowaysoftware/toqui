@@ -34,9 +34,7 @@ describe("MessageBubble", () => {
 
   it("renders assistant message content via markdown", () => {
     render(<MessageBubble message={assistantMessage} />);
-    expect(
-      screen.getByText("I recommend visiting Shibuya and Shinjuku!"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("I recommend visiting Shibuya and Shinjuku!")).toBeInTheDocument();
   });
 
   it("renders system message as centered text", () => {
@@ -66,17 +64,13 @@ describe("MessageBubble", () => {
   });
 
   it("shows streaming cursor when isStreaming is true for assistant", () => {
-    const { container } = render(
-      <MessageBubble message={assistantMessage} isStreaming={true} />,
-    );
+    const { container } = render(<MessageBubble message={assistantMessage} isStreaming={true} />);
     const cursor = container.querySelector(".animate-pulse");
     expect(cursor).toBeInTheDocument();
   });
 
   it("does not show streaming cursor when isStreaming is false", () => {
-    const { container } = render(
-      <MessageBubble message={assistantMessage} isStreaming={false} />,
-    );
+    const { container } = render(<MessageBubble message={assistantMessage} isStreaming={false} />);
     const cursor = container.querySelector(".animate-pulse");
     expect(cursor).not.toBeInTheDocument();
   });

@@ -73,27 +73,29 @@ function FlightDetailSection({ booking }: { booking: Booking }) {
   const d = booking.bookingDetails.value;
   return (
     <div className="space-y-1">
-      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Flight Details</h3>
+      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        Flight Details
+      </h3>
       {d.airline && <DetailRow icon={Plane} label="Airline" value={d.airline} />}
-      {d.flightNumber && (
-        <DetailRow icon={Hash} label="Flight Number" value={d.flightNumber} />
-      )}
+      {d.flightNumber && <DetailRow icon={Hash} label="Flight Number" value={d.flightNumber} />}
       {d.departureAirport && (
-        <DetailRow icon={MapPin} label="Departure" value={`${d.departureAirport}${d.departureTerminal ? ` (Terminal ${d.departureTerminal})` : ""}`} />
+        <DetailRow
+          icon={MapPin}
+          label="Departure"
+          value={`${d.departureAirport}${d.departureTerminal ? ` (Terminal ${d.departureTerminal})` : ""}`}
+        />
       )}
       {d.arrivalAirport && (
-        <DetailRow icon={MapPin} label="Arrival" value={`${d.arrivalAirport}${d.arrivalTerminal ? ` (Terminal ${d.arrivalTerminal})` : ""}`} />
+        <DetailRow
+          icon={MapPin}
+          label="Arrival"
+          value={`${d.arrivalAirport}${d.arrivalTerminal ? ` (Terminal ${d.arrivalTerminal})` : ""}`}
+        />
       )}
       {d.seat && <DetailRow icon={Ticket} label="Seat" value={d.seat} />}
-      {d.cabinClass && (
-        <DetailRow icon={Ticket} label="Class" value={d.cabinClass} />
-      )}
+      {d.cabinClass && <DetailRow icon={Ticket} label="Class" value={d.cabinClass} />}
       {d.passengers.length > 0 && (
-        <DetailRow
-          icon={Users}
-          label="Passengers"
-          value={d.passengers.join(", ")}
-        />
+        <DetailRow icon={Users} label="Passengers" value={d.passengers.join(", ")} />
       )}
     </div>
   );
@@ -120,7 +122,9 @@ function CarRentalDetailSection({ booking }: { booking: Booking }) {
   const d = booking.bookingDetails.value;
   return (
     <div className="space-y-1">
-      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Car Rental Details</h3>
+      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        Car Rental Details
+      </h3>
       {d.company && <DetailRow icon={Car} label="Company" value={d.company} />}
       {d.carType && <DetailRow icon={Car} label="Vehicle" value={d.carType} />}
       {d.pickupLocation && <DetailRow icon={MapPin} label="Pick-up" value={d.pickupLocation} />}
@@ -139,7 +143,9 @@ function TrainDetailSection({ booking }: { booking: Booking }) {
       <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Train Details</h3>
       {d.operator && <DetailRow icon={TrainFront} label="Operator" value={d.operator} />}
       {d.trainNumber && <DetailRow icon={Hash} label="Train Number" value={d.trainNumber} />}
-      {d.departureStation && <DetailRow icon={MapPin} label="Departure" value={d.departureStation} />}
+      {d.departureStation && (
+        <DetailRow icon={MapPin} label="Departure" value={d.departureStation} />
+      )}
       {d.arrivalStation && <DetailRow icon={MapPin} label="Arrival" value={d.arrivalStation} />}
       {d.seat && <DetailRow icon={Ticket} label="Seat" value={d.seat} />}
       {d.carNumber && <DetailRow icon={TrainFront} label="Car" value={d.carNumber} />}
@@ -157,14 +163,20 @@ function TourDetailSection({ booking }: { booking: Booking }) {
       {d.tourName && <DetailRow icon={Map} label="Tour" value={d.tourName} />}
       {d.tourOperator && <DetailRow icon={Map} label="Operator" value={d.tourOperator} />}
       {d.meetingPoint && <DetailRow icon={MapPin} label="Meeting Point" value={d.meetingPoint} />}
-      {d.numParticipants > 0 && <DetailRow icon={Users} label="Participants" value={String(d.numParticipants)} />}
+      {d.numParticipants > 0 && (
+        <DetailRow icon={Users} label="Participants" value={String(d.numParticipants)} />
+      )}
       {d.stops.length > 0 && (
         <div className="pl-7 mt-2">
-          <p className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Stops</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">
+            Stops
+          </p>
           <ul className="space-y-1">
             {d.stops.map((stop, i) => (
               <li key={i} className="text-sm text-[var(--color-text-secondary)]">
-                {stop.name}{stop.location ? ` - ${stop.location}` : ""}{stop.duration ? ` (${stop.duration})` : ""}
+                {stop.name}
+                {stop.location ? ` - ${stop.location}` : ""}
+                {stop.duration ? ` (${stop.duration})` : ""}
               </li>
             ))}
           </ul>
@@ -179,7 +191,9 @@ function ActivityDetailSection({ booking }: { booking: Booking }) {
   const d = booking.bookingDetails.value;
   return (
     <div className="space-y-1">
-      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Activity Details</h3>
+      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        Activity Details
+      </h3>
       {d.activityName && <DetailRow icon={Ticket} label="Activity" value={d.activityName} />}
       {d.operator && <DetailRow icon={Ticket} label="Operator" value={d.operator} />}
       {d.location && <DetailRow icon={MapPin} label="Location" value={d.location} />}
@@ -194,8 +208,12 @@ function RestaurantDetailSection({ booking }: { booking: Booking }) {
   const d = booking.bookingDetails.value;
   return (
     <div className="space-y-1">
-      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Restaurant Details</h3>
-      {d.restaurantName && <DetailRow icon={UtensilsCrossed} label="Restaurant" value={d.restaurantName} />}
+      <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+        Restaurant Details
+      </h3>
+      {d.restaurantName && (
+        <DetailRow icon={UtensilsCrossed} label="Restaurant" value={d.restaurantName} />
+      )}
       {d.cuisine && <DetailRow icon={UtensilsCrossed} label="Cuisine" value={d.cuisine} />}
       {d.partySize > 0 && <DetailRow icon={Users} label="Party Size" value={String(d.partySize)} />}
       {d.notes && <DetailRow icon={Ticket} label="Notes" value={d.notes} />}
@@ -203,15 +221,12 @@ function RestaurantDetailSection({ booking }: { booking: Booking }) {
   );
 }
 
-export function BookingDetail({
-  booking,
-  onBack,
-  onDelete,
-  isDeleting,
-}: BookingDetailProps) {
+export function BookingDetail({ booking, onBack, onDelete, isDeleting }: BookingDetailProps) {
   const Icon = iconMap[booking.type] || Package;
   const typeLabel = bookingTypeLabels[booking.type] || "Other";
-  const typeColor = bookingTypeColors[booking.type] || "bg-[var(--color-surface-tertiary)] text-[var(--color-text-secondary)]";
+  const typeColor =
+    bookingTypeColors[booking.type] ||
+    "bg-[var(--color-surface-tertiary)] text-[var(--color-text-secondary)]";
   const subtitle = getBookingSubtitle(booking);
 
   return (
@@ -226,7 +241,9 @@ export function BookingDetail({
         >
           <ArrowLeft size={20} aria-hidden="true" />
         </button>
-        <h2 className="font-semibold text-lg text-[var(--color-text-primary)] flex-1">Booking Details</h2>
+        <h2 className="font-semibold text-lg text-[var(--color-text-primary)] flex-1">
+          Booking Details
+        </h2>
         {onDelete && (
           <button
             type="button"
@@ -266,45 +283,25 @@ export function BookingDetail({
 
         {/* Common fields */}
         <div className="border-t border-[var(--color-border)] pt-4 space-y-1">
-          <DetailRow
-            icon={Hash}
-            label="Confirmation Code"
-            value={booking.confirmationCode}
-          />
+          <DetailRow icon={Hash} label="Confirmation Code" value={booking.confirmationCode} />
           <DetailRow
             icon={Calendar}
             label="Start"
             value={formatTimestampWithTime(booking.startTime)}
           />
-          <DetailRow
-            icon={Calendar}
-            label="End"
-            value={formatTimestampWithTime(booking.endTime)}
-          />
+          <DetailRow icon={Calendar} label="End" value={formatTimestampWithTime(booking.endTime)} />
           <DetailRow icon={MapPin} label="Address" value={booking.address} />
           {booking.provider && (
             <DetailRow icon={Package} label="Provider" value={booking.provider} />
           )}
           {booking.numGuests > 0 && (
-            <DetailRow
-              icon={Users}
-              label="Guests"
-              value={String(booking.numGuests)}
-            />
+            <DetailRow icon={Users} label="Guests" value={String(booking.numGuests)} />
           )}
           {booking.departureLocation && (
-            <DetailRow
-              icon={MapPin}
-              label="Departure Location"
-              value={booking.departureLocation}
-            />
+            <DetailRow icon={MapPin} label="Departure Location" value={booking.departureLocation} />
           )}
           {booking.arrivalLocation && (
-            <DetailRow
-              icon={MapPin}
-              label="Arrival Location"
-              value={booking.arrivalLocation}
-            />
+            <DetailRow icon={MapPin} label="Arrival Location" value={booking.arrivalLocation} />
           )}
         </div>
 
@@ -325,9 +322,7 @@ export function BookingDetail({
         <div className="border-t border-[var(--color-border)] pt-3 mt-4 text-xs text-[var(--color-text-tertiary)]">
           <span>Source: {bookingSourceLabels[booking.source] || "Unknown"}</span>
           {booking.createdAt && (
-            <span className="ml-3">
-              Added {formatTimestamp(booking.createdAt)}
-            </span>
+            <span className="ml-3">Added {formatTimestamp(booking.createdAt)}</span>
           )}
         </div>
       </div>

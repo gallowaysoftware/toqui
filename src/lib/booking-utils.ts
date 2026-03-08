@@ -85,10 +85,7 @@ export function formatTimestampWithTime(ts: Timestamp | undefined): string {
 /**
  * Formats a date range from two timestamps.
  */
-export function formatDateRange(
-  start: Timestamp | undefined,
-  end: Timestamp | undefined,
-): string {
+export function formatDateRange(start: Timestamp | undefined, end: Timestamp | undefined): string {
   const startStr = formatTimestamp(start);
   const endStr = formatTimestamp(end);
   if (!startStr && !endStr) return "";
@@ -106,9 +103,7 @@ export function getBookingSubtitle(booking: Booking): string {
     case "flightDetails": {
       const d = booking.bookingDetails.value;
       const route =
-        d.departureAirport && d.arrivalAirport
-          ? `${d.departureAirport} → ${d.arrivalAirport}`
-          : "";
+        d.departureAirport && d.arrivalAirport ? `${d.departureAirport} → ${d.arrivalAirport}` : "";
       const flight = d.flightNumber
         ? `${d.airline || ""} ${d.flightNumber}`.trim()
         : d.airline || "";
@@ -125,9 +120,7 @@ export function getBookingSubtitle(booking: Booking): string {
     case "trainDetails": {
       const d = booking.bookingDetails.value;
       const route =
-        d.departureStation && d.arrivalStation
-          ? `${d.departureStation} → ${d.arrivalStation}`
-          : "";
+        d.departureStation && d.arrivalStation ? `${d.departureStation} → ${d.arrivalStation}` : "";
       return [route, d.operator].filter(Boolean).join(" · ");
     }
     case "tourDetails": {

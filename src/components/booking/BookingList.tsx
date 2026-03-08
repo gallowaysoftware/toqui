@@ -41,18 +41,13 @@ function BookingListEmpty() {
       <Briefcase className="mx-auto text-[var(--color-text-tertiary)] mb-3" size={40} />
       <h3 className="font-semibold text-[var(--color-text-secondary)] mb-1">No bookings yet</h3>
       <p className="text-sm text-[var(--color-text-secondary)]">
-        Add your first booking by pasting a confirmation email or creating one
-        manually.
+        Add your first booking by pasting a confirmation email or creating one manually.
       </p>
     </div>
   );
 }
 
-export function BookingList({
-  bookings,
-  isLoading,
-  onBookingClick,
-}: BookingListProps) {
+export function BookingList({ bookings, isLoading, onBookingClick }: BookingListProps) {
   if (isLoading) {
     return <BookingListSkeleton />;
   }
@@ -65,10 +60,7 @@ export function BookingList({
     <ul className="space-y-3" data-testid="booking-list" role="list">
       {bookings.map((booking) => (
         <li key={booking.id}>
-          <BookingCard
-            booking={booking}
-            onClick={onBookingClick}
-          />
+          <BookingCard booking={booking} onClick={onBookingClick} />
         </li>
       ))}
     </ul>

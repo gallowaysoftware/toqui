@@ -37,20 +37,26 @@ export default function TripsPage() {
     }
   }, [authLoading, user, router]);
 
-  const handleTripCreated = useCallback((trip: CreatedTrip) => {
-    void queryClient.invalidateQueries({ queryKey: ["trips"] });
-    // Navigate to the new trip's chat after a short delay so the user sees the AI response
-    setTimeout(() => {
-      router.push(`/trips/${trip.id}/chat`);
-    }, 2000);
-  }, [queryClient, router]);
+  const handleTripCreated = useCallback(
+    (trip: CreatedTrip) => {
+      void queryClient.invalidateQueries({ queryKey: ["trips"] });
+      // Navigate to the new trip's chat after a short delay so the user sees the AI response
+      setTimeout(() => {
+        router.push(`/trips/${trip.id}/chat`);
+      }, 2000);
+    },
+    [queryClient, router],
+  );
 
-  const handleTripSelected = useCallback((trip: SelectedTrip) => {
-    // Navigate to the selected trip's chat after a short delay so the user sees the AI response
-    setTimeout(() => {
-      router.push(`/trips/${trip.id}/chat`);
-    }, 2000);
-  }, [router]);
+  const handleTripSelected = useCallback(
+    (trip: SelectedTrip) => {
+      // Navigate to the selected trip's chat after a short delay so the user sees the AI response
+      setTimeout(() => {
+        router.push(`/trips/${trip.id}/chat`);
+      }, 2000);
+    },
+    [router],
+  );
 
   if (authLoading || !user) {
     return (
@@ -66,15 +72,17 @@ export default function TripsPage() {
       {/* Trip sidebar */}
       <aside className="w-64 bg-[var(--color-surface-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-[var(--color-border)]">
-          <h2 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wide">Your Trips</h2>
+          <h2 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wide">
+            Your Trips
+          </h2>
         </div>
         <nav className="flex-1 overflow-y-auto p-2" aria-label="Trip list">
           {trips.length === 0 ? (
-            <p className="text-xs text-[var(--color-text-tertiary)] p-2">No trips yet. Start chatting!</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] p-2">
+              No trips yet. Start chatting!
+            </p>
           ) : (
-            trips.map((trip: Trip) => (
-              <TripSidebarItem key={trip.id} trip={trip} />
-            ))
+            trips.map((trip: Trip) => <TripSidebarItem key={trip.id} trip={trip} />)
           )}
         </nav>
       </aside>
@@ -86,7 +94,11 @@ export default function TripsPage() {
           <h1 className="text-lg font-semibold text-[var(--color-text-primary)] flex-1">Toqui</h1>
           <ThemeToggleButton />
         </header>
-        <ChatContainer mode="selection" onTripCreated={handleTripCreated} onTripSelected={handleTripSelected} />
+        <ChatContainer
+          mode="selection"
+          onTripCreated={handleTripCreated}
+          onTripSelected={handleTripSelected}
+        />
       </main>
     </div>
   );
@@ -102,8 +114,12 @@ function TripSidebarItem({ trip }: { trip: Trip }) {
       className="block rounded-lg p-3 hover:bg-[var(--color-surface-tertiary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <div className="flex items-center justify-between mb-0.5">
-        <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{trip.title}</span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${colors}`}>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+          {trip.title}
+        </span>
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${colors}`}
+        >
           {label}
         </span>
       </div>

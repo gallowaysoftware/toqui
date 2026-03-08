@@ -36,9 +36,7 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -52,9 +50,7 @@ describe("WaitlistPage", () => {
 
     expect(screen.getByText("waitlist.title")).toBeInTheDocument();
     expect(screen.getByText("waitlist.description")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("waitlist.emailPlaceholder"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("waitlist.emailPlaceholder")).toBeInTheDocument();
     expect(screen.getByText("waitlist.joinButton")).toBeInTheDocument();
   });
 
@@ -70,9 +66,7 @@ describe("WaitlistPage", () => {
     fireEvent.click(screen.getByText("waitlist.haveInvite"));
 
     expect(screen.getByText("waitlist.inviteTitle")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("waitlist.inviteCodePlaceholder"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("waitlist.inviteCodePlaceholder")).toBeInTheDocument();
     expect(screen.getByText("waitlist.redeemButton")).toBeInTheDocument();
   });
 
@@ -167,9 +161,7 @@ describe("WaitlistPage", () => {
     fireEvent.click(screen.getByText("waitlist.haveInvite"));
 
     // Fill in invite code
-    const codeInput = screen.getByPlaceholderText(
-      "waitlist.inviteCodePlaceholder",
-    );
+    const codeInput = screen.getByPlaceholderText("waitlist.inviteCodePlaceholder");
     fireEvent.change(codeInput, { target: { value: "TOQUI-ABCD" } });
     fireEvent.click(screen.getByText("waitlist.redeemButton"));
 

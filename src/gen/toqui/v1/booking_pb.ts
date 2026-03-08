@@ -14,8 +14,12 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/booking.proto.
  */
-export const file_toqui_v1_booking: GenFile = /*@__PURE__*/
-  fileDesc("ChZ0b3F1aS92MS9ib29raW5nLnByb3RvEgh0b3F1aS52MSLuBgoHQm9va2luZxIKCgJpZBgBIAEoCRIPCgd0cmlwX2lkGAIgASgJEiMKBHR5cGUYAyABKA4yFS50b3F1aS52MS5Cb29raW5nVHlwZRIZChFjb25maXJtYXRpb25fY29kZRgEIAEoCRIQCghwcm92aWRlchgFIAEoCRINCgV0aXRsZRgGIAEoCRIuCgpzdGFydF90aW1lGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIgoIbG9jYXRpb24YCSABKAsyEC50b3F1aS52MS5MYXRMbmcSDwoHYWRkcmVzcxgKIAEoCRIYCgxkZXRhaWxzX2pzb24YCyABKAlCAhgBEhIKCnJhd19zb3VyY2UYDCABKAkSJwoGc291cmNlGA0gASgOMhcudG9xdWkudjEuQm9va2luZ1NvdXJjZRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkZXBhcnR1cmVfbG9jYXRpb24YDyABKAkSGAoQYXJyaXZhbF9sb2NhdGlvbhgQIAEoCRISCgpudW1fZ3Vlc3RzGBEgASgFEjEKDmZsaWdodF9kZXRhaWxzGBQgASgLMhcudG9xdWkudjEuRmxpZ2h0RGV0YWlsc0gAEi8KDWhvdGVsX2RldGFpbHMYFSABKAsyFi50b3F1aS52MS5Ib3RlbERldGFpbHNIABI4ChJjYXJfcmVudGFsX2RldGFpbHMYFiABKAsyGi50b3F1aS52MS5DYXJSZW50YWxEZXRhaWxzSAASLwoNdHJhaW5fZGV0YWlscxgXIAEoCzIWLnRvcXVpLnYxLlRyYWluRGV0YWlsc0gAEi0KDHRvdXJfZGV0YWlscxgYIAEoCzIVLnRvcXVpLnYxLlRvdXJEZXRhaWxzSAASNQoQYWN0aXZpdHlfZGV0YWlscxgZIAEoCzIZLnRvcXVpLnYxLkFjdGl2aXR5RGV0YWlsc0gAEjkKEnJlc3RhdXJhbnRfZGV0YWlscxgaIAEoCzIbLnRvcXVpLnYxLlJlc3RhdXJhbnREZXRhaWxzSABCEQoPYm9va2luZ19kZXRhaWxzItgBCg1GbGlnaHREZXRhaWxzEg8KB2FpcmxpbmUYASABKAkSFQoNZmxpZ2h0X251bWJlchgCIAEoCRIZChFkZXBhcnR1cmVfYWlycG9ydBgDIAEoCRIXCg9hcnJpdmFsX2FpcnBvcnQYBCABKAkSGgoSZGVwYXJ0dXJlX3Rlcm1pbmFsGAUgASgJEhgKEGFycml2YWxfdGVybWluYWwYBiABKAkSDAoEc2VhdBgHIAEoCRITCgtjYWJpbl9jbGFzcxgIIAEoCRISCgpwYXNzZW5nZXJzGAkgAygJIpgBCgxIb3RlbERldGFpbHMSEgoKaG90ZWxfbmFtZRgBIAEoCRIVCg1jaGVja19pbl9kYXRlGAIgASgJEhYKDmNoZWNrX291dF9kYXRlGAMgASgJEhEKCXJvb21fdHlwZRgEIAEoCRISCgpudW1fZ3Vlc3RzGAUgASgFEg8KB2FkZHJlc3MYBiABKAkSDQoFcGhvbmUYByABKAkiqAEKEENhclJlbnRhbERldGFpbHMSDwoHY29tcGFueRgBIAEoCRIXCg9waWNrdXBfbG9jYXRpb24YAiABKAkSGAoQZHJvcG9mZl9sb2NhdGlvbhgDIAEoCRITCgtwaWNrdXBfdGltZRgEIAEoCRIUCgxkcm9wb2ZmX3RpbWUYBSABKAkSEAoIY2FyX3R5cGUYBiABKAkSEwoLZHJpdmVyX25hbWUYByABKAkimwEKDFRyYWluRGV0YWlscxIQCghvcGVyYXRvchgBIAEoCRIUCgx0cmFpbl9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX3N0YXRpb24YAyABKAkSFwoPYXJyaXZhbF9zdGF0aW9uGAQgASgJEgwKBHNlYXQYBSABKAkSEgoKY2FyX251bWJlchgGIAEoCRINCgVjbGFzcxgHIAEoCSJLCghUb3VyU3RvcBIMCgRuYW1lGAEgASgJEhAKCGxvY2F0aW9uGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg0KBW5vdGVzGAQgASgJIosBCgtUb3VyRGV0YWlscxIVCg10b3VyX29wZXJhdG9yGAEgASgJEhEKCXRvdXJfbmFtZRgCIAEoCRIYChBudW1fcGFydGljaXBhbnRzGAMgASgFEhUKDW1lZXRpbmdfcG9pbnQYBCABKAkSIQoFc3RvcHMYBSADKAsyEi50b3F1aS52MS5Ub3VyU3RvcCJvCg9BY3Rpdml0eURldGFpbHMSEAoIb3BlcmF0b3IYASABKAkSFQoNYWN0aXZpdHlfbmFtZRgCIAEoCRIQCghsb2NhdGlvbhgDIAEoCRISCgpudW1fZ3Vlc3RzGAQgASgFEg0KBW5vdGVzGAUgASgJImAKEVJlc3RhdXJhbnREZXRhaWxzEhcKD3Jlc3RhdXJhbnRfbmFtZRgBIAEoCRIPCgdjdWlzaW5lGAIgASgJEhIKCnBhcnR5X3NpemUYAyABKAUSDQoFbm90ZXMYBCABKAkiawoUSW5nZXN0Qm9va2luZ1JlcXVlc3QSDwoHdHJpcF9pZBgBIAEoCRIjCgR0eXBlGAIgASgOMhUudG9xdWkudjEuQm9va2luZ1R5cGUSHQoIcmF3X3RleHQYAyABKAlCC7pICHIGEAEY0IYDIjsKFUluZ2VzdEJvb2tpbmdSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyI0ChJJbmdlc3RFbWFpbFJlcXVlc3QSHgoJcmF3X2VtYWlsGAEgASgJQgu6SAhyBhABGKDCHiI6ChNJbmdlc3RFbWFpbFJlc3BvbnNlEiMKCGJvb2tpbmdzGAEgAygLMhEudG9xdWkudjEuQm9va2luZyJhChNMaXN0Qm9va2luZ3NSZXF1ZXN0EhkKB3RyaXBfaWQYASABKAlCCLpIBXIDsAEBEi8KCnBhZ2luYXRpb24YAiABKAsyGy50b3F1aS52MS5QYWdpbmF0aW9uUmVxdWVzdCJtChRMaXN0Qm9va2luZ3NSZXNwb25zZRIjCghib29raW5ncxgBIAMoCzIRLnRvcXVpLnYxLkJvb2tpbmcSMAoKcGFnaW5hdGlvbhgCIAEoCzIcLnRvcXVpLnYxLlBhZ2luYXRpb25SZXNwb25zZSIpChFHZXRCb29raW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiOAoSR2V0Qm9va2luZ1Jlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIlMKGExpbmtCb29raW5nVG9UcmlwUmVxdWVzdBIcCgpib29raW5nX2lkGAEgASgJQgi6SAVyA7ABARIZCgd0cmlwX2lkGAIgASgJQgi6SAVyA7ABASI/ChlMaW5rQm9va2luZ1RvVHJpcFJlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIiwKFERlbGV0ZUJvb2tpbmdSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIXChVEZWxldGVCb29raW5nUmVzcG9uc2UiWAoaRXh0cmFjdEJvb2tpbmdGaWVsZFJlcXVlc3QSHAoKYm9va2luZ19pZBgBIAEoCUIIukgFcgOwAQESHAoIcXVlc3Rpb24YAiABKAlCCrpIB3IFEAEY6AciuwEKG0V4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZRIOCgZhbnN3ZXIYASABKAkSVAoQZXh0cmFjdGVkX2ZpZWxkcxgCIAMoCzI6LnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZS5FeHRyYWN0ZWRGaWVsZHNFbnRyeRo2ChRFeHRyYWN0ZWRGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBKvgBCgtCb29raW5nVHlwZRIcChhCT09LSU5HX1RZUEVfVU5TUEVDSUZJRUQQABIXChNCT09LSU5HX1RZUEVfRkxJR0hUEAESFgoSQk9PS0lOR19UWVBFX0hPVEVMEAISGwoXQk9PS0lOR19UWVBFX0NBUl9SRU5UQUwQAxIWChJCT09LSU5HX1RZUEVfVFJBSU4QBBIZChVCT09LSU5HX1RZUEVfQUNUSVZJVFkQBRIbChdCT09LSU5HX1RZUEVfUkVTVEFVUkFOVBAGEhYKEkJPT0tJTkdfVFlQRV9PVEhFUhAHEhUKEUJPT0tJTkdfVFlQRV9UT1VSEAgqfgoNQm9va2luZ1NvdXJjZRIeChpCT09LSU5HX1NPVVJDRV9VTlNQRUNJRklFRBAAEhgKFEJPT0tJTkdfU09VUkNFX0VNQUlMEAESGQoVQk9PS0lOR19TT1VSQ0VfTUFOVUFMEAISGAoUQk9PS0lOR19TT1VSQ0VfUEFTVEUQAzLaBAoOQm9va2luZ1NlcnZpY2USUAoNSW5nZXN0Qm9va2luZxIeLnRvcXVpLnYxLkluZ2VzdEJvb2tpbmdSZXF1ZXN0Gh8udG9xdWkudjEuSW5nZXN0Qm9va2luZ1Jlc3BvbnNlEkoKC0luZ2VzdEVtYWlsEhwudG9xdWkudjEuSW5nZXN0RW1haWxSZXF1ZXN0Gh0udG9xdWkudjEuSW5nZXN0RW1haWxSZXNwb25zZRJNCgxMaXN0Qm9va2luZ3MSHS50b3F1aS52MS5MaXN0Qm9va2luZ3NSZXF1ZXN0Gh4udG9xdWkudjEuTGlzdEJvb2tpbmdzUmVzcG9uc2USRwoKR2V0Qm9va2luZxIbLnRvcXVpLnYxLkdldEJvb2tpbmdSZXF1ZXN0GhwudG9xdWkudjEuR2V0Qm9va2luZ1Jlc3BvbnNlElwKEUxpbmtCb29raW5nVG9UcmlwEiIudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXF1ZXN0GiMudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXNwb25zZRJQCg1EZWxldGVCb29raW5nEh4udG9xdWkudjEuRGVsZXRlQm9va2luZ1JlcXVlc3QaHy50b3F1aS52MS5EZWxldGVCb29raW5nUmVzcG9uc2USYgoTRXh0cmFjdEJvb2tpbmdGaWVsZBIkLnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXF1ZXN0GiUudG9xdWkudjEuRXh0cmFjdEJvb2tpbmdGaWVsZFJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
+export const file_toqui_v1_booking: GenFile =
+  /*@__PURE__*/
+  fileDesc(
+    "ChZ0b3F1aS92MS9ib29raW5nLnByb3RvEgh0b3F1aS52MSLuBgoHQm9va2luZxIKCgJpZBgBIAEoCRIPCgd0cmlwX2lkGAIgASgJEiMKBHR5cGUYAyABKA4yFS50b3F1aS52MS5Cb29raW5nVHlwZRIZChFjb25maXJtYXRpb25fY29kZRgEIAEoCRIQCghwcm92aWRlchgFIAEoCRINCgV0aXRsZRgGIAEoCRIuCgpzdGFydF90aW1lGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIgoIbG9jYXRpb24YCSABKAsyEC50b3F1aS52MS5MYXRMbmcSDwoHYWRkcmVzcxgKIAEoCRIYCgxkZXRhaWxzX2pzb24YCyABKAlCAhgBEhIKCnJhd19zb3VyY2UYDCABKAkSJwoGc291cmNlGA0gASgOMhcudG9xdWkudjEuQm9va2luZ1NvdXJjZRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkZXBhcnR1cmVfbG9jYXRpb24YDyABKAkSGAoQYXJyaXZhbF9sb2NhdGlvbhgQIAEoCRISCgpudW1fZ3Vlc3RzGBEgASgFEjEKDmZsaWdodF9kZXRhaWxzGBQgASgLMhcudG9xdWkudjEuRmxpZ2h0RGV0YWlsc0gAEi8KDWhvdGVsX2RldGFpbHMYFSABKAsyFi50b3F1aS52MS5Ib3RlbERldGFpbHNIABI4ChJjYXJfcmVudGFsX2RldGFpbHMYFiABKAsyGi50b3F1aS52MS5DYXJSZW50YWxEZXRhaWxzSAASLwoNdHJhaW5fZGV0YWlscxgXIAEoCzIWLnRvcXVpLnYxLlRyYWluRGV0YWlsc0gAEi0KDHRvdXJfZGV0YWlscxgYIAEoCzIVLnRvcXVpLnYxLlRvdXJEZXRhaWxzSAASNQoQYWN0aXZpdHlfZGV0YWlscxgZIAEoCzIZLnRvcXVpLnYxLkFjdGl2aXR5RGV0YWlsc0gAEjkKEnJlc3RhdXJhbnRfZGV0YWlscxgaIAEoCzIbLnRvcXVpLnYxLlJlc3RhdXJhbnREZXRhaWxzSABCEQoPYm9va2luZ19kZXRhaWxzItgBCg1GbGlnaHREZXRhaWxzEg8KB2FpcmxpbmUYASABKAkSFQoNZmxpZ2h0X251bWJlchgCIAEoCRIZChFkZXBhcnR1cmVfYWlycG9ydBgDIAEoCRIXCg9hcnJpdmFsX2FpcnBvcnQYBCABKAkSGgoSZGVwYXJ0dXJlX3Rlcm1pbmFsGAUgASgJEhgKEGFycml2YWxfdGVybWluYWwYBiABKAkSDAoEc2VhdBgHIAEoCRITCgtjYWJpbl9jbGFzcxgIIAEoCRISCgpwYXNzZW5nZXJzGAkgAygJIpgBCgxIb3RlbERldGFpbHMSEgoKaG90ZWxfbmFtZRgBIAEoCRIVCg1jaGVja19pbl9kYXRlGAIgASgJEhYKDmNoZWNrX291dF9kYXRlGAMgASgJEhEKCXJvb21fdHlwZRgEIAEoCRISCgpudW1fZ3Vlc3RzGAUgASgFEg8KB2FkZHJlc3MYBiABKAkSDQoFcGhvbmUYByABKAkiqAEKEENhclJlbnRhbERldGFpbHMSDwoHY29tcGFueRgBIAEoCRIXCg9waWNrdXBfbG9jYXRpb24YAiABKAkSGAoQZHJvcG9mZl9sb2NhdGlvbhgDIAEoCRITCgtwaWNrdXBfdGltZRgEIAEoCRIUCgxkcm9wb2ZmX3RpbWUYBSABKAkSEAoIY2FyX3R5cGUYBiABKAkSEwoLZHJpdmVyX25hbWUYByABKAkimwEKDFRyYWluRGV0YWlscxIQCghvcGVyYXRvchgBIAEoCRIUCgx0cmFpbl9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX3N0YXRpb24YAyABKAkSFwoPYXJyaXZhbF9zdGF0aW9uGAQgASgJEgwKBHNlYXQYBSABKAkSEgoKY2FyX251bWJlchgGIAEoCRINCgVjbGFzcxgHIAEoCSJLCghUb3VyU3RvcBIMCgRuYW1lGAEgASgJEhAKCGxvY2F0aW9uGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg0KBW5vdGVzGAQgASgJIosBCgtUb3VyRGV0YWlscxIVCg10b3VyX29wZXJhdG9yGAEgASgJEhEKCXRvdXJfbmFtZRgCIAEoCRIYChBudW1fcGFydGljaXBhbnRzGAMgASgFEhUKDW1lZXRpbmdfcG9pbnQYBCABKAkSIQoFc3RvcHMYBSADKAsyEi50b3F1aS52MS5Ub3VyU3RvcCJvCg9BY3Rpdml0eURldGFpbHMSEAoIb3BlcmF0b3IYASABKAkSFQoNYWN0aXZpdHlfbmFtZRgCIAEoCRIQCghsb2NhdGlvbhgDIAEoCRISCgpudW1fZ3Vlc3RzGAQgASgFEg0KBW5vdGVzGAUgASgJImAKEVJlc3RhdXJhbnREZXRhaWxzEhcKD3Jlc3RhdXJhbnRfbmFtZRgBIAEoCRIPCgdjdWlzaW5lGAIgASgJEhIKCnBhcnR5X3NpemUYAyABKAUSDQoFbm90ZXMYBCABKAkiawoUSW5nZXN0Qm9va2luZ1JlcXVlc3QSDwoHdHJpcF9pZBgBIAEoCRIjCgR0eXBlGAIgASgOMhUudG9xdWkudjEuQm9va2luZ1R5cGUSHQoIcmF3X3RleHQYAyABKAlCC7pICHIGEAEY0IYDIjsKFUluZ2VzdEJvb2tpbmdSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyI0ChJJbmdlc3RFbWFpbFJlcXVlc3QSHgoJcmF3X2VtYWlsGAEgASgJQgu6SAhyBhABGKDCHiI6ChNJbmdlc3RFbWFpbFJlc3BvbnNlEiMKCGJvb2tpbmdzGAEgAygLMhEudG9xdWkudjEuQm9va2luZyJhChNMaXN0Qm9va2luZ3NSZXF1ZXN0EhkKB3RyaXBfaWQYASABKAlCCLpIBXIDsAEBEi8KCnBhZ2luYXRpb24YAiABKAsyGy50b3F1aS52MS5QYWdpbmF0aW9uUmVxdWVzdCJtChRMaXN0Qm9va2luZ3NSZXNwb25zZRIjCghib29raW5ncxgBIAMoCzIRLnRvcXVpLnYxLkJvb2tpbmcSMAoKcGFnaW5hdGlvbhgCIAEoCzIcLnRvcXVpLnYxLlBhZ2luYXRpb25SZXNwb25zZSIpChFHZXRCb29raW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiOAoSR2V0Qm9va2luZ1Jlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIlMKGExpbmtCb29raW5nVG9UcmlwUmVxdWVzdBIcCgpib29raW5nX2lkGAEgASgJQgi6SAVyA7ABARIZCgd0cmlwX2lkGAIgASgJQgi6SAVyA7ABASI/ChlMaW5rQm9va2luZ1RvVHJpcFJlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIiwKFERlbGV0ZUJvb2tpbmdSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIXChVEZWxldGVCb29raW5nUmVzcG9uc2UiWAoaRXh0cmFjdEJvb2tpbmdGaWVsZFJlcXVlc3QSHAoKYm9va2luZ19pZBgBIAEoCUIIukgFcgOwAQESHAoIcXVlc3Rpb24YAiABKAlCCrpIB3IFEAEY6AciuwEKG0V4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZRIOCgZhbnN3ZXIYASABKAkSVAoQZXh0cmFjdGVkX2ZpZWxkcxgCIAMoCzI6LnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZS5FeHRyYWN0ZWRGaWVsZHNFbnRyeRo2ChRFeHRyYWN0ZWRGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBKvgBCgtCb29raW5nVHlwZRIcChhCT09LSU5HX1RZUEVfVU5TUEVDSUZJRUQQABIXChNCT09LSU5HX1RZUEVfRkxJR0hUEAESFgoSQk9PS0lOR19UWVBFX0hPVEVMEAISGwoXQk9PS0lOR19UWVBFX0NBUl9SRU5UQUwQAxIWChJCT09LSU5HX1RZUEVfVFJBSU4QBBIZChVCT09LSU5HX1RZUEVfQUNUSVZJVFkQBRIbChdCT09LSU5HX1RZUEVfUkVTVEFVUkFOVBAGEhYKEkJPT0tJTkdfVFlQRV9PVEhFUhAHEhUKEUJPT0tJTkdfVFlQRV9UT1VSEAgqfgoNQm9va2luZ1NvdXJjZRIeChpCT09LSU5HX1NPVVJDRV9VTlNQRUNJRklFRBAAEhgKFEJPT0tJTkdfU09VUkNFX0VNQUlMEAESGQoVQk9PS0lOR19TT1VSQ0VfTUFOVUFMEAISGAoUQk9PS0lOR19TT1VSQ0VfUEFTVEUQAzLaBAoOQm9va2luZ1NlcnZpY2USUAoNSW5nZXN0Qm9va2luZxIeLnRvcXVpLnYxLkluZ2VzdEJvb2tpbmdSZXF1ZXN0Gh8udG9xdWkudjEuSW5nZXN0Qm9va2luZ1Jlc3BvbnNlEkoKC0luZ2VzdEVtYWlsEhwudG9xdWkudjEuSW5nZXN0RW1haWxSZXF1ZXN0Gh0udG9xdWkudjEuSW5nZXN0RW1haWxSZXNwb25zZRJNCgxMaXN0Qm9va2luZ3MSHS50b3F1aS52MS5MaXN0Qm9va2luZ3NSZXF1ZXN0Gh4udG9xdWkudjEuTGlzdEJvb2tpbmdzUmVzcG9uc2USRwoKR2V0Qm9va2luZxIbLnRvcXVpLnYxLkdldEJvb2tpbmdSZXF1ZXN0GhwudG9xdWkudjEuR2V0Qm9va2luZ1Jlc3BvbnNlElwKEUxpbmtCb29raW5nVG9UcmlwEiIudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXF1ZXN0GiMudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXNwb25zZRJQCg1EZWxldGVCb29raW5nEh4udG9xdWkudjEuRGVsZXRlQm9va2luZ1JlcXVlc3QaHy50b3F1aS52MS5EZWxldGVCb29raW5nUmVzcG9uc2USYgoTRXh0cmFjdEJvb2tpbmdGaWVsZBIkLnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXF1ZXN0GiUudG9xdWkudjEuRXh0cmFjdEJvb2tpbmdGaWVsZFJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM",
+    [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common],
+  );
 
 /**
  * @generated from message toqui.v1.Booking
@@ -110,56 +114,65 @@ export type Booking = Message<"toqui.v1.Booking"> & {
   /**
    * @generated from oneof toqui.v1.Booking.booking_details
    */
-  bookingDetails: {
-    /**
-     * @generated from field: toqui.v1.FlightDetails flight_details = 20;
-     */
-    value: FlightDetails;
-    case: "flightDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.HotelDetails hotel_details = 21;
-     */
-    value: HotelDetails;
-    case: "hotelDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.CarRentalDetails car_rental_details = 22;
-     */
-    value: CarRentalDetails;
-    case: "carRentalDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.TrainDetails train_details = 23;
-     */
-    value: TrainDetails;
-    case: "trainDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.TourDetails tour_details = 24;
-     */
-    value: TourDetails;
-    case: "tourDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.ActivityDetails activity_details = 25;
-     */
-    value: ActivityDetails;
-    case: "activityDetails";
-  } | {
-    /**
-     * @generated from field: toqui.v1.RestaurantDetails restaurant_details = 26;
-     */
-    value: RestaurantDetails;
-    case: "restaurantDetails";
-  } | { case: undefined; value?: undefined };
+  bookingDetails:
+    | {
+        /**
+         * @generated from field: toqui.v1.FlightDetails flight_details = 20;
+         */
+        value: FlightDetails;
+        case: "flightDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.HotelDetails hotel_details = 21;
+         */
+        value: HotelDetails;
+        case: "hotelDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.CarRentalDetails car_rental_details = 22;
+         */
+        value: CarRentalDetails;
+        case: "carRentalDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.TrainDetails train_details = 23;
+         */
+        value: TrainDetails;
+        case: "trainDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.TourDetails tour_details = 24;
+         */
+        value: TourDetails;
+        case: "tourDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.ActivityDetails activity_details = 25;
+         */
+        value: ActivityDetails;
+        case: "activityDetails";
+      }
+    | {
+        /**
+         * @generated from field: toqui.v1.RestaurantDetails restaurant_details = 26;
+         */
+        value: RestaurantDetails;
+        case: "restaurantDetails";
+      }
+    | { case: undefined; value?: undefined };
 };
 
 /**
  * Describes the message toqui.v1.Booking.
  * Use `create(BookingSchema)` to create a new message.
  */
-export const BookingSchema: GenMessage<Booking> = /*@__PURE__*/
+export const BookingSchema: GenMessage<Booking> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 0);
 
 /**
@@ -216,7 +229,8 @@ export type FlightDetails = Message<"toqui.v1.FlightDetails"> & {
  * Describes the message toqui.v1.FlightDetails.
  * Use `create(FlightDetailsSchema)` to create a new message.
  */
-export const FlightDetailsSchema: GenMessage<FlightDetails> = /*@__PURE__*/
+export const FlightDetailsSchema: GenMessage<FlightDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 1);
 
 /**
@@ -263,7 +277,8 @@ export type HotelDetails = Message<"toqui.v1.HotelDetails"> & {
  * Describes the message toqui.v1.HotelDetails.
  * Use `create(HotelDetailsSchema)` to create a new message.
  */
-export const HotelDetailsSchema: GenMessage<HotelDetails> = /*@__PURE__*/
+export const HotelDetailsSchema: GenMessage<HotelDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 2);
 
 /**
@@ -310,7 +325,8 @@ export type CarRentalDetails = Message<"toqui.v1.CarRentalDetails"> & {
  * Describes the message toqui.v1.CarRentalDetails.
  * Use `create(CarRentalDetailsSchema)` to create a new message.
  */
-export const CarRentalDetailsSchema: GenMessage<CarRentalDetails> = /*@__PURE__*/
+export const CarRentalDetailsSchema: GenMessage<CarRentalDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 3);
 
 /**
@@ -357,7 +373,8 @@ export type TrainDetails = Message<"toqui.v1.TrainDetails"> & {
  * Describes the message toqui.v1.TrainDetails.
  * Use `create(TrainDetailsSchema)` to create a new message.
  */
-export const TrainDetailsSchema: GenMessage<TrainDetails> = /*@__PURE__*/
+export const TrainDetailsSchema: GenMessage<TrainDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 4);
 
 /**
@@ -389,7 +406,8 @@ export type TourStop = Message<"toqui.v1.TourStop"> & {
  * Describes the message toqui.v1.TourStop.
  * Use `create(TourStopSchema)` to create a new message.
  */
-export const TourStopSchema: GenMessage<TourStop> = /*@__PURE__*/
+export const TourStopSchema: GenMessage<TourStop> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 5);
 
 /**
@@ -426,7 +444,8 @@ export type TourDetails = Message<"toqui.v1.TourDetails"> & {
  * Describes the message toqui.v1.TourDetails.
  * Use `create(TourDetailsSchema)` to create a new message.
  */
-export const TourDetailsSchema: GenMessage<TourDetails> = /*@__PURE__*/
+export const TourDetailsSchema: GenMessage<TourDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 6);
 
 /**
@@ -463,7 +482,8 @@ export type ActivityDetails = Message<"toqui.v1.ActivityDetails"> & {
  * Describes the message toqui.v1.ActivityDetails.
  * Use `create(ActivityDetailsSchema)` to create a new message.
  */
-export const ActivityDetailsSchema: GenMessage<ActivityDetails> = /*@__PURE__*/
+export const ActivityDetailsSchema: GenMessage<ActivityDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 7);
 
 /**
@@ -495,7 +515,8 @@ export type RestaurantDetails = Message<"toqui.v1.RestaurantDetails"> & {
  * Describes the message toqui.v1.RestaurantDetails.
  * Use `create(RestaurantDetailsSchema)` to create a new message.
  */
-export const RestaurantDetailsSchema: GenMessage<RestaurantDetails> = /*@__PURE__*/
+export const RestaurantDetailsSchema: GenMessage<RestaurantDetails> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 8);
 
 /**
@@ -522,7 +543,8 @@ export type IngestBookingRequest = Message<"toqui.v1.IngestBookingRequest"> & {
  * Describes the message toqui.v1.IngestBookingRequest.
  * Use `create(IngestBookingRequestSchema)` to create a new message.
  */
-export const IngestBookingRequestSchema: GenMessage<IngestBookingRequest> = /*@__PURE__*/
+export const IngestBookingRequestSchema: GenMessage<IngestBookingRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 9);
 
 /**
@@ -539,7 +561,8 @@ export type IngestBookingResponse = Message<"toqui.v1.IngestBookingResponse"> & 
  * Describes the message toqui.v1.IngestBookingResponse.
  * Use `create(IngestBookingResponseSchema)` to create a new message.
  */
-export const IngestBookingResponseSchema: GenMessage<IngestBookingResponse> = /*@__PURE__*/
+export const IngestBookingResponseSchema: GenMessage<IngestBookingResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 10);
 
 /**
@@ -556,7 +579,8 @@ export type IngestEmailRequest = Message<"toqui.v1.IngestEmailRequest"> & {
  * Describes the message toqui.v1.IngestEmailRequest.
  * Use `create(IngestEmailRequestSchema)` to create a new message.
  */
-export const IngestEmailRequestSchema: GenMessage<IngestEmailRequest> = /*@__PURE__*/
+export const IngestEmailRequestSchema: GenMessage<IngestEmailRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 11);
 
 /**
@@ -573,7 +597,8 @@ export type IngestEmailResponse = Message<"toqui.v1.IngestEmailResponse"> & {
  * Describes the message toqui.v1.IngestEmailResponse.
  * Use `create(IngestEmailResponseSchema)` to create a new message.
  */
-export const IngestEmailResponseSchema: GenMessage<IngestEmailResponse> = /*@__PURE__*/
+export const IngestEmailResponseSchema: GenMessage<IngestEmailResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 12);
 
 /**
@@ -595,7 +620,8 @@ export type ListBookingsRequest = Message<"toqui.v1.ListBookingsRequest"> & {
  * Describes the message toqui.v1.ListBookingsRequest.
  * Use `create(ListBookingsRequestSchema)` to create a new message.
  */
-export const ListBookingsRequestSchema: GenMessage<ListBookingsRequest> = /*@__PURE__*/
+export const ListBookingsRequestSchema: GenMessage<ListBookingsRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 13);
 
 /**
@@ -617,7 +643,8 @@ export type ListBookingsResponse = Message<"toqui.v1.ListBookingsResponse"> & {
  * Describes the message toqui.v1.ListBookingsResponse.
  * Use `create(ListBookingsResponseSchema)` to create a new message.
  */
-export const ListBookingsResponseSchema: GenMessage<ListBookingsResponse> = /*@__PURE__*/
+export const ListBookingsResponseSchema: GenMessage<ListBookingsResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 14);
 
 /**
@@ -634,7 +661,8 @@ export type GetBookingRequest = Message<"toqui.v1.GetBookingRequest"> & {
  * Describes the message toqui.v1.GetBookingRequest.
  * Use `create(GetBookingRequestSchema)` to create a new message.
  */
-export const GetBookingRequestSchema: GenMessage<GetBookingRequest> = /*@__PURE__*/
+export const GetBookingRequestSchema: GenMessage<GetBookingRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 15);
 
 /**
@@ -651,7 +679,8 @@ export type GetBookingResponse = Message<"toqui.v1.GetBookingResponse"> & {
  * Describes the message toqui.v1.GetBookingResponse.
  * Use `create(GetBookingResponseSchema)` to create a new message.
  */
-export const GetBookingResponseSchema: GenMessage<GetBookingResponse> = /*@__PURE__*/
+export const GetBookingResponseSchema: GenMessage<GetBookingResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 16);
 
 /**
@@ -673,7 +702,8 @@ export type LinkBookingToTripRequest = Message<"toqui.v1.LinkBookingToTripReques
  * Describes the message toqui.v1.LinkBookingToTripRequest.
  * Use `create(LinkBookingToTripRequestSchema)` to create a new message.
  */
-export const LinkBookingToTripRequestSchema: GenMessage<LinkBookingToTripRequest> = /*@__PURE__*/
+export const LinkBookingToTripRequestSchema: GenMessage<LinkBookingToTripRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 17);
 
 /**
@@ -690,7 +720,8 @@ export type LinkBookingToTripResponse = Message<"toqui.v1.LinkBookingToTripRespo
  * Describes the message toqui.v1.LinkBookingToTripResponse.
  * Use `create(LinkBookingToTripResponseSchema)` to create a new message.
  */
-export const LinkBookingToTripResponseSchema: GenMessage<LinkBookingToTripResponse> = /*@__PURE__*/
+export const LinkBookingToTripResponseSchema: GenMessage<LinkBookingToTripResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 18);
 
 /**
@@ -707,20 +738,21 @@ export type DeleteBookingRequest = Message<"toqui.v1.DeleteBookingRequest"> & {
  * Describes the message toqui.v1.DeleteBookingRequest.
  * Use `create(DeleteBookingRequestSchema)` to create a new message.
  */
-export const DeleteBookingRequestSchema: GenMessage<DeleteBookingRequest> = /*@__PURE__*/
+export const DeleteBookingRequestSchema: GenMessage<DeleteBookingRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 19);
 
 /**
  * @generated from message toqui.v1.DeleteBookingResponse
  */
-export type DeleteBookingResponse = Message<"toqui.v1.DeleteBookingResponse"> & {
-};
+export type DeleteBookingResponse = Message<"toqui.v1.DeleteBookingResponse"> & {};
 
 /**
  * Describes the message toqui.v1.DeleteBookingResponse.
  * Use `create(DeleteBookingResponseSchema)` to create a new message.
  */
-export const DeleteBookingResponseSchema: GenMessage<DeleteBookingResponse> = /*@__PURE__*/
+export const DeleteBookingResponseSchema: GenMessage<DeleteBookingResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 20);
 
 /**
@@ -742,7 +774,8 @@ export type ExtractBookingFieldRequest = Message<"toqui.v1.ExtractBookingFieldRe
  * Describes the message toqui.v1.ExtractBookingFieldRequest.
  * Use `create(ExtractBookingFieldRequestSchema)` to create a new message.
  */
-export const ExtractBookingFieldRequestSchema: GenMessage<ExtractBookingFieldRequest> = /*@__PURE__*/
+export const ExtractBookingFieldRequestSchema: GenMessage<ExtractBookingFieldRequest> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 21);
 
 /**
@@ -764,7 +797,8 @@ export type ExtractBookingFieldResponse = Message<"toqui.v1.ExtractBookingFieldR
  * Describes the message toqui.v1.ExtractBookingFieldResponse.
  * Use `create(ExtractBookingFieldResponseSchema)` to create a new message.
  */
-export const ExtractBookingFieldResponseSchema: GenMessage<ExtractBookingFieldResponse> = /*@__PURE__*/
+export const ExtractBookingFieldResponseSchema: GenMessage<ExtractBookingFieldResponse> =
+  /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 22);
 
 /**
@@ -820,7 +854,8 @@ export enum BookingType {
 /**
  * Describes the enum toqui.v1.BookingType.
  */
-export const BookingTypeSchema: GenEnum<BookingType> = /*@__PURE__*/
+export const BookingTypeSchema: GenEnum<BookingType> =
+  /*@__PURE__*/
   enumDesc(file_toqui_v1_booking, 0);
 
 /**
@@ -851,7 +886,8 @@ export enum BookingSource {
 /**
  * Describes the enum toqui.v1.BookingSource.
  */
-export const BookingSourceSchema: GenEnum<BookingSource> = /*@__PURE__*/
+export const BookingSourceSchema: GenEnum<BookingSource> =
+  /*@__PURE__*/
   enumDesc(file_toqui_v1_booking, 1);
 
 /**
@@ -865,7 +901,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof IngestBookingRequestSchema;
     output: typeof IngestBookingResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.IngestEmail
    */
@@ -873,7 +909,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof IngestEmailRequestSchema;
     output: typeof IngestEmailResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.ListBookings
    */
@@ -881,7 +917,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof ListBookingsRequestSchema;
     output: typeof ListBookingsResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.GetBooking
    */
@@ -889,7 +925,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof GetBookingRequestSchema;
     output: typeof GetBookingResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.LinkBookingToTrip
    */
@@ -897,7 +933,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof LinkBookingToTripRequestSchema;
     output: typeof LinkBookingToTripResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.DeleteBooking
    */
@@ -905,7 +941,7 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof DeleteBookingRequestSchema;
     output: typeof DeleteBookingResponseSchema;
-  },
+  };
   /**
    * @generated from rpc toqui.v1.BookingService.ExtractBookingField
    */
@@ -913,7 +949,5 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof ExtractBookingFieldRequestSchema;
     output: typeof ExtractBookingFieldResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_toqui_v1_booking, 0);
-
+  };
+}> = /*@__PURE__*/ serviceDesc(file_toqui_v1_booking, 0);

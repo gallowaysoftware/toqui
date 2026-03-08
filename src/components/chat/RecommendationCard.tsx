@@ -56,7 +56,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-tertiary)] border-b border-[var(--color-border)]">
-            <Icon size={16} className="text-[var(--color-accent)] flex-shrink-0" aria-hidden="true" />
+            <Icon
+              size={16}
+              className="text-[var(--color-accent)] flex-shrink-0"
+              aria-hidden="true"
+            />
             <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
               {partnerLabel}
             </span>
@@ -73,11 +77,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
             <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
               {description}
             </p>
-            {price && (
-              <p className="text-sm font-semibold text-[var(--color-success)]">
-                {price}
-              </p>
-            )}
+            {price && <p className="text-sm font-semibold text-[var(--color-success)]">{price}</p>}
           </div>
 
           {/* CTA */}
