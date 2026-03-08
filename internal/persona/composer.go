@@ -179,7 +179,7 @@ func buildComposedPrompt(location *LocationProfile, themes []*ThemeProfile) stri
 
 	// Inject location cultural flavor
 	if location != nil {
-		b.WriteString(fmt.Sprintf("You are based in %s.\n\n", location.Name))
+		fmt.Fprintf(&b, "You are based in %s.\n\n", location.Name)
 		b.WriteString(location.Flavor)
 		b.WriteString("\n\n")
 	}

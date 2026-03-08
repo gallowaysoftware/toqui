@@ -2,6 +2,7 @@ package chatstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -103,7 +104,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 	var sessions []*ChatSession
 	for {
 		doc, err := iter.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -144,7 +145,7 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 	var messages []*ChatMessage
 	for {
 		doc, err := iter.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -184,7 +185,7 @@ func (s *Store) SetTTL(ctx context.Context, userID, tripID string, expireAt time
 		iter := s.messagesCol(userID, tripID, session.ID).Documents(ctx)
 		for {
 			doc, iterErr := iter.Next()
-			if iterErr == iterator.Done {
+			if errors.Is(iterErr, iterator.Done) {
 				break
 			}
 			if iterErr != nil {
@@ -252,7 +253,7 @@ func (s *Store) deleteCollection(ctx context.Context, col *firestore.CollectionR
 
 		for {
 			doc, err := iter.Next()
-			if err == iterator.Done {
+			if errors.Is(err, iterator.Done) {
 				break
 			}
 			if err != nil {

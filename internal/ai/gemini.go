@@ -78,7 +78,7 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 		g.location, g.projectID, g.location, model,
 	)
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -92,7 +92,7 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	resp, err := g.client.Do(httpReq)
+	resp, err := g.client.Do(httpReq) //nolint:bodyclose // body is closed in the goroutine below
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
@@ -100,7 +100,7 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Vertex AI error %d: %s", resp.StatusCode, respBody)
+		return nil, fmt.Errorf("vertex AI error %d: %s", resp.StatusCode, respBody)
 	}
 
 	ch := make(chan Event, 64)

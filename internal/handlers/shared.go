@@ -33,7 +33,7 @@ func NewSharedHandler(tripSvc *trip.Service, authSvc *auth.Service) *SharedHandl
 // --- JSON response types ---
 
 type sharedTripResponse struct {
-	Trip      sharedTripInfo      `json:"trip"`
+	Trip      sharedTripInfo       `json:"trip"`
 	Itinerary []sharedItineraryDay `json:"itinerary"`
 }
 
@@ -47,7 +47,7 @@ type sharedTripInfo struct {
 }
 
 type sharedItineraryDay struct {
-	DayNumber int32                `json:"day_number"`
+	DayNumber int32                 `json:"day_number"`
 	Items     []sharedItineraryItem `json:"items"`
 }
 

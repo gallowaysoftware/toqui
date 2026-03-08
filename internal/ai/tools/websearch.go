@@ -53,7 +53,7 @@ func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.Raw
 	u := fmt.Sprintf("https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=%s&num=5",
 		w.apiKey, w.cx, url.QueryEscape(input.Query))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

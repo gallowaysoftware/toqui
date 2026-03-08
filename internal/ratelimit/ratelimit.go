@@ -22,11 +22,11 @@ type userEntry struct {
 
 // interceptor implements connect.Interceptor with per-user rate limiting.
 type interceptor struct {
-	mu             sync.Mutex
-	users          map[uuid.UUID]*userEntry
-	aiPerMinute    int
-	generalPerMin  int
-	cleanupStop    chan struct{}
+	mu            sync.Mutex
+	users         map[uuid.UUID]*userEntry
+	aiPerMinute   int
+	generalPerMin int
+	cleanupStop   chan struct{}
 }
 
 // NewInterceptor creates a rate-limiting interceptor. aiPerMinute controls the

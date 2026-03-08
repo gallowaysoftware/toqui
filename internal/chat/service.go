@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
@@ -303,7 +304,9 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					Arguments: tc.Arguments,
 				})
 			}
-			_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedAssistant)
+			if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedAssistant); err != nil {
+				slog.Error("failed to store tool call message", "error", err)
+			}
 
 			storedToolResult := &chatstore.ChatMessage{
 				Role: "user",
@@ -315,7 +318,9 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					Content:    tr.Content,
 				})
 			}
-			_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedToolResult)
+			if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedToolResult); err != nil {
+				slog.Error("failed to store tool result message", "error", err)
+			}
 
 			continue // Next iteration of the tool loop
 		}
@@ -325,7 +330,9 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			Role:    "assistant",
 			Content: fullResponse.String(),
 		}
-		_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+		if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
+			slog.Error("failed to store assistant message", "error", err)
+		}
 
 		outCh <- StreamEvent{
 			Type:      "message_complete",
@@ -345,7 +352,9 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		Role:    "assistant",
 		Content: fullResponse.String(),
 	}
-	_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+	if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
+		slog.Error("failed to store assistant message", "error", err)
+	}
 
 	outCh <- StreamEvent{
 		Type:      "message_complete",
@@ -413,7 +422,7 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 
 				var resultStr string
 				if execErr != nil {
-					resultStr = fmt.Sprintf(`{"error": "%s"}`, execErr.Error())
+					resultStr = fmt.Sprintf(`{"error": %q}`, execErr.Error())
 				} else {
 					resultStr = string(result)
 				}
@@ -461,7 +470,9 @@ func (s *Service) syntheticCacheResponse(ctx context.Context, cachedText string,
 			Role:    "assistant",
 			Content: cachedText,
 		}
-		_ = s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg)
+		if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
+			slog.Error("failed to store cached assistant message", "error", err)
+		}
 
 		outCh <- StreamEvent{
 			Type:      "message_complete",

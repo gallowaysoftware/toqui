@@ -170,7 +170,6 @@ func TestResolveModel_FastTier(t *testing.T) {
 
 	// Reinitialize configs to pick up the cleared env.
 
-
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierFast}
 
@@ -182,7 +181,6 @@ func TestResolveModel_FastTier(t *testing.T) {
 
 func TestResolveModel_SmartTier(t *testing.T) {
 	t.Setenv("AI_MODEL_SMART", "")
-
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierSmart}
@@ -196,7 +194,6 @@ func TestResolveModel_SmartTier(t *testing.T) {
 func TestResolveModel_BestTier(t *testing.T) {
 	t.Setenv("AI_MODEL_BEST", "")
 
-
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTierBest}
 
@@ -208,7 +205,6 @@ func TestResolveModel_BestTier(t *testing.T) {
 
 func TestResolveModel_UnknownTierFallsBackToSmart(t *testing.T) {
 	t.Setenv("AI_MODEL_SMART", "")
-
 
 	provider := NewClaudeProvider("test-key")
 	req := &ChatRequest{ModelTier: ModelTier("ultra")}
@@ -222,7 +218,6 @@ func TestResolveModel_UnknownTierFallsBackToSmart(t *testing.T) {
 func TestBuildRequest_ModelTierSelectsCorrectModel(t *testing.T) {
 	t.Setenv("AI_MODEL_FAST", "")
 	t.Setenv("AI_MODEL_SMART", "")
-
 
 	provider := NewClaudeProvider("test-key")
 

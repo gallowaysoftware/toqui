@@ -6,12 +6,13 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -305,4 +306,3 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem) *toquiv1.Itine
 		Days:   days,
 	}
 }
-

@@ -44,7 +44,7 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(jsonBody))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -54,7 +54,7 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	httpReq.Header.Set("Anthropic-Version", "2023-06-01")
 	httpReq.Header.Set("Anthropic-Beta", "prompt-caching-2024-07-31")
 
-	resp, err := c.client.Do(httpReq)
+	resp, err := c.client.Do(httpReq) //nolint:bodyclose // body is closed in the goroutine below
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
@@ -178,7 +178,7 @@ func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 			tool := map[string]any{
 				"name":         t.Name,
 				"description":  t.Description,
-				"input_schema": json.RawMessage(t.Parameters),
+				"input_schema": t.Parameters,
 			}
 			// Cache the last tool definition (covers the full tool block)
 			if i == len(req.Tools)-1 {
@@ -268,9 +268,10 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 			}
 
 		case "content_block_delta":
-			if event.Delta.Type == "text_delta" {
+			switch event.Delta.Type {
+			case "text_delta":
 				ch <- Event{Type: EventTextDelta, Text: event.Delta.Text}
-			} else if event.Delta.Type == "input_json_delta" {
+			case "input_json_delta":
 				if pt, ok := toolBlocks[event.Index]; ok {
 					pt.args.WriteString(event.Delta.PartialJSON)
 				}

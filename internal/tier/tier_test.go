@@ -50,10 +50,10 @@ func TestParse(t *testing.T) {
 	}{
 		{"free", Free},
 		{"pro", Pro},
-		{"", Free},          // empty defaults to free
-		{"premium", Free},   // unknown defaults to free
-		{"FREE", Free},      // wrong case defaults to free
-		{"Pro", Free},       // wrong case defaults to free
+		{"", Free},        // empty defaults to free
+		{"premium", Free}, // unknown defaults to free
+		{"FREE", Free},    // wrong case defaults to free
+		{"Pro", Free},     // wrong case defaults to free
 	}
 
 	for _, tt := range tests {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -50,7 +51,7 @@ func main() {
 		log.Fatalf("unknown direction: %s", *direction)
 	}
 
-	if err != nil && err != migrate.ErrNoChange {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("migration failed: %v", err)
 	}
 

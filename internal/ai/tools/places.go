@@ -52,7 +52,7 @@ func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.R
 	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/place/textsearch/json?query=%s&key=%s",
 		url.QueryEscape(input.Query), p.apiKey)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

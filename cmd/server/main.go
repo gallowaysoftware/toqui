@@ -14,6 +14,9 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"connectrpc.com/connect"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
@@ -28,12 +31,10 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
-	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 
 	toquiv1connect "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1/toquiv1connect"
 )
@@ -314,7 +315,7 @@ func corsMiddleware(next http.Handler, allowedOrigin string) http.Handler {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

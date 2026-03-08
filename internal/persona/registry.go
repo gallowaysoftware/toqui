@@ -3,6 +3,7 @@ package persona
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -51,7 +52,8 @@ func (r *Registry) Resolve(ctx context.Context, regionCode string, themes []stri
 
 	expert, err := r.composer.Compose(ctx, regionCode, themes)
 	if err != nil {
-		// Fall back to Toqui on composition failure
+		// Fall back to Toqui on composition failure — intentionally swallow the error
+		slog.Debug("persona composition failed, falling back to Toqui", "region", regionCode, "error", err)
 		return r.toqui, nil
 	}
 

@@ -10,6 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
@@ -21,7 +23,6 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -160,9 +161,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		func(previous, expert *persona.Persona, handoffMessage string) {
 			mu.Lock()
 			pendingSwitch = &personaSwitchInfo{
-				Previous:        previous,
-				Expert:          expert,
-				HandoffMessage:  handoffMessage,
+				Previous:       previous,
+				Expert:         expert,
+				HandoffMessage: handoffMessage,
 			}
 			mu.Unlock()
 		},
@@ -270,82 +271,109 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				},
 			}
 
-			// Emit TripCreated / TripSelected events after tool execution
+			// Copy-and-clear under the lock, then send outside it.
+			// This avoids holding the mutex during stream I/O and prevents
+			// duplicate proto events across tool loop iterations (#52).
 			mu.Lock()
+			var localCreated []tripCreatedInfo
+			var localSelected []tripCreatedInfo
+			var localSwitch *personaSwitchInfo
+			var localItinerary []dbgen.ItineraryItem
+			var localRecs []affiliate.Recommendation
+
 			if event.ToolName == "create_trip" {
-				for _, ct := range createdTrips {
-					_ = stream.Send(&toquiv1.SendMessageResponse{
-						Event: &toquiv1.SendMessageResponse_TripCreated{
-							TripCreated: &toquiv1.TripCreated{
-								Trip: &toquiv1.Trip{
-									Id:          ct.ID,
-									UserId:      userID.String(),
-									Title:       ct.Title,
-									Description: ct.Description,
-									Status:      toquiv1.TripStatus_TRIP_STATUS_PLANNING,
-								},
-							},
-						},
-					})
-				}
+				localCreated = createdTrips
 				createdTrips = nil
 			}
 			if event.ToolName == "select_trip" {
-				for _, st := range selectedTrips {
-					_ = stream.Send(&toquiv1.SendMessageResponse{
-						Event: &toquiv1.SendMessageResponse_TripSelected{
-							TripSelected: &toquiv1.TripSelected{
-								Trip: &toquiv1.Trip{
-									Id:          st.ID,
-									UserId:      userID.String(),
-									Title:       st.Title,
-									Description: st.Description,
-								},
-							},
-						},
-					})
-				}
+				localSelected = selectedTrips
 				selectedTrips = nil
 			}
-			if event.ToolName == "suggest_expert" && pendingSwitch != nil {
-				_ = stream.Send(&toquiv1.SendMessageResponse{
-					Event: &toquiv1.SendMessageResponse_PersonaSwitch{
-						PersonaSwitch: &toquiv1.PersonaSwitch{
-							PreviousPersona: personaToProto(pendingSwitch.Previous),
-							NewPersona:      personaToProto(pendingSwitch.Expert),
-							HandoffMessage:  pendingSwitch.HandoffMessage,
-						},
-					},
-				})
+			if event.ToolName == "suggest_expert" {
+				localSwitch = pendingSwitch
 				pendingSwitch = nil
 			}
-			if event.ToolName == "create_itinerary_items" && len(itineraryItems) > 0 {
+			if event.ToolName == "create_itinerary_items" {
+				localItinerary = itineraryItems
+				itineraryItems = nil
+			}
+			if event.ToolName == "recommend_booking" {
+				localRecs = recommendations
+				recommendations = nil
+			}
+			mu.Unlock()
+
+			// Emit proto events outside the lock
+			for _, ct := range localCreated {
+				if err := stream.Send(&toquiv1.SendMessageResponse{
+					Event: &toquiv1.SendMessageResponse_TripCreated{
+						TripCreated: &toquiv1.TripCreated{
+							Trip: &toquiv1.Trip{
+								Id:          ct.ID,
+								UserId:      userID.String(),
+								Title:       ct.Title,
+								Description: ct.Description,
+								Status:      toquiv1.TripStatus_TRIP_STATUS_PLANNING,
+							},
+						},
+					},
+				}); err != nil {
+					slog.Warn("stream.Send TripCreated failed", "error", err)
+				}
+			}
+			for _, st := range localSelected {
+				if err := stream.Send(&toquiv1.SendMessageResponse{
+					Event: &toquiv1.SendMessageResponse_TripSelected{
+						TripSelected: &toquiv1.TripSelected{
+							Trip: &toquiv1.Trip{
+								Id:          st.ID,
+								UserId:      userID.String(),
+								Title:       st.Title,
+								Description: st.Description,
+							},
+						},
+					},
+				}); err != nil {
+					slog.Warn("stream.Send TripSelected failed", "error", err)
+				}
+			}
+			if localSwitch != nil {
+				if err := stream.Send(&toquiv1.SendMessageResponse{
+					Event: &toquiv1.SendMessageResponse_PersonaSwitch{
+						PersonaSwitch: &toquiv1.PersonaSwitch{
+							PreviousPersona: personaToProto(localSwitch.Previous),
+							NewPersona:      personaToProto(localSwitch.Expert),
+							HandoffMessage:  localSwitch.HandoffMessage,
+						},
+					},
+				}); err != nil {
+					slog.Warn("stream.Send PersonaSwitch failed", "error", err)
+				}
+			}
+			if len(localItinerary) > 0 {
 				if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 					if allItems, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
-						_ = stream.Send(&toquiv1.SendMessageResponse{
+						if err := stream.Send(&toquiv1.SendMessageResponse{
 							Event: &toquiv1.SendMessageResponse_ItineraryUpdate{
 								ItineraryUpdate: &toquiv1.ItineraryUpdate{
 									TripId:    req.Msg.TripId,
 									Itinerary: itineraryToProto(req.Msg.TripId, allItems),
 								},
 							},
-						})
+						}); err != nil {
+							slog.Warn("stream.Send ItineraryUpdate failed", "error", err)
+						}
 					}
 				}
-				itineraryItems = nil
 			}
-			if event.ToolName == "recommend_booking" && len(recommendations) > 0 {
-				for _, rec := range recommendations {
-					slog.Info("affiliate recommendation generated",
-						"partner", rec.Partner,
-						"category", rec.Category,
-						"title", rec.Title,
-						"user_id", userID,
-					)
-				}
-				recommendations = nil
+			for _, rec := range localRecs {
+				slog.Info("affiliate recommendation generated",
+					"partner", rec.Partner,
+					"category", rec.Category,
+					"title", rec.Title,
+					"user_id", userID,
+				)
 			}
-			mu.Unlock()
 
 		case "message_complete":
 			fullContent = event.Text
@@ -402,6 +430,30 @@ type personaSwitchInfo struct {
 	HandoffMessage string
 }
 
+// sanitizeForPrompt strips control characters and truncates user-controlled text
+// before injection into AI system prompts. This prevents prompt injection via
+// crafted trip titles/descriptions.
+func sanitizeForPrompt(s string, maxLen int) string {
+	// Replace newlines, tabs, and other control characters with spaces
+	var b strings.Builder
+	for _, r := range s {
+		if r == '\n' || r == '\r' || r == '\t' || r < 0x20 {
+			b.WriteRune(' ')
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	result := strings.TrimSpace(b.String())
+	// Collapse multiple spaces
+	for strings.Contains(result, "  ") {
+		result = strings.ReplaceAll(result, "  ", " ")
+	}
+	if maxLen > 0 && len(result) > maxLen {
+		result = result[:maxLen]
+	}
+	return result
+}
+
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
 func buildTripContext(title, description, destinationCountry string, themes []string, userTier tier.UserTier) string {
@@ -412,16 +464,20 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 	var sb strings.Builder
 	sb.WriteString("CURRENT TRIP CONTEXT:\n")
 	if title != "" {
-		sb.WriteString(fmt.Sprintf("- Title: %s\n", title))
+		fmt.Fprintf(&sb, "- Title: %s\n", sanitizeForPrompt(title, 200))
 	}
 	if description != "" {
-		sb.WriteString(fmt.Sprintf("- Description: %s\n", description))
+		fmt.Fprintf(&sb, "- Description: %s\n", sanitizeForPrompt(description, 500))
 	}
 	if destinationCountry != "" {
-		sb.WriteString(fmt.Sprintf("- Destination country: %s\n", destinationCountry))
+		fmt.Fprintf(&sb, "- Destination country: %s\n", sanitizeForPrompt(destinationCountry, 100))
 	}
 	if len(themes) > 0 {
-		sb.WriteString(fmt.Sprintf("- Trip themes: %s\n", strings.Join(themes, ", ")))
+		sanitized := make([]string, len(themes))
+		for i, t := range themes {
+			sanitized[i] = sanitizeForPrompt(t, 50)
+		}
+		fmt.Fprintf(&sb, "- Trip themes: %s\n", strings.Join(sanitized, ", "))
 	}
 	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
 	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
@@ -464,13 +520,13 @@ The user's existing trips:
 `)
 	for _, t := range trips {
 		status := t.Status
-		sb.WriteString(fmt.Sprintf("- %s (id: %s, status: %s", t.Title, t.ID, status))
+		fmt.Fprintf(&sb, "- %s (id: %s, status: %s", sanitizeForPrompt(t.Title, 200), t.ID, status)
 		if t.DestinationCountry.Valid && t.DestinationCountry.String != "" {
-			sb.WriteString(fmt.Sprintf(", destination: %s", t.DestinationCountry.String))
+			fmt.Fprintf(&sb, ", destination: %s", sanitizeForPrompt(t.DestinationCountry.String, 100))
 		}
 		sb.WriteString(")")
 		if t.Description.Valid && t.Description.String != "" {
-			sb.WriteString(fmt.Sprintf(" — %s", t.Description.String))
+			fmt.Fprintf(&sb, " — %s", sanitizeForPrompt(t.Description.String, 500))
 		}
 		sb.WriteString("\n")
 	}

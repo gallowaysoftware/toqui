@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
@@ -79,11 +80,9 @@ func (h *PersonaHandler) SetDefaultPersona(ctx context.Context, req *connect.Req
 func (h *PersonaHandler) ResolvePersona(ctx context.Context, req *connect.Request[toquiv1.ResolvePersonaRequest]) (*connect.Response[toquiv1.ResolvePersonaResponse], error) {
 	// Determine region code from trip context or coordinates
 	regionCode := ""
-	if len(req.Msg.Themes) > 0 {
-		// The caller should pass region code via the trip's destination_country.
-		// For now, we rely on the themes list being sufficient for resolution.
-		// Location-based resolution (lat/lng → region code) is a future enhancement.
-	}
+	// TODO: The caller should pass region code via the trip's destination_country.
+	// For now, we rely on the themes list being sufficient for resolution.
+	// Location-based resolution (lat/lng → region code) is a future enhancement.
 
 	resolved, err := h.registry.Resolve(ctx, regionCode, req.Msg.Themes)
 	if err != nil {

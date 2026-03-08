@@ -103,12 +103,12 @@ func (t *NearbyPlacesTool) Execute(ctx context.Context, args json.RawMessage) (j
 	}
 
 	type placeResult struct {
-		Name      string  `json:"name"`
-		Category  string  `json:"category,omitempty"`
-		Address   string  `json:"address,omitempty"`
-		Distance  float64 `json:"distance_meters"`
-		Rating    float64 `json:"rating,omitempty"`
-		PlaceID   string  `json:"place_id,omitempty"`
+		Name     string  `json:"name"`
+		Category string  `json:"category,omitempty"`
+		Address  string  `json:"address,omitempty"`
+		Distance float64 `json:"distance_meters"`
+		Rating   float64 `json:"rating,omitempty"`
+		PlaceID  string  `json:"place_id,omitempty"`
 	}
 
 	results := make([]placeResult, len(places))

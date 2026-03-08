@@ -3,11 +3,12 @@ package lifecycle
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
@@ -43,7 +44,7 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	// Delete all Firestore chat data
 	for _, tripID := range tripIDs {
 		if err := s.chatStore.DeleteAllForTrip(ctx, userIDStr, tripID.String()); err != nil {
-			log.Printf("WARNING: failed to delete Firestore chat data for trip %s: %v", tripID, err)
+			slog.Warn("failed to delete Firestore chat data", "trip_id", tripID, "error", err)
 			// Continue — don't fail the whole deletion for Firestore issues
 		}
 	}
@@ -60,7 +61,7 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 func (s *Service) DeleteTrip(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) error {
 	// Delete Firestore chat data
 	if err := s.chatStore.DeleteAllForTrip(ctx, userID.String(), tripID.String()); err != nil {
-		log.Printf("WARNING: failed to delete Firestore chat for trip %s: %v", tripID, err)
+		slog.Warn("failed to delete Firestore chat", "trip_id", tripID, "error", err)
 	}
 
 	// Delete from Postgres — CASCADE handles itinerary, bookings, themes
@@ -86,16 +87,13 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 	for _, t := range trips {
 		// Purge chat messages from Firestore
 		if err := s.chatStore.DeleteAllForTrip(ctx, t.UserID.String(), t.ID.String()); err != nil {
-			log.Printf("WARNING: failed to purge chat for trip %s: %v", t.ID, err)
+			slog.Warn("failed to purge chat for trip", "trip_id", t.ID, "error", err)
 			continue
 		}
 
 		// Mark as archived in Postgres
-		if err := s.queries.ArchiveTrip(ctx, dbgen.ArchiveTripParams{
-			ID:     t.ID,
-			UserID: t.UserID,
-		}); err != nil {
-			log.Printf("WARNING: failed to archive trip %s: %v", t.ID, err)
+		if err := s.queries.ArchiveTrip(ctx, dbgen.ArchiveTripParams(t)); err != nil {
+			slog.Warn("failed to archive trip", "trip_id", t.ID, "error", err)
 			continue
 		}
 
@@ -121,7 +119,7 @@ func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID, retentionD
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		if err := s.SetChatTTL(ctx, userID, tripID, retentionDays); err != nil {
-			log.Printf("WARNING: failed to set chat TTL for trip %s: %v", tripID, err)
+			slog.Warn("failed to set chat TTL for trip", "trip_id", tripID, "error", err)
 		}
 	}()
 }
@@ -141,7 +139,7 @@ func (s *Service) RequestDeletion(ctx context.Context, userID uuid.UUID) (uuid.U
 	}
 
 	if err := s.queries.CompleteDeletionRequest(ctx, req.ID); err != nil {
-		log.Printf("WARNING: deletion completed but failed to update request status: %v", err)
+		slog.Warn("deletion completed but failed to update request status", "error", err)
 	}
 
 	return req.ID, nil

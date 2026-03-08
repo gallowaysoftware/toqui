@@ -3,11 +3,12 @@ package theme
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 )
@@ -46,7 +47,7 @@ func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, descript
 			Confidence: float32(ts.Confidence),
 			Source:     "ai",
 		}); err != nil {
-			log.Printf("set trip theme %s: %v", ts.Slug, err)
+			slog.Warn("failed to set trip theme", "theme", ts.Slug, "error", err)
 		}
 	}
 
@@ -56,7 +57,7 @@ func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, descript
 			ID:                 tripID,
 			DestinationCountry: pgtype.Text{String: result.DestinationCode, Valid: true},
 		}); err != nil {
-			log.Printf("update trip destination: %v", err)
+			slog.Warn("failed to update trip destination", "error", err)
 		}
 	}
 
@@ -68,7 +69,7 @@ func (s *Service) TagTripAsync(tripID uuid.UUID, title, description string) {
 	go func() {
 		ctx := context.Background()
 		if err := s.TagTrip(ctx, tripID, title, description, nil); err != nil {
-			log.Printf("async theme tagging for trip %s: %v", tripID, err)
+			slog.Warn("async theme tagging failed", "trip_id", tripID, "error", err)
 		}
 	}()
 }

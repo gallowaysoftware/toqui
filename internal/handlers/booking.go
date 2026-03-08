@@ -7,10 +7,11 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )

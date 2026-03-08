@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 
