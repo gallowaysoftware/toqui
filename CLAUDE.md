@@ -256,6 +256,33 @@ This is critical for tools like `recommend_booking` where the AI must see the to
 
 Both providers parse streaming events to extract stop reasons and serialize tool call/result content blocks for continuation. The Claude provider uses `message_delta` events; the Gemini provider uses `finishReason` in `candidates[]`.
 
+## Pre-Commit Adversarial Review
+
+**MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes. This catches bugs, security issues, and logic errors before they reach the repo.
+
+### How It Works
+
+1. After all implementation and tests are passing, spawn a `general-purpose` Task agent with a prompt like:
+
+   > You are an adversarial code reviewer. Your job is to find bugs, security issues, logic errors, and missing edge cases. Review all changes in these files: [list files]. For each issue found, classify as BLOCKING (must fix before commit) or WARNING (note but can ship). Be thorough and skeptical.
+
+2. The agent reviews all changed files and returns findings classified as:
+   - **BLOCKING** — Must fix before commit (bugs, security holes, logic errors, missing validation)
+   - **WARNING** — Worth noting but acceptable to ship (style, minor improvements, future work)
+
+3. Fix all BLOCKING issues, then re-run the adversarial review to verify fixes pass.
+
+4. Only commit after the adversarial review returns zero BLOCKING issues.
+
+### What to Review
+
+- All new files and modified files in the changeset
+- Test coverage — are edge cases tested?
+- Security — input validation, auth checks, injection risks
+- Logic — off-by-one errors, race conditions, nil pointer dereferences
+- API contracts — do request/response types match proto definitions?
+- Error handling — are errors wrapped with context? Are they logged?
+
 ## Feature Implementation Checklist
 
 Every new feature must include all of the following. Do not merge without completing each item:
@@ -266,8 +293,9 @@ Every new feature must include all of the following. Do not merge without comple
 4. **AI integration test enhancement** — In `internal/aitest/`, either:
    - Add a new regression scenario (if the feature is significant enough)
    - Or extend an existing scenario with new steps/assertions that exercise the feature
-5. **Documentation** — Update CLAUDE.md with the feature (tool table, scenario table, any new patterns)
-6. **Commit + push** — All of the above in one commit
+5. **Adversarial review** — Run the pre-commit adversarial review agent (see above)
+6. **Documentation** — Update CLAUDE.md with the feature (tool table, scenario table, any new patterns)
+7. **Commit + push** — All of the above in one commit
 
 ### Testing Approach
 
