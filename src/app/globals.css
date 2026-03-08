@@ -4,9 +4,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-toqui-coral: #E8654A;
-  --color-toqui-coral-light: #F29B85;
-  --color-toqui-coral-dark: #C44A32;
+  --color-toqui-coral: #e8654a;
+  --color-toqui-coral-light: #f29b85;
+  --color-toqui-coral-dark: #c44a32;
 }
 
 /* Light theme (default) */
@@ -20,8 +20,8 @@
   --color-text-primary: #111827;
   --color-text-secondary: #4b5563;
   --color-text-tertiary: #6b7280;
-  --color-accent: #E8654A;
-  --color-accent-hover: #C44A32;
+  --color-accent: #e8654a;
+  --color-accent-hover: #c44a32;
   --color-accent-soft: #fef2f0;
   --color-error: #dc2626;
   --color-error-bg: #fef2f2;
@@ -35,7 +35,7 @@
   --color-status-active-text: #15803d;
   --color-status-completed-bg: #f3f4f6;
   --color-status-completed-text: #6b7280;
-  --color-user-bubble: #E8654A;
+  --color-user-bubble: #e8654a;
   --color-user-bubble-text: #ffffff;
   --color-assistant-bubble: #ffffff;
   --color-assistant-bubble-text: #1f2937;
@@ -55,8 +55,8 @@
   --color-text-primary: #e8e8f0;
   --color-text-secondary: #9ca3b8;
   --color-text-tertiary: #8b92a8;
-  --color-accent: #F29B85;
-  --color-accent-hover: #E8654A;
+  --color-accent: #f29b85;
+  --color-accent-hover: #e8654a;
   --color-accent-soft: #2a1f1e;
   --color-error: #f87171;
   --color-error-bg: #2a1f1f;
@@ -70,7 +70,7 @@
   --color-status-active-text: #6ee7a0;
   --color-status-completed-bg: #222240;
   --color-status-completed-text: #9ca3b8;
-  --color-user-bubble: #E8654A;
+  --color-user-bubble: #e8654a;
   --color-user-bubble-text: #ffffff;
   --color-assistant-bubble: #222240;
   --color-assistant-bubble-text: #e8e8f0;

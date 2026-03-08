@@ -5,6 +5,7 @@ AI-powered travel companion. Next.js 16 TypeScript frontend with ConnectRPC, Tai
 ## Project Structure
 
 This is a 4-repo project under `github.com/gallowaysoftware`:
+
 - **toqui** (this repo) — Next.js TypeScript web frontend
 - **toqui-backend** — Go backend, gRPC API, AI orchestration
 - **toqui-terraform** — Terraform GCP infrastructure (staging + prod)
@@ -59,6 +60,7 @@ pnpm generate             # Regenerate proto bindings from ../toqui-backend
 ### CI/CD
 
 GitHub Actions on push to `main` and all PRs (self-hosted Linux runners):
+
 - **lint** → **typecheck** → **test** → **build** → **deploy-staging** (main only)
 
 Staging deploy: Builds Docker image, pushes to Artifact Registry, deploys to GCE VM via SSH. Uses Workload Identity Federation (keyless GCP auth).
@@ -98,6 +100,7 @@ ThemeProvider → AgeGate → QueryClientProvider → AuthProvider → GrpcProvi
 ## Age Gate
 
 DOB-based age verification in `src/components/auth/AgeGate.tsx`:
+
 - Prompts for date of birth on first visit
 - Validates age >= 18 with round-trip date validation (catches invalid dates like Feb 30)
 - Stores verification in localStorage (`toqui_age_verified`)

@@ -26,9 +26,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter(
-              (key) => key !== APP_SHELL_CACHE && key !== ITINERARY_CACHE,
-            )
+            .filter((key) => key !== APP_SHELL_CACHE && key !== ITINERARY_CACHE)
             .map((key) => caches.delete(key)),
         ),
       )
@@ -154,9 +152,7 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(
         cacheFirst(
           event.request,
-          event.request.url.includes("/toqui.v1.TripService/")
-            ? ITINERARY_CACHE
-            : APP_SHELL_CACHE,
+          event.request.url.includes("/toqui.v1.TripService/") ? ITINERARY_CACHE : APP_SHELL_CACHE,
         ),
       );
       break;

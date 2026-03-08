@@ -26,8 +26,8 @@ The backend must be running at `http://localhost:8090` for API calls to work. Se
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable              | Default                 | Description     |
+| --------------------- | ----------------------- | --------------- |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8090` | Backend API URL |
 
 ## Scripts
