@@ -31,7 +31,7 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
   const handleSend = useCallback(
     (content: string) => {
       usage.recordMessage();
-      sendMessage(content);
+      void sendMessage(content);
     },
     [usage, sendMessage],
   );

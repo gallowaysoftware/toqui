@@ -13,7 +13,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     // Exchange the temporary HttpOnly cookie for tokens.
     // The backend set this cookie during the OAuth redirect.
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch(`${API_URL}/auth/exchange`, {
           method: "POST",

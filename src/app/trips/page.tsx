@@ -38,7 +38,7 @@ export default function TripsPage() {
   }, [authLoading, user, router]);
 
   const handleTripCreated = useCallback((trip: CreatedTrip) => {
-    queryClient.invalidateQueries({ queryKey: ["trips"] });
+    void queryClient.invalidateQueries({ queryKey: ["trips"] });
     // Navigate to the new trip's chat after a short delay so the user sees the AI response
     setTimeout(() => {
       router.push(`/trips/${trip.id}/chat`);

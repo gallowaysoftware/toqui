@@ -80,7 +80,7 @@ export function useIngestBooking() {
       return res.booking;
     },
     onSuccess: (_booking, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["bookings", variables.tripId],
       });
     },
@@ -100,10 +100,10 @@ export function useDeleteBooking() {
       return params;
     },
     onSuccess: (_result, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["bookings", variables.tripId],
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["booking", variables.id],
       });
     },

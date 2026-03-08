@@ -249,8 +249,9 @@ describe("pdf-export", () => {
 
       exportItineraryPDF(trip, itinerary);
 
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(document.body.appendChild).toHaveBeenCalled();
-      expect(mockIframe.contentDocument!.write).toHaveBeenCalled();
+      expect(mockIframe.contentDocument.write).toHaveBeenCalled();
     });
   });
 });

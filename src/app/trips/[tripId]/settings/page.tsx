@@ -57,8 +57,8 @@ export default function TripSettingsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
-      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      void queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      void queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
   });
 
@@ -67,7 +67,7 @@ export default function TripSettingsPage() {
       await client.deleteTrip({ id: tripId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      void queryClient.invalidateQueries({ queryKey: ["trips"] });
       router.push("/trips");
     },
   });

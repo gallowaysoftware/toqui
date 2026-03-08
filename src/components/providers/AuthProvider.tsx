@@ -72,10 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const delay = expiry - Date.now() - 5 * 60 * 1000;
     if (delay <= 0) {
       // Already near expiry, refresh immediately
-      doRefresh();
+      void doRefresh();
       return;
     }
-    refreshTimerRef.current = setTimeout(() => doRefresh(), delay);
+    refreshTimerRef.current = setTimeout(() => { void doRefresh(); }, delay);
   }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {

@@ -22,28 +22,6 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
 
-/** Map itinerary item types to icons */
-const typeIcons: Record<string, React.ElementType> = {
-  activity: Compass,
-  food: Utensils,
-  restaurant: Utensils,
-  dining: Utensils,
-  sightseeing: Landmark,
-  attraction: Landmark,
-  museum: Landmark,
-  shopping: ShoppingBag,
-  accommodation: Bed,
-  hotel: Bed,
-  transport: Plane,
-  flight: Plane,
-  transit: Plane,
-};
-
-function getItemIcon(type?: string): React.ElementType {
-  if (!type) return Clock;
-  return typeIcons[type.toLowerCase()] || Clock;
-}
-
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "";
   try {
@@ -231,7 +209,7 @@ export default function SharedTripPage() {
       }
     }
 
-    fetchSharedTrip();
+    void fetchSharedTrip();
     return () => {
       cancelled = true;
     };

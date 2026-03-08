@@ -52,9 +52,9 @@ export function useUpdateTrip() {
     },
     onSuccess: (trip) => {
       if (trip) {
-        queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+        void queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
       }
-      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      void queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
   });
 }
@@ -70,7 +70,7 @@ export function useCreateTrip() {
       return res.trip;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      void queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
   });
 }

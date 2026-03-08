@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/components/providers/GrpcProvider";
 import { ChatService, ChatMode } from "@/gen/toqui/v1/chat_pb";
-import type { SendMessageResponse } from "@/gen/toqui/v1/chat_pb";
 import type { Persona } from "@/gen/toqui/v1/persona_pb";
 
 import type { Recommendation } from "@/components/chat/RecommendationCard";
@@ -104,7 +103,7 @@ export function useChat(tripId: string | undefined, mode: "planning" | "companio
           content,
           mode: modeToProto[mode] ?? ChatMode.SELECTION,
         })) {
-          const resp = event as SendMessageResponse;
+          const resp = event;
           switch (resp.event.case) {
             case "textDelta":
               fullText += resp.event.value.text;
