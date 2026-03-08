@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:staging": "NEXT_PUBLIC_API_URL=https://staging-api.toqui.com next dev --turbopack",
-    "dev:prod": "NEXT_PUBLIC_API_URL=https://api.toqui.com next dev --turbopack",
+    "dev:staging": "NEXT_PUBLIC_API_URL=https://staging-api.toqui.travel next dev --turbopack",
+    "dev:prod": "NEXT_PUBLIC_API_URL=https://api.toqui.travel next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/",

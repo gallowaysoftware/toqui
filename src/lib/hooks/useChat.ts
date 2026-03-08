@@ -15,7 +15,7 @@ import type { Recommendation } from "@/components/chat/RecommendationCard";
  */
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return uuid();
+    return crypto.randomUUID();
   }
   // Fallback: build a v4 UUID from crypto.getRandomValues
   const bytes = new Uint8Array(16);

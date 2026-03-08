@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const t = useTranslations("home");
-  const tc = useTranslations("common");
   const { user, isLoading, login } = useAuth();
   const router = useRouter();
 
@@ -34,12 +33,6 @@ export default function Home() {
             className="rounded-full bg-[var(--color-accent)] px-6 py-3 text-white font-medium hover:bg-[var(--color-accent-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
           >
             {t("startPlanning")}
-          </button>
-          <button
-            onClick={login}
-            className="rounded-full border border-[var(--color-border-strong)] px-6 py-3 text-[var(--color-text-secondary)] font-medium hover:bg-[var(--color-surface-tertiary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
-          >
-            {tc("signIn")}
           </button>
         </div>
 
