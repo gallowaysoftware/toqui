@@ -30,8 +30,8 @@ export default function PrivacyPolicyPage() {
               1. Who We Are
             </h2>
             <p>
-              Toqui is an AI-powered travel planning service operated by Galloway Software
-              (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). This policy explains how we
+              Toqui is an AI-powered travel planning service operated by Galloway Software Solutions
+              Inc. (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). This policy explains how we
               collect, use, and protect your information when you use the Toqui application.
             </p>
 

@@ -31,8 +31,8 @@ export default function TermsOfServicePage() {
             </h2>
             <p>
               By accessing or using Toqui (&quot;the Service&quot;), operated by Galloway Software
-              (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), you agree to be bound by these
-              Terms of Service. If you do not agree, do not use the Service.
+              Solutions Inc. (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), you agree to be
+              bound by these Terms of Service. If you do not agree, do not use the Service.
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
@@ -137,9 +137,9 @@ export default function TermsOfServicePage() {
               10. Limitation of Liability
             </h2>
             <p>
-              To the maximum extent permitted by law, Galloway Software is not liable for any
-              indirect, incidental, special, consequential, or punitive damages arising from your
-              use of the Service. Our total liability for any claim related to the Service is
+              To the maximum extent permitted by law, Galloway Software Solutions Inc. is not liable
+              for any indirect, incidental, special, consequential, or punitive damages arising from
+              your use of the Service. Our total liability for any claim related to the Service is
               limited to the amount you paid us in the 12 months preceding the claim, or $50,
               whichever is greater.
             </p>
