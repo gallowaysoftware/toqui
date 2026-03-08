@@ -27,10 +27,10 @@ describe("RootLayout metadata", () => {
     expect(metadata.manifest).toBe("/manifest.json");
   });
 
-  it("sets the theme color", async () => {
-    const { metadata } = await import("./layout");
+  it("sets the theme color via viewport export", async () => {
+    const { viewport } = await import("./layout");
 
-    expect(metadata.themeColor).toBe("#E8654A");
+    expect(viewport.themeColor).toBe("#E8654A");
   });
 
   it("configures Apple mobile web app settings", async () => {

@@ -20,7 +20,7 @@ import type {
   SharedItineraryItem,
 } from "@/lib/shared-trip-types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "";
@@ -39,7 +39,7 @@ function formatDate(dateStr?: string): string {
 
 function ItemTypeIcon({ type }: { type?: string }) {
   const iconProps = { size: 16, className: "text-[var(--color-accent)]", "aria-hidden": true as const };
-  const key = type?.toLowerCase() || "";
+  const key = type?.toLowerCase() ?? "";
   switch (key) {
     case "activity": return <Compass {...iconProps} />;
     case "food": case "restaurant": case "dining": return <Utensils {...iconProps} />;

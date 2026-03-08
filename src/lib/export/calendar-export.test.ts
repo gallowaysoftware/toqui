@@ -169,7 +169,7 @@ describe("calendar-export", () => {
 
       const ics = buildICSContent(trip, itinerary);
 
-      const eventCount = (ics.match(/BEGIN:VEVENT/g) || []).length;
+      const eventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
       expect(eventCount).toBe(3);
     });
 

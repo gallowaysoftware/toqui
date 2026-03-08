@@ -41,7 +41,7 @@ function getTokenExpiry(token: string): number | null {
   }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

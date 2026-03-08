@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export interface WaitlistJoinResponse {
   position: number;

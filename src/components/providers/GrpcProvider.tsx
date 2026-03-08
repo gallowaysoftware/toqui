@@ -22,7 +22,7 @@ export function GrpcProvider({ children }: { children: React.ReactNode }) {
   const transport = useMemo(
     () =>
       createConnectTransport({
-        baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090",
+        baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090",
         interceptors: [
           (next) => async (req) => {
             if (accessToken) {

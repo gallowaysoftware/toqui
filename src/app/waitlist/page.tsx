@@ -1,16 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Clock, Mail, Ticket, Users, ArrowRight, CheckCircle } from "lucide-react";
 import { useJoinWaitlist, useWaitlistStatus } from "@/lib/hooks/useWaitlist";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 type WaitlistView = "join" | "status" | "invite";
 
 export default function WaitlistPage() {
+  return (
+    <Suspense fallback={<WaitlistLoading />}>
+      <WaitlistContent />
+    </Suspense>
+  );
+}
+
+function WaitlistLoading() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
+    </main>
+  );
+}
+
+function WaitlistContent() {
   const t = useTranslations("waitlist");
   const tc = useTranslations("common");
   const searchParams = useSearchParams();
@@ -18,7 +34,7 @@ export default function WaitlistPage() {
 
   const emailParam = searchParams.get("email");
   const [view, setView] = useState<WaitlistView>("join");
-  const [email, setEmail] = useState(emailParam || "");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [joinPosition, setJoinPosition] = useState<number | null>(null);

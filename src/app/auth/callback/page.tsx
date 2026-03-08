@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8090";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -45,8 +45,8 @@ export default function AuthCallbackPage() {
           setTokens(data.access_token, data.refresh_token, {
             id: data.user_id,
             email: data.email,
-            name: data.name || "",
-            avatarUrl: data.avatar_url || "",
+            name: data.name ?? "",
+            avatarUrl: data.avatar_url ?? "",
           });
           router.push("/trips");
         } else {

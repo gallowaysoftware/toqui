@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
 import { ArrowLeft, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTransport } from "@/components/providers/GrpcProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { AuthService } from "@/gen/toqui/v1/auth_pb";
@@ -62,14 +63,17 @@ export default function SettingsPage() {
           <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">{t("account")}</h2>
           <div className="flex items-center gap-4">
             {user.avatarUrl ? (
-              <img
+              <Image
                 src={user.avatarUrl}
                 alt={`${user.name}'s profile photo`}
-                className="w-12 h-12 rounded-full"
+                width={48}
+                height={48}
+                className="rounded-full"
+                unoptimized
               />
             ) : (
               <div className="w-12 h-12 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center text-[var(--color-accent)] font-medium text-lg">
-                {user.name?.charAt(0)?.toUpperCase() || "?"}
+                {user.name?.charAt(0)?.toUpperCase() ?? "?"}
               </div>
             )}
             <div>

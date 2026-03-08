@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { useState, useSyncExternalStore, useCallback, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "toqui_age_verified";
 const EXEMPT_PATHS = ["/privacy", "/terms", "/waitlist"];
 const EXEMPT_PREFIXES = ["/auth"];
 
-function isVerified(): boolean {
-  if (typeof window === "undefined") return false;
+// Subscribe to localStorage changes (no-op for this use case since we only write locally)
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getVerifiedSnapshot(): boolean {
   return localStorage.getItem(STORAGE_KEY) === "true";
+}
+
+function getVerifiedServerSnapshot(): boolean {
+  return false; // Always false on server to avoid hydration mismatch
 }
 
 function isExemptPath(pathname: string): boolean {
@@ -31,7 +40,13 @@ function calculateAge(dob: Date): number {
 
 export function AgeGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
+  // useSyncExternalStore reads localStorage without useEffect/setState,
+  // avoiding hydration mismatch (server snapshot returns false).
+  const storedVerified = useSyncExternalStore(
+    subscribeToStorage,
+    getVerifiedSnapshot,
+    getVerifiedServerSnapshot,
+  );
   const [verified, setVerified] = useState(false);
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState("");
@@ -39,11 +54,8 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
   const [day, setDay] = useState("");
   const [year, setYear] = useState("");
 
-  // Read localStorage after mount to avoid SSR hydration mismatch
-  useEffect(() => {
-    setVerified(isVerified());
-    setMounted(true);
-  }, []);
+  // Merge stored verification state with local state (set after form submit)
+  const isUserVerified = storedVerified || verified;
 
   const handleSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
@@ -83,6 +95,11 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
       }
 
       localStorage.setItem(STORAGE_KEY, "true");
+      // Dispatch synthetic storage event so useSyncExternalStore picks up the
+      // change in the same tab (the native "storage" event only fires cross-tab).
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: STORAGE_KEY, newValue: "true" }),
+      );
       setVerified(true);
     },
     [year, month, day],
@@ -93,12 +110,7 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Show nothing until mounted to avoid SSR hydration flash
-  if (!mounted) {
-    return null;
-  }
-
-  if (verified) {
+  if (isUserVerified) {
     return <>{children}</>;
   }
 

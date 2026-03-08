@@ -8,16 +8,21 @@ import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar"
 
 const inter = Inter({ subsets: ["latin"] });
 
+import type { Viewport } from "next";
+
 export const metadata: Metadata = {
   title: "Toqui",
   description: "Your AI-powered travel companion",
   manifest: "/manifest.json",
-  themeColor: "#E8654A",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Toqui",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#E8654A",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

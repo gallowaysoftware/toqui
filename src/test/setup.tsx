@@ -21,8 +21,8 @@ vi.mock("next/navigation", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-    const { fill: _fill, priority: _priority, ...rest } = props;
+    const { fill: _fill, priority: _priority, unoptimized: _unopt, ...rest } = props;
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- test mock for next/image
     return <img {...(rest as React.ImgHTMLAttributes<HTMLImageElement>)} />;
   },
 }));
