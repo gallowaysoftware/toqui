@@ -22,9 +22,6 @@ dist/
 .DS_Store
 Thumbs.db
 
-# generated proto bindings
-src/gen/
-
 # misc
 *.tsbuildinfo
 next-env.d.ts
