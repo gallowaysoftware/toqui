@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useRouter } from "next/navigation";
 
@@ -39,6 +40,15 @@ export default function Home() {
             {tc("signIn")}
           </button>
         </div>
+
+        <footer className="mt-16 text-sm text-[var(--color-text-tertiary)] flex gap-6 justify-center">
+          <Link href="/privacy" className="hover:text-[var(--color-accent)] transition-colors">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="hover:text-[var(--color-accent)] transition-colors">
+            Terms of Service
+          </Link>
+        </footer>
       </div>
     </main>
   );

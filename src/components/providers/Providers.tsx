@@ -5,6 +5,7 @@ import { useState } from "react";
 import { GrpcProvider } from "./GrpcProvider";
 import { AuthProvider } from "./AuthProvider";
 import { ThemeProvider } from "./ThemeProvider";
+import { AgeGate } from "@/components/auth/AgeGate";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -20,12 +21,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <GrpcProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </GrpcProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <AgeGate>
+            <GrpcProvider>
+              {children}
+            </GrpcProvider>
+          </AgeGate>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
