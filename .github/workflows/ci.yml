@@ -146,7 +146,8 @@ jobs:
           gcloud compute instances update-container toqui-staging-vm \
             --zone=us-central1-a \
             --project=toqui-staging \
-            --container-image=$IMAGE:${{ github.sha }}
+            --container-image=$IMAGE:${{ github.sha }} \
+            --container-host-networking
 
       - name: Run migrations
         run: |
