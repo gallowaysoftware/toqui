@@ -159,16 +159,16 @@ func templateIdentity(location *LocationProfile, themes []*ThemeProfile) *Identi
 		locationName = location.Name
 	}
 
-	// Combine archetypes for the description
-	archetypes := make([]string, len(themes))
+	// Build expertise description from theme display names
+	displayNames := make([]string, len(themes))
 	for i, t := range themes {
-		archetypes[i] = t.Archetype
+		displayNames[i] = t.DisplayName
 	}
 
 	return &IdentityResult{
-		Name:        fmt.Sprintf("Your %s %s", locationName, primary.Archetype),
-		Description: fmt.Sprintf("A local %s specializing in %s.", strings.Join(archetypes, " and "), locationName),
-		Greeting:    fmt.Sprintf("Hello! I'm your %s guide for %s. What would you like to explore?", primary.DisplayName, locationName),
+		Name:        fmt.Sprintf("Local %s Expert", primary.DisplayName),
+		Description: fmt.Sprintf("Expert in %s for %s.", strings.Join(displayNames, " and "), locationName),
+		Greeting:    fmt.Sprintf("Hello! I specialize in %s for %s. What would you like to explore?", strings.ToLower(primary.DisplayName), locationName),
 	}
 }
 
@@ -236,16 +236,20 @@ Create a fictional character who would be a believable local expert. The charact
 Respond with JSON only:
 {
   "name": "A culturally appropriate first name (not a full name)",
-  "description": "A one-sentence description, casual and charming (under 80 chars)",
-  "greeting": "A warm, in-character first message introducing themselves (1-2 sentences)"
+  "description": "A one-sentence subtitle starting with 'Expert in...' that conveys warmth and authority (under 60 chars)",
+  "greeting": "A warm, in-character first message that hints at insider knowledge (1-2 sentences)"
 }
 
 Examples of good outputs:
-- For Italy + food: {"name": "Luca", "description": "Italian chef. Food is love, and he has a lot to give.", "greeting": "Ciao! I'm Luca. In Italy, we don't eat to live — we live to eat. Let me feed you properly."}
-- For Scotland + distilleries: {"name": "Angus", "description": "Retired master distiller. Forty years of single malts.", "greeting": "Welcome, friend. Scotland's got more than scenery — she's got spirit. And I mean that literally."}
-- For France + history: {"name": "Professor Dumont", "description": "Retired Sorbonne historian. Every cobblestone has a story.", "greeting": "Did you know you're standing on two thousand years of history? Let me show you."}
+- For Japan + food: {"name": "Mei", "description": "Expert in Japanese cuisine and hidden local flavors.", "greeting": "The best ramen in Tokyo isn't where you think it is. Let me take you to the real spots."}
+- For Chile + adventure: {"name": "Carlos", "description": "Expert in Patagonian trails and outdoor adventures.", "greeting": "Patagonia has trails most hikers never find. I know every one of them."}
+- For Morocco + history: {"name": "Amira", "description": "Expert in Moroccan culture and medina heritage.", "greeting": "The medina has a thousand stories. I'll make sure you hear the ones worth remembering."}
 
-The name and personality must feel authentic to %s. Do NOT use stereotypical or offensive characterizations.`, req.LocationName, req.RegionCode, strings.Join(req.Themes, ", "), strings.Join(req.Archetypes, ", "), req.LocationName)
+Rules:
+- The description MUST start with "Expert in" followed by the domain.
+- The name and personality must feel authentic to %s.
+- Do NOT use stereotypical or offensive characterizations.
+- Do NOT use job titles like "chef", "professor", or "distiller" in the description.`, req.LocationName, req.RegionCode, strings.Join(req.Themes, ", "), strings.Join(req.Archetypes, ", "), req.LocationName)
 }
 
 // ParseIdentityResult parses the AI response JSON into an IdentityResult.
