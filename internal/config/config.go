@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -65,6 +66,9 @@ type Config struct {
 	// LLM response caching
 	LLMCacheEnabled bool
 	LLMCacheTTL     time.Duration
+
+	// Signup restrictions
+	AllowedEmailDomains []string // Empty = allow all
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -104,6 +108,7 @@ func Load() (*Config, error) {
 		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
+		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 	}
 
 	// Layer 3: resolve gcsm:// references
@@ -150,6 +155,22 @@ func getEnvBool(key string, fallback bool) bool {
 		return fallback
 	}
 	return b
+}
+
+func parseCSVEnv(key string) []string {
+	v := os.Getenv(key)
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, strings.ToLower(p))
+		}
+	}
+	return result
 }
 
 func getEnvDuration(key string, fallback time.Duration) time.Duration {

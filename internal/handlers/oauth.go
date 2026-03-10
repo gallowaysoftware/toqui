@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,20 +19,22 @@ import (
 )
 
 type OAuthHandler struct {
-	authSvc       *auth.Service
-	queries       *dbgen.Queries
-	frontendURL   string
-	secureCookies bool
-	maxFreeUsers  int
+	authSvc        *auth.Service
+	queries        *dbgen.Queries
+	frontendURL    string
+	secureCookies  bool
+	maxFreeUsers   int
+	allowedDomains []string
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string) *OAuthHandler {
 	return &OAuthHandler{
-		authSvc:       authSvc,
-		queries:       dbgen.New(pool),
-		frontendURL:   frontendURL,
-		secureCookies: secureCookies,
-		maxFreeUsers:  maxFreeUsers,
+		authSvc:        authSvc,
+		queries:        dbgen.New(pool),
+		frontendURL:    frontendURL,
+		secureCookies:  secureCookies,
+		maxFreeUsers:   maxFreeUsers,
+		allowedDomains: allowedDomains,
 	}
 }
 
@@ -84,6 +87,17 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	info, err := h.authSvc.ExchangeCode(r.Context(), code)
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=exchange_failed", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Domain allowlist: reject signups from unauthorized email domains.
+	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
+		slog.Info("user denied: email domain not allowed", "email", info.Email)
+		redirectURL := h.frontendURL + "/waitlist?" + url.Values{
+			"reason": []string{"domain_not_allowed"},
+			"email":  []string{info.Email},
+		}.Encode()
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -202,4 +216,23 @@ func generateState() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// isEmailDomainAllowed checks if the email's domain is in the allowlist.
+// An empty allowlist permits all domains.
+func isEmailDomainAllowed(email string, allowedDomains []string) bool {
+	if len(allowedDomains) == 0 {
+		return true
+	}
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	domain := strings.ToLower(parts[1])
+	for _, allowed := range allowedDomains {
+		if domain == allowed {
+			return true
+		}
+	}
+	return false
 }
