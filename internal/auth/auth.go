@@ -114,6 +114,11 @@ func (s *Service) ValidateToken(tokenString string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid token")
 	}
 
+	// Reject refresh tokens — they must not be used as access tokens.
+	if tokenType, _ := claims["type"].(string); tokenType == "refresh" {
+		return uuid.Nil, fmt.Errorf("refresh token cannot be used as access token")
+	}
+
 	sub, ok := claims["sub"].(string)
 	if !ok {
 		return uuid.Nil, fmt.Errorf("missing sub claim")

@@ -191,12 +191,14 @@ func main() {
 	mux.Handle(toquiv1connect.NewLocationServiceHandler(locationHandler, interceptors))
 	mux.Handle(toquiv1connect.NewPersonaServiceHandler(personaHandler, interceptors))
 
-	// Middleware chain: recovery → CORS → handler
-	handler := recoveryMiddleware(corsMiddleware(mux, cfg.FrontendURL))
+	// Middleware chain: recovery → security headers → CORS → handler
+	handler := recoveryMiddleware(securityHeadersMiddleware(corsMiddleware(mux, cfg.FrontendURL)))
 
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: h2c.NewHandler(handler, &http2.Server{}),
+		Addr:              ":" + cfg.Port,
+		Handler:           h2c.NewHandler(handler, &http2.Server{}),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Graceful shutdown
@@ -304,6 +306,20 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// HSTS — only set on HTTPS (Cloud Run terminates TLS)
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

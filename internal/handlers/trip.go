@@ -177,9 +177,19 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 }
 
 func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toquiv1.GetItineraryRequest]) (*connect.Response[toquiv1.GetItineraryResponse], error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
 	tripID, err := uuid.Parse(req.Msg.TripId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// Verify trip ownership before returning itinerary.
+	if _, err := h.tripSvc.GetByID(ctx, userID, tripID); err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
 	items, err := h.tripSvc.GetItinerary(ctx, tripID)

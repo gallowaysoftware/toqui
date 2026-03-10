@@ -116,7 +116,10 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("resolve secrets: %w", err)
 	}
 
-	if cfg.TargetEnv == "local" && cfg.JWTSecret == "dev-secret-change-in-production" {
+	if cfg.JWTSecret == "dev-secret-change-in-production" {
+		if cfg.TargetEnv != "local" {
+			return nil, fmt.Errorf("JWT_SECRET must be set in %s environment (default dev secret is not allowed)", cfg.TargetEnv)
+		}
 		slog.Warn("using default JWT secret — set JWT_SECRET for non-local environments")
 	}
 
