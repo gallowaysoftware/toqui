@@ -141,27 +141,27 @@ jobs:
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
 
-      - name: Deploy to staging VM
+      - name: Deploy to Cloud Run
         run: |
-          gcloud compute instances update-container toqui-staging-vm \
-            --zone=us-central1-a \
-            --project=toqui-staging \
-            --container-image=$IMAGE:${{ github.sha }}
+          gcloud run deploy toqui-backend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-staging
 
       - name: Run migrations
         run: |
-          # Wait for new container to start
-          sleep 15
-          # Fetch DATABASE_URL from Secret Manager (container env has gcsm:// reference
-          # which only the server binary resolves — migrate binary needs the real URL)
           DB_URL=$(gcloud secrets versions access latest \
             --secret=staging-database-url \
             --project=toqui-staging)
-          # Find the app container (filter out tailscale) and run migrations
-          gcloud compute ssh toqui-staging-vm \
-            --zone=us-central1-a \
+          gcloud run jobs deploy toqui-migrate \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
             --project=toqui-staging \
-            --tunnel-through-iap \
-            -- "CID=\$(docker ps -q --filter 'ancestor=$IMAGE:${{ github.sha }}') && \
-                docker exec -e DATABASE_URL='${DB_URL}' \$CID /migrate -direction up" \
-            || echo "⚠ Migration skipped or no new migrations"
+            --service-account=toqui-run-toqui-backend@toqui-staging.iam.gserviceaccount.com \
+            --add-cloudsql-instances=toqui-staging:us-central1:toqui-db \
+            --set-env-vars="DATABASE_URL=${DB_URL}" \
+            --command="/migrate" \
+            --args="-direction,up" \
+            --execute-now \
+            --wait \
+            || echo "Migration skipped or no new migrations"
