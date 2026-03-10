@@ -21,7 +21,7 @@ func SetOAuthResultCookie(w http.ResponseWriter, value string, secure bool) {
 		MaxAge:   60, // 1 minute — just enough for the frontend redirect
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 }
 
@@ -34,7 +34,7 @@ func ClearOAuthResultCookie(w http.ResponseWriter, secure bool) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 }
 
