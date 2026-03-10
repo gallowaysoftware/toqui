@@ -93,32 +93,16 @@ jobs:
       - name: Build and push
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL=http://toqui-staging:8090 \
+            --build-arg NEXT_PUBLIC_API_URL=https://staging-api.toqui.travel \
             -t $IMAGE:${{ github.sha }} \
             -t $IMAGE:latest \
             .
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
 
-      - name: Deploy to staging VM
+      - name: Deploy to Cloud Run
         run: |
-          gcloud compute ssh toqui-staging-vm \
-            --zone=us-central1-a \
-            --project=toqui-staging \
-            --tunnel-through-iap \
-            -- bash -c '
-              set -euo pipefail
-              ACCESS_TOKEN=$(curl -s -H "Metadata-Flavor: Google" \
-                "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" | \
-                python3 -c "import sys,json; print(json.load(sys.stdin)[\"access_token\"])")
-              echo "$ACCESS_TOKEN" | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
-              docker pull '"$IMAGE:${{ github.sha }}"'
-              docker rm -f toqui-frontend 2>/dev/null || true
-              docker run -d \
-                --name toqui-frontend \
-                --restart=always \
-                --network=host \
-                -e PORT=3000 \
-                -e HOSTNAME=0.0.0.0 \
-                '"$IMAGE:${{ github.sha }}"'
-            '
+          gcloud run deploy toqui-frontend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-staging
