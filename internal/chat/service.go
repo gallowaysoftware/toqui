@@ -252,6 +252,12 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 	var totalInputTokens, totalOutputTokens int
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
+		// Stop if the client disconnected.
+		if ctx.Err() != nil {
+			slog.Info("tool loop: client disconnected, stopping", "iteration", iteration)
+			return fullResponse.String()
+		}
+
 		// Start (or continue) streaming
 		eventCh, err := s.provider.ChatStream(ctx, aiReq)
 		if err != nil {
@@ -402,23 +408,30 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 	var turnUsage *ai.Usage
 
 	for event := range eventCh {
-		select {
-		case <-ctx.Done():
+		// Stop processing if the client disconnected.
+		if ctx.Err() != nil {
 			return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
-		default:
 		}
 
 		switch event.Type {
 		case ai.EventTextDelta:
 			turnText.WriteString(event.Text)
-			outCh <- StreamEvent{Type: "text_delta", Text: event.Text}
+			select {
+			case outCh <- StreamEvent{Type: "text_delta", Text: event.Text}:
+			case <-ctx.Done():
+				return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
+			}
 
 		case ai.EventToolCall:
 			if event.Tool != nil {
-				outCh <- StreamEvent{
+				select {
+				case outCh <- StreamEvent{
 					Type:      "tool_call",
 					ToolName:  event.Tool.Name,
 					ToolInput: event.Tool.Arguments,
+				}:
+				case <-ctx.Done():
+					return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
 				}
 
 				// Track this tool call for the continuation message
@@ -440,10 +453,14 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 					resultStr = string(result)
 				}
 
-				outCh <- StreamEvent{
+				select {
+				case outCh <- StreamEvent{
 					Type:       "tool_result",
 					ToolName:   event.Tool.Name,
 					ToolResult: resultStr,
+				}:
+				case <-ctx.Done():
+					return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
 				}
 
 				// Collect tool result for the continuation message
@@ -460,7 +477,10 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 			return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 
 		case ai.EventError:
-			outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}
+			select {
+			case outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}:
+			case <-ctx.Done():
+			}
 			return turnText.String(), toolCalls, toolResults, "", turnUsage, event.Error
 		}
 	}

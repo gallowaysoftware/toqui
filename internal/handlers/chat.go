@@ -426,7 +426,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
 					recentMessages := []string{req.Msg.Content, fullContent}
 					go func() {
-						if err := h.themeSvc.TagTrip(context.Background(), tripID, t.Title, t.Description.String, recentMessages); err != nil {
+						if err := h.themeSvc.TagTrip(context.Background(), userID, tripID, t.Title, t.Description.String, recentMessages); err != nil {
 							slog.Error("chat retag trip failed", "trip_id", tripID, "error", err)
 						}
 					}()

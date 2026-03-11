@@ -15,7 +15,7 @@ var ErrBudgetExhausted = errors.New("daily AI token budget exhausted — please 
 type TokenBudget struct {
 	limit    int64
 	used     atomic.Int64
-	resetDay atomic.Int64 // day-of-year when last reset occurred
+	resetDay atomic.Value // stores date string "2006-01-02" when last reset occurred
 }
 
 // NewTokenBudget creates a daily token budget. Pass 0 for unlimited.
@@ -23,7 +23,7 @@ func NewTokenBudget(dailyLimit int) *TokenBudget {
 	b := &TokenBudget{
 		limit: int64(dailyLimit),
 	}
-	b.resetDay.Store(int64(time.Now().UTC().YearDay()))
+	b.resetDay.Store(time.Now().UTC().Format("2006-01-02"))
 	return b
 }
 
@@ -51,10 +51,13 @@ func (b *TokenBudget) Record(tokens int) {
 }
 
 // maybeReset resets the counter if we've crossed into a new UTC day.
+// Uses date string "2006-01-02" instead of YearDay() to avoid wraparound
+// at year boundaries (day 365 -> day 1 would not trigger reset).
 func (b *TokenBudget) maybeReset() {
-	today := int64(time.Now().UTC().YearDay())
-	lastReset := b.resetDay.Load()
+	today := time.Now().UTC().Format("2006-01-02")
+	lastReset := b.resetDay.Load().(string)
 	if today != lastReset {
+		// CAS on the date string: only one goroutine resets the counter.
 		if b.resetDay.CompareAndSwap(lastReset, today) {
 			b.used.Store(0)
 		}

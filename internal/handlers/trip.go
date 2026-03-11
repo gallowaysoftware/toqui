@@ -54,7 +54,7 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 
 	// Fire-and-forget: tag trip themes via AI
 	if h.themeSvc != nil {
-		h.themeSvc.TagTripAsync(t.ID, t.Title, t.Description.String)
+		h.themeSvc.TagTripAsync(userID, t.ID, t.Title, t.Description.String)
 	}
 
 	return connect.NewResponse(&toquiv1.CreateTripResponse{Trip: tripToProto(t)}), nil

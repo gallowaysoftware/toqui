@@ -27,7 +27,7 @@ func FrankBookingRecommendations() *TestScenario {
 			if err != nil {
 				return err
 			}
-			_ = env.TripSvc.SetDestination(ctx, trip.ID, "ES")
+			_ = env.TripSvc.SetDestination(ctx, state.UserID, trip.ID, "ES")
 			state.CurrentTripID = trip.ID
 			state.Trips[trip.ID.String()] = TripInfo{
 				ID:          trip.ID.String(),

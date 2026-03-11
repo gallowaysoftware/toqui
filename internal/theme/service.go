@@ -28,7 +28,7 @@ func NewService(pool *pgxpool.Pool, tagger *persona.ThemeTagger) *Service {
 
 // TagTrip runs the AI theme tagger and persists results to the database.
 // It clears previous AI-assigned themes before writing new ones.
-func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, description string, recentMessages []string) error {
+func (s *Service) TagTrip(ctx context.Context, userID, tripID uuid.UUID, title, description string, recentMessages []string) error {
 	result, err := s.tagger.AnalyzeTrip(ctx, title, description, recentMessages)
 	if err != nil {
 		return fmt.Errorf("tag trip: %w", err)
@@ -56,6 +56,7 @@ func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, descript
 		if err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
 			ID:                 tripID,
 			DestinationCountry: pgtype.Text{String: result.DestinationCode, Valid: true},
+			UserID:             userID,
 		}); err != nil {
 			slog.Warn("failed to update trip destination", "error", err)
 		}
@@ -65,10 +66,10 @@ func (s *Service) TagTrip(ctx context.Context, tripID uuid.UUID, title, descript
 }
 
 // TagTripAsync runs TagTrip in a background goroutine. Errors are logged, not returned.
-func (s *Service) TagTripAsync(tripID uuid.UUID, title, description string) {
+func (s *Service) TagTripAsync(userID, tripID uuid.UUID, title, description string) {
 	go func() {
 		ctx := context.Background()
-		if err := s.TagTrip(ctx, tripID, title, description, nil); err != nil {
+		if err := s.TagTrip(ctx, userID, tripID, title, description, nil); err != nil {
 			slog.Warn("async theme tagging failed", "trip_id", tripID, "error", err)
 		}
 	}()

@@ -72,7 +72,7 @@ func (t *CreateTripTool) Execute(ctx context.Context, args json.RawMessage) (jso
 
 	// Set destination country immediately if the AI provided one (avoids async tagger race condition)
 	if params.DestinationCountry != "" {
-		_ = t.tripSvc.SetDestination(ctx, created.ID, params.DestinationCountry)
+		_ = t.tripSvc.SetDestination(ctx, t.userID, created.ID, params.DestinationCountry)
 	}
 
 	if t.onCreated != nil {

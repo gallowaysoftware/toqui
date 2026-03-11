@@ -39,14 +39,16 @@ func NewIPRateLimiter(requestsPerMinute, burst int) *IPRateLimiter {
 	return l
 }
 
-// Middleware returns an http.Handler that enforces per-IP rate limits.
+// Middleware returns an http.Handler that enforces per-identity rate limits.
+// If the request has an Authorization Bearer token, it uses that as the key
+// (resistant to X-Forwarded-For spoofing). Otherwise falls back to client IP.
 func (l *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := ExtractClientIP(r)
+		key := extractRateLimitKey(r)
 
-		entry := l.getOrCreate(ip)
+		entry := l.getOrCreate(key)
 		if !entry.limiter.Allow() {
-			slog.Warn("ip rate limit exceeded", "ip", ip, "path", r.URL.Path)
+			slog.Warn("rate limit exceeded", "key", key, "path", r.URL.Path)
 			w.Header().Set("Retry-After", "60")
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
@@ -54,6 +56,21 @@ func (l *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// extractRateLimitKey returns a rate limit key for the request. Authenticated
+// requests use "user:<token-prefix>" to prevent X-Forwarded-For bypass.
+// Unauthenticated requests fall back to client IP.
+func extractRateLimitKey(r *http.Request) string {
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		token := auth[7:]
+		// Use a prefix of the token as the key (enough to be unique, avoids storing full tokens)
+		if len(token) > 16 {
+			return "user:" + token[:16]
+		}
+		return "user:" + token
+	}
+	return ExtractClientIP(r)
 }
 
 func (l *IPRateLimiter) getOrCreate(ip string) *ipEntry {

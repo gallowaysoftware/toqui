@@ -32,10 +32,16 @@ func NewService(pool *pgxpool.Pool, dailyMessageLimit int) *Service {
 }
 
 // IncrementAndCheck atomically increments today's message count for the user
-// and checks whether the daily limit has been exceeded. Returns the number of
-// messages remaining (0 if at or over limit). Returns ErrDailyLimitExceeded if
-// the limit was already reached before this call.
+// and checks whether the daily limit has been exceeded. The increment and
+// check happen in a single PostgreSQL INSERT ... ON CONFLICT ... DO UPDATE
+// ... RETURNING statement, preventing TOCTOU race conditions.
+//
+// Returns the number of messages remaining (0 if at or over limit).
+// Returns ErrDailyLimitExceeded if the new count exceeds the limit.
 func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (remaining int, err error) {
+	// Atomic: INSERT on first message of the day, UPDATE (increment) on
+	// subsequent messages, RETURNING the new count. PostgreSQL row-level
+	// locking ensures concurrent requests are serialized.
 	usage, err := s.queries.IncrementDailyUsage(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("increment daily usage: %w", err)

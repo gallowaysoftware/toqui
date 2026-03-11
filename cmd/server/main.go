@@ -236,13 +236,17 @@ func main() {
 	// Webhooks are exempt (they use ECDSA signature verification).
 	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/"})
 
-	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → cookie auth → CSRF → handler
-	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(middleware.CookieAuth(csrfProtected), corsOrigins)))))
+	// Middleware chain: recovery → request ID → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
+	// IP rate limiter runs after cookie auth so it can use Bearer token (set by
+	// CookieAuth for web browsers) as the rate limit key instead of spoofable X-Forwarded-For.
+	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           h2c.NewHandler(handler, &http2.Server{}),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      300 * time.Second, // long for SSE streaming responses
 		IdleTimeout:       120 * time.Second,
 	}
 
@@ -361,6 +365,7 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		// HSTS — only set on HTTPS (Cloud Run terminates TLS)
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

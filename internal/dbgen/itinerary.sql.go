@@ -63,20 +63,34 @@ func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryIt
 }
 
 const deleteItineraryItem = `-- name: DeleteItineraryItem :exec
-DELETE FROM itinerary_items WHERE id = $1
+DELETE FROM itinerary_items
+WHERE itinerary_items.id = $1
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2)
 `
 
-func (q *Queries) DeleteItineraryItem(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItem, id)
+type DeleteItineraryItemParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteItineraryItem(ctx context.Context, arg DeleteItineraryItemParams) error {
+	_, err := q.db.Exec(ctx, deleteItineraryItem, arg.ID, arg.UserID)
 	return err
 }
 
 const deleteItineraryItemsByTrip = `-- name: DeleteItineraryItemsByTrip :exec
-DELETE FROM itinerary_items WHERE trip_id = $1
+DELETE FROM itinerary_items
+WHERE trip_id = $1
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = $1 AND trips.user_id = $2)
 `
 
-func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItemsByTrip, tripID)
+type DeleteItineraryItemsByTripParams struct {
+	TripID uuid.UUID `json:"trip_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItineraryItemsByTripParams) error {
+	_, err := q.db.Exec(ctx, deleteItineraryItemsByTrip, arg.TripID, arg.UserID)
 	return err
 }
 
@@ -123,7 +137,8 @@ const updateItineraryItem = `-- name: UpdateItineraryItem :one
 UPDATE itinerary_items
 SET day_number = $2, order_in_day = $3, type = $4, title = $5, description = $6,
     location = $7, start_time = $8, end_time = $9, metadata = $10
-WHERE id = $1
+WHERE itinerary_items.id = $1
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $11)
 RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at
 `
 
@@ -138,6 +153,7 @@ type UpdateItineraryItemParams struct {
 	StartTime   pgtype.Timestamptz `json:"start_time"`
 	EndTime     pgtype.Timestamptz `json:"end_time"`
 	Metadata    []byte             `json:"metadata"`
+	UserID      uuid.UUID          `json:"user_id"`
 }
 
 func (q *Queries) UpdateItineraryItem(ctx context.Context, arg UpdateItineraryItemParams) (ItineraryItem, error) {
@@ -152,6 +168,7 @@ func (q *Queries) UpdateItineraryItem(ctx context.Context, arg UpdateItineraryIt
 		arg.StartTime,
 		arg.EndTime,
 		arg.Metadata,
+		arg.UserID,
 	)
 	var i ItineraryItem
 	err := row.Scan(

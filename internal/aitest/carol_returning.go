@@ -26,7 +26,7 @@ func CarolReturningUser() *TestScenario {
 			if err != nil {
 				return err
 			}
-			_ = env.TripSvc.SetDestination(ctx, morocco.ID, "MA")
+			_ = env.TripSvc.SetDestination(ctx, state.UserID, morocco.ID, "MA")
 			_, _ = env.TripSvc.Update(ctx, state.UserID, morocco.ID, "", "", "active", nil, nil)
 			state.Trips[morocco.ID.String()] = TripInfo{
 				ID: morocco.ID.String(), Title: "Moroccan Adventure",
@@ -39,7 +39,7 @@ func CarolReturningUser() *TestScenario {
 			if err != nil {
 				return err
 			}
-			_ = env.TripSvc.SetDestination(ctx, greece.ID, "GR")
+			_ = env.TripSvc.SetDestination(ctx, state.UserID, greece.ID, "GR")
 			state.Trips[greece.ID.String()] = TripInfo{
 				ID: greece.ID.String(), Title: "Greek Islands Hopping",
 				Description: "Island hopping through Santorini, Mykonos, and Crete", Status: "planning", Country: "GR",

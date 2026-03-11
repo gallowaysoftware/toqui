@@ -110,10 +110,11 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 	return &trip, nil
 }
 
-func (s *Service) SetDestination(ctx context.Context, tripID uuid.UUID, countryCode string) error {
+func (s *Service) SetDestination(ctx context.Context, userID, tripID uuid.UUID, countryCode string) error {
 	return s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
 		ID:                 tripID,
 		DestinationCountry: pgtype.Text{String: countryCode, Valid: true},
+		UserID:             userID,
 	})
 }
 

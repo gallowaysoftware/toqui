@@ -26,7 +26,7 @@ func UpdateRegressionTests() *TestScenario {
 			if err != nil {
 				return err
 			}
-			_ = env.TripSvc.SetDestination(ctx, t.ID, "JP")
+			_ = env.TripSvc.SetDestination(ctx, state.UserID, t.ID, "JP")
 			state.CurrentTripID = t.ID
 			state.Trips[t.ID.String()] = TripInfo{
 				ID:          t.ID.String(),

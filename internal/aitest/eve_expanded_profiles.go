@@ -24,7 +24,7 @@ func EveExpandedProfiles() *TestScenario {
 			if err != nil {
 				return err
 			}
-			_ = env.TripSvc.SetDestination(ctx, trip.ID, "CZ")
+			_ = env.TripSvc.SetDestination(ctx, state.UserID, trip.ID, "CZ")
 			state.CurrentTripID = trip.ID
 			state.Trips[trip.ID.String()] = TripInfo{
 				ID:          trip.ID.String(),

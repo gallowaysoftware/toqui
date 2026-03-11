@@ -431,7 +431,7 @@ func (a *CreateTripAction) Execute(ctx context.Context, env *TestEnv, state *Sce
 	}
 
 	if a.Country != "" {
-		_ = env.TripSvc.SetDestination(ctx, t.ID, a.Country)
+		_ = env.TripSvc.SetDestination(ctx, state.UserID, t.ID, a.Country)
 	}
 
 	ti := &TripInfo{

@@ -38,7 +38,7 @@ RETURNING *;
 -- name: UpdateTripDestination :exec
 UPDATE trips
 SET destination_country = $2, updated_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND user_id = $3;
 
 -- name: DeleteTrip :exec
 DELETE FROM trips WHERE id = $1 AND user_id = $2;
