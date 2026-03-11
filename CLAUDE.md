@@ -119,6 +119,8 @@ GitHub Actions on push to `main` and all PRs (GitHub-hosted runners, `ubuntu-lat
 
 **Staging auto-deploy**: Push to `main` triggers a `deploy-staging` job that builds a Docker image, pushes to Artifact Registry, deploys to Cloud Run via `gcloud run deploy`, and runs migrations via Cloud Run Jobs. Uses Workload Identity Federation (keyless GCP auth).
 
+**Prod deploy**: Manual trigger via `workflow_dispatch` on `main` branch. Same Docker build + push + Cloud Run deploy + migrations pattern, but targeting `toqui-prod` project with separate WIF credentials (`GCP_PROD_WIF_PROVIDER`, `GCP_PROD_SERVICE_ACCOUNT`). Requires `production` GitHub environment approval.
+
 ### Task Tracking
 
 All task tracking is in GitHub Issues: [toqui-backend issues](https://github.com/gallowaysoftware/toqui-backend/issues), [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P0`, `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`, `security`, `code-quality`, `design`, `compliance`.

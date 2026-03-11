@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -56,6 +57,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	userID, ok := auth.UserIDFromContext(ctx)
 	if !ok {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	// Validate request — the protovalidate interceptor only covers unary RPCs,
+	// so server-streaming RPCs need explicit validation here.
+	if err := protovalidate.Validate(req.Msg); err != nil {
+		var ve *protovalidate.ValidationError
+		if errors.As(err, &ve) {
+			return connect.NewError(connect.CodeInvalidArgument, ve)
+		}
+		return connect.NewError(connect.CodeInternal, err)
 	}
 
 	// Check daily message limit before processing

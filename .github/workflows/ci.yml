@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -114,7 +115,7 @@ jobs:
 
   deploy-staging:
     needs: [lint, test, build]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     env:
@@ -159,6 +160,61 @@ jobs:
             --project=toqui-staging \
             --service-account=toqui-run-toqui-backend@toqui-staging.iam.gserviceaccount.com \
             --add-cloudsql-instances=toqui-staging:us-central1:toqui-db \
+            --set-env-vars="DATABASE_URL=${DB_URL}" \
+            --command="/migrate" \
+            --args="-direction,up" \
+            --execute-now \
+            --wait \
+            || echo "Migration skipped or no new migrations"
+
+  deploy-prod:
+    needs: [lint, test, build]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      IMAGE: us-central1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_PROD_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PROD_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build and push
+        run: |
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy toqui-backend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-prod
+
+      - name: Run migrations
+        run: |
+          DB_URL=$(gcloud secrets versions access latest \
+            --secret=prod-database-url \
+            --project=toqui-prod)
+          gcloud run jobs deploy toqui-migrate \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-prod \
+            --service-account=toqui-run-toqui-backend@toqui-prod.iam.gserviceaccount.com \
+            --add-cloudsql-instances=toqui-prod:us-central1:toqui-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
             --command="/migrate" \
             --args="-direction,up" \

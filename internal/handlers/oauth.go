@@ -69,6 +69,16 @@ type oauthResult struct {
 	ExpiresAt    int64  `json:"expires_at"`
 }
 
+// exchangeResponse is the JSON response from POST /auth/exchange.
+// Tokens are in HttpOnly cookies — the body only contains user info and expiry.
+type exchangeResponse struct {
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+	ExpiresAt int64  `json:"expires_at"`
+}
+
 // refreshResponse is the JSON response from POST /auth/refresh.
 // Tokens are in HttpOnly cookies — the body only contains user info and expiry.
 type refreshResponse struct {
@@ -216,9 +226,9 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
 
-// HandleExchange reads the temporary OAuth result cookie, returns the tokens
-// in the response body, sets HttpOnly auth cookies, and clears the temporary cookie.
-// Web browsers use the cookies; native apps use the response body tokens.
+// HandleExchange reads the temporary OAuth result cookie, sets HttpOnly auth
+// cookies, clears the temporary cookie, and returns user info (without tokens)
+// in the response body. Tokens are only delivered via HttpOnly cookies.
 func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -253,18 +263,24 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Compute access token expiry for the frontend to schedule refresh.
-	result.ExpiresAt = time.Now().Add(time.Hour).Unix()
-
 	// Clear the one-time OAuth result cookie.
 	auth.ClearOAuthResultCookie(w, h.secureCookies)
 
 	// Set persistent HttpOnly auth cookies for web browser sessions.
 	auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
 
+	// Return user info + expiry only — tokens are in HttpOnly cookies.
+	resp := exchangeResponse{
+		UserID:    result.UserID,
+		Email:     result.Email,
+		Name:      result.Name,
+		AvatarURL: result.AvatarURL,
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		slog.Error("encode exchange response", "error", err)
 	}
 }
