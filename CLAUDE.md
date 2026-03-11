@@ -43,7 +43,7 @@ graph TB
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
 | `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
-| `internal/auth/`        | Google OAuth + JWT + auth interceptor                                                     |
+| `internal/auth/`        | Google OAuth + JWT + auth interceptor + refresh token rotation (JTI/family tracking)      |
 | `internal/trip/`        | Trip CRUD, status transitions, destination management                                     |
 | `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
 | `internal/location/`    | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places)   |
@@ -52,7 +52,9 @@ graph TB
 | `internal/config/`      | Three-layer config: env file → os.Getenv → GCP Secret Manager                             |
 | `internal/db/`          | PostgreSQL connection pool + transaction helpers                                          |
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
-| `internal/ratelimit/`   | Per-user rate limiting interceptor (token bucket, AI vs general)                          |
+| `internal/csrf/`        | CSRF protection middleware (Origin/Referer validation for state-changing requests)        |
+| `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
+| `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
 | `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
 | `internal/aitest/`      | AI integration test harness (build tag: `aitest`)                                         |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
@@ -424,10 +426,15 @@ HTTP routes (outside ConnectRPC):
 ### Middleware Chain
 
 ```
-Request → recoveryMiddleware → securityHeadersMiddleware → corsMiddleware → handler
+Request → recovery → requestID → securityHeaders → ipRateLimit → CORS → CSRF → handler
 ```
 
+- **Recovery**: Panic recovery with structured error logging
+- **Request ID**: Generates unique request IDs for tracing
 - **Security headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security` (HTTPS only)
+- **IP rate limit**: Per-IP request rate limiting (separate from per-user ConnectRPC rate limiting)
+- **CORS**: Cross-origin resource sharing for frontend origins
+- **CSRF**: Origin/Referer header validation for state-changing requests (POST/PUT/DELETE/PATCH). Exempt: webhooks (have their own ECDSA auth). Non-browser clients (no Origin/Referer) are allowed through.
 - **Request body limits**: All REST POST handlers use `http.MaxBytesReader(w, r.Body, 1<<20)` — 1MB max
 
 ### JWT Token Types
@@ -435,6 +442,34 @@ Request → recoveryMiddleware → securityHeadersMiddleware → corsMiddleware 
 - **Access tokens**: No `type` claim, 1-hour expiry. Used for `Authorization: Bearer`.
 - **Refresh tokens**: `type: "refresh"` claim, 30-day expiry. Only accepted by `ValidateRefreshToken()`.
 - **Important**: `ValidateToken()` explicitly rejects tokens with `type == "refresh"` to prevent token type confusion.
+
+### Refresh Token Rotation
+
+Refresh tokens are DB-backed with JTI (JWT ID) and family tracking:
+
+1. **Login** creates a new token family (random UUID). The refresh token's JTI and family are stored in the `refresh_tokens` table.
+2. **Refresh** validates the JTI against the database, revokes the used token, and issues a new token in the same family.
+3. **Reuse detection**: If a revoked token is presented, the entire family is revoked (breach response). This catches token theft where both the attacker and legitimate user try to use the same token.
+4. **Cleanup**: Expired tokens can be purged via `DeleteExpiredRefreshTokens` query.
+
+### Auth Lockout
+
+Per-IP failure tracking via `AuthLimiter` (in `internal/ratelimit/`):
+
+- **5 failed attempts** within a 15-minute window → IP blocked for 15 minutes
+- Applied to `POST /auth/exchange` (OAuth) and `RefreshToken` RPC
+- Successful auth clears the failure counter
+- Background goroutine cleans up stale entries
+
+### Audit Logging
+
+Structured audit events via `internal/audit/` package, written through `slog` for automatic Cloud Logging collection:
+
+- `auth.login`, `auth.login_denied.domain`, `auth.login_denied.capacity`, `auth.login_admitted.invite`
+- `auth.token_refresh`, `auth.token_refresh_denied`, `auth.token_reuse_detected`, `auth.lockout`
+- `auth.account_delete`, `auth.data_export`
+- `trip.share`, `trip.unshare`
+- `security.csrf_rejected`
 
 ### Cookie Encoding (OAuth)
 
@@ -449,14 +484,14 @@ When adding new handlers, ensure:
 3. **Domain allowlist**: Any new auth paths must check `isEmailDomainAllowed()`
 4. **Token type**: Only use `ValidateToken()` for access tokens, `ValidateRefreshToken()` for refresh
 5. **JWT enforcement**: Non-local environments fail startup if `JWT_SECRET` is the default
+6. **CSRF exempt**: If adding a new webhook endpoint, add its prefix to the CSRF exempt list in `main.go`
+7. **Audit logging**: Security-relevant events (auth, data access, sharing) must use `audit.Log()`
 
 ### Known Open Security Issues
 
-See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list. Key items:
+See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list. Key remaining item:
 
-- **H-2** (#55): GoogleLogin RPC bypasses domain allowlist
-- **H-5** (#58): Broken webhook signature verification
-- **M-4** (#61): Rate limiting is global, not per-IP
+- **H-4** (#57): Auth tokens in localStorage — deferred, requires architectural refactor to HttpOnly cookies
 
 ## Waitlist + Capacity Cap
 
