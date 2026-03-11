@@ -261,7 +261,17 @@ This is critical for tools like `recommend_booking` where the AI must see the to
 
 Both providers parse streaming events to extract stop reasons and serialize tool call/result content blocks for continuation. The Claude provider uses `message_delta` events; the Gemini provider uses `finishReason` in `candidates[]`.
 
-## Pre-Commit Adversarial Review
+## Pre-Commit Requirements
+
+### Documentation Updates
+
+**MANDATORY**: Before every commit/push, update all relevant documentation:
+
+1. **CLAUDE.md** — Update this file and any other repo CLAUDE.md files affected by the changes (architecture, deployment, security patterns, new packages)
+2. **MEMORY.md** — Update the shared memory file at `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md` with completed work, status changes, and any new patterns
+3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 4 repos
+
+### Adversarial Review
 
 **MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes. This catches bugs, security issues, and logic errors before they reach the repo.
 
