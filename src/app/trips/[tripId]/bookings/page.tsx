@@ -32,6 +32,11 @@ export default function BookingsPage() {
   };
 
   const handleDelete = async (booking: Booking) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${booking.title || "this booking"}"? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
     try {
       await deleteBooking.mutateAsync({ id: booking.id, tripId });
       handleBackToList();

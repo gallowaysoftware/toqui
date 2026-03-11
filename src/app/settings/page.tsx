@@ -48,7 +48,14 @@ export default function SettingsPage() {
     },
   });
 
-  if (authLoading) return null;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center" aria-busy="true" role="status">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
+        <span className="sr-only">Loading...</span>
+      </div>
+    );
+  }
   if (!user) {
     router.push("/");
     return null;
@@ -105,6 +112,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">
+            {t("exportData")}
+          </h2>
           <button
             onClick={() => exportData.mutate()}
             disabled={exportData.isPending || exportData.isSuccess}

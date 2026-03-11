@@ -13,6 +13,7 @@ import {
   Download,
   ArrowLeft,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
@@ -37,7 +38,7 @@ const statusColors: Record<number, string> = {
 
 export default function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
-  const { trip, isLoading } = useTrip(tripId);
+  const { trip, isLoading, error } = useTrip(tripId);
   const { itinerary, isLoading: itineraryLoading } = useItinerary(tripId);
   const updateTrip = useUpdateTrip();
 
@@ -72,6 +73,32 @@ export default function TripDetailPage() {
       >
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
         <span className="sr-only">Loading trip details...</span>
+      </div>
+    );
+  }
+
+  if (error || (!isLoading && !trip)) {
+    return (
+      <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center">
+        <div className="text-center p-6 max-w-sm">
+          <AlertTriangle
+            className="mx-auto text-[var(--color-warning-text)] mb-3"
+            size={40}
+            aria-hidden="true"
+          />
+          <h1 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
+            Failed to load trip
+          </h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+            The trip could not be loaded. It may have been deleted or you may not have access.
+          </p>
+          <Link
+            href="/trips"
+            className="inline-block bg-[var(--color-accent)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+          >
+            Back to trips
+          </Link>
+        </div>
       </div>
     );
   }

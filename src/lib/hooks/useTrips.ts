@@ -28,7 +28,7 @@ export function useTrip(tripId: string) {
   const { user } = useAuth();
   const client = createClient(TripService, transport);
 
-  const { data: trip, isLoading } = useQuery({
+  const { data: trip, isLoading, error } = useQuery({
     queryKey: ["trip", tripId],
     queryFn: async () => {
       const res = await client.getTrip({ id: tripId });
@@ -37,7 +37,7 @@ export function useTrip(tripId: string) {
     enabled: !!user && !!tripId,
   });
 
-  return { trip, isLoading };
+  return { trip, isLoading, error };
 }
 
 export function useUpdateTrip() {

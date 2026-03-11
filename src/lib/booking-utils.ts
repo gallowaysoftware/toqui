@@ -36,15 +36,15 @@ export const bookingTypeIcons: Record<BookingType, string> = {
  * Maps a BookingType enum to a background color class for cards.
  */
 export const bookingTypeColors: Record<BookingType, string> = {
-  [BookingType.UNSPECIFIED]: "bg-gray-100 text-gray-600",
-  [BookingType.FLIGHT]: "bg-blue-100 text-blue-700",
-  [BookingType.HOTEL]: "bg-purple-100 text-purple-700",
-  [BookingType.CAR_RENTAL]: "bg-orange-100 text-orange-700",
-  [BookingType.TRAIN]: "bg-teal-100 text-teal-700",
-  [BookingType.ACTIVITY]: "bg-pink-100 text-pink-700",
-  [BookingType.RESTAURANT]: "bg-red-100 text-red-700",
-  [BookingType.OTHER]: "bg-gray-100 text-gray-600",
-  [BookingType.TOUR]: "bg-green-100 text-green-700",
+  [BookingType.UNSPECIFIED]: "bg-[var(--color-booking-other-bg)] text-[var(--color-booking-other-text)]",
+  [BookingType.FLIGHT]: "bg-[var(--color-booking-flight-bg)] text-[var(--color-booking-flight-text)]",
+  [BookingType.HOTEL]: "bg-[var(--color-booking-hotel-bg)] text-[var(--color-booking-hotel-text)]",
+  [BookingType.CAR_RENTAL]: "bg-[var(--color-booking-car-bg)] text-[var(--color-booking-car-text)]",
+  [BookingType.TRAIN]: "bg-[var(--color-booking-train-bg)] text-[var(--color-booking-train-text)]",
+  [BookingType.ACTIVITY]: "bg-[var(--color-booking-activity-bg)] text-[var(--color-booking-activity-text)]",
+  [BookingType.RESTAURANT]: "bg-[var(--color-booking-restaurant-bg)] text-[var(--color-booking-restaurant-text)]",
+  [BookingType.OTHER]: "bg-[var(--color-booking-other-bg)] text-[var(--color-booking-other-text)]",
+  [BookingType.TOUR]: "bg-[var(--color-booking-tour-bg)] text-[var(--color-booking-tour-text)]",
 };
 
 export const bookingSourceLabels: Record<BookingSource, string> = {

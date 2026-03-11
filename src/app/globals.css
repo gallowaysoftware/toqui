@@ -42,6 +42,22 @@
   --color-assistant-bubble-border: #e5e7eb;
   --color-input-bg: #ffffff;
   --color-input-border: #d1d5db;
+  --color-booking-flight-bg: #dbeafe;
+  --color-booking-flight-text: #1d4ed8;
+  --color-booking-hotel-bg: #f3e8ff;
+  --color-booking-hotel-text: #7c3aed;
+  --color-booking-car-bg: #ffedd5;
+  --color-booking-car-text: #c2410c;
+  --color-booking-train-bg: #ccfbf1;
+  --color-booking-train-text: #0f766e;
+  --color-booking-activity-bg: #fce7f3;
+  --color-booking-activity-text: #be185d;
+  --color-booking-restaurant-bg: #fee2e2;
+  --color-booking-restaurant-text: #dc2626;
+  --color-booking-tour-bg: #dcfce7;
+  --color-booking-tour-text: #15803d;
+  --color-booking-other-bg: #f3f4f6;
+  --color-booking-other-text: #4b5563;
 }
 
 /* Dark theme */
@@ -77,4 +93,20 @@
   --color-assistant-bubble-border: #2d2d50;
   --color-input-bg: #222240;
   --color-input-border: #3d3d66;
+  --color-booking-flight-bg: #1e2a4a;
+  --color-booking-flight-text: #93b4f8;
+  --color-booking-hotel-bg: #2a1e3e;
+  --color-booking-hotel-text: #c4b5fd;
+  --color-booking-car-bg: #2e2218;
+  --color-booking-car-text: #fdba74;
+  --color-booking-train-bg: #1a2e2a;
+  --color-booking-train-text: #5eead4;
+  --color-booking-activity-bg: #2e1a28;
+  --color-booking-activity-text: #f9a8d4;
+  --color-booking-restaurant-bg: #2e1a1a;
+  --color-booking-restaurant-text: #fca5a5;
+  --color-booking-tour-bg: #1a2e1f;
+  --color-booking-tour-text: #86efac;
+  --color-booking-other-bg: #222240;
+  --color-booking-other-text: #9ca3b8;
 }
