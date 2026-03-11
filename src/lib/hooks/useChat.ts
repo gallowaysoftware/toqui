@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/components/providers/GrpcProvider";
 import { ChatService, ChatMode } from "@/gen/toqui/v1/chat_pb";
+import type { ChatMessage as ProtoChatMessage } from "@/gen/toqui/v1/chat_pb";
 import type { Persona } from "@/gen/toqui/v1/persona_pb";
 
 import type { Recommendation } from "@/components/chat/RecommendationCard";
@@ -82,6 +83,27 @@ interface UseChatOptions {
   onResourceExhausted?: () => void;
 }
 
+/**
+ * Convert a backend ChatMessage (proto) to the frontend ChatMessage shape.
+ * Persona metadata is stored in the proto `metadata` map with keys like
+ * "persona_id", "persona_name", "persona_avatar", "persona_accent_color".
+ */
+function protoToFrontendMessage(msg: ProtoChatMessage): ChatMessage | null {
+  const role = msg.role as ChatMessage["role"];
+  if (role !== "user" && role !== "assistant" && role !== "system") {
+    return null;
+  }
+  return {
+    id: msg.id,
+    role,
+    content: msg.content,
+    personaId: msg.metadata["persona_id"] || undefined,
+    personaName: msg.metadata["persona_name"] || undefined,
+    personaAvatar: msg.metadata["persona_avatar"] || undefined,
+    personaAccentColor: msg.metadata["persona_accent_color"] || undefined,
+  };
+}
+
 export function useChat(
   tripId: string | undefined,
   mode: "planning" | "companion" | "selection",
@@ -91,16 +113,73 @@ export function useChat(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [activePersona, setActivePersona] = useState<ActivePersona | null>(null);
   const [toolActivity, setToolActivity] = useState<ToolActivity | null>(null);
   const [createdTrip, setCreatedTrip] = useState<CreatedTrip | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<SelectedTrip | null>(null);
   const sessionIdRef = useRef<string>("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
+  const historyLoadedRef = useRef<string | null>(null);
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
   useEffect(() => {
     onResourceExhaustedRef.current = options?.onResourceExhausted;
   }, [options?.onResourceExhausted]);
+
+  // Load chat history from the backend when a tripId is provided
+  useEffect(() => {
+    if (!tripId) return;
+    // Avoid re-fetching if we already loaded history for this trip
+    if (historyLoadedRef.current === tripId) return;
+
+    let cancelled = false;
+    const loadHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        const client = createClient(ChatService, transport);
+        const res = await client.getChatHistory({
+          tripId,
+          sessionId: "",
+          pagination: { pageSize: 100, pageToken: "" },
+        });
+
+        if (cancelled) return;
+
+        const loaded: ChatMessage[] = [];
+        for (const msg of res.messages) {
+          const converted = protoToFrontendMessage(msg);
+          if (converted) {
+            loaded.push(converted);
+          }
+        }
+
+        if (loaded.length > 0) {
+          // Use functional updater to merge with any messages sent during load
+          setMessages((prev) => {
+            if (prev.length === 0) return loaded;
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newFromHistory = loaded.filter(
+              (m) => !existingIds.has(m.id),
+            );
+            return [...newFromHistory, ...prev];
+          });
+        }
+        historyLoadedRef.current = tripId;
+      } catch (error) {
+        // History loading is best-effort; log but don't block chat
+        console.error("Failed to load chat history:", error);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false);
+        }
+      }
+    };
+
+    void loadHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId, transport]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -290,6 +369,7 @@ export function useChat(
     messages,
     streamingText,
     isStreaming,
+    isLoadingHistory,
     activePersona,
     toolActivity,
     createdTrip,

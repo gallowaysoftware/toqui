@@ -28,6 +28,7 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     messages,
     streamingText,
     isStreaming,
+    isLoadingHistory,
     activePersona,
     toolActivity,
     createdTrip,
@@ -92,7 +93,18 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
       >
         <AITransparencyNotice />
 
-        {messages.length === 0 && !isStreaming && (
+        {isLoadingHistory && (
+          <div className="text-center text-[var(--color-text-tertiary)] py-8">
+            <div
+              className="inline-block animate-spin h-5 w-5 border-2 border-[var(--color-text-tertiary)] border-t-transparent rounded-full mb-2"
+              role="status"
+              aria-label="Loading chat history"
+            />
+            <p className="text-sm">Loading conversation...</p>
+          </div>
+        )}
+
+        {messages.length === 0 && !isStreaming && !isLoadingHistory && (
           <div className="text-center text-[var(--color-text-tertiary)] py-16">
             <p className="text-lg mb-2">{emptyPrompt}</p>
           </div>
@@ -136,7 +148,7 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
       </div>
 
       <MessageLimitBanner usage={usage} />
-      <ChatInput onSend={handleSend} disabled={isStreaming || usage.isAtLimit} />
+      <ChatInput onSend={handleSend} disabled={isStreaming || isLoadingHistory || usage.isAtLimit} />
     </div>
   );
 }

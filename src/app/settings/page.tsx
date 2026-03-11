@@ -34,10 +34,17 @@ export default function SettingsPage() {
     },
   });
 
+  const [exportMessage, setExportMessage] = useState("");
+
   const exportData = useMutation({
     mutationFn: async () => {
       const res = await client.exportData({});
       return res;
+    },
+    onSuccess: (res) => {
+      // The backend prepares the export asynchronously. Show the server's
+      // confirmation message so the user knows what to expect.
+      setExportMessage(res.message || "Your data export has been requested.");
     },
   });
 
@@ -100,7 +107,7 @@ export default function SettingsPage() {
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
           <button
             onClick={() => exportData.mutate()}
-            disabled={exportData.isPending}
+            disabled={exportData.isPending || exportData.isSuccess}
             className="flex items-center gap-2 text-[var(--color-accent)] hover:opacity-80 text-sm font-medium disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
           >
             <Download size={16} aria-hidden="true" />
@@ -110,6 +117,11 @@ export default function SettingsPage() {
                 ? t("exported")
                 : t("exportData")}
           </button>
+          {exportMessage && (
+            <p className="text-[var(--color-text-secondary)] text-sm mt-2" role="status">
+              {exportMessage}
+            </p>
+          )}
           {exportData.isError && (
             <p className="text-[var(--color-error)] text-sm mt-2" role="alert">
               {tc("error")}

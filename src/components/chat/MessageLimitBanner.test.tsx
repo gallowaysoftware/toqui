@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MessageLimitBanner } from "./MessageLimitBanner";
 import type { UsageInfo } from "@/lib/hooks/useUsage";
 
@@ -35,10 +35,19 @@ describe("MessageLimitBanner", () => {
     expect(statusEl?.className).toContain("warning-text");
   });
 
-  it("shows limit reached banner with upgrade CTA", () => {
+  it("shows limit reached banner with coming soon button", () => {
     render(<MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />);
     expect(screen.getByText("Daily message limit reached")).toBeInTheDocument();
-    expect(screen.getByText("Upgrade to Trip Pro")).toBeInTheDocument();
+    expect(screen.getByText("Coming Soon")).toBeInTheDocument();
+    expect(screen.getByText("Your message limit resets daily at midnight.")).toBeInTheDocument();
+  });
+
+  it("shows coming soon message when button is clicked", () => {
+    render(<MessageLimitBanner usage={makeUsage({ remaining: 0, isAtLimit: true })} />);
+    fireEvent.click(screen.getByText("Coming Soon"));
+    expect(
+      screen.getByText("Trip Pro is coming soon! Your message limit will reset tomorrow."),
+    ).toBeInTheDocument();
   });
 
   it("has alert role when at limit", () => {
@@ -46,8 +55,8 @@ describe("MessageLimitBanner", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
-  it("does not show upgrade button when not at limit", () => {
+  it("does not show coming soon button when not at limit", () => {
     render(<MessageLimitBanner usage={makeUsage()} />);
-    expect(screen.queryByText("Upgrade to Trip Pro")).not.toBeInTheDocument();
+    expect(screen.queryByText("Coming Soon")).not.toBeInTheDocument();
   });
 });
