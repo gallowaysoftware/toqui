@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -65,6 +66,21 @@ type oauthResult struct {
 	Email        string `json:"email"`
 	Name         string `json:"name,omitempty"`
 	AvatarURL    string `json:"avatar_url,omitempty"`
+	ExpiresAt    int64  `json:"expires_at"`
+}
+
+// refreshResponse is the JSON response from POST /auth/refresh.
+// Tokens are in HttpOnly cookies — the body only contains user info and expiry.
+type refreshResponse struct {
+	User      refreshUser `json:"user"`
+	ExpiresAt int64       `json:"expires_at"`
+}
+
+type refreshUser struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
@@ -201,13 +217,14 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleExchange reads the temporary OAuth result cookie, returns the tokens
-// in the response body, and clears the cookie. This is the secure replacement
-// for passing tokens in URL query parameters.
+// in the response body, sets HttpOnly auth cookies, and clears the temporary cookie.
+// Web browsers use the cookies; native apps use the response body tokens.
 func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 
 	ip := ratelimit.ExtractClientIP(r)
 	if h.authLimiter != nil && h.authLimiter.IsBlocked(ip) {
@@ -228,12 +245,189 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 		h.authLimiter.ClearFailures(ip)
 	}
 
-	// Clear the one-time cookie immediately
+	// Parse the result to extract tokens for cookie setting.
+	var result oauthResult
+	if err := json.Unmarshal([]byte(resultStr), &result); err != nil {
+		slog.Error("unmarshal oauth result for cookie auth", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Compute access token expiry for the frontend to schedule refresh.
+	result.ExpiresAt = time.Now().Add(time.Hour).Unix()
+
+	// Clear the one-time OAuth result cookie.
 	auth.ClearOAuthResultCookie(w, h.secureCookies)
 
+	// Set persistent HttpOnly auth cookies for web browser sessions.
+	auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
+
 	w.Header().Set("Content-Type", "application/json")
-	// resultStr is already valid JSON — write it directly
-	w.Write([]byte(resultStr))
+	w.Header().Set("Cache-Control", "no-store")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		slog.Error("encode exchange response", "error", err)
+	}
+}
+
+// HandleRefresh handles POST /auth/refresh — cookie-based token refresh for web browsers.
+// Reads the refresh token from the toqui_refresh HttpOnly cookie, performs token rotation,
+// sets new auth cookies, and returns user info + new expiry.
+// Native apps use the gRPC RefreshToken RPC instead.
+func (h *OAuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
+	ip := ratelimit.ExtractClientIP(r)
+	if h.authLimiter != nil && h.authLimiter.IsBlocked(ip) {
+		http.Error(w, "Too many failed attempts. Please try again later.", http.StatusTooManyRequests)
+		return
+	}
+
+	refreshToken := auth.RefreshTokenFromCookie(r)
+	if refreshToken == "" {
+		if h.authLimiter != nil {
+			h.authLimiter.RecordFailure(ip)
+		}
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := h.authSvc.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		if h.authLimiter != nil {
+			h.authLimiter.RecordFailure(ip)
+		}
+		audit.Log(audit.EventTokenRefreshDenied, "ip", ip, "reason", "invalid_token")
+		// Clear stale cookies on invalid token.
+		auth.ClearAuthCookies(w, h.secureCookies)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if h.authLimiter != nil {
+		h.authLimiter.ClearFailures(ip)
+	}
+
+	ctx := r.Context()
+
+	// Token rotation: verify the token is tracked and not revoked.
+	family := claims.Family
+	if claims.JTI != "" {
+		stored, dbErr := h.queries.GetRefreshTokenByJTI(ctx, claims.JTI)
+		if dbErr != nil {
+			slog.Warn("refresh token JTI not found in database", "jti", claims.JTI)
+			auth.ClearAuthCookies(w, h.secureCookies)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if stored.Revoked {
+			// Token reuse detected — revoke entire family (breach).
+			audit.Log(audit.EventTokenReuse,
+				"user_id", claims.UserID.String(),
+				"jti", claims.JTI,
+				"family", stored.Family.String(),
+				"ip", ip,
+			)
+			if revokeErr := h.queries.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
+				slog.Error("revoke token family on reuse detection", "error", revokeErr, "family", stored.Family.String())
+			}
+			auth.ClearAuthCookies(w, h.secureCookies)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		// Revoke the current token (it's been used).
+		if revokeErr := h.queries.RevokeRefreshToken(ctx, claims.JTI); revokeErr != nil {
+			slog.Error("revoke used refresh token", "error", revokeErr, "jti", claims.JTI)
+		}
+		family = stored.Family
+	}
+
+	user, err := h.queries.GetUserByID(ctx, claims.UserID)
+	if err != nil {
+		slog.Error("get user for cookie refresh", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
+	if err != nil {
+		slog.Error("generate access token for cookie refresh", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Issue new refresh token in the same family (rotation).
+	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, family)
+	if err != nil {
+		slog.Error("generate refresh token for cookie refresh", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Track the new token.
+	if _, dbErr := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Jti:       refreshResult.JTI,
+		Family:    refreshResult.Family,
+		ExpiresAt: refreshResult.ExpiresAt,
+	}); dbErr != nil {
+		slog.Error("store refresh token for cookie refresh", "error", dbErr)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	audit.Log(audit.EventTokenRefresh, "user_id", user.ID.String(), "ip", ip)
+
+	// Set new auth cookies.
+	auth.SetAuthCookies(w, accessToken, refreshResult.Token, h.secureCookies)
+
+	resp := refreshResponse{
+		User: refreshUser{
+			ID:    user.ID.String(),
+			Email: user.Email,
+		},
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+	}
+	if user.Name.Valid {
+		resp.User.Name = user.Name.String
+	}
+	if user.AvatarUrl.Valid {
+		resp.User.AvatarURL = user.AvatarUrl.String
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("encode refresh response", "error", err)
+	}
+}
+
+// HandleLogout handles POST /auth/logout — clears auth cookies and revokes the refresh token.
+func (h *OAuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
+	// Try to revoke the refresh token if present.
+	refreshToken := auth.RefreshTokenFromCookie(r)
+	if refreshToken != "" {
+		claims, err := h.authSvc.ValidateRefreshToken(refreshToken)
+		if err == nil && claims.JTI != "" {
+			if revokeErr := h.queries.RevokeRefreshToken(r.Context(), claims.JTI); revokeErr != nil {
+				slog.Error("revoke refresh token on logout", "error", revokeErr, "jti", claims.JTI)
+			}
+			audit.Log(audit.EventLogout, "user_id", claims.UserID.String())
+		}
+	}
+
+	// Always clear cookies, even if token validation fails.
+	auth.ClearAuthCookies(w, h.secureCookies)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func generateState() string {

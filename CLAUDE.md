@@ -54,6 +54,7 @@ graph TB
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
 | `internal/csrf/`        | CSRF protection middleware (Origin/Referer validation for state-changing requests)        |
 | `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
+| `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
 | `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
 | `internal/aitest/`      | AI integration test harness (build tag: `aitest`)                                         |
@@ -420,30 +421,42 @@ Migrations are copied to `/migrations` in the image. The `cmd/migrate` binary re
 
 ## Auth Flow
 
-Google OAuth → backend callback → set temporary HttpOnly cookie → redirect to frontend → frontend calls `POST /auth/exchange` (with `credentials: include`) → backend returns tokens in response body + clears cookie → frontend stores tokens in memory and uses `Authorization: Bearer` for all subsequent API calls.
+**Dual-mode auth**: Web browsers use HttpOnly cookies; native apps use `Authorization: Bearer` header directly. The cookie-to-header middleware (`internal/middleware/cookieauth.go`) transparently bridges cookie auth into the existing Bearer token flow — all handlers and interceptors see `Authorization: Bearer` regardless of client type.
+
+**Web browser flow**: Google OAuth → backend callback → set temporary HttpOnly cookie → redirect to frontend → frontend calls `POST /auth/exchange` (with `credentials: include`) → backend returns user info + `expires_at` in response body, sets `toqui_access` and `toqui_refresh` HttpOnly cookies, clears OAuth cookie → frontend stores only user info in localStorage (no tokens).
+
+**Native app flow**: Same OAuth or direct token exchange → tokens returned in JSON response body → app stores tokens and sets `Authorization: Bearer` header on all requests.
+
+**Auth cookies** (set by `internal/auth/cookies.go`):
+- `toqui_access` — HttpOnly, Secure, SameSite=Lax, Path=/, MaxAge=3600 (1 hour)
+- `toqui_refresh` — HttpOnly, Secure, SameSite=Lax, Path=/auth, MaxAge=2592000 (30 days)
+- No Domain attribute (host-only cookies — only sent to exact API domain)
 
 HTTP routes (outside ConnectRPC):
 
 - `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
 - `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
-- `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name}` as JSON, clears cookie (one-time use)
+- `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name, avatar_url, expires_at}` as JSON, sets auth cookies, clears OAuth cookie (one-time use)
+- `POST /auth/refresh` — Cookie-based token refresh for web browsers. Reads `toqui_refresh` cookie, rotates tokens (same JTI/family logic as gRPC RPC), sets new auth cookies, returns `{user, expires_at}` (no tokens in body)
+- `POST /auth/logout` — Reads `toqui_refresh` cookie, revokes refresh token JTI, clears auth cookies, returns 204
 - `POST /waitlist` — Public. JSON body `{"email":"..."}`. Returns `{"position":N}`
 - `GET /waitlist/status?email=...` — Public. Returns `{"position":N,"total":M}`
-- `GET /api/usage` — Authenticated (Bearer token). Returns `{"used":N,"limit":M,"resets_at":"..."}`
+- `GET /api/usage` — Authenticated (Bearer token or cookie). Returns `{"used":N,"limit":M,"resets_at":"..."}`
 
 ## Security Hardening
 
 ### Middleware Chain
 
 ```
-Request → recovery → requestID → securityHeaders → ipRateLimit → CORS → CSRF → handler
+Request → recovery → requestID → securityHeaders → ipRateLimit → CORS → cookieAuth → CSRF → handler
 ```
 
 - **Recovery**: Panic recovery with structured error logging
 - **Request ID**: Generates unique request IDs for tracing
 - **Security headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security` (HTTPS only)
 - **IP rate limit**: Per-IP request rate limiting (separate from per-user ConnectRPC rate limiting)
-- **CORS**: Cross-origin resource sharing for frontend origins
+- **CORS**: Cross-origin resource sharing for frontend origins. `Access-Control-Allow-Credentials: true` on all routes (required for browsers to send HttpOnly cookies on cross-origin same-site requests). CSRF middleware prevents abuse.
+- **Cookie auth**: Reads `toqui_access` HttpOnly cookie and sets `Authorization: Bearer` header on the request. Passthrough if `Authorization` header already present (native apps). See `internal/middleware/cookieauth.go`.
 - **CSRF**: Origin/Referer header validation for state-changing requests (POST/PUT/DELETE/PATCH). Exempt: webhooks (have their own ECDSA auth). Non-browser clients (no Origin/Referer) are allowed through.
 - **Request body limits**: All REST POST handlers use `http.MaxBytesReader(w, r.Body, 1<<20)` — 1MB max
 
@@ -477,7 +490,7 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 
 - `auth.login`, `auth.login_denied.domain`, `auth.login_denied.capacity`, `auth.login_admitted.invite`
 - `auth.token_refresh`, `auth.token_refresh_denied`, `auth.token_reuse_detected`, `auth.lockout`
-- `auth.account_delete`, `auth.data_export`
+- `auth.logout`, `auth.account_delete`, `auth.data_export`
 - `trip.share`, `trip.unshare`
 - `security.csrf_rejected`
 
@@ -499,9 +512,7 @@ When adding new handlers, ensure:
 
 ### Known Open Security Issues
 
-See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list. Key remaining item:
-
-- **H-4** (#57): Auth tokens in localStorage — deferred, requires architectural refactor to HttpOnly cookies
+See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list.
 
 ## Waitlist + Capacity Cap
 

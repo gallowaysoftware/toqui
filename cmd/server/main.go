@@ -30,6 +30,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
+	"github.com/gallowaysoftware/toqui-backend/internal/middleware"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
@@ -192,6 +193,8 @@ func main() {
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
+	mux.HandleFunc("/auth/refresh", oauthHandler.HandleRefresh)
+	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)
 
 	// Waitlist routes (public, no auth)
 	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)
@@ -226,8 +229,8 @@ func main() {
 	// Webhooks are exempt (they use ECDSA signature verification).
 	csrfProtected := csrf.Middleware(mux, []string{cfg.FrontendURL}, []string{"/webhooks/"})
 
-	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → CSRF → handler
-	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(csrfProtected, cfg.FrontendURL)))))
+	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → cookie auth → CSRF → handler
+	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(middleware.CookieAuth(csrfProtected), cfg.FrontendURL)))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -365,11 +368,10 @@ func corsMiddleware(next http.Handler, allowedOrigin string) http.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
 
-		// Only /auth/exchange needs credentials (reads HttpOnly OAuth cookie).
-		// Other endpoints use Bearer tokens via Authorization header.
-		if strings.HasPrefix(r.URL.Path, "/auth/") {
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
+		// Credentials enabled on all routes so browsers send HttpOnly auth cookies
+		// on cross-origin same-site requests. CSRF middleware (Origin/Referer validation)
+		// prevents abuse. Native apps use Authorization: Bearer header directly.
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

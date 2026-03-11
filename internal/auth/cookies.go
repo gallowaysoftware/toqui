@@ -10,6 +10,20 @@ const (
 	// auth tokens from the OAuth callback redirect to the frontend exchange
 	// endpoint, avoiding tokens in URL parameters.
 	OAuthResultCookie = "toqui_oauth_result"
+
+	// AccessTokenCookie is an HttpOnly cookie containing the JWT access token.
+	// Used by web browsers; native apps use Authorization: Bearer header instead.
+	AccessTokenCookie = "toqui_access"
+
+	// RefreshTokenCookie is an HttpOnly cookie containing the JWT refresh token.
+	// Scoped to /auth path so it's only sent on auth-related requests.
+	RefreshTokenCookie = "toqui_refresh"
+
+	// accessTokenMaxAge is the cookie lifetime for access tokens (1 hour).
+	accessTokenMaxAge = 3600
+
+	// refreshTokenMaxAge is the cookie lifetime for refresh tokens (30 days).
+	refreshTokenMaxAge = 30 * 24 * 3600
 )
 
 // SetOAuthResultCookie sets a short-lived HttpOnly cookie containing a value
@@ -54,4 +68,71 @@ func OAuthResultFromCookies(r *http.Request) string {
 		return ""
 	}
 	return string(decoded)
+}
+
+// SetAuthCookies sets HttpOnly access and refresh token cookies.
+// Web browsers use these cookies for authentication; the cookie-to-header
+// middleware translates them into Authorization: Bearer headers for handlers.
+// Native apps bypass cookies and set Authorization headers directly.
+func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     AccessTokenCookie,
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   accessTokenMaxAge,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     RefreshTokenCookie,
+		Value:    refreshToken,
+		Path:     "/auth",
+		MaxAge:   refreshTokenMaxAge,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// ClearAuthCookies removes both access and refresh token cookies.
+func ClearAuthCookies(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     AccessTokenCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     RefreshTokenCookie,
+		Value:    "",
+		Path:     "/auth",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// AccessTokenFromCookie extracts the access token from the request cookie.
+// Returns empty string if the cookie is not present.
+func AccessTokenFromCookie(r *http.Request) string {
+	c, err := r.Cookie(AccessTokenCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
+// RefreshTokenFromCookie extracts the refresh token from the request cookie.
+// Returns empty string if the cookie is not present.
+func RefreshTokenFromCookie(r *http.Request) string {
+	c, err := r.Cookie(RefreshTokenCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }

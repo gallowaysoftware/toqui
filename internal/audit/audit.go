@@ -16,6 +16,7 @@ const (
 	EventTokenRefreshDenied  = "auth.token_refresh_denied"
 	EventTokenReuse          = "auth.token_reuse_detected"
 	EventAuthLockout         = "auth.lockout"
+	EventLogout              = "auth.logout"
 	EventAccountDelete       = "auth.account_delete"
 	EventDataExport          = "auth.data_export"
 	EventTripShare           = "trip.share"
