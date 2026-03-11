@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -98,11 +97,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
-		redirectURL := h.frontendURL + "/waitlist?" + url.Values{
-			"reason": []string{"domain_not_allowed"},
-			"email":  []string{info.Email},
-		}.Encode()
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, h.frontendURL+"/waitlist?reason=domain_not_allowed", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -127,11 +122,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 						"user_count", userCount,
 						"max_free_users", h.maxFreeUsers,
 					)
-					redirectURL := h.frontendURL + "/waitlist?" + url.Values{
-						"reason": []string{"at_capacity"},
-						"email":  []string{info.Email},
-					}.Encode()
-					http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+					http.Redirect(w, r, h.frontendURL+"/waitlist?reason=at_capacity", http.StatusTemporaryRedirect)
 					return
 				}
 				// Has valid invite — allow through, mark accepted
