@@ -59,11 +59,13 @@ pnpm generate             # Regenerate proto bindings from ../toqui-backend
 
 ### CI/CD
 
-GitHub Actions on push to `main` and all PRs (self-hosted Linux runners):
+GitHub Actions on push to `main` and all PRs (GitHub-hosted runners, `ubuntu-latest`):
 
-- **lint** → **typecheck** → **test** → **build** → **deploy-staging** (main only)
+- **lint+typecheck**, **test**, **build** run in parallel → **deploy-staging** (main only, Cloud Run)
 
-Staging deploy: Builds Docker image, pushes to Artifact Registry, deploys to GCE VM via SSH. Uses Workload Identity Federation (keyless GCP auth).
+Staging deploy: Builds Docker image (with `NEXT_PUBLIC_API_URL=https://staging-api.toqui.travel`), pushes to Artifact Registry, deploys to Cloud Run via `gcloud run deploy`. Uses Workload Identity Federation (keyless GCP auth).
+
+Staging URL: `https://staging-app.toqui.travel`
 
 ## Conventions
 
@@ -107,7 +109,17 @@ DOB-based age verification in `src/components/auth/AgeGate.tsx`:
 - Exempts `/privacy` and `/terms` routes so users can read legal pages before verifying
 - Shows denial screen for under-18 users
 
-## Pre-Commit Adversarial Review
+## Pre-Commit Requirements
+
+### Documentation Updates
+
+**MANDATORY**: Before every commit/push, update all relevant documentation:
+
+1. **CLAUDE.md** — Update this file and any other repo CLAUDE.md files affected by the changes (architecture, deployment, security patterns, new components)
+2. **MEMORY.md** — Update the shared memory file at `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md` with completed work, status changes, and any new patterns
+3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 4 repos
+
+### Adversarial Review
 
 **MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes. This catches bugs, security issues, and logic errors before they reach the repo.
 
@@ -134,6 +146,44 @@ DOB-based age verification in `src/components/auth/AgeGate.tsx`:
 - Accessibility — ARIA labels, keyboard navigation, semantic HTML
 - Type safety — proper TypeScript types, no `any` unless justified
 - Date/time handling — timezone issues, invalid date coercion
+
+## Security
+
+### Auth Token Storage
+
+Auth tokens are currently stored in localStorage. This is a known risk (see [#57](https://github.com/gallowaysoftware/toqui-backend/issues/57)) — any XSS vulnerability grants full account access. Mitigations:
+
+- Strict CSP headers set by the backend
+- No `dangerouslySetInnerHTML` usage
+- All user-generated content is escaped by React's default rendering
+- Future: migrate to HttpOnly cookie-based sessions
+
+### Known Open Issues
+
+See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui/issues?q=label:security) and [design issues](https://github.com/gallowaysoftware/toqui/issues?q=label:design).
+
+Key security-relevant design gaps:
+- No sign-out button (#25) — users can't log out on shared devices
+- Age gate is client-side only (#85 in backend repo) — can be bypassed via localStorage
+
+### Security Checklist for New Components
+
+1. **Never use `dangerouslySetInnerHTML`** — React's default escaping prevents XSS
+2. **No inline event handlers from user data** — always use React event handlers
+3. **Validate redirects** — never redirect to URLs from user input without validation
+4. **Sanitize URL params** — `useSearchParams()` values are untrusted input
+5. **No secrets in client code** — `NEXT_PUBLIC_*` env vars are embedded in the build
+
+## Cross-Repo Consistency
+
+**IMPORTANT**: This project spans 4 repos. When making changes that affect shared documentation (architecture, deployment, CI/CD, security patterns, staging/prod status), update CLAUDE.md in ALL repos to keep them consistent:
+
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md` (this file)
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
+
+Also update the shared memory file: `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md`
 
 ## Related Repos
 
