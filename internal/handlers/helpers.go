@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -33,4 +34,19 @@ func maskEmail(email string) string {
 		return email
 	}
 	return string(local[0]) + "***@" + parts[1]
+}
+
+// clientIPFromHeaders extracts the client IP from HTTP headers.
+// Used for ConnectRPC requests where we only have access to the header map.
+func clientIPFromHeaders(h http.Header) string {
+	if xff := h.Get("X-Forwarded-For"); xff != "" {
+		if ip, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(ip)
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := h.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	return "unknown"
 }

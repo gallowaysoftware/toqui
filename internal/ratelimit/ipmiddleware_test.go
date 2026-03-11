@@ -66,9 +66,9 @@ func TestExtractClientIP(t *testing.T) {
 				r.Header.Set(k, v)
 			}
 
-			got := extractClientIP(r)
+			got := ExtractClientIP(r)
 			if got != tt.expected {
-				t.Errorf("extractClientIP() = %q, want %q", got, tt.expected)
+				t.Errorf("ExtractClientIP() = %q, want %q", got, tt.expected)
 			}
 		})
 	}

@@ -42,7 +42,7 @@ func NewIPRateLimiter(requestsPerMinute, burst int) *IPRateLimiter {
 // Middleware returns an http.Handler that enforces per-IP rate limits.
 func (l *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := extractClientIP(r)
+		ip := ExtractClientIP(r)
 
 		entry := l.getOrCreate(ip)
 		if !entry.limiter.Allow() {
@@ -71,10 +71,10 @@ func (l *IPRateLimiter) getOrCreate(ip string) *ipEntry {
 	return entry
 }
 
-// extractClientIP returns the client's real IP address.
+// ExtractClientIP returns the client's real IP address.
 // Cloud Run and load balancers set X-Forwarded-For; we take the first
 // (leftmost) entry, which is the original client IP.
-func extractClientIP(r *http.Request) string {
+func ExtractClientIP(r *http.Request) string {
 	// X-Forwarded-For: client, proxy1, proxy2
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.SplitN(xff, ",", 2)

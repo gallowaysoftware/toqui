@@ -30,17 +30,17 @@ func TestValidateRefreshToken_AcceptsRefreshToken(t *testing.T) {
 	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
 	userID := uuid.New()
 
-	refreshToken, err := svc.GenerateRefreshToken(userID)
+	result, err := svc.GenerateRefreshToken(userID, uuid.Nil)
 	if err != nil {
 		t.Fatalf("GenerateRefreshToken: %v", err)
 	}
 
-	got, err := svc.ValidateRefreshToken(refreshToken)
+	claims, err := svc.ValidateRefreshToken(result.Token)
 	if err != nil {
 		t.Fatalf("ValidateRefreshToken: %v", err)
 	}
-	if got != userID {
-		t.Errorf("got userID %s, want %s", got, userID)
+	if claims.UserID != userID {
+		t.Errorf("got userID %s, want %s", claims.UserID, userID)
 	}
 }
 
@@ -59,5 +59,69 @@ func TestValidateToken_AcceptsAccessToken(t *testing.T) {
 	}
 	if got != userID {
 		t.Errorf("got userID %s, want %s", got, userID)
+	}
+}
+
+func TestRefreshToken_ContainsJTIAndFamily(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	result, err := svc.GenerateRefreshToken(userID, uuid.Nil)
+	if err != nil {
+		t.Fatalf("GenerateRefreshToken: %v", err)
+	}
+
+	if result.JTI == "" {
+		t.Error("expected non-empty JTI")
+	}
+	if result.Family == uuid.Nil {
+		t.Error("expected non-nil family UUID")
+	}
+
+	claims, err := svc.ValidateRefreshToken(result.Token)
+	if err != nil {
+		t.Fatalf("ValidateRefreshToken: %v", err)
+	}
+	if claims.JTI != result.JTI {
+		t.Errorf("got JTI %s, want %s", claims.JTI, result.JTI)
+	}
+	if claims.Family != result.Family {
+		t.Errorf("got family %s, want %s", claims.Family, result.Family)
+	}
+}
+
+func TestRefreshToken_RotationPreservesFamily(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+	family := uuid.New()
+
+	result, err := svc.GenerateRefreshToken(userID, family)
+	if err != nil {
+		t.Fatalf("GenerateRefreshToken: %v", err)
+	}
+
+	if result.Family != family {
+		t.Errorf("expected family %s, got %s", family, result.Family)
+	}
+
+	claims, err := svc.ValidateRefreshToken(result.Token)
+	if err != nil {
+		t.Fatalf("ValidateRefreshToken: %v", err)
+	}
+	if claims.Family != family {
+		t.Errorf("got family %s, want %s", claims.Family, family)
+	}
+}
+
+func TestRefreshToken_UniqueJTIs(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+	family := uuid.New()
+
+	r1, _ := svc.GenerateRefreshToken(userID, family)
+	r2, _ := svc.GenerateRefreshToken(userID, family)
+
+	if r1.JTI == r2.JTI {
+		t.Error("expected different JTIs for different tokens")
 	}
 }

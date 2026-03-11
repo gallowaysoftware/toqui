@@ -10,12 +10,15 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 )
 
 type OAuthHandler struct {
@@ -25,9 +28,10 @@ type OAuthHandler struct {
 	secureCookies  bool
 	maxFreeUsers   int
 	allowedDomains []string
+	authLimiter    *ratelimit.AuthLimiter
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
@@ -35,6 +39,7 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 		secureCookies:  secureCookies,
 		maxFreeUsers:   maxFreeUsers,
 		allowedDomains: allowedDomains,
+		authLimiter:    authLimiter,
 	}
 }
 
@@ -92,7 +97,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
-		slog.Info("user denied: email domain not allowed", "email", maskEmail(info.Email))
+		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
 		redirectURL := h.frontendURL + "/waitlist?" + url.Values{
 			"reason": []string{"domain_not_allowed"},
 			"email":  []string{info.Email},
@@ -117,7 +122,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				// At capacity — check if user has a valid invite
 				waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(r.Context(), info.Email)
 				if wlErr != nil || !waitlistEntry.InviteCode.Valid {
-					slog.Info("user denied: at capacity, no invite",
+					audit.Log(audit.EventLoginDeniedCapacity,
 						"email", maskEmail(info.Email),
 						"user_count", userCount,
 						"max_free_users", h.maxFreeUsers,
@@ -133,7 +138,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil {
 					slog.Error("mark waitlist accepted failed", "email", maskEmail(info.Email), "error", markErr)
 				}
-				slog.Info("user admitted via invite code",
+				audit.Log(audit.EventLoginAdmittedInvite,
 					"email", maskEmail(info.Email),
 					"invite_code", waitlistEntry.InviteCode.String,
 				)
@@ -158,16 +163,29 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := h.authSvc.GenerateRefreshToken(user.ID)
+	// New login → new token family.
+	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, uuid.Nil)
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=token_error", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Track the refresh token server-side for rotation.
+	if _, dbErr := h.queries.CreateRefreshToken(r.Context(), dbgen.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Jti:       refreshResult.JTI,
+		Family:    refreshResult.Family,
+		ExpiresAt: refreshResult.ExpiresAt,
+	}); dbErr != nil {
+		slog.Error("store refresh token", "error", dbErr)
+		http.Redirect(w, r, h.frontendURL+"/?error=internal", http.StatusTemporaryRedirect)
 		return
 	}
 
 	// Store auth result in a short-lived HttpOnly cookie instead of URL params.
 	result := oauthResult{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshResult.Token,
 		UserID:       user.ID.String(),
 		Email:        user.Email,
 	}
@@ -185,6 +203,8 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
+
 	auth.SetOAuthResultCookie(w, string(resultJSON), h.secureCookies)
 	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
@@ -198,10 +218,23 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ip := ratelimit.ExtractClientIP(r)
+	if h.authLimiter != nil && h.authLimiter.IsBlocked(ip) {
+		http.Error(w, "Too many failed attempts. Please try again later.", http.StatusTooManyRequests)
+		return
+	}
+
 	resultStr := auth.OAuthResultFromCookies(r)
 	if resultStr == "" {
+		if h.authLimiter != nil {
+			h.authLimiter.RecordFailure(ip)
+		}
 		http.Error(w, "no pending auth result", http.StatusBadRequest)
 		return
+	}
+
+	if h.authLimiter != nil {
+		h.authLimiter.ClearFailures(ip)
 	}
 
 	// Clear the one-time cookie immediately

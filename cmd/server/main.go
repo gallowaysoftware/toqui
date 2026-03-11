@@ -25,6 +25,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/config"
+	"github.com/gallowaysoftware/toqui-backend/internal/csrf"
 	"github.com/gallowaysoftware/toqui-backend/internal/db"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
@@ -162,14 +163,18 @@ func main() {
 	// Register handlers
 	mux := http.NewServeMux()
 
-	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains)
+	// Auth lockout — block IPs after 5 failed auth attempts within 15 minutes, for 15 minutes.
+	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
+	defer authLimiter.Stop()
+
+	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, pool)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains)
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, authLimiter)
 	waitlistHandler := handlers.NewWaitlistHandler(pool)
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
@@ -217,8 +222,12 @@ func main() {
 	ipLimiter := ratelimit.NewIPRateLimiter(120, 20)
 	defer ipLimiter.Stop()
 
-	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → handler
-	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(mux, cfg.FrontendURL)))))
+	// CSRF protection — validate Origin/Referer on state-changing requests.
+	// Webhooks are exempt (they use ECDSA signature verification).
+	csrfProtected := csrf.Middleware(mux, []string{cfg.FrontendURL}, []string{"/webhooks/"})
+
+	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → CSRF → handler
+	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(csrfProtected, cfg.FrontendURL)))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

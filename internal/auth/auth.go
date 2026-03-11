@@ -88,15 +88,44 @@ func (s *Service) GenerateAccessToken(userID uuid.UUID) (string, error) {
 	return token.SignedString(s.jwtSecret)
 }
 
-func (s *Service) GenerateRefreshToken(userID uuid.UUID) (string, error) {
+// RefreshTokenResult contains the signed token string along with metadata
+// needed for server-side tracking (JTI, family, expiry).
+type RefreshTokenResult struct {
+	Token     string
+	JTI       string
+	Family    uuid.UUID
+	ExpiresAt time.Time
+}
+
+// GenerateRefreshToken creates a new refresh token with a unique JTI.
+// If family is uuid.Nil, a new token family is started (initial login).
+// Otherwise, the token belongs to the given family (rotation).
+func (s *Service) GenerateRefreshToken(userID uuid.UUID, family uuid.UUID) (*RefreshTokenResult, error) {
+	jti := uuid.New().String()
+	if family == uuid.Nil {
+		family = uuid.New()
+	}
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+
 	claims := jwt.MapClaims{
-		"sub":  userID.String(),
-		"exp":  time.Now().Add(30 * 24 * time.Hour).Unix(),
-		"iat":  time.Now().Unix(),
-		"type": "refresh",
+		"sub":    userID.String(),
+		"exp":    expiresAt.Unix(),
+		"iat":    time.Now().Unix(),
+		"type":   "refresh",
+		"jti":    jti,
+		"family": family.String(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.jwtSecret)
+	signed, err := token.SignedString(s.jwtSecret)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshTokenResult{
+		Token:     signed,
+		JTI:       jti,
+		Family:    family,
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
 func (s *Service) ValidateToken(tokenString string) (uuid.UUID, error) {
@@ -128,7 +157,14 @@ func (s *Service) ValidateToken(tokenString string) (uuid.UUID, error) {
 	return uuid.Parse(sub)
 }
 
-func (s *Service) ValidateRefreshToken(tokenString string) (uuid.UUID, error) {
+// RefreshTokenClaims contains the validated claims from a refresh token.
+type RefreshTokenClaims struct {
+	UserID uuid.UUID
+	JTI    string
+	Family uuid.UUID
+}
+
+func (s *Service) ValidateRefreshToken(tokenString string) (*RefreshTokenClaims, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -136,25 +172,43 @@ func (s *Service) ValidateRefreshToken(tokenString string) (uuid.UUID, error) {
 		return s.jwtSecret, nil
 	})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("parse token: %w", err)
+		return nil, fmt.Errorf("parse token: %w", err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return uuid.Nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	tokenType, _ := claims["type"].(string)
 	if tokenType != "refresh" {
-		return uuid.Nil, fmt.Errorf("invalid token type: expected refresh token")
+		return nil, fmt.Errorf("invalid token type: expected refresh token")
 	}
 
 	sub, ok := claims["sub"].(string)
 	if !ok {
-		return uuid.Nil, fmt.Errorf("missing sub claim")
+		return nil, fmt.Errorf("missing sub claim")
 	}
 
-	return uuid.Parse(sub)
+	userID, err := uuid.Parse(sub)
+	if err != nil {
+		return nil, fmt.Errorf("invalid sub claim: %w", err)
+	}
+
+	result := &RefreshTokenClaims{UserID: userID}
+
+	// Extract JTI and family if present (tokens issued before rotation
+	// won't have these — they're still valid but won't be tracked).
+	if jti, _ := claims["jti"].(string); jti != "" {
+		result.JTI = jti
+	}
+	if familyStr, _ := claims["family"].(string); familyStr != "" {
+		if f, err := uuid.Parse(familyStr); err == nil {
+			result.Family = f
+		}
+	}
+
+	return result, nil
 }
 
 func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {

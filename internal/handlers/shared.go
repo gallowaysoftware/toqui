@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
@@ -150,6 +151,8 @@ func (h *SharedHandler) HandleEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	audit.Log(audit.EventTripShare, "user_id", userID.String(), "trip_id", tripID.String())
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(enableSharingResponse{
 		ShareToken: token,
@@ -192,6 +195,8 @@ func (h *SharedHandler) HandleDisable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
+	audit.Log(audit.EventTripUnshare, "user_id", userID.String(), "trip_id", tripID.String())
 
 	w.WriteHeader(http.StatusNoContent)
 }

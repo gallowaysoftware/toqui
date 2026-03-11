@@ -6,12 +6,15 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
+	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -21,14 +24,16 @@ type AuthHandler struct {
 	queries        *dbgen.Queries
 	lifecycleSvc   *lifecycle.Service
 	allowedDomains []string
+	authLimiter    *ratelimit.AuthLimiter
 }
 
-func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string) *AuthHandler {
+func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
 	return &AuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
 		lifecycleSvc:   lifecycleSvc,
 		allowedDomains: allowedDomains,
+		authLimiter:    authLimiter,
 	}
 }
 
@@ -40,7 +45,7 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
-		slog.Info("user denied via RPC: email domain not allowed", "email", maskEmail(info.Email))
+		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
@@ -59,25 +64,77 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 		return nil, internalError(ctx, "generate access token", err)
 	}
 
-	refreshToken, err := h.authSvc.GenerateRefreshToken(user.ID)
+	// New login → new token family.
+	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, uuid.Nil)
 	if err != nil {
 		return nil, internalError(ctx, "generate refresh token", err)
 	}
 
+	// Track the refresh token server-side for rotation.
+	if _, err := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Jti:       refreshResult.JTI,
+		Family:    refreshResult.Family,
+		ExpiresAt: refreshResult.ExpiresAt,
+	}); err != nil {
+		return nil, internalError(ctx, "store refresh token", err)
+	}
+
+	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
+
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshResult.Token,
 		User:         userToProto(&user),
 	}), nil
 }
 
 func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toquiv1.RefreshTokenRequest]) (*connect.Response[toquiv1.RefreshTokenResponse], error) {
-	userID, err := h.authSvc.ValidateRefreshToken(req.Msg.RefreshToken)
+	ip := clientIPFromHeaders(req.Header())
+	if h.authLimiter != nil && h.authLimiter.IsBlocked(ip) {
+		return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("too many failed attempts — please try again later"))
+	}
+
+	claims, err := h.authSvc.ValidateRefreshToken(req.Msg.RefreshToken)
 	if err != nil {
+		if h.authLimiter != nil {
+			h.authLimiter.RecordFailure(ip)
+		}
+		audit.Log(audit.EventTokenRefreshDenied, "ip", ip, "reason", "invalid_token")
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
 	}
 
-	user, err := h.queries.GetUserByID(ctx, userID)
+	if h.authLimiter != nil {
+		h.authLimiter.ClearFailures(ip)
+	}
+
+	// Token rotation: verify the token is tracked and not revoked.
+	// Tokens without JTI (pre-rotation) are accepted but not rotated.
+	family := claims.Family
+	if claims.JTI != "" {
+		stored, err := h.queries.GetRefreshTokenByJTI(ctx, claims.JTI)
+		if err != nil {
+			// Token not in DB — could be pre-rotation or manually deleted.
+			slog.Warn("refresh token JTI not found in database", "jti", claims.JTI)
+			return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
+		}
+		if stored.Revoked {
+			// Token reuse detected — revoke entire family (breach).
+			audit.Log(audit.EventTokenReuse,
+				"user_id", claims.UserID.String(),
+				"jti", claims.JTI,
+				"family", stored.Family.String(),
+				"ip", ip,
+			)
+			_ = h.queries.RevokeRefreshTokenFamily(ctx, stored.Family)
+			return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
+		}
+		// Revoke the current token (it's been used).
+		_ = h.queries.RevokeRefreshToken(ctx, claims.JTI)
+		family = stored.Family
+	}
+
+	user, err := h.queries.GetUserByID(ctx, claims.UserID)
 	if err != nil {
 		return nil, internalError(ctx, "get user for refresh", err)
 	}
@@ -87,14 +144,27 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 		return nil, internalError(ctx, "generate access token", err)
 	}
 
-	refreshToken, err := h.authSvc.GenerateRefreshToken(user.ID)
+	// Issue new refresh token in the same family (rotation).
+	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, family)
 	if err != nil {
 		return nil, internalError(ctx, "generate refresh token", err)
 	}
 
+	// Track the new token.
+	if _, err := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Jti:       refreshResult.JTI,
+		Family:    refreshResult.Family,
+		ExpiresAt: refreshResult.ExpiresAt,
+	}); err != nil {
+		return nil, internalError(ctx, "store refresh token", err)
+	}
+
+	audit.Log(audit.EventTokenRefresh, "user_id", user.ID.String(), "ip", ip)
+
 	return connect.NewResponse(&toquiv1.RefreshTokenResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshResult.Token,
 		User:         userToProto(&user),
 	}), nil
 }
@@ -130,6 +200,8 @@ func (h *AuthHandler) DeleteAccount(ctx context.Context, req *connect.Request[to
 		return nil, internalError(ctx, "request deletion", err)
 	}
 
+	audit.Log(audit.EventAccountDelete, "user_id", userID.String())
+
 	return connect.NewResponse(&toquiv1.DeleteAccountResponse{
 		RequestId: requestID.String(),
 		Message:   "Your account and all associated data have been permanently deleted.",
@@ -146,6 +218,8 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 	if err != nil {
 		return nil, internalError(ctx, "request export", err)
 	}
+
+	audit.Log(audit.EventDataExport, "user_id", userID.String())
 
 	return connect.NewResponse(&toquiv1.ExportDataResponse{
 		RequestId: requestID.String(),
