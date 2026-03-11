@@ -35,13 +35,13 @@ Frontend login()
 
 Tokens are passed as query parameters on the redirect to `{FRONTEND_URL}/auth/callback`. The frontend callback page reads them from the URL and stores them (e.g., in memory or secure storage). Parameters:
 
-| Param | Value |
-|-------|-------|
-| `access_token` | Short-lived JWT |
+| Param           | Value                            |
+| --------------- | -------------------------------- |
+| `access_token`  | Short-lived JWT                  |
 | `refresh_token` | Long-lived JWT for token renewal |
-| `user_id` | UUID string |
-| `email` | User email |
-| `name` | Display name (omitted if empty) |
+| `user_id`       | UUID string                      |
+| `email`         | User email                       |
+| `name`          | Display name (omitted if empty)  |
 
 ### Config Change
 
@@ -220,12 +220,12 @@ The frontend can now show tool activity indicators with correct tool names, and 
 
 The `useChat` hook (`src/lib/hooks/useChat.ts`) now handles these additional `SendMessageResponse` event cases:
 
-| Case | Action |
-|------|--------|
-| `toolCall` | Sets `toolActivity` state to `{ toolName, status: "calling" }` |
-| `toolResult` | Updates `toolActivity` to `{ toolName, status: "done" }` |
+| Case              | Action                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `toolCall`        | Sets `toolActivity` state to `{ toolName, status: "calling" }`                      |
+| `toolResult`      | Updates `toolActivity` to `{ toolName, status: "done" }`                            |
 | `messageComplete` | Clears `toolActivity`, optionally overrides `fullText` with server-provided content |
-| `error` | Logs to console |
+| `error`           | Logs to console                                                                     |
 
 The hook exports a new `toolActivity` state (`ToolActivity | null`) alongside existing `messages`, `streamingText`, `isStreaming`, and `activePersona`.
 

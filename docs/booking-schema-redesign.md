@@ -39,13 +39,13 @@ All three columns are nullable, so the migration is additive and safe to run on 
 
 ### What lives where
 
-| Storage | Contents | Purpose |
-|---------|----------|---------|
-| `departure_location` (TEXT) | Origin city, airport code, or station name | Queryable top-level field for flights, trains, tours |
-| `arrival_location` (TEXT) | Destination city, airport code, or station name | Queryable top-level field for flights, trains, tours |
-| `num_guests` (INT) | Guest/passenger count | Queryable top-level field for hotels, activities, restaurants |
-| `details_json` (JSONB) | Full type-specific detail object | Stores all type-specific fields (airline, flight number, room type, etc.) |
-| `raw_source` (TEXT) | Original pasted/emailed text | Preserved for re-extraction via `ExtractBookingField` |
+| Storage                     | Contents                                        | Purpose                                                                   |
+| --------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| `departure_location` (TEXT) | Origin city, airport code, or station name      | Queryable top-level field for flights, trains, tours                      |
+| `arrival_location` (TEXT)   | Destination city, airport code, or station name | Queryable top-level field for flights, trains, tours                      |
+| `num_guests` (INT)          | Guest/passenger count                           | Queryable top-level field for hotels, activities, restaurants             |
+| `details_json` (JSONB)      | Full type-specific detail object                | Stores all type-specific fields (airline, flight number, room type, etc.) |
+| `raw_source` (TEXT)         | Original pasted/emailed text                    | Preserved for re-extraction via `ExtractBookingField`                     |
 
 **Design rationale:** Fields that are useful for filtering, sorting, or quick display are promoted to SQL columns. Deeply nested, type-specific fields (seat assignments, terminal info, tour stops) remain in the JSONB blob to avoid schema explosion.
 
@@ -73,15 +73,15 @@ All other queries (`GetBookingByID`, `ListBookingsByTrip`, `ListBookingsByUser`,
 
 Seven detail messages were added, each matching a booking type:
 
-| Message | Key fields |
-|---------|------------|
-| `FlightDetails` | airline, flight_number, departure/arrival_airport, terminals, seat, cabin_class, passengers[] |
-| `HotelDetails` | hotel_name, check_in/out_date, room_type, num_guests, address, phone |
-| `CarRentalDetails` | company, pickup/dropoff_location, pickup/dropoff_time, car_type, driver_name |
-| `TrainDetails` | operator, train_number, departure/arrival_station, seat, car_number, class |
-| `TourDetails` | tour_operator, tour_name, num_participants, meeting_point, stops[] (TourStop) |
-| `ActivityDetails` | operator, activity_name, location, num_guests, notes |
-| `RestaurantDetails` | restaurant_name, cuisine, party_size, notes |
+| Message             | Key fields                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `FlightDetails`     | airline, flight_number, departure/arrival_airport, terminals, seat, cabin_class, passengers[] |
+| `HotelDetails`      | hotel_name, check_in/out_date, room_type, num_guests, address, phone                          |
+| `CarRentalDetails`  | company, pickup/dropoff_location, pickup/dropoff_time, car_type, driver_name                  |
+| `TrainDetails`      | operator, train_number, departure/arrival_station, seat, car_number, class                    |
+| `TourDetails`       | tour_operator, tour_name, num_participants, meeting_point, stops[] (TourStop)                 |
+| `ActivityDetails`   | operator, activity_name, location, num_guests, notes                                          |
+| `RestaurantDetails` | restaurant_name, cuisine, party_size, notes                                                   |
 
 `TourStop` is a nested message used by `TourDetails.stops`.
 
@@ -216,6 +216,7 @@ The `ExtractBookingField` RPC enables on-demand re-extraction from the original 
 4. **Response returned** to the client with both the answer and the extracted fields map. The client (or a future server-side step) can use `extracted_fields` to patch the booking's `details_json` or top-level columns.
 
 **Key design points:**
+
 - The raw source is never discarded, enabling re-extraction at any time.
 - Temperature is set to 0 for deterministic extraction.
 - `MaxTokens` is capped at 1024 (vs 2048 for initial ingestion) since extraction answers are shorter.
@@ -237,14 +238,14 @@ The `bookingToProto` function maps `dbgen.Booking` to `*toquiv1.Booking`. The re
 
 This function switches on the `bookingType` string and unmarshals the raw JSONB into the appropriate Go detail struct from `internal/booking/details.go`, then maps it to the corresponding proto oneof variant:
 
-| DB type string | Proto oneof field |
-|----------------|-------------------|
-| `"flight"` | `Booking_FlightDetails` |
-| `"hotel"` | `Booking_HotelDetails` |
-| `"car_rental"` | `Booking_CarRentalDetails` |
-| `"train"` | `Booking_TrainDetails` |
-| `"tour"` | `Booking_TourDetails` |
-| `"activity"` | `Booking_ActivityDetails` |
+| DB type string | Proto oneof field           |
+| -------------- | --------------------------- |
+| `"flight"`     | `Booking_FlightDetails`     |
+| `"hotel"`      | `Booking_HotelDetails`      |
+| `"car_rental"` | `Booking_CarRentalDetails`  |
+| `"train"`      | `Booking_TrainDetails`      |
+| `"tour"`       | `Booking_TourDetails`       |
+| `"activity"`   | `Booking_ActivityDetails`   |
 | `"restaurant"` | `Booking_RestaurantDetails` |
 
 Unmarshal errors are silently swallowed (the `oneof` is simply not set), which is a deliberate choice: a corrupt JSONB blob should not prevent the booking from being returned. The deprecated `details_json` string is still available as a fallback.

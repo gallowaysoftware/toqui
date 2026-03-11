@@ -5,6 +5,7 @@ AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Fi
 ## Project Structure
 
 This is a 4-repo project under `github.com/gallowaysoftware`:
+
 - **toqui-backend** (this repo) — Go backend, gRPC API, AI orchestration
 - **toqui** — Next.js TypeScript web frontend
 - **toqui-terraform** — Terraform GCP infrastructure (staging + prod)
@@ -31,33 +32,33 @@ graph TB
 
 ### Key Packages
 
-| Package | Purpose |
-|---------|---------|
-| `cmd/server` | Main API server entry point |
-| `cmd/migrate` | Database migration runner |
-| `internal/handlers/` | ConnectRPC service handlers (auth, trip, chat, booking, location, persona) |
-| `internal/chat/` | Chat service — AI streaming, tool execution, persona resolution |
-| `internal/persona/` | Persona composition — 40 locations × 20 themes = 800 expert combos |
-| `internal/ai/` | AI provider abstraction (Claude primary, Gemini/Vertex AI fallback) |
-| `internal/ai/tools/` | LLM-callable tool registry (WebSearch, Places) |
-| `internal/chatstore/` | Firestore chat message persistence |
-| `internal/lifecycle/` | GDPR deletion, archival, data export |
-| `internal/auth/` | Google OAuth + JWT + auth interceptor |
-| `internal/trip/` | Trip CRUD, status transitions, destination management |
-| `internal/booking/` | Booking ingestion + AI parsing (email, paste, manual) |
-| `internal/location/` | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places) |
-| `internal/theme/` | Trip theme tagging (AI-driven classification) |
-| `internal/affiliate/` | Affiliate link builder — generates partner URLs for Skyscanner, Booking.com, GetYourGuide |
-| `internal/config/` | Three-layer config: env file → os.Getenv → GCP Secret Manager |
-| `internal/db/` | PostgreSQL connection pool + transaction helpers |
-| `internal/validate/` | ConnectRPC interceptor for buf.validate constraints |
-| `internal/ratelimit/` | Per-user rate limiting interceptor (token bucket, AI vs general) |
-| `internal/usage/` | Daily usage tracking + message limit enforcement per user |
-| `internal/aitest/` | AI integration test harness (build tag: `aitest`) |
-| `internal/integration/` | Integration test suite (build tag: `integration`) |
-| `internal/dbgen/` | Generated sqlc query code (regenerate: `make sqlc`) |
-| `proto/toqui/v1/` | Protobuf service definitions (7 files, 6 services, 28 RPCs) |
-| `gen/toqui/v1/` | Generated Go proto code (regenerate: `make proto`) |
+| Package                 | Purpose                                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| `cmd/server`            | Main API server entry point                                                               |
+| `cmd/migrate`           | Database migration runner                                                                 |
+| `internal/handlers/`    | ConnectRPC service handlers (auth, trip, chat, booking, location, persona)                |
+| `internal/chat/`        | Chat service — AI streaming, tool execution, persona resolution                           |
+| `internal/persona/`     | Persona composition — 40 locations × 20 themes = 800 expert combos                        |
+| `internal/ai/`          | AI provider abstraction (Claude primary, Gemini/Vertex AI fallback)                       |
+| `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
+| `internal/chatstore/`   | Firestore chat message persistence                                                        |
+| `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
+| `internal/auth/`        | Google OAuth + JWT + auth interceptor                                                     |
+| `internal/trip/`        | Trip CRUD, status transitions, destination management                                     |
+| `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
+| `internal/location/`    | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places)   |
+| `internal/theme/`       | Trip theme tagging (AI-driven classification)                                             |
+| `internal/affiliate/`   | Affiliate link builder — generates partner URLs for Skyscanner, Booking.com, GetYourGuide |
+| `internal/config/`      | Three-layer config: env file → os.Getenv → GCP Secret Manager                             |
+| `internal/db/`          | PostgreSQL connection pool + transaction helpers                                          |
+| `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
+| `internal/ratelimit/`   | Per-user rate limiting interceptor (token bucket, AI vs general)                          |
+| `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
+| `internal/aitest/`      | AI integration test harness (build tag: `aitest`)                                         |
+| `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
+| `internal/dbgen/`       | Generated sqlc query code (regenerate: `make sqlc`)                                       |
+| `proto/toqui/v1/`       | Protobuf service definitions (7 files, 6 services, 28 RPCs)                               |
+| `gen/toqui/v1/`         | Generated Go proto code (regenerate: `make proto`)                                        |
 
 ### Services (proto/toqui/v1/)
 
@@ -107,16 +108,17 @@ TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toq
 
 ### CI/CD
 
-GitHub Actions on push to `main` and all PRs (self-hosted Linux runners):
-- **toqui-backend**: build → vet → test with coverage → PR coverage comment → **deploy to staging** (main only)
-- **toqui**: install → lint → build
+GitHub Actions on push to `main` and all PRs (GitHub-hosted runners, `ubuntu-latest`):
+
+- **toqui-backend**: lint, test (with coverage), build run in parallel → **deploy to staging** (main only, Cloud Run)
+- **toqui**: lint+typecheck, test, build run in parallel → **deploy to staging** (main only, Cloud Run)
 - **toqui-site**: install → build
 
-**Staging auto-deploy**: Push to `main` triggers a `deploy-staging` job that builds a Docker image, pushes to Artifact Registry, redeploys the GCE VM via `gcloud compute instances update-container`, and runs migrations. Uses Workload Identity Federation (keyless GCP auth).
+**Staging auto-deploy**: Push to `main` triggers a `deploy-staging` job that builds a Docker image, pushes to Artifact Registry, deploys to Cloud Run via `gcloud run deploy`, and runs migrations via Cloud Run Jobs. Uses Workload Identity Federation (keyless GCP auth).
 
 ### Task Tracking
 
-All task tracking is in GitHub Issues: [toqui-backend issues](https://github.com/gallowaysoftware/toqui-backend/issues), [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`.
+All task tracking is in GitHub Issues: [toqui-backend issues](https://github.com/gallowaysoftware/toqui-backend/issues), [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P0`, `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`, `security`, `code-quality`, `design`, `compliance`.
 
 ### Database
 
@@ -131,6 +133,7 @@ make migrate-create # Create new migration files
 ### Environment Configuration
 
 Config loads in three layers via `internal/config/`:
+
 1. **Env file**: `env/.env.{TARGET_ENV}` parsed, sets missing env vars (no overwrite)
 2. **os.Getenv with defaults**: Same as before, sane local defaults
 3. **Secret Manager resolution**: `gcsm://` prefixed values replaced by GCP Secret Manager fetch
@@ -197,16 +200,16 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 
 ### Available Chat Tools
 
-| Tool | Modes | What it does | Stream Event |
-|------|-------|-------------|--------------|
-| `create_trip` | selection | AI creates a new trip when user describes travel plans | `TripCreated` |
-| `select_trip` | selection | AI matches vague references to existing trips | `TripSelected` |
-| `create_itinerary_items` | planning | AI adds structured day-by-day itinerary items | `ItineraryUpdate` |
-| `suggest_expert` | all modes | Toqui hands off to a composed expert persona | `PersonaSwitch` |
-| `recommend_booking` | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
-| `nearby_places` | companion | Find nearby places using user's cached location (location-aware) | — |
-| `web_search` | all modes | Search the web for current info (global tool registry) | — |
-| `place_lookup` | all modes | Google Places API lookup (global tool registry) | — |
+| Tool                     | Modes     | What it does                                                                                                                                           | Stream Event           |
+| ------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| `create_trip`            | selection | AI creates a new trip when user describes travel plans                                                                                                 | `TripCreated`          |
+| `select_trip`            | selection | AI matches vague references to existing trips                                                                                                          | `TripSelected`         |
+| `create_itinerary_items` | planning  | AI adds structured day-by-day itinerary items                                                                                                          | `ItineraryUpdate`      |
+| `suggest_expert`         | all modes | Toqui hands off to a composed expert persona                                                                                                           | `PersonaSwitch`        |
+| `recommend_booking`      | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
+| `nearby_places`          | companion | Find nearby places using user's cached location (location-aware)                                                                                       | —                      |
+| `web_search`             | all modes | Search the web for current info (global tool registry)                                                                                                 | —                      |
+| `place_lookup`           | all modes | Google Places API lookup (global tool registry)                                                                                                        | —                      |
 
 ### Adding a New Chat Tool
 
@@ -317,14 +320,14 @@ go test -tags=aitest -v -timeout=30m \
 
 ### Regression Scenarios
 
-| Scenario | What it tests |
-|----------|---------------|
-| `alice-backpacker-lifecycle` | Full lifecycle: selection → planning → companion → complete |
-| `bob-family-planner` | Planning context injection — AI must know destination without asking |
-| `carol-returning-user` | Multi-trip: select_trip matching, trip switching, new trip creation |
-| `update-regression` | UpdateTrip COALESCE — status change must not wipe title/description |
-| `dave-itinerary-and-handoff` | create_itinerary_items tool usage + suggest_expert persona handoff |
-| `eve-expanded-profiles` | Expanded location/theme profiles (CZ, IS) with craft-beer and hiking expert handoff |
+| Scenario                        | What it tests                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `alice-backpacker-lifecycle`    | Full lifecycle: selection → planning → companion → complete                                                 |
+| `bob-family-planner`            | Planning context injection — AI must know destination without asking                                        |
+| `carol-returning-user`          | Multi-trip: select_trip matching, trip switching, new trip creation                                         |
+| `update-regression`             | UpdateTrip COALESCE — status change must not wipe title/description                                         |
+| `dave-itinerary-and-handoff`    | create_itinerary_items tool usage + suggest_expert persona handoff                                          |
+| `eve-expanded-profiles`         | Expanded location/theme profiles (CZ, IS) with craft-beer and hiking expert handoff                         |
 | `frank-booking-recommendations` | recommend_booking tool across all categories (flights, hotels, activities) + FTC disclosure + negative test |
 
 ### Design
@@ -339,65 +342,65 @@ go test -tags=aitest -v -timeout=30m \
 GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) repo.
 
 **Two GCP projects** under the Toqui folder in the `thegalloways.ca` org:
-- **toqui-staging** — GCE VM + Docker + Tailscale VPN (no public access), Cloud SQL `db-f1-micro`
-- **toqui-prod** — 3 Cloud Run services behind global HTTPS LB, Cloud SQL `db-g1-small`, custom domains (`api.toqui.travel`, `app.toqui.travel`, `toqui.travel`)
 
-Both use Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, and Artifact Registry.
+- **toqui-staging** — Cloud Run (backend + frontend) + Global HTTPS LB + Cloud DNS + managed SSL, Cloud SQL `db-f1-micro`, custom domains (`staging-api.toqui.travel`, `staging-app.toqui.travel`)
+- **toqui-prod** — Cloud Run services behind global HTTPS LB, Cloud SQL `db-g1-small`, custom domains (`api.toqui.travel`, `app.toqui.travel`, `toqui.travel`) — Terraform defined, not yet applied
+
+Both use Cloud SQL PostgreSQL 16 (public IP for Cloud Run), Firestore (native mode), Secret Manager, and Artifact Registry.
 
 ### Deploying to Staging
 
-**Automatic**: Push to `main` → GitHub Actions builds Docker image, pushes to Artifact Registry, redeploys the GCE VM, fetches DATABASE_URL from Secret Manager, runs migrations. Uses WIF (keyless GCP auth).
+**Automatic**: Push to `main` → GitHub Actions builds Docker image, pushes to Artifact Registry, deploys to Cloud Run, runs migrations via Cloud Run Jobs. Uses WIF (keyless GCP auth).
 
 **Manual** (if needed):
 
 ```bash
 IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
 
-# Build, push, redeploy
+# Build, push, deploy
 docker build --platform linux/amd64 -t $IMAGE:latest .
 docker push $IMAGE:latest
-gcloud compute instances update-container toqui-staging-vm \
-  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:latest
+gcloud run deploy toqui-backend --image=$IMAGE:latest --region=us-central1 --project=toqui-staging
 
-# Run migrations (must fetch real DB URL — container env has gcsm:// reference)
-DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
-  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
+# Run migrations
+gcloud run jobs deploy toqui-migrate --image=$IMAGE:latest \
+  --region=us-central1 --project=toqui-staging \
+  --command=/migrate --args="-direction,up" --execute-now
 ```
 
 ### Rolling Back
 
 ```bash
-# List available image tags
-gcloud artifacts docker tags list us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend --project=toqui-staging
+# List available revisions
+gcloud run revisions list --service=toqui-backend --region=us-central1 --project=toqui-staging
 
-# Redeploy to previous version
-gcloud compute instances update-container toqui-staging-vm \
-  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:<previous-sha>
+# Route traffic to previous revision
+gcloud run services update-traffic toqui-backend \
+  --to-revisions=<previous-revision>=100 --region=us-central1 --project=toqui-staging
 
 # Roll back one database migration
-DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
-  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction down -steps 1"
+gcloud run jobs deploy toqui-migrate --image=$IMAGE:<previous-sha> \
+  --region=us-central1 --project=toqui-staging \
+  --command=/migrate --args="-direction,down,-steps,1" --execute-now
 ```
 
 ### Checking Staging Logs
 
 ```bash
-# App container logs
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
-  -- "docker logs --tail 100 -f \$(docker ps -q --filter name=klt)"
+# Cloud Run logs (real-time)
+gcloud run services logs read toqui-backend --region=us-central1 --project=toqui-staging --limit=100
 
-# Container status (should show app + tailscale containers)
-gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging \
-  -- "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'"
+# Or via Cloud Logging
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="toqui-backend"' \
+  --project=toqui-staging --limit=50 --format=json
 ```
 
-Staging is accessible at `toqui-staging:8090` via Tailscale VPN. SSH via `gcloud compute ssh toqui-staging-vm --tunnel-through-iap --project=toqui-staging`.
+Staging is publicly accessible at `https://staging-api.toqui.travel` (backend) and `https://staging-app.toqui.travel` (frontend).
 
 ### Docker Image
 
 The Dockerfile produces a distroless image with two binaries:
+
 - `/server` — main API server (entrypoint)
 - `/migrate` — database migration runner (auto-detects `/migrations` in Docker, `db/migrations/` locally)
 
@@ -408,6 +411,7 @@ Migrations are copied to `/migrations` in the image. The `cmd/migrate` binary re
 Google OAuth → backend callback → set temporary HttpOnly cookie → redirect to frontend → frontend calls `POST /auth/exchange` (with `credentials: include`) → backend returns tokens in response body + clears cookie → frontend stores tokens in memory and uses `Authorization: Bearer` for all subsequent API calls.
 
 HTTP routes (outside ConnectRPC):
+
 - `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
 - `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
 - `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name}` as JSON, clears cookie (one-time use)
@@ -415,9 +419,49 @@ HTTP routes (outside ConnectRPC):
 - `GET /waitlist/status?email=...` — Public. Returns `{"position":N,"total":M}`
 - `GET /api/usage` — Authenticated (Bearer token). Returns `{"used":N,"limit":M,"resets_at":"..."}`
 
+## Security Hardening
+
+### Middleware Chain
+
+```
+Request → recoveryMiddleware → securityHeadersMiddleware → corsMiddleware → handler
+```
+
+- **Security headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security` (HTTPS only)
+- **Request body limits**: All REST POST handlers use `http.MaxBytesReader(w, r.Body, 1<<20)` — 1MB max
+
+### JWT Token Types
+
+- **Access tokens**: No `type` claim, 1-hour expiry. Used for `Authorization: Bearer`.
+- **Refresh tokens**: `type: "refresh"` claim, 30-day expiry. Only accepted by `ValidateRefreshToken()`.
+- **Important**: `ValidateToken()` explicitly rejects tokens with `type == "refresh"` to prevent token type confusion.
+
+### Cookie Encoding (OAuth)
+
+The `toqui_oauth_result` cookie uses **base64url encoding** (`base64.RawURLEncoding`) because Go's `net/http` silently strips `"` characters from cookie values per RFC 6265. The JSON payload would be corrupted without encoding. The cookie uses `SameSite=None` + `Secure=true` because the frontend (`staging-app`) and backend (`staging-api`) are on different subdomains.
+
+### Security Checklist for New Handlers
+
+When adding new handlers, ensure:
+
+1. **Ownership checks**: All data-access handlers verify `userID` from auth context before returning data
+2. **Body limits**: REST POST handlers use `http.MaxBytesReader`
+3. **Domain allowlist**: Any new auth paths must check `isEmailDomainAllowed()`
+4. **Token type**: Only use `ValidateToken()` for access tokens, `ValidateRefreshToken()` for refresh
+5. **JWT enforcement**: Non-local environments fail startup if `JWT_SECRET` is the default
+
+### Known Open Security Issues
+
+See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list. Key items:
+
+- **H-2** (#55): GoogleLogin RPC bypasses domain allowlist
+- **H-5** (#58): Broken webhook signature verification
+- **M-4** (#61): Rate limiting is global, not per-IP
+
 ## Waitlist + Capacity Cap
 
 New users are subject to a capacity cap controlled by `MAX_FREE_USERS` (default: 500). When the cap is reached:
+
 - Existing users can still log in (upsert on google_id)
 - New users without a valid invite code are redirected to `/waitlist?reason=at_capacity`
 - New users with a valid invite code are admitted and their waitlist entry is marked as accepted
@@ -438,17 +482,18 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 **Gemini (fallback)** — Google Vertex AI with Application Default Credentials (ADC). No API key needed — uses the same `gcloud auth application-default login` as Secret Manager. Billing is per-GCP-project, providing natural environment separation. Requires `aiplatform.googleapis.com` API enabled and `roles/aiplatform.user` IAM role on the calling identity.
 
-| Model Tier | Claude | Gemini (Vertex AI) |
-|------------|--------|-------------------|
-| fast | `claude-3-5-haiku-latest` | `gemini-2.5-flash-lite` |
-| smart | `claude-sonnet-4-20250514` | `gemini-2.5-flash` |
-| best | `claude-sonnet-4-20250514` | `gemini-2.5-pro` |
+| Model Tier | Claude                     | Gemini (Vertex AI)      |
+| ---------- | -------------------------- | ----------------------- |
+| fast       | `claude-3-5-haiku-latest`  | `gemini-2.5-flash-lite` |
+| smart      | `claude-sonnet-4-20250514` | `gemini-2.5-flash`      |
+| best       | `claude-sonnet-4-20250514` | `gemini-2.5-pro`        |
 
 Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
 
 ### Token Usage Tracking
 
 Every AI request logs token usage with environment label via slog:
+
 ```
 INFO ai request completed provider=gemini env=staging input_tokens=2662 output_tokens=200 total_tokens=2862 tool_loop_iterations=2
 ```
@@ -456,6 +501,7 @@ INFO ai request completed provider=gemini env=staging input_tokens=2662 output_t
 Token counts are accumulated across tool loop iterations. Usage is parsed from Claude's `message_start`/`message_delta` events and Gemini's `usageMetadata`.
 
 ### Cost Controls (implemented)
+
 - **Daily token budget**: `DAILY_AI_TOKEN_BUDGET` — soft limit per environment (default: 0 = unlimited). 1M staging, 5M prod.
 - **Prompt caching**: system prompts cached for 5 min (90% cheaper on cache hits, Claude only)
 - **Model routing**: simple tasks → fast tier (2048 max tokens), complex → smart tier (8192 max tokens)
@@ -463,6 +509,17 @@ Token counts are accumulated across tool loop iterations. Usage is parsed from C
 - **Response caching**: popular destination intros cached for 1 hour (configurable via `LLM_CACHE_TTL`)
 - **Per-user rate limiting**: 10 requests per 60 seconds via ConnectRPC interceptor
 - **GCP project separation**: toqui-staging vs toqui-prod — billing differentiation at the infra level
+
+## Cross-Repo Consistency
+
+**IMPORTANT**: This project spans 4 repos. When making changes that affect shared documentation (architecture, deployment, CI/CD, security patterns, staging/prod status), update CLAUDE.md in ALL repos to keep them consistent:
+
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md` (this file)
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
+
+Also update the shared memory file: `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md`
 
 ## Data Lifecycle
 

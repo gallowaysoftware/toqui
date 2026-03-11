@@ -40,6 +40,7 @@ TARGET_ENV=staging make run     # Same as make run-staging
 ```
 
 Env files live in `env/`:
+
 - `env/.env.local` — Local dev (`gcsm://` secrets from `toqui-staging` project)
 - `env/.env.staging` — Staging infrastructure + `gcsm://` secret references
 - `env/.env.prod` — Production infrastructure + `gcsm://` secret references
@@ -48,23 +49,23 @@ All env files use `gcsm://` prefixed values which are resolved from GCP Secret M
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `TARGET_ENV` | No | `local` | Environment: `local`, `staging`, `prod` |
-| `GOOGLE_CLIENT_ID` | Yes | — | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | — | Google OAuth client secret |
-| `ANTHROPIC_API_KEY` | Yes* | — | Claude API key (primary AI provider) |
-| `VERTEX_AI_PROJECT_ID` | Yes* | — | GCP project for Vertex AI Gemini (fallback) |
-| `VERTEX_AI_LOCATION` | No | `us-central1` | Vertex AI region |
-| `DAILY_AI_TOKEN_BUDGET` | No | `0` | Max total AI tokens/day (0 = unlimited) |
-| `DATABASE_URL` | No | `postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable` | PostgreSQL connection |
-| `PORT` | No | `8090` | Server port |
-| `JWT_SECRET` | No | dev default | JWT signing secret |
-| `FIRESTORE_PROJECT_ID` | No | `toqui-dev` | Firestore project |
-| `FIRESTORE_EMULATOR_HOST` | No | — | Firestore emulator address |
-| `FRONTEND_URL` | No | `http://localhost:3000` | CORS origin |
+| Variable                  | Required | Default                                                       | Description                                 |
+| ------------------------- | -------- | ------------------------------------------------------------- | ------------------------------------------- |
+| `TARGET_ENV`              | No       | `local`                                                       | Environment: `local`, `staging`, `prod`     |
+| `GOOGLE_CLIENT_ID`        | Yes      | —                                                             | Google OAuth client ID                      |
+| `GOOGLE_CLIENT_SECRET`    | Yes      | —                                                             | Google OAuth client secret                  |
+| `ANTHROPIC_API_KEY`       | Yes\*    | —                                                             | Claude API key (primary AI provider)        |
+| `VERTEX_AI_PROJECT_ID`    | Yes\*    | —                                                             | GCP project for Vertex AI Gemini (fallback) |
+| `VERTEX_AI_LOCATION`      | No       | `us-central1`                                                 | Vertex AI region                            |
+| `DAILY_AI_TOKEN_BUDGET`   | No       | `0`                                                           | Max total AI tokens/day (0 = unlimited)     |
+| `DATABASE_URL`            | No       | `postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable` | PostgreSQL connection                       |
+| `PORT`                    | No       | `8090`                                                        | Server port                                 |
+| `JWT_SECRET`              | No       | dev default                                                   | JWT signing secret                          |
+| `FIRESTORE_PROJECT_ID`    | No       | `toqui-dev`                                                   | Firestore project                           |
+| `FIRESTORE_EMULATOR_HOST` | No       | —                                                             | Firestore emulator address                  |
+| `FRONTEND_URL`            | No       | `http://localhost:3000`                                       | CORS origin                                 |
 
-*At least one AI provider is required. If `ANTHROPIC_API_KEY` is set, Claude is used. Otherwise, Gemini via Vertex AI is used (requires `gcloud auth application-default login` and `VERTEX_AI_PROJECT_ID` or `FIRESTORE_PROJECT_ID`).
+\*At least one AI provider is required. If `ANTHROPIC_API_KEY` is set, Claude is used. Otherwise, Gemini via Vertex AI is used (requires `gcloud auth application-default login` and `VERTEX_AI_PROJECT_ID` or `FIRESTORE_PROJECT_ID`).
 
 ## Make Targets
 
@@ -230,6 +231,7 @@ gcloud compute ssh toqui-staging-vm --project=toqui-staging --zone=us-central1-a
 ### Docker Image
 
 The Dockerfile produces a distroless image with two binaries:
+
 - `/server` — main API server (entrypoint)
 - `/migrate` — database migration runner
 

@@ -23,7 +23,15 @@ services:
 
   migrate:
     build: .
-    command: ["/migrate", "-dir", "/migrations", "-db", "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable", "up"]
+    command:
+      [
+        "/migrate",
+        "-dir",
+        "/migrations",
+        "-db",
+        "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable",
+        "up",
+      ]
     depends_on:
       postgres:
         condition: service_healthy

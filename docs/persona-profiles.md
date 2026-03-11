@@ -28,32 +28,32 @@ Toqui is always available at ID `"toqui"`. It is a generalist travel companion t
 
 24 total (4 original + 20 extended). All registered in `profiles.go` and `profiles_extended.go`.
 
-| # | Region Code | Name | Accent Color | Flavor Summary |
-|---|-------------|------|-------------|----------------|
-| 1 | `IT` | Italy | `#C7623A` | Regional Italian culture (Roman, Neapolitan, Milanese, Florentine), anti-tourist-trap guidance, Italian phrases with translations |
-| 2 | `JP` | Japan | `#D4436A` | Japanese etiquette, traditional vs modern contrast, cultural context (bowing, chopsticks, unwritten rules) |
-| 3 | `FR` | France | `#3D3B8E` | French art de vivre, flanerie, refined but unpretentious taste, dry wit, regional differences (Paris, Provence, Lyon, Bordeaux) |
-| 4 | `GB` | United Kingdom | `#2E4033` | Distinct nations (Scotland, England, Wales, NI), pub culture, dry humor, countryside and coast |
-| 5 | `US` | United States | `#3C3B6E` | Regional diversity (PNW, Deep South, New England, Southwest), national parks, road trip culture, local food scenes |
-| 6 | `ES` | Spain | `#C60B1E` | Spanish rhythm (late dinners, siestas, fiestas), regional identity (Catalonia, Andalusia, Basque Country, Galicia), tapas culture |
-| 7 | `DE` | Germany | `#FFCC00` | Beer gardens, castle routes, regional identity (Bavaria, Berlin, Hamburg), surprising warmth beneath efficiency |
-| 8 | `PT` | Portugal | `#006600` | Saudade, fado, azulejo tiles, pasteis de nata, Lisbon vs Porto, port wine cellars, Douro Valley |
-| 9 | `GR` | Greece | `#0D5EAF` | Mediterranean pace, island logistics, taverna culture, hospitality, hidden coves and mountain villages |
-| 10 | `TH` | Thailand | `#F4C430` | Temple etiquette, street food, island selection, Bangkok vs Chiang Mai, cultural context (wai, monarchy respect) |
-| 11 | `MX` | Mexico | `#006847` | Street tacos, cenotes, Day of the Dead, mezcal culture, regional moles, Mexico City vs Oaxaca vs Yucatan |
-| 12 | `AU` | Australia | `#FF9900` | Laid-back spirit, immense distances, Indigenous heritage, reef and outback, Aussie slang, Sydney vs Melbourne |
-| 13 | `BR` | Brazil | `#009739` | Samba, Carnival, churrasco, caipirinha, Amazon biodiversity, Rio vs Sao Paulo vs Salvador |
-| 14 | `IN` | India | `#FF9933` | Kaleidoscopic diversity, spice markets, chai culture, state-by-state differences, navigating sensory richness |
-| 15 | `KR` | South Korea | `#CD2E3A` | K-food, hanok villages, jimjilbang, nightlife, Seoul neighborhoods (Hongdae, Bukchon), skincare culture |
-| 16 | `VN` | Vietnam | `#DA251D` | Morning pho ritual, motorbike chaos, Hoi An lanterns, Hanoi vs HCMC, Ha Long Bay, street food mastery |
-| 17 | `MA` | Morocco | `#C1272D` | Medinas, souks, tagine, hammam, mint tea hospitality, Marrakech vs Fez, Sahara desert, bazaar haggling |
-| 18 | `PE` | Peru | `#D91023` | Inca heritage, ceviche, pisco, altitude acclimatization, Lima food scene, Sacred Valley, Nazca Lines |
-| 19 | `NZ` | New Zealand | `#00247D` | Adventure spirit, Maori culture, extreme sports, wine regions, LOTR landscapes, North vs South Island |
-| 20 | `TR` | Turkey | `#E30A17` | East-meets-West, kebab mastery, Istanbul vs Cappadocia, Aegean coast, tea gardens, hammam tradition |
-| 21 | `HR` | Croatia | `#171796` | Adriatic coastline, island-hopping, Istrian truffles, Plitvice waterfalls, Game of Thrones locations, konoba restaurants |
-| 22 | `ZA` | South Africa | `#007749` | Safari expertise (Big Five), wine routes, braai culture, Cape Town vs Johannesburg, Garden Route, complex history |
-| 23 | `CO` | Colombia | `#FCD116` | Transformation narrative, coffee culture, salsa, street art, Cartagena, Medellin, Cocora Valley |
-| 24 | `EG` | Egypt | `#C8102E` | Ancient wonders, pyramid logistics, Nile cruises, Cairo chaos, Luxor, Red Sea diving, desert stargazing |
+| #   | Region Code | Name           | Accent Color | Flavor Summary                                                                                                                    |
+| --- | ----------- | -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `IT`        | Italy          | `#C7623A`    | Regional Italian culture (Roman, Neapolitan, Milanese, Florentine), anti-tourist-trap guidance, Italian phrases with translations |
+| 2   | `JP`        | Japan          | `#D4436A`    | Japanese etiquette, traditional vs modern contrast, cultural context (bowing, chopsticks, unwritten rules)                        |
+| 3   | `FR`        | France         | `#3D3B8E`    | French art de vivre, flanerie, refined but unpretentious taste, dry wit, regional differences (Paris, Provence, Lyon, Bordeaux)   |
+| 4   | `GB`        | United Kingdom | `#2E4033`    | Distinct nations (Scotland, England, Wales, NI), pub culture, dry humor, countryside and coast                                    |
+| 5   | `US`        | United States  | `#3C3B6E`    | Regional diversity (PNW, Deep South, New England, Southwest), national parks, road trip culture, local food scenes                |
+| 6   | `ES`        | Spain          | `#C60B1E`    | Spanish rhythm (late dinners, siestas, fiestas), regional identity (Catalonia, Andalusia, Basque Country, Galicia), tapas culture |
+| 7   | `DE`        | Germany        | `#FFCC00`    | Beer gardens, castle routes, regional identity (Bavaria, Berlin, Hamburg), surprising warmth beneath efficiency                   |
+| 8   | `PT`        | Portugal       | `#006600`    | Saudade, fado, azulejo tiles, pasteis de nata, Lisbon vs Porto, port wine cellars, Douro Valley                                   |
+| 9   | `GR`        | Greece         | `#0D5EAF`    | Mediterranean pace, island logistics, taverna culture, hospitality, hidden coves and mountain villages                            |
+| 10  | `TH`        | Thailand       | `#F4C430`    | Temple etiquette, street food, island selection, Bangkok vs Chiang Mai, cultural context (wai, monarchy respect)                  |
+| 11  | `MX`        | Mexico         | `#006847`    | Street tacos, cenotes, Day of the Dead, mezcal culture, regional moles, Mexico City vs Oaxaca vs Yucatan                          |
+| 12  | `AU`        | Australia      | `#FF9900`    | Laid-back spirit, immense distances, Indigenous heritage, reef and outback, Aussie slang, Sydney vs Melbourne                     |
+| 13  | `BR`        | Brazil         | `#009739`    | Samba, Carnival, churrasco, caipirinha, Amazon biodiversity, Rio vs Sao Paulo vs Salvador                                         |
+| 14  | `IN`        | India          | `#FF9933`    | Kaleidoscopic diversity, spice markets, chai culture, state-by-state differences, navigating sensory richness                     |
+| 15  | `KR`        | South Korea    | `#CD2E3A`    | K-food, hanok villages, jimjilbang, nightlife, Seoul neighborhoods (Hongdae, Bukchon), skincare culture                           |
+| 16  | `VN`        | Vietnam        | `#DA251D`    | Morning pho ritual, motorbike chaos, Hoi An lanterns, Hanoi vs HCMC, Ha Long Bay, street food mastery                             |
+| 17  | `MA`        | Morocco        | `#C1272D`    | Medinas, souks, tagine, hammam, mint tea hospitality, Marrakech vs Fez, Sahara desert, bazaar haggling                            |
+| 18  | `PE`        | Peru           | `#D91023`    | Inca heritage, ceviche, pisco, altitude acclimatization, Lima food scene, Sacred Valley, Nazca Lines                              |
+| 19  | `NZ`        | New Zealand    | `#00247D`    | Adventure spirit, Maori culture, extreme sports, wine regions, LOTR landscapes, North vs South Island                             |
+| 20  | `TR`        | Turkey         | `#E30A17`    | East-meets-West, kebab mastery, Istanbul vs Cappadocia, Aegean coast, tea gardens, hammam tradition                               |
+| 21  | `HR`        | Croatia        | `#171796`    | Adriatic coastline, island-hopping, Istrian truffles, Plitvice waterfalls, Game of Thrones locations, konoba restaurants          |
+| 22  | `ZA`        | South Africa   | `#007749`    | Safari expertise (Big Five), wine routes, braai culture, Cape Town vs Johannesburg, Garden Route, complex history                 |
+| 23  | `CO`        | Colombia       | `#FCD116`    | Transformation narrative, coffee culture, salsa, street art, Cartagena, Medellin, Cocora Valley                                   |
+| 24  | `EG`        | Egypt          | `#C8102E`    | Ancient wonders, pyramid logistics, Nile cruises, Cairo chaos, Luxor, Red Sea diving, desert stargazing                           |
 
 ---
 
@@ -61,23 +61,23 @@ Toqui is always available at ID `"toqui"`. It is a generalist travel companion t
 
 15 total (3 original + 12 extended). All registered in `profiles.go` and `profiles_extended.go`.
 
-| # | Slug | Display Name | Archetype | Domain Summary |
-|---|------|-------------|-----------|----------------|
-| 1 | `food` | Food & Cuisine | chef | Restaurants, markets, street food, fine dining, regional specialties, authenticity opinions |
-| 2 | `history` | History & Culture | professor | Historical sites, building stories, connecting past to present, making history feel like gossip |
-| 3 | `distilleries` | Distilleries & Spirits | master distiller | Whisky, wine, beer, gin tours and tastings, cask types, terroir, craft knowledge |
-| 4 | `adventure` | Adventure & Outdoors | expedition leader | Hiking, diving, climbing, kayaking, paragliding, gear and safety, fitness-matched challenges |
-| 5 | `wellness` | Wellness & Retreats | wellness curator | Spas, retreats, yoga, meditation, thermal baths, holistic practices, local healing traditions |
-| 6 | `wine` | Wine & Vineyards | sommelier | Vineyards, terroir, tasting rooms, pairings, production methods, walk-in vs reservation knowledge |
-| 7 | `architecture` | Architecture & Design | architectural historian | Building styles (Romanesque through contemporary), urban planning, architects, best vantage points |
-| 8 | `nightlife` | Nightlife & Entertainment | nightlife curator | Clubs, rooftop bars, live music, speakeasies, neighborhood-by-neighborhood knowledge, door policies |
-| 9 | `shopping` | Shopping & Markets | style curator | Local crafts, luxury districts, flea markets, artisan workshops, bargaining etiquette |
-| 10 | `family` | Family Travel | family travel specialist | Kid-friendly activities, stroller accessibility, educational experiences, restaurant welcomeness |
-| 11 | `photography` | Photography & Visual | visual storyteller | Golden hour spots, hidden viewpoints, photo etiquette, cultural sensitivity around photography |
-| 12 | `nature` | Nature & Wildlife | naturalist | Wildlife spotting, national parks, eco-tourism, seasonal migrations, ethical operators |
-| 13 | `romance` | Romance & Couples | romance curator | Intimate dining, scenic walks, sunset viewpoints, hotel views, couple-tailored experiences |
-| 14 | `budget` | Budget Travel | savvy traveler | Free activities, cheap eats, hostel culture, transport hacks, smart splurge decisions |
-| 15 | `luxury` | Luxury Travel | luxury concierge | Michelin dining, five-star hotels, private tours, VIP access, discerning value judgment |
+| #   | Slug           | Display Name              | Archetype                | Domain Summary                                                                                      |
+| --- | -------------- | ------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| 1   | `food`         | Food & Cuisine            | chef                     | Restaurants, markets, street food, fine dining, regional specialties, authenticity opinions         |
+| 2   | `history`      | History & Culture         | professor                | Historical sites, building stories, connecting past to present, making history feel like gossip     |
+| 3   | `distilleries` | Distilleries & Spirits    | master distiller         | Whisky, wine, beer, gin tours and tastings, cask types, terroir, craft knowledge                    |
+| 4   | `adventure`    | Adventure & Outdoors      | expedition leader        | Hiking, diving, climbing, kayaking, paragliding, gear and safety, fitness-matched challenges        |
+| 5   | `wellness`     | Wellness & Retreats       | wellness curator         | Spas, retreats, yoga, meditation, thermal baths, holistic practices, local healing traditions       |
+| 6   | `wine`         | Wine & Vineyards          | sommelier                | Vineyards, terroir, tasting rooms, pairings, production methods, walk-in vs reservation knowledge   |
+| 7   | `architecture` | Architecture & Design     | architectural historian  | Building styles (Romanesque through contemporary), urban planning, architects, best vantage points  |
+| 8   | `nightlife`    | Nightlife & Entertainment | nightlife curator        | Clubs, rooftop bars, live music, speakeasies, neighborhood-by-neighborhood knowledge, door policies |
+| 9   | `shopping`     | Shopping & Markets        | style curator            | Local crafts, luxury districts, flea markets, artisan workshops, bargaining etiquette               |
+| 10  | `family`       | Family Travel             | family travel specialist | Kid-friendly activities, stroller accessibility, educational experiences, restaurant welcomeness    |
+| 11  | `photography`  | Photography & Visual      | visual storyteller       | Golden hour spots, hidden viewpoints, photo etiquette, cultural sensitivity around photography      |
+| 12  | `nature`       | Nature & Wildlife         | naturalist               | Wildlife spotting, national parks, eco-tourism, seasonal migrations, ethical operators              |
+| 13  | `romance`      | Romance & Couples         | romance curator          | Intimate dining, scenic walks, sunset viewpoints, hotel views, couple-tailored experiences          |
+| 14  | `budget`       | Budget Travel             | savvy traveler           | Free activities, cheap eats, hostel culture, transport hacks, smart splurge decisions               |
+| 15  | `luxury`       | Luxury Travel             | luxury concierge         | Michelin dining, five-star hotels, private tours, VIP access, discerning value judgment             |
 
 ---
 

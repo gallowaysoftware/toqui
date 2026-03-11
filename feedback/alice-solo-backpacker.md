@@ -1,9 +1,11 @@
 # Agent Feedback: Alice (Solo Backpacker)
 
 ## Persona
+
 Solo female backpacker, budget traveler, first-time Toqui user
 
 ## Journey Summary
+
 Alice is a first-time user who wants to backpack through Vietnam for a month on a tight budget. Her journey tests the full trip lifecycle: discovery (selection mode), planning (two turns of route and budget advice), status transitions (planning -> active -> completed), and on-trip assistance (companion mode). This test exercises the create_trip tool, persona resolution, theme tagging, session continuity, and the data lifecycle hooks.
 
 **Note:** This feedback is based on deep source code analysis of the entire backend codebase. The sandbox environment prevented live API execution. A test runner script (`feedback/alice-test-runner.py`) has been provided for live validation. All findings below are from code-level review and describe expected behavior, confirmed bugs, and architectural concerns.
@@ -11,6 +13,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 ## Step-by-Step Results
 
 ### 1. Selection Mode -- Trip Creation
+
 - **Input**: `SendMessage(mode=CHAT_MODE_SELECTION, tripId="", content="I'm thinking about backpacking through Vietnam for a month. Street food, motorbikes, the whole deal")`
 - **Expected AI Response**: Toqui (default persona) responds enthusiastically about Vietnam, acknowledges the backpacking/street-food vibe, and proactively calls `create_trip` since Alice expressed clear interest in a specific destination.
 - **Expected Tool Calls**: `create_trip(title="Vietnam Backpacking", description="Month-long backpacking trip through Vietnam...")` -- the system prompt explicitly instructs the AI to create trips proactively when users express interest.
@@ -21,6 +24,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: Should work correctly. The selection mode flow is well-implemented with the create_trip and select_trip tools properly injected.
 
 ### 2. Planning Mode -- Route Planning
+
 - **Input**: `SendMessage(mode=CHAT_MODE_PLANNING, tripId="<trip_id_from_step_1>", content="What's the best route? I want to start in Hanoi and end in Ho Chi Minh City")`
 - **Expected AI Response**: Toqui suggests a north-to-south route through Vietnam -- likely Hanoi -> Ninh Binh -> Ha Long Bay -> Hue -> Hoi An -> Da Nang -> Nha Trang -> Da Lat -> HCMC (or similar). Planning mode prompt adds "Suggest specific places, experiences, and a structured itinerary when you have enough context."
 - **Expected Tool Calls**: Possibly `web_search` or `places_search` if the AI decides it needs current information, but likely none for general route advice.
@@ -30,6 +34,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: Should work. The race condition with persona resolution is mitigated by the retag-on-empty logic. However, Alice won't get the Vietnam expert persona on this first planning turn.
 
 ### 3. Planning Mode -- Budget Advice
+
 - **Input**: `SendMessage(mode=CHAT_MODE_PLANNING, tripId="<trip_id>", sessionId="<session_from_step_2>", content="I'm on a tight budget, maybe $30/day. What kind of hostels should I look for?")`
 - **Expected AI Response**: Budget-specific advice for Vietnam -- mentions hostel chains, dorm pricing ($5-10/night), guesthouses, street food economics, and practical money-saving tips.
 - **Expected Tool Calls**: Possibly `web_search` for current hostel pricing, but general knowledge should suffice.
@@ -38,6 +43,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: Should work well. The multi-turn session continuity via Firestore is solid, and persona resolution should kick in by this turn.
 
 ### 4. Status Transition -- Start Traveling
+
 - **Input**: `UpdateTrip(id="<trip_id>", status=TRIP_STATUS_ACTIVE)`
 - **Expected API Response**: HTTP 200 with the updated trip object showing `status: TRIP_STATUS_ACTIVE`.
 - **BUG FOUND**: The `UpdateTrip` SQL query (`UPDATE trips SET title = $3, description = $4, status = $5, start_date = $6, end_date = $7, updated_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING *`) overwrites ALL fields. If the `UpdateTripRequest` only sets `id` and `status`, the handler passes empty strings for `title` and `description`, and nil for dates. This means:
@@ -50,6 +56,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: BUG -- UpdateTrip should use partial updates (COALESCE or field masks) to only update fields that are explicitly set.
 
 ### 5. Companion Mode -- On Arrival
+
 - **Input**: `SendMessage(mode=CHAT_MODE_COMPANION, tripId="<trip_id>", content="I just arrived at Hanoi airport. Where should I go first?")`
 - **Expected AI Response**: Concise, actionable advice for getting from Noi Bai airport to Hanoi old quarter -- mention Grab app, airport bus 86, taxi scam warnings, and a suggestion for first stop (e.g., get pho, check into hostel area around Ma May street).
 - **Companion Mode Prompt**: System prompt adds "Be concise and actionable. Prioritize immediate, practical information."
@@ -60,6 +67,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: Should work correctly. Companion mode is well-designed for on-trip conciseness.
 
 ### 6. Status Transition -- Complete Trip
+
 - **Input**: `UpdateTrip(id="<trip_id>", status=TRIP_STATUS_COMPLETED)`
 - **Expected API Response**: HTTP 200 with trip showing `status: TRIP_STATUS_COMPLETED`.
 - **Same data-loss bug as step 4**: Title, description, dates all overwritten to empty.
@@ -67,6 +75,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Verdict**: BUG (same as step 4) -- but the lifecycle trigger works correctly.
 
 ## What Went Well
+
 - **Selection mode tool injection** is elegantly implemented. The `create_trip` and `select_trip` tools are only available in selection mode, cleanly scoped via `ExtraTools`.
 - **Proactive trip creation** -- the system prompt instructs the AI to create trips when users express interest, not waiting for an explicit "create a trip" command. This is great UX.
 - **Persona composition system** is sophisticated and well-thought-out. The location + theme profile composition, AI-generated identities with template fallback, and consistent caching via composite keys is production-quality.
@@ -78,12 +87,14 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **Session isolation** -- selection mode chats go to `_lobby` path, planning/companion get their own sessions per trip.
 
 ## What Went Poorly
+
 - **UpdateTrip is destructive** -- sending a status-only update wipes title, description, and dates. This is the most critical bug found.
 - **Persona resolution race condition** -- on the first planning message after trip creation, async theme tagging may not have completed. The user gets Toqui instead of a Vietnam expert. The retag-on-empty safety net helps for the second message, but the first planning turn loses personalization.
 - **No destination_country on create_trip tool** -- the `create_trip` tool only accepts title and description. The destination country is only set by the async theme tagger. This means there's always at least one turn of delay before persona resolution can use the country code.
 - **Chat mode not stored on session creation** -- the `ChatSession` proto has a `mode` field and sessions are created with a mode, but switching modes (e.g., planning to companion) creates a new session. This is correct behavior but means conversation context doesn't carry across mode changes.
 
 ## Bugs Found
+
 - **CRITICAL: UpdateTrip overwrites all fields** -- `UpdateTrip` SQL (`trips.sql:27-29`) sets title, description, status, start_date, end_date unconditionally. If the API request only sets `id` and `status`, other fields are overwritten to empty/null. This causes data loss on status transitions. The fix should use COALESCE:
   ```sql
   UPDATE trips SET
@@ -100,6 +111,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 - **MINOR: tripStatusToString defaults to "planning" for UNSPECIFIED** -- `tripStatusToString(0)` returns "planning" (handlers/trip.go:239). If UpdateTrip is called with status 0 (not set), it would change status to "planning". Should return empty string for UNSPECIFIED and skip the status update.
 
 ## Suggestions
+
 - **Use COALESCE or field masks in UpdateTrip** to prevent data loss on partial updates. This is the highest-priority fix.
 - **Add destination_country to create_trip tool** -- let the AI set the ISO country code at creation time. This eliminates the race condition where the first planning message can't resolve an expert persona.
 - **Consider a "trip context" cache** -- after theme tagging completes, store the resolved persona ID on the trip so subsequent requests don't need to re-resolve. This avoids the composer lookup on every chat message.
@@ -118,6 +130,7 @@ python3 feedback/alice-test-runner.py
 ```
 
 Requirements:
+
 - Backend running at `localhost:8090`
 - Firestore emulator running
 - PostgreSQL with migrations applied
