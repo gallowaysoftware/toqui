@@ -91,13 +91,8 @@ func (h *TripHandler) ListTrips(ctx context.Context, req *connect.Request[toquiv
 		status = tripStatusToString(req.Msg.Status)
 	}
 
-	limit := int32(20)
+	limit := clampPageSize(req.Msg.GetPagination().GetPageSize(), 20, 100)
 	offset := int32(0)
-	if req.Msg.Pagination != nil {
-		if req.Msg.Pagination.PageSize > 0 {
-			limit = req.Msg.Pagination.PageSize
-		}
-	}
 
 	trips, count, err := h.tripSvc.ListByUser(ctx, userID, status, limit, offset)
 	if err != nil {

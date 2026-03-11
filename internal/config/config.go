@@ -43,8 +43,12 @@ type Config struct {
 	FirestoreProjectID    string
 	FirestoreEmulatorHost string
 
-	// Frontend URL for CORS
+	// Frontend URL for CORS (primary origin)
 	FrontendURL string
+
+	// CORSAllowedOrigins is the full list of allowed CORS origins.
+	// If empty, defaults to FrontendURL only.
+	CORSAllowedOrigins []string
 
 	// Google APIs (tools)
 	GoogleCustomSearchAPIKey string
@@ -109,6 +113,7 @@ func Load() (*Config, error) {
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
+		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
 	}
 
 	// Layer 3: resolve gcsm:// references

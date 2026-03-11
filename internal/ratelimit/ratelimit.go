@@ -16,6 +16,7 @@ import (
 
 type userEntry struct {
 	aiLimiter      *rate.Limiter
+	geoLimiter     *rate.Limiter
 	generalLimiter *rate.Limiter
 	lastSeen       time.Time
 }
@@ -25,16 +26,19 @@ type interceptor struct {
 	mu            sync.Mutex
 	users         map[uuid.UUID]*userEntry
 	aiPerMinute   int
+	geoPerMinute  int
 	generalPerMin int
 	cleanupStop   chan struct{}
 }
 
 // NewInterceptor creates a rate-limiting interceptor. aiPerMinute controls the
 // rate for AI chat RPCs (SendMessage); generalPerMinute controls all other RPCs.
+// Geospatial RPCs (GetNearby) are limited to 30 requests/minute per user.
 func NewInterceptor(aiPerMinute, generalPerMinute int) *interceptor {
 	i := &interceptor{
 		users:         make(map[uuid.UUID]*userEntry),
 		aiPerMinute:   aiPerMinute,
+		geoPerMinute:  30,
 		generalPerMin: generalPerMinute,
 		cleanupStop:   make(chan struct{}),
 	}
@@ -77,6 +81,8 @@ func (i *interceptor) check(ctx context.Context, procedure string) error {
 	limiter := entry.generalLimiter
 	if isAIProcedure(procedure) {
 		limiter = entry.aiLimiter
+	} else if isGeoProcedure(procedure) {
+		limiter = entry.geoLimiter
 	}
 
 	if !limiter.Allow() {
@@ -96,6 +102,7 @@ func (i *interceptor) getOrCreate(userID uuid.UUID) *userEntry {
 	if !ok {
 		entry = &userEntry{
 			aiLimiter:      rate.NewLimiter(rate.Every(time.Minute/time.Duration(i.aiPerMinute)), i.aiPerMinute),
+			geoLimiter:     rate.NewLimiter(rate.Every(time.Minute/time.Duration(i.geoPerMinute)), i.geoPerMinute),
 			generalLimiter: rate.NewLimiter(rate.Every(time.Minute/time.Duration(i.generalPerMin)), i.generalPerMin),
 		}
 		i.users[userID] = entry
@@ -106,6 +113,10 @@ func (i *interceptor) getOrCreate(userID uuid.UUID) *userEntry {
 
 func isAIProcedure(procedure string) bool {
 	return strings.Contains(procedure, "SendMessage")
+}
+
+func isGeoProcedure(procedure string) bool {
+	return strings.Contains(procedure, "GetNearby")
 }
 
 // cleanupLoop removes stale entries every minute.

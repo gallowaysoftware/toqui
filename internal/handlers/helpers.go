@@ -36,6 +36,19 @@ func maskEmail(email string) string {
 	return string(local[0]) + "***@" + parts[1]
 }
 
+// clampPageSize enforces pagination bounds. If requested is 0 or negative,
+// it returns defaultSize. If requested exceeds maxSize, it returns maxSize.
+// Otherwise it returns requested unchanged.
+func clampPageSize(requested, defaultSize, maxSize int32) int32 {
+	if requested <= 0 {
+		return defaultSize
+	}
+	if requested > maxSize {
+		return maxSize
+	}
+	return requested
+}
+
 // clientIPFromHeaders extracts the client IP from HTTP headers.
 // Used for ConnectRPC requests where we only have access to the header map.
 func clientIPFromHeaders(h http.Header) string {

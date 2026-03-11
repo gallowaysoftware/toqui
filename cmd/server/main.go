@@ -225,12 +225,19 @@ func main() {
 	ipLimiter := ratelimit.NewIPRateLimiter(120, 20)
 	defer ipLimiter.Stop()
 
+	// Build CORS allowed origins: use CORS_ALLOWED_ORIGINS if set, otherwise
+	// fall back to FRONTEND_URL only. This ensures a strict allowlist in all envs.
+	corsOrigins := cfg.CORSAllowedOrigins
+	if len(corsOrigins) == 0 {
+		corsOrigins = []string{cfg.FrontendURL}
+	}
+
 	// CSRF protection — validate Origin/Referer on state-changing requests.
 	// Webhooks are exempt (they use ECDSA signature verification).
-	csrfProtected := csrf.Middleware(mux, []string{cfg.FrontendURL}, []string{"/webhooks/"})
+	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/"})
 
 	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → cookie auth → CSRF → handler
-	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(middleware.CookieAuth(csrfProtected), cfg.FrontendURL)))))
+	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(middleware.CookieAuth(csrfProtected), corsOrigins)))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -362,16 +369,28 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func corsMiddleware(next http.Handler, allowedOrigin string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
+func corsMiddleware(next http.Handler, allowedOrigins []string) http.Handler {
+	// Build a set for fast lookup (lowercased for case-insensitive matching).
+	originSet := make(map[string]string, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		originSet[strings.ToLower(o)] = o
+	}
 
-		// Credentials enabled on all routes so browsers send HttpOnly auth cookies
-		// on cross-origin same-site requests. CSRF middleware (Origin/Referer validation)
-		// prevents abuse. Native apps use Authorization: Bearer header directly.
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		// Only set CORS headers if the request Origin matches our allowlist.
+		// When AllowCredentials is true, we must echo the specific matched origin
+		// (wildcard "*" is not allowed with credentials).
+		if origin != "" {
+			if matched, ok := originSet[strings.ToLower(origin)]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", matched)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Vary", "Origin")
+			}
+		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

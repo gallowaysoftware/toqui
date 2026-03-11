@@ -570,10 +570,7 @@ func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[t
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 
-	limit := int(req.Msg.GetPagination().GetPageSize())
-	if limit == 0 {
-		limit = 50
-	}
+	limit := int(clampPageSize(req.Msg.GetPagination().GetPageSize(), 50, 100))
 
 	messages, err := h.chatSvc.GetHistory(ctx, userID, req.Msg.TripId, req.Msg.SessionId, limit)
 	if err != nil {
@@ -603,10 +600,7 @@ func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 
-	limit := int(req.Msg.GetPagination().GetPageSize())
-	if limit == 0 {
-		limit = 20
-	}
+	limit := int(clampPageSize(req.Msg.GetPagination().GetPageSize(), 20, 100))
 
 	sessions, err := h.chatSvc.ListSessions(ctx, userID, req.Msg.TripId, limit)
 	if err != nil {
