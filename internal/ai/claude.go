@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Claude model defaults per tier. Override via AI_MODEL_FAST, AI_MODEL_SMART, AI_MODEL_BEST.
@@ -28,7 +29,7 @@ func NewClaudeProvider(apiKey string) *ClaudeProvider {
 	return &ClaudeProvider{
 		apiKey: apiKey,
 		model:  "claude-sonnet-4-20250514",
-		client: http.DefaultClient,
+		client: &http.Client{Timeout: 5 * time.Minute},
 	}
 }
 
@@ -61,7 +62,7 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, respBody)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
@@ -56,7 +57,7 @@ func NewGeminiProvider(projectID, location string) (*GeminiProvider, error) {
 		location:    location,
 		tokenSource: creds.TokenSource,
 		model:       "gemini-2.5-flash",
-		client:      http.DefaultClient,
+		client:      &http.Client{Timeout: 5 * time.Minute},
 	}, nil
 }
 
@@ -99,7 +100,7 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("vertex AI error %d: %s", resp.StatusCode, respBody)
 	}
 

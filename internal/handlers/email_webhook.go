@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -8,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
@@ -184,15 +186,15 @@ func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subjec
 	return ""
 }
 
-// verifySignature validates the SendGrid Inbound Parse webhook signature.
-// SendGrid signs the payload with ECDSA using the public key provided in the
-// webhook settings. The signature and timestamp are sent in HTTP headers.
+// verifySignature validates the SendGrid Event Webhook ECDSA signature.
+// The signature is computed over: timestamp + raw_body.
+//
+// This method reads the raw body for verification, then restores r.Body
+// so ParseMultipartForm can re-read it.
 //
 // Headers:
 //   - X-Twilio-Email-Event-Webhook-Signature: base64-encoded ECDSA signature
 //   - X-Twilio-Email-Event-Webhook-Timestamp: timestamp string
-//
-// The signed payload is: timestamp + body
 func (h *EmailWebhookHandler) verifySignature(r *http.Request) error {
 	signature := r.Header.Get("X-Twilio-Email-Event-Webhook-Signature")
 	timestamp := r.Header.Get("X-Twilio-Email-Event-Webhook-Timestamp")
@@ -200,6 +202,15 @@ func (h *EmailWebhookHandler) verifySignature(r *http.Request) error {
 	if signature == "" || timestamp == "" {
 		return fmt.Errorf("missing signature headers")
 	}
+
+	// Read the raw body for signature verification (bounded to max size).
+	rawBody, err := io.ReadAll(io.LimitReader(r.Body, maxEmailBodySize))
+	if err != nil {
+		return fmt.Errorf("read body for verification: %w", err)
+	}
+	r.Body.Close()
+	// Restore body so ParseMultipartForm can re-read it.
+	r.Body = io.NopCloser(bytes.NewReader(rawBody))
 
 	// Decode the PEM public key.
 	block, _ := pem.Decode([]byte(h.webhookKey))
@@ -223,22 +234,14 @@ func (h *EmailWebhookHandler) verifySignature(r *http.Request) error {
 		return fmt.Errorf("decode signature: %w", err)
 	}
 
-	// The signed content is timestamp + request body.
-	// For Inbound Parse we use the timestamp + the raw form values.
-	// Hash the payload.
-	payload := timestamp + r.FormValue("") // For Inbound Parse, we verify against timestamp
-	// Actually for SendGrid Inbound Parse, the signature verification is simpler:
-	// The webhook verification key is used as a shared secret to compare.
-	// But for the Event Webhook, ECDSA is used.
-	// Since Inbound Parse uses a different mechanism (basic auth or OAuth),
-	// we implement ECDSA verification for the Event Webhook pattern which
-	// can also be configured for Inbound Parse.
+	// The signed payload is: timestamp + raw_body.
+	payload := make([]byte, 0, len(timestamp)+len(rawBody))
+	payload = append(payload, timestamp...)
+	payload = append(payload, rawBody...)
+	hash := sha256.Sum256(payload)
 
-	hash := sha256.Sum256([]byte(timestamp + signature))
-
-	// Parse the signature as r, s values (DER encoded).
-	// ECDSA signatures from SendGrid are r || s concatenated.
-	keySize := ecdsaKey.Params().BitSize / 8
+	// Parse the ECDSA signature as r || s concatenated values.
+	keySize := (ecdsaKey.Params().BitSize + 7) / 8
 	if len(sigBytes) != 2*keySize {
 		return fmt.Errorf("unexpected signature length: got %d, expected %d", len(sigBytes), 2*keySize)
 	}
@@ -250,7 +253,6 @@ func (h *EmailWebhookHandler) verifySignature(r *http.Request) error {
 		return fmt.Errorf("ECDSA signature verification failed")
 	}
 
-	_ = payload // prevent unused variable
 	return nil
 }
 

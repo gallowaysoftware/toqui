@@ -122,6 +122,11 @@ func main() {
 		cfg.GetYourGuidePartnerID,
 	)
 
+	if aiProvider == nil {
+		slog.Error("no AI provider available — neither ANTHROPIC_API_KEY nor Vertex AI credentials are configured")
+		os.Exit(1)
+	}
+
 	// Services
 	tripSvc := trip.NewService(pool)
 	chatSvc := chat.NewService(aiProvider, chatStr, toolRegistry, personaRegistry)
@@ -149,7 +154,7 @@ func main() {
 	// Register handlers
 	mux := http.NewServeMux()
 
-	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc)
+	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, pool)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
@@ -162,6 +167,13 @@ func main() {
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc)
+
+	// Health check (no auth, used by Cloud Run and load balancers)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
 
 	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)

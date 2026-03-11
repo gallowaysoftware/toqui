@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,16 +17,18 @@ import (
 )
 
 type AuthHandler struct {
-	authSvc      *auth.Service
-	queries      *dbgen.Queries
-	lifecycleSvc *lifecycle.Service
+	authSvc        *auth.Service
+	queries        *dbgen.Queries
+	lifecycleSvc   *lifecycle.Service
+	allowedDomains []string
 }
 
-func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service) *AuthHandler {
+func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string) *AuthHandler {
 	return &AuthHandler{
-		authSvc:      authSvc,
-		queries:      dbgen.New(pool),
-		lifecycleSvc: lifecycleSvc,
+		authSvc:        authSvc,
+		queries:        dbgen.New(pool),
+		lifecycleSvc:   lifecycleSvc,
+		allowedDomains: allowedDomains,
 	}
 }
 
@@ -33,6 +36,12 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	info, err := h.authSvc.ExchangeCode(ctx, req.Msg.Code)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	// Domain allowlist: reject signups from unauthorized email domains.
+	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
+		slog.Info("user denied via RPC: email domain not allowed", "email", info.Email)
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{

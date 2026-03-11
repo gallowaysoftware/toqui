@@ -60,7 +60,8 @@ func (s *Service) ExchangeCode(ctx context.Context, code string) (*GoogleUserInf
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Limit read to 1 MB — Google's userinfo response is small JSON.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("read user info: %w", err)
 	}

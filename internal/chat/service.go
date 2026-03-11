@@ -212,24 +212,15 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	outCh := make(chan StreamEvent, 64)
 	go func() {
 		defer close(outCh)
-		s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
+		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
 
 		// Cache the response after streaming completes (only for eligible requests).
-		if s.cache != nil && s.cache.Eligible(aiReq) {
-			// Collect the full response text from the last message_complete event.
-			// We do this by reading from the chatstore since processEvents already stored it.
-			msgs, mErr := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, 1)
-			if mErr == nil && len(msgs) > 0 {
-				// The latest message should be the assistant response.
-				latest := msgs[len(msgs)-1]
-				if latest.Role == "assistant" && latest.Content != "" {
-					s.cache.Put(aiReq, latest.Content)
-					slog.Debug("llm response cached",
-						"mode", params.Mode,
-						"response_len", len(latest.Content),
-					)
-				}
-			}
+		if s.cache != nil && s.cache.Eligible(aiReq) && responseText != "" {
+			s.cache.Put(aiReq, responseText)
+			slog.Debug("llm response cached",
+				"mode", params.Mode,
+				"response_len", len(responseText),
+			)
 		}
 	}()
 
@@ -243,7 +234,7 @@ const maxToolLoopIterations = 5
 // continuation loop. When the AI stops for tool use, tool results are sent back
 // and the AI continues generating. This loops until the AI produces a final
 // response (stop_reason=end_turn) or the iteration limit is reached.
-func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) {
+func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) string {
 	var fullResponse strings.Builder
 	var totalInputTokens, totalOutputTokens int
 
@@ -252,7 +243,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		eventCh, err := s.provider.ChatStream(ctx, aiReq)
 		if err != nil {
 			outCh <- StreamEvent{Type: "error", Error: fmt.Sprintf("start chat stream: %v", err)}
-			return
+			return ""
 		}
 
 		// Process this turn's events
@@ -267,7 +258,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 		if streamErr != nil {
 			outCh <- StreamEvent{Type: "error", Error: streamErr.Error()}
-			return
+			return ""
 		}
 
 		// If the AI stopped for tool use and we have results, continue the loop
@@ -326,9 +317,10 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 
 		// AI finished (end_turn) — store and emit the final response
+		responseText := fullResponse.String()
 		assistantMsg := &chatstore.ChatMessage{
 			Role:    "assistant",
-			Content: fullResponse.String(),
+			Content: responseText,
 		}
 		if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
 			slog.Error("failed to store assistant message", "error", err)
@@ -336,21 +328,22 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 		outCh <- StreamEvent{
 			Type:      "message_complete",
-			Text:      fullResponse.String(),
+			Text:      responseText,
 			SessionID: sessionID,
 			MessageID: assistantMsg.ID,
 		}
 
 		// Log usage with environment label for cost tracking.
 		s.logUsage(iteration+1, totalInputTokens, totalOutputTokens)
-		return
+		return responseText
 	}
 
 	// Hit iteration limit — store what we have
 	slog.Warn("tool loop: hit max iterations", "max", maxToolLoopIterations)
+	responseText := fullResponse.String()
 	assistantMsg := &chatstore.ChatMessage{
 		Role:    "assistant",
-		Content: fullResponse.String(),
+		Content: responseText,
 	}
 	if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
 		slog.Error("failed to store assistant message", "error", err)
@@ -358,12 +351,13 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 	outCh <- StreamEvent{
 		Type:      "message_complete",
-		Text:      fullResponse.String(),
+		Text:      responseText,
 		SessionID: sessionID,
 		MessageID: assistantMsg.ID,
 	}
 
 	s.logUsage(maxToolLoopIterations, totalInputTokens, totalOutputTokens)
+	return responseText
 }
 
 // logUsage logs token usage with provider and environment labels for cost tracking.
