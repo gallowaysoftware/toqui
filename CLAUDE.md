@@ -88,16 +88,20 @@ ThemeProvider → AgeGate → QueryClientProvider → AuthProvider → GrpcProvi
 - **ThemeProvider** — Dark/light mode, persists to localStorage
 - **AgeGate** — DOB-based age verification (18+), exempts /privacy and /terms
 - **QueryClientProvider** — TanStack React Query
-- **AuthProvider** — JWT auth state, token refresh
-- **GrpcProvider** — ConnectRPC transport configured with auth interceptor
+- **AuthProvider** — Auth state, cookie-based token refresh via `POST /auth/refresh`, stores only user info in localStorage (no tokens)
+- **GrpcProvider** — ConnectRPC transport with `credentials: "include"` (HttpOnly cookies), auto-retry on 401 via cookie refresh
 
 ## Auth Flow
 
 1. User clicks "Sign in with Google" → navigates to backend `/auth/google/login`
-2. Backend handles OAuth, sets HttpOnly cookie, redirects to `/auth/callback`
+2. Backend handles OAuth, sets temporary HttpOnly cookie, redirects to `/auth/callback`
 3. Frontend `/auth/callback` page calls `POST /auth/exchange` (credentials: include)
-4. Backend returns tokens in JSON body, clears cookie
-5. Frontend stores tokens in memory, uses `Authorization: Bearer` for all API calls
+4. Backend returns user info + `expires_at` in JSON body, sets `toqui_access` and `toqui_refresh` HttpOnly cookies, clears OAuth cookie
+5. Frontend stores only user info in localStorage (`toqui_user`) — **no tokens in JavaScript**
+6. All API calls use `credentials: "include"` — browser sends HttpOnly cookies automatically
+7. Backend `cookieAuth` middleware reads the cookie and sets `Authorization: Bearer` header for handlers
+8. Auto-refresh: frontend calls `POST /auth/refresh` 5 minutes before `expires_at` — backend rotates cookies
+9. Logout: frontend calls `POST /auth/logout` — backend revokes refresh token and clears cookies
 
 ## Age Gate
 
@@ -151,19 +155,20 @@ DOB-based age verification in `src/components/auth/AgeGate.tsx`:
 
 ### Auth Token Storage
 
-Auth tokens are currently stored in localStorage. This is a known risk (see [#57](https://github.com/gallowaysoftware/toqui-backend/issues/57)) — any XSS vulnerability grants full account access. Mitigations:
+Auth tokens are stored in HttpOnly cookies (`toqui_access`, `toqui_refresh`) set by the backend. Tokens are never accessible to JavaScript, eliminating the XSS token theft vector ([#57](https://github.com/gallowaysoftware/toqui-backend/issues/57) — fixed). localStorage stores only user display info (`toqui_user`) with no sensitive data.
 
+Additional mitigations:
 - Strict CSP headers set by the backend
 - No `dangerouslySetInnerHTML` usage
 - All user-generated content is escaped by React's default rendering
-- Future: migrate to HttpOnly cookie-based sessions
+- CSRF protection via Origin/Referer validation on the backend
+- SameSite=Lax cookies prevent cross-site request forgery
 
 ### Known Open Issues
 
 See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui/issues?q=label:security) and [design issues](https://github.com/gallowaysoftware/toqui/issues?q=label:design).
 
 Key security-relevant design gaps:
-- No sign-out button (#25) — users can't log out on shared devices
 - Age gate is client-side only (#85 in backend repo) — can be bypassed via localStorage
 
 ### Security Checklist for New Components

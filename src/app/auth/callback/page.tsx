@@ -8,11 +8,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { setTokens } = useAuth();
+  const { setSession } = useAuth();
 
   useEffect(() => {
-    // Exchange the temporary HttpOnly cookie for tokens.
-    // The backend set this cookie during the OAuth redirect.
+    // Exchange the temporary HttpOnly cookie for auth session.
+    // The backend sets HttpOnly auth cookies (toqui_access, toqui_refresh)
+    // on the response — we only need the user info and expiry from the body.
     void (async () => {
       try {
         const res = await fetch(`${API_URL}/auth/exchange`, {
@@ -41,13 +42,16 @@ export default function AuthCallbackPage() {
         }
 
         const data = await res.json();
-        if (data.access_token && data.refresh_token && data.user_id && data.email) {
-          setTokens(data.access_token, data.refresh_token, {
-            id: data.user_id,
-            email: data.email,
-            name: data.name ?? "",
-            avatarUrl: data.avatar_url ?? "",
-          });
+        if (data.user_id && data.email) {
+          setSession(
+            {
+              id: data.user_id,
+              email: data.email,
+              name: data.name ?? "",
+              avatarUrl: data.avatar_url ?? "",
+            },
+            data.expires_at,
+          );
           router.push("/trips");
         } else {
           router.push("/");
@@ -56,7 +60,7 @@ export default function AuthCallbackPage() {
         router.push("/");
       }
     })();
-  }, [setTokens, router]);
+  }, [setSession, router]);
 
   return (
     <main
@@ -70,7 +74,9 @@ export default function AuthCallbackPage() {
           className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)] mx-auto mb-4"
           aria-hidden="true"
         />
-        <p className="text-[var(--color-text-secondary)]">Signing you in...</p>
+        <p className="text-[var(--color-text-secondary)]">
+          Signing you in...
+        </p>
       </div>
     </main>
   );

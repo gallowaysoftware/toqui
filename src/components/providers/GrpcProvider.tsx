@@ -17,25 +17,30 @@ export function useTransport(): Transport {
 }
 
 export function GrpcProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken, refreshAccessToken } = useAuth();
+  const { refreshAccessToken } = useAuth();
 
   const transport = useMemo(
     () =>
       createConnectTransport({
         baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090",
+        // Send HttpOnly auth cookies with every request.
+        // The backend's cookie-to-header middleware translates these into
+        // Authorization: Bearer headers for the auth interceptor.
+        fetch: (input, init) =>
+          globalThis.fetch(input, { ...init, credentials: "include" }),
         interceptors: [
           (next) => async (req) => {
-            if (accessToken) {
-              req.header.set("Authorization", `Bearer ${accessToken}`);
-            }
             try {
               return await next(req);
             } catch (err) {
-              // On Unauthenticated, try refreshing the token and retry once
-              if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-                const newToken = await refreshAccessToken();
-                if (newToken) {
-                  req.header.set("Authorization", `Bearer ${newToken}`);
+              // On Unauthenticated, try refreshing the token cookie and retry once.
+              if (
+                err instanceof ConnectError &&
+                err.code === Code.Unauthenticated
+              ) {
+                const refreshed = await refreshAccessToken();
+                if (refreshed) {
+                  // Retry — browser will send updated cookie automatically.
                   return await next(req);
                 }
               }
@@ -44,8 +49,12 @@ export function GrpcProvider({ children }: { children: React.ReactNode }) {
           },
         ],
       }),
-    [accessToken, refreshAccessToken],
+    [refreshAccessToken],
   );
 
-  return <TransportContext.Provider value={transport}>{children}</TransportContext.Provider>;
+  return (
+    <TransportContext.Provider value={transport}>
+      {children}
+    </TransportContext.Provider>
+  );
 }

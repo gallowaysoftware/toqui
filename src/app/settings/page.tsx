@@ -28,8 +28,8 @@ export default function SettingsPage() {
     mutationFn: async () => {
       await client.deleteAccount({ confirm: true });
     },
-    onSuccess: () => {
-      logout();
+    onSuccess: async () => {
+      await logout();
       router.push("/");
     },
   });
