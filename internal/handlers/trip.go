@@ -49,7 +49,7 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 
 	t, err := h.tripSvc.Create(ctx, userID, req.Msg.Title, req.Msg.Description, startDate, endDate)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "trip operation", err)
 	}
 
 	// Fire-and-forget: tag trip themes via AI
@@ -101,7 +101,7 @@ func (h *TripHandler) ListTrips(ctx context.Context, req *connect.Request[toquiv
 
 	trips, count, err := h.tripSvc.ListByUser(ctx, userID, status, limit, offset)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "trip operation", err)
 	}
 
 	protoTrips := make([]*toquiv1.Trip, len(trips))
@@ -146,7 +146,7 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 
 	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "trip operation", err)
 	}
 
 	// When trip is completed, stamp TTL on chat data (90-day retention)
@@ -170,7 +170,7 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 
 	// Use lifecycle service to purge Firestore chat data + Postgres
 	if err := h.lifecycleSvc.DeleteTrip(ctx, userID, tripID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "trip operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.DeleteTripResponse{}), nil
@@ -194,7 +194,7 @@ func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toq
 
 	items, err := h.tripSvc.GetItinerary(ctx, tripID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "trip operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.GetItineraryResponse{

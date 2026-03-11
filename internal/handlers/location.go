@@ -58,7 +58,7 @@ func (h *LocationHandler) GetNearby(ctx context.Context, req *connect.Request[to
 
 	places, err := h.locationSvc.GetNearby(ctx, req.Msg.Location.Latitude, req.Msg.Location.Longitude, req.Msg.Category, radiusM)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "get nearby", err)
 	}
 
 	protoPlaces := make([]*toquiv1.NearbyPlace, len(places))

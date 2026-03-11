@@ -69,12 +69,12 @@ func (h *WaitlistHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 			// Already on waitlist — look up existing entry for position
 			entry, err = h.queries.GetWaitlistByEmail(ctx, req.Email)
 			if err != nil {
-				slog.Error("get waitlist by email failed", "email", req.Email, "error", err)
+				slog.Error("get waitlist by email failed", "email", maskEmail(req.Email), "error", err)
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
 		} else {
-			slog.Error("add to waitlist failed", "email", req.Email, "error", err)
+			slog.Error("add to waitlist failed", "email", maskEmail(req.Email), "error", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -115,7 +115,7 @@ func (h *WaitlistHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "email not found on waitlist", http.StatusNotFound)
 			return
 		}
-		slog.Error("get waitlist by email failed", "email", email, "error", err)
+		slog.Error("get waitlist by email failed", "email", maskEmail(email), "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

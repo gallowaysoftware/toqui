@@ -36,7 +36,7 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 	}
 	b, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "booking operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.IngestBookingResponse{
@@ -61,7 +61,7 @@ func (h *BookingHandler) ListBookings(ctx context.Context, req *connect.Request[
 
 	bookings, err := h.bookingSvc.ListByTrip(ctx, userID, tripID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "booking operation", err)
 	}
 
 	protoBookings := make([]*toquiv1.Booking, len(bookings))
@@ -113,7 +113,7 @@ func (h *BookingHandler) LinkBookingToTrip(ctx context.Context, req *connect.Req
 
 	b, err := h.bookingSvc.LinkToTrip(ctx, userID, bookingID, tripID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "booking operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.LinkBookingToTripResponse{
@@ -133,7 +133,7 @@ func (h *BookingHandler) DeleteBooking(ctx context.Context, req *connect.Request
 	}
 
 	if err := h.bookingSvc.Delete(ctx, userID, bookingID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "booking operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.DeleteBookingResponse{}), nil
@@ -152,7 +152,7 @@ func (h *BookingHandler) ExtractBookingField(ctx context.Context, req *connect.R
 
 	result, err := h.bookingSvc.ExtractField(ctx, userID, bookingID, req.Msg.Question)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "booking operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.ExtractBookingFieldResponse{

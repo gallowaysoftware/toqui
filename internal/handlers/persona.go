@@ -71,7 +71,7 @@ func (h *PersonaHandler) SetDefaultPersona(ctx context.Context, req *connect.Req
 		DefaultPersonaID: pgtype.Text{String: req.Msg.PersonaId, Valid: true},
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "persona operation", err)
 	}
 
 	return connect.NewResponse(&toquiv1.SetDefaultPersonaResponse{Persona: personaToProto(p)}), nil

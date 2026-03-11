@@ -103,7 +103,7 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	user, err := h.queries.GetUserByEmail(r.Context(), senderEmail)
 	if err != nil {
 		slog.Warn("email webhook unknown sender",
-			"email", senderEmail,
+			"email", maskEmail(senderEmail),
 			"error", err,
 		)
 		// Return 200 to prevent SendGrid from retrying for unknown senders.
@@ -113,7 +113,7 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 
 	slog.Info("email webhook matched user",
 		"user_id", user.ID,
-		"email", user.Email,
+		"email", maskEmail(user.Email),
 	)
 
 	// Try to match to an existing trip.

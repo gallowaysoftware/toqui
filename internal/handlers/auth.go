@@ -40,7 +40,7 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
-		slog.Info("user denied via RPC: email domain not allowed", "email", info.Email)
+		slog.Info("user denied via RPC: email domain not allowed", "email", maskEmail(info.Email))
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
@@ -51,17 +51,17 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 		AvatarUrl: pgtype.Text{String: info.AvatarURL, Valid: info.AvatarURL != ""},
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "upsert user", err)
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "generate access token", err)
 	}
 
 	refreshToken, err := h.authSvc.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "generate refresh token", err)
 	}
 
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
@@ -74,22 +74,22 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toquiv1.RefreshTokenRequest]) (*connect.Response[toquiv1.RefreshTokenResponse], error) {
 	userID, err := h.authSvc.ValidateRefreshToken(req.Msg.RefreshToken)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
 	}
 
 	user, err := h.queries.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "get user for refresh", err)
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "generate access token", err)
 	}
 
 	refreshToken, err := h.authSvc.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "generate refresh token", err)
 	}
 
 	return connect.NewResponse(&toquiv1.RefreshTokenResponse{
@@ -107,7 +107,7 @@ func (h *AuthHandler) GetCurrentUser(ctx context.Context, _ *connect.Request[toq
 
 	user, err := h.queries.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "get current user", err)
 	}
 
 	return connect.NewResponse(&toquiv1.GetCurrentUserResponse{
@@ -127,7 +127,7 @@ func (h *AuthHandler) DeleteAccount(ctx context.Context, req *connect.Request[to
 
 	requestID, err := h.lifecycleSvc.RequestDeletion(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "request deletion", err)
 	}
 
 	return connect.NewResponse(&toquiv1.DeleteAccountResponse{
@@ -144,7 +144,7 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 
 	requestID, err := h.lifecycleSvc.RequestExport(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "request export", err)
 	}
 
 	return connect.NewResponse(&toquiv1.ExportDataResponse{

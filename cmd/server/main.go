@@ -31,6 +31,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
+	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
@@ -138,6 +139,13 @@ func main() {
 		slog.Info("llm response cache enabled", "ttl", cfg.LLMCacheTTL)
 	}
 
+	// Daily token budget — global limit across all AI calls.
+	if cfg.DailyAITokenBudget > 0 {
+		tokenBudget := ai.NewTokenBudget(cfg.DailyAITokenBudget)
+		chatSvc.SetBudget(tokenBudget)
+		slog.Info("daily AI token budget configured", "limit", cfg.DailyAITokenBudget)
+	}
+
 	bookingSvc := booking.NewService(pool, aiProvider)
 	locationSvc := location.NewService()
 	locationCache := location.NewCache(location.DefaultCacheTTL)
@@ -203,8 +211,14 @@ func main() {
 	mux.Handle(toquiv1connect.NewLocationServiceHandler(locationHandler, interceptors))
 	mux.Handle(toquiv1connect.NewPersonaServiceHandler(personaHandler, interceptors))
 
-	// Middleware chain: recovery → security headers → CORS → handler
-	handler := recoveryMiddleware(securityHeadersMiddleware(corsMiddleware(mux, cfg.FrontendURL)))
+	// Per-IP rate limiting — 120 requests/min sustained, burst of 20.
+	// Applies to all routes (public + authenticated). The per-user ConnectRPC
+	// interceptor provides tighter limits on authenticated AI endpoints.
+	ipLimiter := ratelimit.NewIPRateLimiter(120, 20)
+	defer ipLimiter.Stop()
+
+	// Middleware chain: recovery → request ID → security headers → IP rate limit → CORS → handler
+	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(ipLimiter.Middleware(corsMiddleware(mux, cfg.FrontendURL)))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -341,7 +355,12 @@ func corsMiddleware(next http.Handler, allowedOrigin string) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Only /auth/exchange needs credentials (reads HttpOnly OAuth cookie).
+		// Other endpoints use Bearer tokens via Authorization header.
+		if strings.HasPrefix(r.URL.Path, "/auth/") {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

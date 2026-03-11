@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
+	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
@@ -225,7 +226,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 	eventCh, sessionID, err := h.chatSvc.SendMessage(ctx, params)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+		if errors.Is(err, ai.ErrBudgetExhausted) {
+			return connect.NewError(
+				connect.CodeResourceExhausted,
+				fmt.Errorf("our AI service has reached its daily capacity — please try again tomorrow"),
+			)
+		}
+		return internalError(ctx, "send message", err)
 	}
 
 	// Send session created event if new session
@@ -592,7 +599,7 @@ func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request
 
 	sessions, err := h.chatSvc.ListSessions(ctx, userID, req.Msg.TripId, limit)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, internalError(ctx, "list sessions", err)
 	}
 
 	protoSessions := make([]*toquiv1.ChatSession, len(sessions))

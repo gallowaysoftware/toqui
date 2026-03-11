@@ -92,7 +92,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
-		slog.Info("user denied: email domain not allowed", "email", info.Email)
+		slog.Info("user denied: email domain not allowed", "email", maskEmail(info.Email))
 		redirectURL := h.frontendURL + "/waitlist?" + url.Values{
 			"reason": []string{"domain_not_allowed"},
 			"email":  []string{info.Email},
@@ -118,7 +118,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(r.Context(), info.Email)
 				if wlErr != nil || !waitlistEntry.InviteCode.Valid {
 					slog.Info("user denied: at capacity, no invite",
-						"email", info.Email,
+						"email", maskEmail(info.Email),
 						"user_count", userCount,
 						"max_free_users", h.maxFreeUsers,
 					)
@@ -131,10 +131,10 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				}
 				// Has valid invite — allow through, mark accepted
 				if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil {
-					slog.Error("mark waitlist accepted failed", "email", info.Email, "error", markErr)
+					slog.Error("mark waitlist accepted failed", "email", maskEmail(info.Email), "error", markErr)
 				}
 				slog.Info("user admitted via invite code",
-					"email", info.Email,
+					"email", maskEmail(info.Email),
 					"invite_code", waitlistEntry.InviteCode.String,
 				)
 			}

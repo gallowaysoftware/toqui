@@ -22,6 +22,7 @@ type Service struct {
 	tools     *tools.Registry
 	personas  *persona.Registry
 	cache     *ai.ResponseCache // nil when caching is disabled
+	budget    *ai.TokenBudget   // nil when budget is unlimited
 }
 
 func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *tools.Registry, personas *persona.Registry) *Service {
@@ -36,6 +37,11 @@ func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *
 // SetCache enables LLM response caching. Pass nil to disable.
 func (s *Service) SetCache(cache *ai.ResponseCache) {
 	s.cache = cache
+}
+
+// SetBudget enables daily token budget tracking. Pass nil to disable.
+func (s *Service) SetBudget(budget *ai.TokenBudget) {
+	s.budget = budget
 }
 
 type StreamEvent struct {
@@ -191,6 +197,13 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		"provider", s.provider.Name(),
 		"has_tools", len(toolDefs) > 0,
 	)
+
+	// Check daily token budget before calling the LLM.
+	if s.budget != nil {
+		if err := s.budget.Check(); err != nil {
+			return nil, "", err
+		}
+	}
 
 	// Check response cache before calling the LLM.
 	if s.cache != nil && s.cache.Eligible(aiReq) {
@@ -360,19 +373,25 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 	return responseText
 }
 
-// logUsage logs token usage with provider and environment labels for cost tracking.
+// logUsage logs token usage with provider and environment labels for cost tracking,
+// and records against the daily token budget if configured.
 func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
 	if inputTokens == 0 && outputTokens == 0 {
 		return
 	}
+	totalTokens := inputTokens + outputTokens
 	slog.Info("ai request completed",
 		"provider", s.provider.Name(),
 		"env", os.Getenv("TARGET_ENV"),
 		"input_tokens", inputTokens,
 		"output_tokens", outputTokens,
-		"total_tokens", inputTokens+outputTokens,
+		"total_tokens", totalTokens,
 		"tool_loop_iterations", iterations,
 	)
+
+	if s.budget != nil {
+		s.budget.Record(totalTokens)
+	}
 }
 
 // processOneTurn drains a single AI stream, executing any tool calls.

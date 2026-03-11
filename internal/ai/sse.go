@@ -15,9 +15,16 @@ type SSEReader struct {
 	scanner *bufio.Scanner
 }
 
+// maxSSELineSize is the maximum size of a single SSE line (1 MB).
+// The default bufio.Scanner buffer (64 KB) can silently truncate large tool-call
+// JSON payloads. This ensures we handle even the largest AI responses.
+const maxSSELineSize = 1 << 20
+
 // NewSSEReader creates a new SSE reader from an io.Reader (typically an HTTP response body).
 func NewSSEReader(r io.Reader) *SSEReader {
-	return &SSEReader{scanner: bufio.NewScanner(r)}
+	s := bufio.NewScanner(r)
+	s.Buffer(make([]byte, 0, 64*1024), maxSSELineSize)
+	return &SSEReader{scanner: s}
 }
 
 // Next returns the next SSE data payload as a raw string.
