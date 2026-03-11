@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { ArrowLeft, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Trash2, LogOut } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTransport } from "@/components/providers/GrpcProvider";
@@ -117,6 +117,21 @@ export default function SettingsPage() {
           )}
         </div>
 
+        {/* Sign Out */}
+        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-4">Session</h2>
+          <button
+            onClick={() => {
+              void logout().then(() => router.push("/"));
+            }}
+            className="flex items-center gap-2 text-[var(--color-text-primary)] hover:text-[var(--color-error)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
+          >
+            <LogOut size={16} aria-hidden="true" />
+            Sign Out
+          </button>
+        </div>
+
+        {/* Danger Zone */}
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
           {!showDeleteConfirm ? (
             <button

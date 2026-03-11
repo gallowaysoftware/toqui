@@ -62,10 +62,14 @@ pnpm generate             # Regenerate proto bindings from ../toqui-backend
 GitHub Actions on push to `main` and all PRs (GitHub-hosted runners, `ubuntu-latest`):
 
 - **lint+typecheck**, **test**, **build** run in parallel → **deploy-staging** (main only, Cloud Run)
+- **deploy-prod** — manual trigger via `workflow_dispatch` (requires main branch + `production` environment approval)
 
 Staging deploy: Builds Docker image (with `NEXT_PUBLIC_API_URL=https://staging-api.toqui.travel`), pushes to Artifact Registry, deploys to Cloud Run via `gcloud run deploy`. Uses Workload Identity Federation (keyless GCP auth).
 
+Prod deploy: Same pattern but with `NEXT_PUBLIC_API_URL=https://api.toqui.travel`, `toqui-prod` project, and separate WIF credentials (`GCP_PROD_WIF_PROVIDER`, `GCP_PROD_SERVICE_ACCOUNT`).
+
 Staging URL: `https://staging-app.toqui.travel`
+Prod URL: `https://app.toqui.travel`
 
 ## Conventions
 

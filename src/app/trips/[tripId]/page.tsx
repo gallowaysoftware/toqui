@@ -11,6 +11,8 @@ import {
   Printer,
   CalendarDays,
   Download,
+  ArrowLeft,
+  Settings,
 } from "lucide-react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
@@ -82,17 +84,33 @@ export default function TripDetailPage() {
       <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
-                {trip?.title ?? "Trip Details"}
-              </h1>
-              {trip?.description && (
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-                  {trip.description}
-                </p>
-              )}
+            <div className="flex items-center gap-3 min-w-0">
+              <Link
+                href="/trips"
+                className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-tertiary)] transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                aria-label="Back to trips"
+              >
+                <ArrowLeft size={20} aria-hidden="true" />
+              </Link>
+              <div className="min-w-0">
+                <h1 className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
+                  {trip?.title ?? "Trip Details"}
+                </h1>
+                {trip?.description && (
+                  <p className="text-sm text-[var(--color-text-secondary)] mt-1 truncate">
+                    {trip.description}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <Link
+                href={`/trips/${tripId}/settings`}
+                className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-tertiary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                aria-label="Trip settings"
+              >
+                <Settings size={18} aria-hidden="true" />
+              </Link>
               <span
                 className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[status] ?? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"}`}
               >
