@@ -34,6 +34,9 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     createdTrip,
     selectedTrip,
     sendMessage,
+    hasMoreHistory,
+    isLoadingMore,
+    loadMoreHistory,
   } = useChat(tripId, mode, { onResourceExhausted });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -92,6 +95,18 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         aria-busy={isStreaming}
       >
         <AITransparencyNotice />
+
+        {hasMoreHistory && !isLoadingHistory && (
+          <div className="text-center py-2">
+            <button
+              onClick={() => void loadMoreHistory()}
+              disabled={isLoadingMore}
+              className="text-sm text-[var(--color-accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded px-3 py-1.5 disabled:opacity-50"
+            >
+              {isLoadingMore ? "Loading..." : "Load older messages"}
+            </button>
+          </div>
+        )}
 
         {isLoadingHistory && (
           <div className="text-center text-[var(--color-text-tertiary)] py-8">

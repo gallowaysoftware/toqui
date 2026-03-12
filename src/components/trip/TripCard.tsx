@@ -15,6 +15,19 @@ const statusColors: Record<string, string> = {
   completed: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
 };
 
+function formatDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr + "T00:00:00");
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export function TripCard({ trip }: { trip: Trip }) {
   const label = statusLabel[trip.status] || "planning";
 
@@ -40,8 +53,8 @@ export function TripCard({ trip }: { trip: Trip }) {
         <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
           <Calendar size={12} aria-hidden="true" />
           <span>
-            {trip.startDate}
-            {trip.endDate && ` - ${trip.endDate}`}
+            {formatDate(trip.startDate)}
+            {trip.endDate && ` - ${formatDate(trip.endDate)}`}
           </span>
         </div>
       )}

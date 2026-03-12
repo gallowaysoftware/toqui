@@ -36,13 +36,18 @@ export default function Home() {
           </button>
         </div>
 
-        <footer className="mt-16 text-sm text-[var(--color-text-tertiary)] flex gap-6 justify-center">
-          <Link href="/privacy" className="hover:text-[var(--color-accent)] transition-colors">
-            Privacy Policy
-          </Link>
-          <Link href="/terms" className="hover:text-[var(--color-accent)] transition-colors">
-            Terms of Service
-          </Link>
+        <footer className="mt-16 text-sm text-[var(--color-text-tertiary)]">
+          <div className="flex gap-6 justify-center">
+            <Link href="/privacy" className="hover:text-[var(--color-accent)] transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-[var(--color-accent)] transition-colors">
+              Terms of Service
+            </Link>
+          </div>
+          <p className="mt-3 text-center text-xs">
+            &copy; {new Date().getFullYear()} Galloway Software Solutions Inc.
+          </p>
         </footer>
       </div>
     </main>

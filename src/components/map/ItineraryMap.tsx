@@ -37,10 +37,10 @@ function buildPopupHTML(item: ItineraryItem, dayNumber: number, color: string): 
     <div style="min-width: 180px; max-width: 260px;">
       <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color};"></span>
-        <span style="font-size: 11px; color: #6B7280;">Day ${dayNumber}${typeLabel ? ` \u00B7 ${typeLabel}` : ""}</span>
+        <span style="font-size: 11px; color: var(--color-text-tertiary);">Day ${dayNumber}${typeLabel ? ` \u00B7 ${typeLabel}` : ""}</span>
       </div>
-      <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${escapeHTML(item.title)}</div>
-      ${item.description ? `<div style="font-size: 12px; color: #6B7280; line-height: 1.4;">${escapeHTML(item.description)}</div>` : ""}
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--color-text-primary);">${escapeHTML(item.title)}</div>
+      ${item.description ? `<div style="font-size: 12px; color: var(--color-text-tertiary); line-height: 1.4;">${escapeHTML(item.description)}</div>` : ""}
     </div>
   `;
 }
@@ -159,7 +159,7 @@ export function ItineraryMap({ itinerary, isLoading, className }: ItineraryMapPr
     <div className={`relative ${className ?? ""}`}>
       <Map onMapReady={handleMapReady} className="rounded-xl overflow-hidden" />
       {/* Day legend */}
-      <div className="absolute bottom-3 left-3 bg-[var(--color-surface)]/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border border-[var(--color-border)]">
+      <div className="absolute bottom-3 left-3 bg-[color-mix(in_srgb,var(--color-surface)_90%,transparent)] backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border border-[var(--color-border)]">
         <div className="flex flex-wrap gap-2">
           {itinerary?.days
             ?.filter((d) =>

@@ -151,7 +151,7 @@ function NotFoundState() {
           This shared trip link may have expired or been removed by the owner.
         </p>
         <Link
-          href="/waitlist"
+          href="/"
           className="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors text-sm font-medium"
         >
           Plan your own trip with Toqui
@@ -172,7 +172,7 @@ function ErrorState() {
           We could not load this shared trip. Please try again later.
         </p>
         <Link
-          href="/waitlist"
+          href="/"
           className="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors text-sm font-medium"
         >
           Plan your own trip with Toqui
@@ -241,7 +241,7 @@ export default function SharedTripPage() {
       {/* Header with Toqui branding */}
       <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/waitlist" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <span className="text-lg font-bold text-[var(--color-accent)]">Toqui</span>
           </Link>
           <span className="text-xs text-[var(--color-text-tertiary)]">Shared Trip</span>
@@ -302,7 +302,7 @@ export default function SharedTripPage() {
             AI-powered travel planning that builds your perfect itinerary through conversation.
           </p>
           <Link
-            href="/waitlist"
+            href="/"
             className="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors text-sm font-medium"
           >
             Get Started

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Toqui",
+  title: "Terms of Service",
   description: "Terms and conditions for using the Toqui travel planning service.",
 };
 

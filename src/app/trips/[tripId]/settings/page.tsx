@@ -72,7 +72,18 @@ export default function TripSettingsPage() {
     },
   });
 
-  if (authLoading || isLoading) return null;
+  if (authLoading || isLoading) {
+    return (
+      <div
+        className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
+        <span className="sr-only">Loading trip settings...</span>
+      </div>
+    );
+  }
   if (!user) {
     router.push("/");
     return null;

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { ArrowLeft, Download, Trash2, LogOut } from "lucide-react";
+import { ArrowLeft, Download, Trash2, LogOut, Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTransport } from "@/components/providers/GrpcProvider";
@@ -120,7 +120,13 @@ export default function SettingsPage() {
             disabled={exportData.isPending || exportData.isSuccess}
             className="flex items-center gap-2 text-[var(--color-accent)] hover:opacity-80 text-sm font-medium disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded"
           >
-            <Download size={16} aria-hidden="true" />
+            {exportData.isPending ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            ) : exportData.isSuccess ? (
+              <CheckCircle size={16} aria-hidden="true" />
+            ) : (
+              <Download size={16} aria-hidden="true" />
+            )}
             {exportData.isPending
               ? t("exporting")
               : exportData.isSuccess

@@ -11,7 +11,10 @@ const inter = Inter({ subsets: ["latin"] });
 import type { Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Toqui",
+  title: {
+    default: "Toqui",
+    template: "%s | Toqui",
+  },
   description: "Your AI-powered travel companion",
   manifest: "/manifest.json",
   appleWebApp: {

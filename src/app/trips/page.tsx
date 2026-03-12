@@ -5,6 +5,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
 import type { Trip } from "@/gen/toqui/v1/trip_pb";
@@ -27,6 +28,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function TripsPage() {
+  const t = useTranslations("trips");
   const { user, isLoading: authLoading, logout } = useAuth();
   const { trips } = useTrips();
   const router = useRouter();
@@ -186,7 +188,7 @@ export default function TripsPage() {
       >
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wide">
-            Your Trips
+            {t("title")}
           </h2>
           <button
             onClick={closeSidebar}

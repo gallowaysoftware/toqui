@@ -118,9 +118,12 @@ export function useChat(
   const [toolActivity, setToolActivity] = useState<ToolActivity | null>(null);
   const [createdTrip, setCreatedTrip] = useState<CreatedTrip | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<SelectedTrip | null>(null);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sessionIdRef = useRef<string>("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
   const historyLoadedRef = useRef<string | null>(null);
+  const nextPageTokenRef = useRef<string>("");
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
   useEffect(() => {
     onResourceExhaustedRef.current = options?.onResourceExhausted;
@@ -140,7 +143,7 @@ export function useChat(
         const res = await client.getChatHistory({
           tripId,
           sessionId: "",
-          pagination: { pageSize: 100, pageToken: "" },
+          pagination: { pageSize: 200, pageToken: "" },
         });
 
         if (cancelled) return;
@@ -164,6 +167,11 @@ export function useChat(
             return [...newFromHistory, ...prev];
           });
         }
+
+        // Track pagination for "load more" support
+        const nextToken = res.pagination?.nextPageToken ?? "";
+        nextPageTokenRef.current = nextToken;
+        setHasMoreHistory(nextToken !== "");
         historyLoadedRef.current = tripId;
       } catch (error) {
         // History loading is best-effort; log but don't block chat
@@ -180,6 +188,43 @@ export function useChat(
       cancelled = true;
     };
   }, [tripId, transport]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!tripId || !nextPageTokenRef.current || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const client = createClient(ChatService, transport);
+      const res = await client.getChatHistory({
+        tripId,
+        sessionId: "",
+        pagination: { pageSize: 200, pageToken: nextPageTokenRef.current },
+      });
+
+      const loaded: ChatMessage[] = [];
+      for (const msg of res.messages) {
+        const converted = protoToFrontendMessage(msg);
+        if (converted) {
+          loaded.push(converted);
+        }
+      }
+
+      if (loaded.length > 0) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newFromHistory = loaded.filter((m) => !existingIds.has(m.id));
+          return [...newFromHistory, ...prev];
+        });
+      }
+
+      const nextToken = res.pagination?.nextPageToken ?? "";
+      nextPageTokenRef.current = nextToken;
+      setHasMoreHistory(nextToken !== "");
+    } catch (error) {
+      console.error("Failed to load more chat history:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [tripId, transport, isLoadingMore]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -370,10 +415,13 @@ export function useChat(
     streamingText,
     isStreaming,
     isLoadingHistory,
+    isLoadingMore,
     activePersona,
     toolActivity,
     createdTrip,
     selectedTrip,
     sendMessage,
+    hasMoreHistory,
+    loadMoreHistory,
   };
 }

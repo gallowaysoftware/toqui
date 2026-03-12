@@ -1,5 +1,38 @@
-import Markdown from "react-markdown";
+import Markdown, { type Components } from "react-markdown";
 import type { ChatMessage } from "@/lib/hooks/useChat";
+
+const ALLOWED_ELEMENTS = [
+  "p",
+  "strong",
+  "em",
+  "ul",
+  "ol",
+  "li",
+  "a",
+  "code",
+  "pre",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "blockquote",
+  "br",
+  "hr",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+];
+
+const markdownComponents: Components = {
+  a: ({ children, href, ...rest }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+      {children}
+    </a>
+  ),
+};
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -58,7 +91,7 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
           ) : (
             <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-2 prose-a:text-[var(--color-accent)] dark:prose-invert">
-              <Markdown>{content}</Markdown>
+              <Markdown allowedElements={ALLOWED_ELEMENTS} unwrapDisallowed components={markdownComponents}>{content}</Markdown>
               {isStreaming && (
                 <span
                   className="inline-block w-1.5 h-4 bg-[var(--color-text-tertiary)] ml-0.5 animate-pulse align-text-bottom"

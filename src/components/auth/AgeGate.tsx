@@ -200,7 +200,7 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-red-500 mb-4">
+            <p role="alert" className="text-sm text-[var(--color-error)] mb-4">
               {error}
             </p>
           )}
