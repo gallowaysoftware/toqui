@@ -18,7 +18,7 @@ const statusColors: Record<string, string> = {
 function formatDate(dateStr: string): string {
   try {
     const date = new Date(dateStr + "T00:00:00");
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",

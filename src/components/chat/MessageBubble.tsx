@@ -80,9 +80,9 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
             isUser
               ? "bg-[var(--color-user-bubble)] text-[var(--color-user-bubble-text)] rounded-br-sm"
               : "bg-[var(--color-assistant-bubble)] border border-[var(--color-assistant-bubble-border)] text-[var(--color-assistant-bubble-text)] rounded-bl-sm"
-          }`}
+          }${message.isError ? " border-l-2 border-l-[var(--color-error)]" : ""}`}
           style={
-            !isUser && accentColor
+            !isUser && accentColor && !message.isError
               ? { borderLeftColor: accentColor, borderLeftWidth: 3 }
               : undefined
           }

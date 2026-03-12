@@ -31,6 +31,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  isError?: boolean;
   personaId?: string;
   personaName?: string;
   personaAvatar?: string;
@@ -389,6 +390,7 @@ export function useChat(
               role: "assistant",
               content:
                 "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
+              isError: true,
             },
           ]);
         } else {
@@ -398,6 +400,7 @@ export function useChat(
               id: uuid(),
               role: "assistant",
               content: "Sorry, something went wrong. Please try again.",
+              isError: true,
             },
           ]);
         }

@@ -169,11 +169,13 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
 }
 
 const toolDisplayNames: Record<string, string> = {
-  places_search: "Searching places",
+  nearby_places: "Searching nearby places",
   web_search: "Searching the web",
   create_trip: "Creating trip",
   select_trip: "Finding trip",
   recommend_booking: "Finding recommendations",
+  suggest_expert: "Finding an expert",
+  create_itinerary_items: "Adding to itinerary",
 };
 
 function ToolActivityIndicator({
