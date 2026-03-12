@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -373,7 +374,7 @@ func (q *Queries) UpdateTrip(ctx context.Context, arg UpdateTripParams) (Trip, e
 	return i, err
 }
 
-const updateTripDestination = `-- name: UpdateTripDestination :exec
+const updateTripDestination = `-- name: UpdateTripDestination :execresult
 UPDATE trips
 SET destination_country = $2, updated_at = NOW()
 WHERE id = $1 AND user_id = $3
@@ -385,7 +386,6 @@ type UpdateTripDestinationParams struct {
 	UserID             uuid.UUID   `json:"user_id"`
 }
 
-func (q *Queries) UpdateTripDestination(ctx context.Context, arg UpdateTripDestinationParams) error {
-	_, err := q.db.Exec(ctx, updateTripDestination, arg.ID, arg.DestinationCountry, arg.UserID)
-	return err
+func (q *Queries) UpdateTripDestination(ctx context.Context, arg UpdateTripDestinationParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, updateTripDestination, arg.ID, arg.DestinationCountry, arg.UserID)
 }

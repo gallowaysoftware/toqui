@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -53,7 +54,7 @@ func (s *Service) TagTrip(ctx context.Context, userID, tripID uuid.UUID, title, 
 
 	// Update destination country if detected
 	if result.DestinationCode != "" {
-		if err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
+		if _, err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
 			ID:                 tripID,
 			DestinationCountry: pgtype.Text{String: result.DestinationCode, Valid: true},
 			UserID:             userID,
@@ -66,9 +67,12 @@ func (s *Service) TagTrip(ctx context.Context, userID, tripID uuid.UUID, title, 
 }
 
 // TagTripAsync runs TagTrip in a background goroutine. Errors are logged, not returned.
+// This intentionally uses a detached context because theme tagging is a best-effort
+// background job that should complete even after the originating request ends.
 func (s *Service) TagTripAsync(userID, tripID uuid.UUID, title, description string) {
 	go func() {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 		if err := s.TagTrip(ctx, userID, tripID, title, description, nil); err != nil {
 			slog.Warn("async theme tagging failed", "trip_id", tripID, "error", err)
 		}

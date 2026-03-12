@@ -45,25 +45,22 @@ func (c *ClaudeProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
+	cfg := defaultRetryConfig()
+	resp, err := doWithRetry(ctx, cfg, "claude", func() (*http.Response, error) { //nolint:bodyclose // body is closed in the goroutine below; doWithRetry closes on retries
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(jsonBody))
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-API-Key", c.apiKey)
-	httpReq.Header.Set("Anthropic-Version", "2023-06-01")
-	httpReq.Header.Set("Anthropic-Beta", "prompt-caching-2024-07-31")
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("X-API-Key", c.apiKey)
+		httpReq.Header.Set("Anthropic-Version", "2023-06-01")
+		httpReq.Header.Set("Anthropic-Beta", "prompt-caching-2024-07-31")
 
-	resp, err := c.client.Do(httpReq) //nolint:bodyclose // body is closed in the goroutine below
+		return c.client.Do(httpReq)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, respBody)
 	}
 
 	ch := make(chan Event, 64)

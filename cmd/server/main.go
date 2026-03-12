@@ -155,10 +155,13 @@ func main() {
 	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit)
 
 	// Interceptors — handles both unary and streaming RPCs
+	rateLimiter := ratelimit.NewInterceptor(10, 60)
+	defer rateLimiter.Stop()
+
 	interceptors := connect.WithInterceptors(
 		validate.NewInterceptor(),
 		auth.NewAuthInterceptor(authSvc),
-		ratelimit.NewInterceptor(10, 60),
+		rateLimiter,
 	)
 
 	// Register handlers
@@ -182,8 +185,16 @@ func main() {
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc)
 
-	// Health check (no auth, used by Cloud Run and load balancers)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+	// Health check (no auth, used by Cloud Run and load balancers).
+	// Pings the database to ensure the connection pool is healthy.
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if err := pool.Ping(r.Context()); err != nil {
+			slog.Error("healthz: database ping failed", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"status":"unhealthy","reason":"database"}`))
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))

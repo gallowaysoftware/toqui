@@ -79,29 +79,26 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 		g.location, g.projectID, g.location, model,
 	)
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
+	cfg := defaultRetryConfig()
+	resp, err := doWithRetry(ctx, cfg, "gemini", func() (*http.Response, error) { //nolint:bodyclose // body is closed in the goroutine below; doWithRetry closes on retries
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
 
-	// Get Bearer token from ADC (auto-refreshes).
-	token, err := g.tokenSource.Token()
-	if err != nil {
-		return nil, fmt.Errorf("get access token: %w", err)
-	}
+		// Get Bearer token from ADC (auto-refreshes).
+		token, err := g.tokenSource.Token()
+		if err != nil {
+			return nil, fmt.Errorf("get access token: %w", err)
+		}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	resp, err := g.client.Do(httpReq) //nolint:bodyclose // body is closed in the goroutine below
+		return g.client.Do(httpReq)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("vertex AI error %d: %s", resp.StatusCode, respBody)
 	}
 
 	ch := make(chan Event, 64)

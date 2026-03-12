@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"container/list"
 	"crypto/sha256"
 	"fmt"
 	"log/slog"
@@ -15,10 +16,13 @@ import (
 //
 // Cache key = SHA-256(system_prompt + last_user_message).
 // Only messages under maxMessageLen characters in selection mode are cached.
+//
+// The LRU is implemented with a doubly-linked list (container/list) and a map
+// from key to list element, giving O(1) promote and eviction.
 type ResponseCache struct {
 	mu      sync.RWMutex
-	store   map[string]*lruEntry
-	order   []string // LRU order: most recently used at the end
+	store   map[string]*list.Element
+	lruList *list.List // front = LRU (oldest), back = MRU (newest)
 	ttl     time.Duration
 	maxSize int
 
@@ -31,6 +35,7 @@ type ResponseCache struct {
 }
 
 type lruEntry struct {
+	key      string
 	response string
 	cachedAt time.Time
 }
@@ -61,8 +66,8 @@ func withNow(fn func() time.Time) CacheOption {
 // NewResponseCache creates a new response cache with the given options.
 func NewResponseCache(opts ...CacheOption) *ResponseCache {
 	c := &ResponseCache{
-		store:         make(map[string]*lruEntry),
-		order:         make([]string, 0, 1000),
+		store:         make(map[string]*list.Element),
+		lruList:       list.New(),
 		ttl:           time.Hour,
 		maxSize:       1000,
 		maxMessageLen: 200,
@@ -111,28 +116,32 @@ func (c *ResponseCache) Get(req *ChatRequest) (string, bool) {
 	key := cacheKey(req.SystemPrompt, msg)
 
 	c.mu.RLock()
-	entry, ok := c.store[key]
-	c.mu.RUnlock()
-
+	elem, ok := c.store[key]
 	if !ok {
+		c.mu.RUnlock()
 		return "", false
 	}
+	entry := elem.Value.(*lruEntry)
+	expired := c.now().Sub(entry.cachedAt) > c.ttl
+	c.mu.RUnlock()
 
-	// Check TTL expiration.
-	if c.now().Sub(entry.cachedAt) > c.ttl {
+	if expired {
 		c.mu.Lock()
 		// Re-check under write lock (another goroutine may have already evicted).
-		if e, stillOk := c.store[key]; stillOk && c.now().Sub(e.cachedAt) > c.ttl {
-			delete(c.store, key)
-			c.removeFromOrder(key)
+		if elem, stillOk := c.store[key]; stillOk {
+			e := elem.Value.(*lruEntry)
+			if c.now().Sub(e.cachedAt) > c.ttl {
+				c.lruList.Remove(elem)
+				delete(c.store, key)
+			}
 		}
 		c.mu.Unlock()
 		return "", false
 	}
 
-	// Promote to most recently used.
+	// Promote to most recently used (O(1) move to back of list).
 	c.mu.Lock()
-	c.promoteKey(key)
+	c.lruList.MoveToBack(elem)
 	c.mu.Unlock()
 
 	slog.Debug("llm cache hit", "key_prefix", key[:12])
@@ -152,22 +161,26 @@ func (c *ResponseCache) Put(req *ChatRequest, response string) {
 	defer c.mu.Unlock()
 
 	// If key already exists, update it and promote.
-	if _, exists := c.store[key]; exists {
-		c.store[key] = &lruEntry{response: response, cachedAt: c.now()}
-		c.promoteKey(key)
+	if elem, exists := c.store[key]; exists {
+		entry := elem.Value.(*lruEntry)
+		entry.response = response
+		entry.cachedAt = c.now()
+		c.lruList.MoveToBack(elem)
 		return
 	}
 
 	// Evict LRU entries if at capacity.
-	for len(c.store) >= c.maxSize && len(c.order) > 0 {
-		evictKey := c.order[0]
-		c.order = c.order[1:]
-		delete(c.store, evictKey)
-		slog.Debug("llm cache eviction", "evicted_key_prefix", evictKey[:12])
+	for len(c.store) >= c.maxSize && c.lruList.Len() > 0 {
+		oldest := c.lruList.Front()
+		evicted := oldest.Value.(*lruEntry)
+		c.lruList.Remove(oldest)
+		delete(c.store, evicted.key)
+		slog.Debug("llm cache eviction", "evicted_key_prefix", evicted.key[:12])
 	}
 
-	c.store[key] = &lruEntry{response: response, cachedAt: c.now()}
-	c.order = append(c.order, key)
+	entry := &lruEntry{key: key, response: response, cachedAt: c.now()}
+	elem := c.lruList.PushBack(entry)
+	c.store[key] = elem
 }
 
 // Len returns the number of entries currently in the cache.
@@ -175,24 +188,6 @@ func (c *ResponseCache) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.store)
-}
-
-// promoteKey moves a key to the end of the LRU order (most recently used).
-// Must be called with c.mu held (write lock).
-func (c *ResponseCache) promoteKey(key string) {
-	c.removeFromOrder(key)
-	c.order = append(c.order, key)
-}
-
-// removeFromOrder removes a key from the LRU order slice.
-// Must be called with c.mu held (write lock).
-func (c *ResponseCache) removeFromOrder(key string) {
-	for i, k := range c.order {
-		if k == key {
-			c.order = append(c.order[:i], c.order[i+1:]...)
-			return
-		}
-	}
 }
 
 // lastUserMessage returns the content of the last user message in a ChatRequest.

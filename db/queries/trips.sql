@@ -35,7 +35,7 @@ SET title = COALESCE(NULLIF(sqlc.arg(title)::text, ''), title),
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING *;
 
--- name: UpdateTripDestination :exec
+-- name: UpdateTripDestination :execresult
 UPDATE trips
 SET destination_country = $2, updated_at = NOW()
 WHERE id = $1 AND user_id = $3;

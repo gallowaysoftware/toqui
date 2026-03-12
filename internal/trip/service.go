@@ -18,7 +18,8 @@ import (
 const shareTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 // shareTokenLength is the length of generated share tokens.
-const shareTokenLength = 12
+// 22 characters from a 62-char alphabet provides ~131 bits of entropy (>128-bit minimum).
+const shareTokenLength = 22
 
 type Service struct {
 	queries *dbgen.Queries
@@ -111,11 +112,18 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 }
 
 func (s *Service) SetDestination(ctx context.Context, userID, tripID uuid.UUID, countryCode string) error {
-	return s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
+	result, err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
 		ID:                 tripID,
 		DestinationCountry: pgtype.Text{String: countryCode, Valid: true},
 		UserID:             userID,
 	})
+	if err != nil {
+		return fmt.Errorf("set destination: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("trip not found or access denied")
+	}
+	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, userID, tripID uuid.UUID) error {
@@ -165,7 +173,7 @@ func (s *Service) GetByShareToken(ctx context.Context, token string) (*dbgen.Tri
 	return &trip, nil
 }
 
-// generateShareToken produces a cryptographically random 12-character alphanumeric string.
+// generateShareToken produces a cryptographically random 22-character alphanumeric string (~131 bits of entropy).
 func generateShareToken() (string, error) {
 	result := make([]byte, shareTokenLength)
 	alphabetLen := big.NewInt(int64(len(shareTokenAlphabet)))

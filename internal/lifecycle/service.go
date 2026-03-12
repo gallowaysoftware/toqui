@@ -114,6 +114,8 @@ func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.
 }
 
 // SetChatTTLAsync fires TTL stamping in a background goroutine.
+// This intentionally uses a detached context with a 60-second timeout because
+// TTL stamping must complete even after the originating request ends.
 func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID, retentionDays int) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

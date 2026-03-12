@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
@@ -419,14 +420,19 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
-	// Retag themes if the trip has none yet
+	// Retag themes if the trip has none yet.
+	// This intentionally outlives the request context: theme tagging is a
+	// best-effort background job that should complete even after the SSE
+	// stream is closed. We use a separate 30-second timeout to bound it.
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil && h.themeSvc != nil && fullContent != "" {
 			if len(tripThemes) == 0 {
 				if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
 					recentMessages := []string{req.Msg.Content, fullContent}
 					go func() {
-						if err := h.themeSvc.TagTrip(context.Background(), userID, tripID, t.Title, t.Description.String, recentMessages); err != nil {
+						bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+						defer cancel()
+						if err := h.themeSvc.TagTrip(bgCtx, userID, tripID, t.Title, t.Description.String, recentMessages); err != nil {
 							slog.Error("chat retag trip failed", "trip_id", tripID, "error", err)
 						}
 					}()

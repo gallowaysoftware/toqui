@@ -5,12 +5,17 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
+
+// maxEmailLength is the maximum length of an email address per RFC 5321.
+const maxEmailLength = 254
 
 // WaitlistHandler serves the public waitlist endpoints.
 type WaitlistHandler struct {
@@ -54,8 +59,20 @@ func (h *WaitlistHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.TrimSpace(req.Email)
+
 	if req.Email == "" {
 		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Email) > maxEmailLength {
+		http.Error(w, "email is too long", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		http.Error(w, "invalid email address", http.StatusBadRequest)
 		return
 	}
 
@@ -101,9 +118,19 @@ func (h *WaitlistHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := r.URL.Query().Get("email")
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
 	if email == "" {
 		http.Error(w, "email query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(email) > maxEmailLength {
+		http.Error(w, "email is too long", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		http.Error(w, "invalid email address", http.StatusBadRequest)
 		return
 	}
 
