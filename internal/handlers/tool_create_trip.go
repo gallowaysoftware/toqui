@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -72,7 +73,13 @@ func (t *CreateTripTool) Execute(ctx context.Context, args json.RawMessage) (jso
 
 	// Set destination country immediately if the AI provided one (avoids async tagger race condition)
 	if params.DestinationCountry != "" {
-		_ = t.tripSvc.SetDestination(ctx, t.userID, created.ID, params.DestinationCountry)
+		if err := t.tripSvc.SetDestination(ctx, t.userID, created.ID, params.DestinationCountry); err != nil {
+			slog.Warn("failed to set trip destination on create",
+				"trip_id", created.ID,
+				"country", params.DestinationCountry,
+				"error", err,
+			)
+		}
 	}
 
 	if t.onCreated != nil {

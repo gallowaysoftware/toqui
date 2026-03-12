@@ -89,10 +89,14 @@ func Middleware(next http.Handler, allowedOrigins []string, exemptPrefixes []str
 			return
 		}
 
-		// Neither Origin nor Referer present — allow through.
-		// Non-browser clients (curl, CI, server-to-server) never send these
-		// headers and cannot perform CSRF attacks. Cross-origin browser
-		// requests always include Origin.
-		next.ServeHTTP(w, r)
+		// Neither Origin nor Referer present — reject.
+		// Modern browsers always send Origin on POST/PUT/DELETE/PATCH.
+		// Legitimate non-browser clients (curl, server-to-server) should
+		// use Bearer token auth which bypasses cookie-based CSRF risk.
+		slog.Warn("CSRF: rejected request with no Origin or Referer",
+			"method", r.Method,
+			"path", r.URL.Path,
+		)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 	})
 }

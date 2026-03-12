@@ -6,7 +6,7 @@ RETURNING *;
 -- name: ListItineraryItemsByTrip :many
 SELECT * FROM itinerary_items
 WHERE trip_id = $1
-ORDER BY day_number, order_in_day;
+ORDER BY day_number, order_in_day, start_time, id;
 
 -- name: UpdateItineraryItem :one
 UPDATE itinerary_items

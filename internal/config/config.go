@@ -175,7 +175,7 @@ func parseCSVEnv(key string) []string {
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p != "" {
-			result = append(result, strings.ToLower(p))
+			result = append(result, p)
 		}
 	}
 	return result

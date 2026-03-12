@@ -54,12 +54,19 @@ func (s *Service) TagTrip(ctx context.Context, userID, tripID uuid.UUID, title, 
 
 	// Update destination country if detected
 	if result.DestinationCode != "" {
-		if _, err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
+		tag, err := s.queries.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
 			ID:                 tripID,
 			DestinationCountry: pgtype.Text{String: result.DestinationCode, Valid: true},
 			UserID:             userID,
-		}); err != nil {
+		})
+		if err != nil {
 			slog.Warn("failed to update trip destination", "error", err)
+		} else if tag.RowsAffected() == 0 {
+			slog.Warn("UpdateTripDestination affected 0 rows",
+				"trip_id", tripID,
+				"user_id", userID,
+				"destination", result.DestinationCode,
+			)
 		}
 	}
 

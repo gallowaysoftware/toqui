@@ -462,9 +462,9 @@ func isEmailDomainAllowed(email string, allowedDomains []string) bool {
 	if len(parts) != 2 {
 		return false
 	}
-	domain := strings.ToLower(parts[1])
+	domain := parts[1]
 	for _, allowed := range allowedDomains {
-		if domain == allowed {
+		if strings.EqualFold(domain, allowed) {
 			return true
 		}
 	}

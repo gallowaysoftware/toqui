@@ -244,6 +244,7 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			slog.Warn("SSE: failed to unmarshal event JSON", "error", err, "data", data)
 			continue
 		}
 

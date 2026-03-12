@@ -64,8 +64,8 @@ func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (rema
 // GetDailyUsage returns the current day's message count and the configured limit.
 // If no usage row exists for today, count is 0.
 func (s *Service) GetDailyUsage(ctx context.Context, userID uuid.UUID) (count, limit int, err error) {
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	usage, err := s.queries.GetDailyUsage(ctx, dbgen.GetDailyUsageParams{
 		UserID: userID,
 		Date:   &today,

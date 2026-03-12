@@ -97,15 +97,15 @@ func TestUntrustedRefererRejected(t *testing.T) {
 	}
 }
 
-func TestNoOriginNoRefererAllowed(t *testing.T) {
+func TestNoOriginNoRefererRejected(t *testing.T) {
 	h := Middleware(okHandler, []string{"https://app.example.com"}, nil)
 
-	// No Origin, no Referer — non-browser client (curl, server-to-server).
+	// No Origin, no Referer — reject to strengthen CSRF protection.
 	req := httptest.NewRequest(http.MethodPost, "/waitlist", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected 200 for no-origin request, got %d", rec.Code)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("expected 403 for no-origin request, got %d", rec.Code)
 	}
 }
 

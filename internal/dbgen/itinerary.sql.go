@@ -97,7 +97,7 @@ func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItin
 const listItineraryItemsByTrip = `-- name: ListItineraryItemsByTrip :many
 SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at FROM itinerary_items
 WHERE trip_id = $1
-ORDER BY day_number, order_in_day
+ORDER BY day_number, order_in_day, start_time, id
 `
 
 func (q *Queries) ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]ItineraryItem, error) {

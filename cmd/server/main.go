@@ -185,6 +185,14 @@ func main() {
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc)
 
+	// Liveness probe (no auth, no external checks).
+	// Used by Cloud Run to verify the process is alive — never killed due to transient DB issues.
+	mux.HandleFunc("/livez", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"alive"}`))
+	})
+
 	// Health check (no auth, used by Cloud Run and load balancers).
 	// Pings the database to ensure the connection pool is healthy.
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -317,8 +325,11 @@ func newAIIdentityGenerator(provider ai.Provider) persona.IdentityGenerator {
 
 		var response strings.Builder
 		for event := range eventCh {
-			if event.Type == ai.EventTextDelta {
+			switch event.Type {
+			case ai.EventTextDelta:
 				response.WriteString(event.Text)
+			case ai.EventError:
+				return nil, fmt.Errorf("AI identity generation stream error: %w", event.Error)
 			}
 		}
 
@@ -395,6 +406,10 @@ func corsMiddleware(next http.Handler, allowedOrigins []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
+		// Always set Vary: Origin so caches don't serve a CORS response
+		// to a non-CORS request or vice versa.
+		w.Header().Set("Vary", "Origin")
+
 		// Only set CORS headers if the request Origin matches our allowlist.
 		// When AllowCredentials is true, we must echo the specific matched origin
 		// (wildcard "*" is not allowed with credentials).
@@ -404,7 +419,6 @@ func corsMiddleware(next http.Handler, allowedOrigins []string) http.Handler {
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Vary", "Origin")
 			}
 		}
 

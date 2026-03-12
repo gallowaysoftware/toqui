@@ -2,6 +2,7 @@ package location
 
 import (
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -141,26 +142,18 @@ func (c *Cache) evictLocked() {
 	}
 
 	// Sort by UpdatedAt ascending (oldest first) and remove the first half.
-	// Use a simple selection: find the midpoint count and delete the oldest.
+	// O(n log n) instead of repeated selection.
+	slices.SortFunc(all, func(a, b uidTime) int {
+		return a.t.Compare(b.t)
+	})
+
 	halfCount := len(all) / 2
 	if halfCount == 0 {
 		halfCount = 1
 	}
 
-	// Find the halfCount oldest entries by iterating and tracking the oldest.
-	// For simplicity (and since this is a rare operation), delete entries
-	// with the oldest timestamps.
-	for range halfCount {
-		oldestIdx := 0
-		for i := 1; i < len(all); i++ {
-			if all[i].t.Before(all[oldestIdx].t) {
-				oldestIdx = i
-			}
-		}
-		delete(c.entries, all[oldestIdx].uid)
-		// Remove from slice by swapping with last element
-		all[oldestIdx] = all[len(all)-1]
-		all = all[:len(all)-1]
+	for _, entry := range all[:halfCount] {
+		delete(c.entries, entry.uid)
 	}
 
 	slog.Info("location cache eviction completed",
