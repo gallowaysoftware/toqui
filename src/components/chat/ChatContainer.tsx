@@ -75,11 +75,11 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     }
   }, [selectedTrip, onTripSelected]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
     setAutoScroll(atBottom);
-  };
+  }, []);
 
   // Memoize the streaming message object to avoid defeating React.memo on
   // MessageBubble — an inline object literal creates a new reference every render.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
 import { create } from "@bufbuild/protobuf";
@@ -17,7 +18,7 @@ import type { BookingType } from "@/gen/toqui/v1/booking_pb";
 export function useBookings(tripId: string) {
   const transport = useTransport();
   const { user } = useAuth();
-  const client = createClient(BookingService, transport);
+  const client = useMemo(() => createClient(BookingService, transport), [transport]);
 
   const {
     data: bookings = [],
@@ -43,7 +44,7 @@ export function useBookings(tripId: string) {
 export function useBooking(bookingId: string) {
   const transport = useTransport();
   const { user } = useAuth();
-  const client = createClient(BookingService, transport);
+  const client = useMemo(() => createClient(BookingService, transport), [transport]);
 
   const {
     data: booking,
@@ -64,7 +65,7 @@ export function useBooking(bookingId: string) {
 export function useIngestBooking() {
   const transport = useTransport();
   const queryClient = useQueryClient();
-  const client = createClient(BookingService, transport);
+  const client = useMemo(() => createClient(BookingService, transport), [transport]);
 
   return useMutation({
     mutationFn: async (params: { tripId: string; type: BookingType; rawText: string }) => {
@@ -82,7 +83,7 @@ export function useIngestBooking() {
 export function useDeleteBooking() {
   const transport = useTransport();
   const queryClient = useQueryClient();
-  const client = createClient(BookingService, transport);
+  const client = useMemo(() => createClient(BookingService, transport), [transport]);
 
   return useMutation({
     mutationFn: async (params: { id: string; tripId: string }) => {

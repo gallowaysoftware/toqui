@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
 import { useTransport } from "@/components/providers/GrpcProvider";
@@ -9,7 +10,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 export function useTrips() {
   const transport = useTransport();
   const { user } = useAuth();
-  const client = createClient(TripService, transport);
+  const client = useMemo(() => createClient(TripService, transport), [transport]);
 
   const { data: trips = [], isLoading } = useQuery({
     queryKey: ["trips"],
@@ -26,7 +27,7 @@ export function useTrips() {
 export function useTrip(tripId: string) {
   const transport = useTransport();
   const { user } = useAuth();
-  const client = createClient(TripService, transport);
+  const client = useMemo(() => createClient(TripService, transport), [transport]);
 
   const { data: trip, isLoading, error } = useQuery({
     queryKey: ["trip", tripId],
@@ -43,7 +44,7 @@ export function useTrip(tripId: string) {
 export function useUpdateTrip() {
   const transport = useTransport();
   const queryClient = useQueryClient();
-  const client = createClient(TripService, transport);
+  const client = useMemo(() => createClient(TripService, transport), [transport]);
 
   return useMutation({
     mutationFn: async (params: {
@@ -69,7 +70,7 @@ export function useUpdateTrip() {
 export function useCreateTrip() {
   const transport = useTransport();
   const queryClient = useQueryClient();
-  const client = createClient(TripService, transport);
+  const client = useMemo(() => createClient(TripService, transport), [transport]);
 
   return useMutation({
     mutationFn: async (params: {

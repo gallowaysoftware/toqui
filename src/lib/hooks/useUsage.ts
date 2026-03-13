@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 
 const DAILY_LIMIT = 30;
 const STORAGE_KEY = "toqui_daily_usage";
@@ -73,17 +73,22 @@ export function useUsage(): UsageInfo {
     saveUsage({ date: getTodayKey(), count: DAILY_LIMIT });
   }, []);
 
-  const remaining = Math.max(0, DAILY_LIMIT - used);
-  const isAtLimit = remaining === 0;
-  const isWarning = !isAtLimit && remaining <= WARNING_THRESHOLD;
+  // Memoize the return value so consumers using the whole object as a
+  // dependency (e.g., useCallback deps) get a stable reference when `used`
+  // hasn't changed.
+  return useMemo(() => {
+    const remaining = Math.max(0, DAILY_LIMIT - used);
+    const isAtLimit = remaining === 0;
+    const isWarning = !isAtLimit && remaining <= WARNING_THRESHOLD;
 
-  return {
-    used,
-    limit: DAILY_LIMIT,
-    remaining,
-    isAtLimit,
-    isWarning,
-    recordMessage,
-    markExhausted,
-  };
+    return {
+      used,
+      limit: DAILY_LIMIT,
+      remaining,
+      isAtLimit,
+      isWarning,
+      recordMessage,
+      markExhausted,
+    };
+  }, [used, recordMessage, markExhausted]);
 }

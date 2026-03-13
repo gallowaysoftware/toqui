@@ -1,13 +1,6 @@
 "use client";
 
 import {
-  Plane,
-  Hotel,
-  Car,
-  TrainFront,
-  Ticket,
-  UtensilsCrossed,
-  Map,
   Package,
   Calendar,
   Hash,
@@ -15,30 +8,25 @@ import {
   ArrowLeft,
   Trash2,
   Users,
+  Plane,
+  Ticket,
+  Hotel,
+  Car,
+  TrainFront,
+  Map,
+  UtensilsCrossed,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Booking } from "@/gen/toqui/v1/booking_pb";
-import { BookingType } from "@/gen/toqui/v1/booking_pb";
 import {
   bookingTypeLabels,
   bookingTypeColors,
+  bookingTypeIcons,
   bookingSourceLabels,
   formatTimestampWithTime,
   formatTimestamp,
   getBookingSubtitle,
 } from "@/lib/booking-utils";
-
-const iconMap: Record<BookingType, LucideIcon> = {
-  [BookingType.UNSPECIFIED]: Package,
-  [BookingType.FLIGHT]: Plane,
-  [BookingType.HOTEL]: Hotel,
-  [BookingType.CAR_RENTAL]: Car,
-  [BookingType.TRAIN]: TrainFront,
-  [BookingType.ACTIVITY]: Ticket,
-  [BookingType.RESTAURANT]: UtensilsCrossed,
-  [BookingType.OTHER]: Package,
-  [BookingType.TOUR]: Map,
-};
 
 interface BookingDetailProps {
   booking: Booking;
@@ -222,7 +210,7 @@ function RestaurantDetailSection({ booking }: { booking: Booking }) {
 }
 
 export function BookingDetail({ booking, onBack, onDelete, isDeleting }: BookingDetailProps) {
-  const Icon = iconMap[booking.type] || Package;
+  const Icon = bookingTypeIcons[booking.type] || Package;
   const typeLabel = bookingTypeLabels[booking.type] || "Other";
   const typeColor =
     bookingTypeColors[booking.type] ||

@@ -121,6 +121,8 @@ export function useChat(
   const [selectedTrip, setSelectedTrip] = useState<SelectedTrip | null>(null);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isSendingRef = useRef(false);
+  const isLoadingMoreRef = useRef(false);
   const sessionIdRef = useRef<string>("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
   const historyLoadedRef = useRef<string | null>(null);
@@ -191,7 +193,8 @@ export function useChat(
   }, [tripId, transport]);
 
   const loadMoreHistory = useCallback(async () => {
-    if (!tripId || !nextPageTokenRef.current || isLoadingMore) return;
+    if (!tripId || !nextPageTokenRef.current || isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     try {
       const client = createClient(ChatService, transport);
@@ -223,12 +226,17 @@ export function useChat(
     } catch (error) {
       console.error("Failed to load more chat history:", error);
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [tripId, transport, isLoadingMore]);
+  }, [tripId, transport]);
 
   const sendMessage = useCallback(
     async (content: string) => {
+      // Guard against concurrent sends (e.g., double-click before UI disables)
+      if (isSendingRef.current) return;
+      isSendingRef.current = true;
+
       const userMsg: ChatMessage = {
         id: uuid(),
         role: "user",
@@ -408,6 +416,7 @@ export function useChat(
         setStreamingText("");
         setIsStreaming(false);
         setToolActivity(null);
+        isSendingRef.current = false;
       }
     },
     [tripId, mode, transport],

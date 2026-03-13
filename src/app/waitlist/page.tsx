@@ -20,7 +20,7 @@ export default function WaitlistPage() {
 
 function WaitlistLoading() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+    <main id="main-content" className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]" />
     </main>
   );
@@ -73,7 +73,7 @@ function WaitlistContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+    <main id="main-content" className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="max-w-lg w-full text-center">
         {/* Branding */}
         <h1 className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)] mb-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
   const transport = useTransport();
-  const client = createClient(AuthService, transport);
+  const client = useMemo(() => createClient(AuthService, transport), [transport]);
 
   const [deleteInput, setDeleteInput] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -48,6 +48,13 @@ export default function SettingsPage() {
     },
   });
 
+  // Redirect unauthenticated users in an effect (not during render)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [authLoading, user, router]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[var(--color-surface-secondary)] flex items-center justify-center" aria-busy="true" role="status">
@@ -56,10 +63,7 @@ export default function SettingsPage() {
       </div>
     );
   }
-  if (!user) {
-    router.push("/");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-secondary)]">

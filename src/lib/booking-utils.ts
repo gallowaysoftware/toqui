@@ -1,3 +1,14 @@
+import {
+  Plane,
+  Hotel,
+  Car,
+  TrainFront,
+  Ticket,
+  UtensilsCrossed,
+  Map,
+  Package,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BookingType, BookingSource } from "@/gen/toqui/v1/booking_pb";
 import type { Booking } from "@/gen/toqui/v1/booking_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
@@ -18,18 +29,19 @@ export const bookingTypeLabels: Record<BookingType, string> = {
 };
 
 /**
- * Maps a BookingType enum to a Lucide icon name string.
+ * Maps a BookingType enum to a Lucide icon component.
+ * Shared between BookingCard and BookingDetail to avoid duplication.
  */
-export const bookingTypeIcons: Record<BookingType, string> = {
-  [BookingType.UNSPECIFIED]: "Package",
-  [BookingType.FLIGHT]: "Plane",
-  [BookingType.HOTEL]: "Hotel",
-  [BookingType.CAR_RENTAL]: "Car",
-  [BookingType.TRAIN]: "TrainFront",
-  [BookingType.ACTIVITY]: "Ticket",
-  [BookingType.RESTAURANT]: "UtensilsCrossed",
-  [BookingType.OTHER]: "Package",
-  [BookingType.TOUR]: "Map",
+export const bookingTypeIcons: Record<BookingType, LucideIcon> = {
+  [BookingType.UNSPECIFIED]: Package,
+  [BookingType.FLIGHT]: Plane,
+  [BookingType.HOTEL]: Hotel,
+  [BookingType.CAR_RENTAL]: Car,
+  [BookingType.TRAIN]: TrainFront,
+  [BookingType.ACTIVITY]: Ticket,
+  [BookingType.RESTAURANT]: UtensilsCrossed,
+  [BookingType.OTHER]: Package,
+  [BookingType.TOUR]: Map,
 };
 
 /**

@@ -42,7 +42,13 @@ export default function AuthCallbackPage() {
         }
 
         const data = await res.json();
-        if (data.user_id && data.email) {
+        const expiresAt = data.expires_at;
+        if (
+          data.user_id &&
+          data.email &&
+          typeof expiresAt === "number" &&
+          expiresAt > 0
+        ) {
           setSession(
             {
               id: data.user_id,
@@ -50,7 +56,7 @@ export default function AuthCallbackPage() {
               name: data.name ?? "",
               avatarUrl: data.avatar_url ?? "",
             },
-            data.expires_at,
+            expiresAt,
           );
           router.push("/trips");
         } else {

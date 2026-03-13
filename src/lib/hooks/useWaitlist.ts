@@ -46,6 +46,7 @@ export function useWaitlistStatus(email: string | null) {
       return res.json();
     },
     enabled: !!email,
-    refetchInterval: 30_000, // Poll every 30s to check if accepted
+    refetchInterval: (query) =>
+      query.state.data?.accepted ? false : 30_000, // Stop polling once accepted
   });
 }
