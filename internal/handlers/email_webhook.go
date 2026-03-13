@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -322,22 +321,4 @@ func stripHTMLTags(html string) string {
 		}
 	}
 	return strings.TrimSpace(result.String())
-}
-
-// sendGridEnvelope represents the JSON envelope field from SendGrid Inbound Parse.
-type sendGridEnvelope struct {
-	From string   `json:"from"`
-	To   []string `json:"to"`
-}
-
-// parseEnvelope parses the SendGrid envelope JSON field.
-func parseEnvelope(raw string) (*sendGridEnvelope, error) {
-	if raw == "" {
-		return nil, fmt.Errorf("empty envelope")
-	}
-	var env sendGridEnvelope
-	if err := json.Unmarshal([]byte(raw), &env); err != nil {
-		return nil, fmt.Errorf("unmarshal envelope: %w", err)
-	}
-	return &env, nil
 }

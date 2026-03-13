@@ -469,11 +469,23 @@ func sanitizeForPrompt(s string, maxLen int) string {
 			b.WriteRune(r)
 		}
 	}
-	result := strings.TrimSpace(b.String())
-	// Collapse multiple spaces
-	for strings.Contains(result, "  ") {
-		result = strings.ReplaceAll(result, "  ", " ")
+	// Collapse multiple spaces in a single pass.
+	raw := strings.TrimSpace(b.String())
+	var out strings.Builder
+	out.Grow(len(raw))
+	prevSpace := false
+	for _, r := range raw {
+		if r == ' ' {
+			if prevSpace {
+				continue
+			}
+			prevSpace = true
+		} else {
+			prevSpace = false
+		}
+		out.WriteRune(r)
 	}
+	result := out.String()
 	// Truncate by rune count, not byte count, to avoid splitting multi-byte
 	// UTF-8 characters (e.g., CJK, emoji) at the boundary.
 	if maxLen > 0 {
@@ -587,7 +599,7 @@ func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[t
 
 	messages, err := h.chatSvc.GetHistory(ctx, userID, req.Msg.TripId, req.Msg.SessionId, limit)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return nil, internalError(ctx, "get chat history", err)
 	}
 
 	protoMessages := make([]*toquiv1.ChatMessage, len(messages))

@@ -85,7 +85,10 @@ func (h *TripHandler) GetTrip(ctx context.Context, req *connect.Request[toquiv1.
 		return nil, internalError(ctx, "get trip", err)
 	}
 
-	themes, _ := h.themeSvc.GetTripThemes(ctx, tripID)
+	var themes []string
+	if h.themeSvc != nil {
+		themes, _ = h.themeSvc.GetTripThemes(ctx, tripID)
+	}
 	return connect.NewResponse(&toquiv1.GetTripResponse{Trip: tripToProtoWithThemes(t, themes)}), nil
 }
 

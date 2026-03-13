@@ -356,8 +356,11 @@ func newSimpleChatFn(provider ai.Provider) func(ctx context.Context, system, pro
 
 		var response strings.Builder
 		for event := range eventCh {
-			if event.Type == ai.EventTextDelta {
+			switch event.Type {
+			case ai.EventTextDelta:
 				response.WriteString(event.Text)
+			case ai.EventError:
+				return "", event.Error
 			}
 		}
 		return response.String(), nil

@@ -126,11 +126,22 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 				"family", stored.Family.String(),
 				"ip", ip,
 			)
-			_ = h.queries.RevokeRefreshTokenFamily(ctx, stored.Family)
+			if revokeErr := h.queries.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
+				slog.Error("failed to revoke token family on reuse detection",
+					"error", revokeErr,
+					"family", stored.Family.String(),
+					"jti", claims.JTI,
+				)
+			}
 			return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
 		}
 		// Revoke the current token (it's been used).
-		_ = h.queries.RevokeRefreshToken(ctx, claims.JTI)
+		if revokeErr := h.queries.RevokeRefreshToken(ctx, claims.JTI); revokeErr != nil {
+			slog.Error("failed to revoke consumed refresh token",
+				"error", revokeErr,
+				"jti", claims.JTI,
+			)
+		}
 		family = stored.Family
 	}
 

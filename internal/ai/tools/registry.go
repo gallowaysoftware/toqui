@@ -13,6 +13,10 @@ type Tool interface {
 	Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
 }
 
+// Registry holds the set of available AI tools. It is safe for concurrent
+// reads (Get, Execute, Definitions) but NOT concurrent writes. All Register
+// calls must happen during initialization, before the server starts accepting
+// requests. Per-request extra tools use a separate map in chat/service.go.
 type Registry struct {
 	tools map[string]Tool
 }

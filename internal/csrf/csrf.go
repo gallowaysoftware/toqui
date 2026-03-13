@@ -17,10 +17,10 @@ import (
 // Paths matching exemptPrefixes are also exempt (e.g., webhooks with their
 // own signature-based auth).
 //
-// When neither Origin nor Referer is present, the request is allowed through.
-// This covers non-browser clients (curl, Postman, server-to-server) which
-// cannot perform CSRF attacks. Cross-origin browser requests always include
-// the Origin header.
+// When neither Origin nor Referer is present, the request is rejected.
+// Modern browsers always send the Origin header on state-changing requests.
+// Non-browser clients (curl, server-to-server) should use Bearer token auth
+// which bypasses cookie-based CSRF risk entirely.
 func Middleware(next http.Handler, allowedOrigins []string, exemptPrefixes []string) http.Handler {
 	// Pre-parse allowed origins into sets for fast lookup.
 	allowedOriginSet := make(map[string]bool, len(allowedOrigins))
