@@ -42,11 +42,17 @@ INSERT INTO daily_usage (user_id, date, message_count)
 VALUES ($1, CURRENT_DATE, 1)
 ON CONFLICT (user_id, date)
 DO UPDATE SET message_count = daily_usage.message_count + 1, updated_at = NOW()
+  WHERE daily_usage.message_count < $2
 RETURNING id, user_id, date, message_count, ai_cost_cents, created_at, updated_at
 `
 
-func (q *Queries) IncrementDailyUsage(ctx context.Context, userID uuid.UUID) (DailyUsage, error) {
-	row := q.db.QueryRow(ctx, incrementDailyUsage, userID)
+type IncrementDailyUsageParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	MaxCount int32     `json:"max_count"`
+}
+
+func (q *Queries) IncrementDailyUsage(ctx context.Context, arg IncrementDailyUsageParams) (DailyUsage, error) {
+	row := q.db.QueryRow(ctx, incrementDailyUsage, arg.UserID, arg.MaxCount)
 	var i DailyUsage
 	err := row.Scan(
 		&i.ID,

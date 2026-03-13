@@ -202,18 +202,29 @@ func (h *SharedHandler) HandleDisable(w http.ResponseWriter, r *http.Request) {
 }
 
 // authenticateRequest extracts and validates a Bearer token from the request.
+// It checks the Authorization header first (set by CookieAuth middleware for
+// web browsers, or directly by native apps), then falls back to reading the
+// HttpOnly access cookie directly as defense-in-depth.
 func (h *SharedHandler) authenticateRequest(r *http.Request) (uuid.UUID, bool) {
+	// Try Authorization header (covers both native Bearer and CookieAuth-bridged web)
 	authHeader := r.Header.Get("Authorization")
-	if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
-		return uuid.Nil, false
+	if len(authHeader) >= 8 && authHeader[:7] == "Bearer " {
+		userID, err := h.authSvc.ValidateToken(authHeader[7:])
+		if err == nil {
+			return userID, true
+		}
 	}
 
-	userID, err := h.authSvc.ValidateToken(authHeader[7:])
-	if err != nil {
-		return uuid.Nil, false
+	// Fallback: read HttpOnly cookie directly (defense-in-depth for web users)
+	token := auth.AccessTokenFromCookie(r)
+	if token != "" {
+		userID, err := h.authSvc.ValidateToken(token)
+		if err == nil {
+			return userID, true
+		}
 	}
 
-	return userID, true
+	return uuid.Nil, false
 }
 
 // buildSharedTripInfo converts a dbgen.Trip to the public-safe response format.

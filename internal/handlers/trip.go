@@ -2,10 +2,14 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"slices"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
@@ -36,15 +40,17 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 	var startDate, endDate *time.Time
 	if req.Msg.StartDate != "" {
 		t, err := time.Parse("2006-01-02", req.Msg.StartDate)
-		if err == nil {
-			startDate = &t
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid start_date format, expected YYYY-MM-DD: %w", err))
 		}
+		startDate = &t
 	}
 	if req.Msg.EndDate != "" {
 		t, err := time.Parse("2006-01-02", req.Msg.EndDate)
-		if err == nil {
-			endDate = &t
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid end_date format, expected YYYY-MM-DD: %w", err))
 		}
+		endDate = &t
 	}
 
 	t, err := h.tripSvc.Create(ctx, userID, req.Msg.Title, req.Msg.Description, startDate, endDate)
@@ -73,7 +79,10 @@ func (h *TripHandler) GetTrip(ctx context.Context, req *connect.Request[toquiv1.
 
 	t, err := h.tripSvc.GetByID(ctx, userID, tripID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
+		}
+		return nil, internalError(ctx, "get trip", err)
 	}
 
 	themes, _ := h.themeSvc.GetTripThemes(ctx, tripID)
@@ -126,15 +135,17 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 	var startDate, endDate *time.Time
 	if req.Msg.StartDate != "" {
 		t, err := time.Parse("2006-01-02", req.Msg.StartDate)
-		if err == nil {
-			startDate = &t
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid start_date format, expected YYYY-MM-DD: %w", err))
 		}
+		startDate = &t
 	}
 	if req.Msg.EndDate != "" {
 		t, err := time.Parse("2006-01-02", req.Msg.EndDate)
-		if err == nil {
-			endDate = &t
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid end_date format, expected YYYY-MM-DD: %w", err))
 		}
+		endDate = &t
 	}
 
 	status := tripStatusToString(req.Msg.Status)
@@ -305,6 +316,9 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem) *toquiv1.Itine
 	for _, day := range dayMap {
 		days = append(days, day)
 	}
+	slices.SortFunc(days, func(a, b *toquiv1.ItineraryDay) int {
+		return int(a.DayNumber) - int(b.DayNumber)
+	})
 
 	return &toquiv1.Itinerary{
 		TripId: tripID,

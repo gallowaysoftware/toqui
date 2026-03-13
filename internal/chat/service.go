@@ -533,6 +533,22 @@ func (s *Service) GetHistory(ctx context.Context, userID uuid.UUID, tripID, sess
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
+
+	// If no session ID specified, fetch the latest session for the trip.
+	// This prevents passing an empty string to Firestore Doc("") which has
+	// undefined behavior.
+	if sessionID == "" {
+		sessions, err := s.chatStore.ListSessions(ctx, userID.String(), tripID, 1)
+		if err != nil {
+			return nil, fmt.Errorf("list sessions: %w", err)
+		}
+		if len(sessions) == 0 {
+			// No sessions yet — return empty history
+			return nil, nil
+		}
+		sessionID = sessions[0].ID
+	}
+
 	// Verify session exists and belongs to user
 	_, err := s.chatStore.GetSession(ctx, userID.String(), tripID, sessionID)
 	if err != nil {

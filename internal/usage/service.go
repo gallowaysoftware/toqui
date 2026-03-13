@@ -34,29 +34,38 @@ func NewService(pool *pgxpool.Pool, dailyMessageLimit int) *Service {
 // IncrementAndCheck atomically increments today's message count for the user
 // and checks whether the daily limit has been exceeded. The increment and
 // check happen in a single PostgreSQL INSERT ... ON CONFLICT ... DO UPDATE
-// ... RETURNING statement, preventing TOCTOU race conditions.
+// ... WHERE count < limit ... RETURNING statement, preventing TOCTOU race
+// conditions and ensuring the counter is never incremented past the limit.
 //
 // Returns the number of messages remaining (0 if at or over limit).
-// Returns ErrDailyLimitExceeded if the new count exceeds the limit.
+// Returns ErrDailyLimitExceeded if the limit was already reached (counter NOT incremented).
 func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (remaining int, err error) {
-	// Atomic: INSERT on first message of the day, UPDATE (increment) on
-	// subsequent messages, RETURNING the new count. PostgreSQL row-level
-	// locking ensures concurrent requests are serialized.
-	usage, err := s.queries.IncrementDailyUsage(ctx, userID)
+	// Guard: a limit of 0 means messaging is disabled (e.g., suspended user).
+	// The SQL WHERE clause (count < 0) would always be false, but the INSERT
+	// path would still create a row with count=1 — bypassing the intent.
+	if s.limit <= 0 {
+		return 0, ErrDailyLimitExceeded
+	}
+
+	// Atomic conditional increment: only bumps the counter if it is below the
+	// limit. If the user is already at the limit the WHERE clause prevents the
+	// UPDATE, PostgreSQL returns no rows, and pgx surfaces pgx.ErrNoRows.
+	usage, err := s.queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
+		UserID:   userID,
+		MaxCount: int32(s.limit),
+	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Info("daily message limit exceeded",
+				"user_id", userID,
+				"limit", s.limit,
+			)
+			return 0, ErrDailyLimitExceeded
+		}
 		return 0, fmt.Errorf("increment daily usage: %w", err)
 	}
 
 	count := int(usage.MessageCount)
-	if count > s.limit {
-		slog.Info("daily message limit exceeded",
-			"user_id", userID,
-			"count", count,
-			"limit", s.limit,
-		)
-		return 0, ErrDailyLimitExceeded
-	}
-
 	remaining = s.limit - count
 	return remaining, nil
 }

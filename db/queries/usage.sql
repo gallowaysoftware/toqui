@@ -1,8 +1,11 @@
 -- name: IncrementDailyUsage :one
+-- Conditionally increment: only bumps the counter if it's below the limit.
+-- Returns the new row. If no row is returned, the limit was already reached.
 INSERT INTO daily_usage (user_id, date, message_count)
 VALUES (sqlc.arg(user_id), CURRENT_DATE, 1)
 ON CONFLICT (user_id, date)
 DO UPDATE SET message_count = daily_usage.message_count + 1, updated_at = NOW()
+  WHERE daily_usage.message_count < sqlc.arg(max_count)
 RETURNING *;
 
 -- name: GetDailyUsage :one

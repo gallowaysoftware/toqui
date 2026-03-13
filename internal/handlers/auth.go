@@ -204,7 +204,7 @@ func (h *AuthHandler) DeleteAccount(ctx context.Context, req *connect.Request[to
 
 	return connect.NewResponse(&toquiv1.DeleteAccountResponse{
 		RequestId: requestID.String(),
-		Message:   "Your account and all associated data have been permanently deleted.",
+		Message:   "Your account deletion has been requested and is being processed. All associated data will be permanently removed.",
 	}), nil
 }
 

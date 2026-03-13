@@ -128,17 +128,40 @@ Only include fields that are present in the source text. Return ONLY valid JSON,
 
 	var response strings.Builder
 	for event := range eventCh {
-		if event.Type == ai.EventTextDelta {
+		switch event.Type {
+		case ai.EventTextDelta:
 			response.WriteString(event.Text)
+		case ai.EventError:
+			return nil, fmt.Errorf("AI parse stream error: %w", event.Error)
 		}
 	}
 
+	raw := stripCodeFences(response.String())
+
 	var parsed ParsedBooking
-	if err := json.Unmarshal([]byte(response.String()), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
 		return nil, fmt.Errorf("unmarshal AI response: %w", err)
 	}
 
 	return &parsed, nil
+}
+
+// stripCodeFences removes markdown code fences (```json ... ```) that AI
+// models often wrap around JSON output.
+func stripCodeFences(s string) string {
+	trimmed := strings.TrimSpace(s)
+	// Handle ```json ... ``` or ``` ... ```
+	if strings.HasPrefix(trimmed, "```") {
+		// Remove opening fence (```json or ```)
+		idx := strings.Index(trimmed, "\n")
+		if idx != -1 {
+			trimmed = trimmed[idx+1:]
+		}
+		// Remove closing fence
+		trimmed = strings.TrimSuffix(trimmed, "```")
+		trimmed = strings.TrimSpace(trimmed)
+	}
+	return trimmed
 }
 
 func (s *Service) ListByTrip(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) ([]dbgen.Booking, error) {
@@ -221,13 +244,18 @@ Return ONLY valid JSON, no other text.`,
 
 	var response strings.Builder
 	for event := range eventCh {
-		if event.Type == ai.EventTextDelta {
+		switch event.Type {
+		case ai.EventTextDelta:
 			response.WriteString(event.Text)
+		case ai.EventError:
+			return nil, fmt.Errorf("AI extract stream error: %w", event.Error)
 		}
 	}
 
+	raw := stripCodeFences(response.String())
+
 	var result ExtractFieldResult
-	if err := json.Unmarshal([]byte(response.String()), &result); err != nil {
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		return nil, fmt.Errorf("unmarshal AI response: %w", err)
 	}
 

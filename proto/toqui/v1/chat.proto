@@ -120,7 +120,8 @@ message ChatMessage {
 }
 
 message GetChatHistoryRequest {
-  string session_id = 1 [(buf.validate.field).string.min_len = 1];
+  // Optional: empty means "get latest session"
+  string session_id = 1;
   string trip_id = 2 [(buf.validate.field).string.uuid = true];
   PaginationRequest pagination = 3;
 }

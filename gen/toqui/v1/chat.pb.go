@@ -1048,10 +1048,11 @@ func (x *ChatMessage) GetCreatedAt() *timestamppb.Timestamp {
 }
 
 type GetChatHistoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TripId        string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	Pagination    *PaginationRequest     `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional: empty means "get latest session"
+	SessionId     string             `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	TripId        string             `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	Pagination    *PaginationRequest `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1348,10 +1349,10 @@ const file_toqui_v1_chat_proto_rawDesc = "" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9f\x01\n" +
-	"\x15GetChatHistoryRequest\x12&\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x96\x01\n" +
+	"\x15GetChatHistoryRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tsessionId\x12!\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12!\n" +
 	"\atrip_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06tripId\x12;\n" +
 	"\n" +
 	"pagination\x18\x03 \x01(\v2\x1b.toqui.v1.PaginationRequestR\n" +

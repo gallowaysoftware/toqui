@@ -127,36 +127,46 @@ func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID, retentionD
 }
 
 // RequestDeletion creates a deletion request record (for audit trail)
-// and initiates the deletion process.
+// and launches the actual data purge asynchronously in a background goroutine
+// with a 5-minute timeout. This prevents large accounts from causing HTTP
+// request timeouts.
 func (s *Service) RequestDeletion(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	req, err := s.queries.CreateDeletionRequest(ctx, userID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create deletion request: %w", err)
 	}
 
-	// Perform deletion immediately (within the same request for now;
-	// in production, this should be an async job for large accounts)
-	if err := s.DeleteUser(ctx, userID); err != nil {
-		return uuid.Nil, fmt.Errorf("execute deletion: %w", err)
-	}
+	// Launch deletion in a background goroutine so the HTTP response returns
+	// immediately. Use a detached context with a generous timeout.
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
 
-	if err := s.queries.CompleteDeletionRequest(ctx, req.ID); err != nil {
-		slog.Warn("deletion completed but failed to update request status", "error", err)
-	}
+		if err := s.DeleteUser(bgCtx, userID); err != nil {
+			slog.Error("async user deletion failed",
+				"user_id", userID,
+				"request_id", req.ID,
+				"error", err,
+			)
+			return
+		}
+
+		if err := s.queries.CompleteDeletionRequest(bgCtx, req.ID); err != nil {
+			slog.Warn("deletion completed but failed to update request status",
+				"request_id", req.ID,
+				"error", err,
+			)
+		} else {
+			slog.Info("user deletion completed", "user_id", userID, "request_id", req.ID)
+		}
+	}()
 
 	return req.ID, nil
 }
 
 // RequestExport creates a data export request.
-// The actual export is done asynchronously by a worker.
-func (s *Service) RequestExport(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
-	req, err := s.queries.CreateExportRequest(ctx, userID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("create export request: %w", err)
-	}
-
-	// TODO: Queue async export job
-	// For now, return the request ID — the export worker will process it
-
-	return req.ID, nil
+// Currently returns an error indicating the feature is not yet implemented,
+// rather than returning a fake success with no actual export.
+func (s *Service) RequestExport(_ context.Context, _ uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, fmt.Errorf("data export is not yet implemented")
 }
