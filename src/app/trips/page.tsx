@@ -180,7 +180,6 @@ export default function TripsPage() {
               width={28}
               height={28}
               className="rounded-full"
-              unoptimized
             />
           </Link>
         ) : (
@@ -252,7 +251,6 @@ export default function TripsPage() {
                 width={32}
                 height={32}
                 className="rounded-full flex-shrink-0"
-                unoptimized
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center text-[var(--color-accent)] text-sm font-medium flex-shrink-0">

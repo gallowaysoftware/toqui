@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useCallback,
   useRef,
@@ -194,17 +195,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [scheduleRefresh, refreshAccessToken],
   );
 
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  // when unrelated AuthProvider state hasn't changed.
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      login,
+      logout,
+      setSession,
+      refreshAccessToken,
+    }),
+    [user, isLoading, login, logout, setSession, refreshAccessToken],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        logout,
-        setSession,
-        refreshAccessToken,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

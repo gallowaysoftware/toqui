@@ -86,6 +86,8 @@ export function Map({ onMapReady, className }: MapProps) {
       ref={containerRef}
       className={className}
       style={{ width: "100%", height: "100%" }}
+      role="region"
+      aria-label="Interactive map"
       data-testid="map-container"
     />
   );

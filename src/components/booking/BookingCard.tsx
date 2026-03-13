@@ -53,6 +53,7 @@ export function BookingCard({ booking, onClick }: BookingCardProps) {
       type="button"
       onClick={() => onClick?.(booking)}
       className="w-full text-left bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)] hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+      aria-label={`View ${typeLabel.toLowerCase()} booking: ${booking.title || typeLabel}`}
       data-testid="booking-card"
     >
       <div className="flex items-start gap-3">
@@ -68,9 +69,9 @@ export function BookingCard({ booking, onClick }: BookingCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="font-semibold text-[var(--color-text-primary)] truncate">
+              <p className="font-semibold text-[var(--color-text-primary)] truncate" role="heading" aria-level={3}>
                 {booking.title || typeLabel}
-              </h3>
+              </p>
               {subtitle && (
                 <p className="text-sm text-[var(--color-text-secondary)] truncate mt-0.5">
                   {subtitle}

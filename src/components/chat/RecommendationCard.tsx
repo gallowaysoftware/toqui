@@ -72,9 +72,9 @@ export const RecommendationCard = memo(function RecommendationCard({ recommendat
 
           {/* Body */}
           <div className="px-4 py-3 space-y-2">
-            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug" role="heading" aria-level={3}>
               {title}
-            </h3>
+            </p>
             <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
               {description}
             </p>

@@ -89,7 +89,6 @@ export default function SettingsPage() {
                 width={48}
                 height={48}
                 className="rounded-full"
-                unoptimized
               />
             ) : (
               <div className="w-12 h-12 rounded-full bg-[var(--color-accent-soft)] flex items-center justify-center text-[var(--color-accent)] font-medium text-lg">
