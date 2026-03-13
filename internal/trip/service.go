@@ -224,6 +224,10 @@ func dateFromTime(t *time.Time) pgtype.Date {
 	return pgtype.Date{Time: *t, Valid: true}
 }
 
+// int4FromInt converts a Go int to a nullable pgtype.Int4.
+// Zero maps to NULL (Valid=false) because our 1-indexed fields (day_number,
+// order_in_day) treat 0 as "unset". If you need to store a literal zero,
+// construct pgtype.Int4{Int32: 0, Valid: true} directly.
 func int4FromInt(n int) pgtype.Int4 {
 	if n == 0 {
 		return pgtype.Int4{}

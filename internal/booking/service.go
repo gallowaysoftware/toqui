@@ -143,7 +143,34 @@ Only include fields that are present in the source text. Return ONLY valid JSON,
 		return nil, fmt.Errorf("unmarshal AI response: %w", err)
 	}
 
+	// Validate booking type against known values. The AI may hallucinate
+	// unknown types; normalize them to "other" for safe storage.
+	parsed.Type = normalizeBookingType(parsed.Type)
+
 	return &parsed, nil
+}
+
+// validBookingTypes is the set of booking types supported by the system.
+var validBookingTypes = map[string]bool{
+	"flight":     true,
+	"hotel":      true,
+	"car_rental": true,
+	"train":      true,
+	"tour":       true,
+	"activity":   true,
+	"restaurant": true,
+	"other":      true,
+}
+
+// normalizeBookingType validates the AI-generated booking type against known
+// values. Unknown types are mapped to "other" to prevent arbitrary string
+// values from being stored in the database.
+func normalizeBookingType(t string) string {
+	t = strings.ToLower(strings.TrimSpace(t))
+	if validBookingTypes[t] {
+		return t
+	}
+	return "other"
 }
 
 // stripCodeFences removes markdown code fences (```json ... ```) that AI

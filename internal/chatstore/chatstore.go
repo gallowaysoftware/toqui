@@ -120,6 +120,10 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 	return sessions, nil
 }
 
+// AddMessage stores a message and updates the session's lastMessageAt timestamp.
+// IMPORTANT: This mutates msg in-place, setting msg.ID, msg.SessionID, and
+// msg.CreatedAt. Callers rely on msg.ID being populated after a successful call
+// (e.g., to include the message ID in stream events).
 func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string, msg *ChatMessage) error {
 	msg.ID = uuid.New().String()
 	msg.SessionID = sessionID
