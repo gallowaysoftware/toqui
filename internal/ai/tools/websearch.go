@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 )
@@ -21,7 +22,7 @@ func NewWebSearch(apiKey, cx string) *WebSearch {
 	return &WebSearch{
 		apiKey: apiKey,
 		cx:     cx,
-		client: http.DefaultClient,
+		client: &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
@@ -64,7 +65,7 @@ func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.Raw
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxToolResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}

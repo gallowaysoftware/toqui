@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
 )
 
@@ -47,6 +49,30 @@ func clampPageSize(requested, defaultSize, maxSize int32) int32 {
 		return maxSize
 	}
 	return requested
+}
+
+// authenticateRESTRequest extracts and validates a Bearer token from an HTTP
+// request. It checks the Authorization header first (set by CookieAuth
+// middleware for web browsers, or directly by native apps), then falls back to
+// reading the HttpOnly access cookie directly as defense-in-depth.
+func authenticateRESTRequest(r *http.Request, authSvc *auth.Service) (uuid.UUID, bool) {
+	// Try Authorization header (covers both native Bearer and CookieAuth-bridged web)
+	if authHeader := r.Header.Get("Authorization"); len(authHeader) >= 8 && authHeader[:7] == "Bearer " {
+		userID, err := authSvc.ValidateToken(authHeader[7:])
+		if err == nil {
+			return userID, true
+		}
+	}
+
+	// Fallback: read HttpOnly cookie directly (defense-in-depth for web users)
+	if token := auth.AccessTokenFromCookie(r); token != "" {
+		userID, err := authSvc.ValidateToken(token)
+		if err == nil {
+			return userID, true
+		}
+	}
+
+	return uuid.Nil, false
 }
 
 // clientIPFromHeaders extracts the client IP from HTTP headers.

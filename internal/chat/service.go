@@ -485,6 +485,16 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 		}
 	}
 
+	// If we get here, the event channel closed without an EventDone. This can
+	// happen if the AI provider stream terminates unexpectedly. Log a warning
+	// so we can investigate, and return what we have.
+	if stopReason == "" {
+		slog.Warn("ai stream closed without EventDone",
+			"text_len", turnText.Len(),
+			"tool_calls", len(toolCalls),
+		)
+	}
+
 	return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 }
 

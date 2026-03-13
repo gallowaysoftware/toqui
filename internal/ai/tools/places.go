@@ -7,9 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 )
+
+// maxToolResponseBytes is the maximum response body size for external tool API
+// calls. Prevents OOM if a remote API returns an unexpectedly large response.
+const maxToolResponseBytes = 2 << 20 // 2 MB
 
 type PlaceLookup struct {
 	apiKey string
@@ -19,7 +24,7 @@ type PlaceLookup struct {
 func NewPlaceLookup(apiKey string) *PlaceLookup {
 	return &PlaceLookup{
 		apiKey: apiKey,
-		client: http.DefaultClient,
+		client: &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
@@ -63,7 +68,7 @@ func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.R
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxToolResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}

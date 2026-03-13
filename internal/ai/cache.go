@@ -140,8 +140,14 @@ func (c *ResponseCache) Get(req *ChatRequest) (string, bool) {
 	}
 
 	// Promote to most recently used (O(1) move to back of list).
+	// Re-lookup under write lock because `elem` captured under RLock may have
+	// been evicted by a concurrent Put between the RUnlock and this Lock.
 	c.mu.Lock()
-	c.lruList.MoveToBack(elem)
+	if current, ok := c.store[key]; ok {
+		c.lruList.MoveToBack(current)
+		// Re-read entry under write lock for safety.
+		entry = current.Value.(*lruEntry)
+	}
 	c.mu.Unlock()
 
 	slog.Debug("llm cache hit", "key_prefix", key[:12])
