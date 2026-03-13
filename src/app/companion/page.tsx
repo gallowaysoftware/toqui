@@ -31,7 +31,7 @@ export default function CompanionPage() {
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">Travel Companion</h1>
         <ThemeToggleButton />
       </header>
-      <ChatContainer tripId="" mode="companion" />
+      <ChatContainer mode="companion" />
     </div>
   );
 }

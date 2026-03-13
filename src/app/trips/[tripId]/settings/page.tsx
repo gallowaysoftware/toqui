@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ export default function TripSettingsPage() {
   const router = useRouter();
   const transport = useTransport();
   const queryClient = useQueryClient();
-  const client = createClient(TripService, transport);
+  const client = useMemo(() => createClient(TripService, transport), [transport]);
 
   const { data: trip, isLoading } = useQuery({
     queryKey: ["trip", tripId],
@@ -72,6 +72,13 @@ export default function TripSettingsPage() {
     },
   });
 
+  // Redirect unauthenticated users in an effect (not during render)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [authLoading, user, router]);
+
   if (authLoading || isLoading) {
     return (
       <div
@@ -84,10 +91,7 @@ export default function TripSettingsPage() {
       </div>
     );
   }
-  if (!user) {
-    router.push("/");
-    return null;
-  }
+  if (!user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

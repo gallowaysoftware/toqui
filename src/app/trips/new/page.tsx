@@ -33,17 +33,21 @@ export default function NewTripPage() {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const trip = await createTrip.mutateAsync({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
+    try {
+      const trip = await createTrip.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
 
-    if (trip) {
-      router.push(`/trips/${trip.id}/chat`);
-    } else {
-      router.push("/trips");
+      if (trip) {
+        router.push(`/trips/${trip.id}/chat`);
+      } else {
+        router.push("/trips");
+      }
+    } catch {
+      // Error is surfaced via createTrip.isError in the UI
     }
   };
 
