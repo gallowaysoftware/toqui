@@ -144,7 +144,7 @@ export function useChat(
         const res = await client.getChatHistory({
           tripId,
           sessionId: "",
-          pagination: { pageSize: 200, pageToken: "" },
+          pagination: { pageSize: 100, pageToken: "" },
         });
 
         if (cancelled) return;
@@ -198,7 +198,7 @@ export function useChat(
       const res = await client.getChatHistory({
         tripId,
         sessionId: "",
-        pagination: { pageSize: 200, pageToken: nextPageTokenRef.current },
+        pagination: { pageSize: 100, pageToken: nextPageTokenRef.current },
       });
 
       const loaded: ChatMessage[] = [];

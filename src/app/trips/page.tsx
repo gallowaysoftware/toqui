@@ -44,20 +44,19 @@ export default function TripsPage() {
   const handleTripCreated = useCallback(
     (trip: CreatedTrip) => {
       void queryClient.invalidateQueries({ queryKey: ["trips"] });
-      // Navigate to the new trip's chat after a short delay so the user sees the AI response
+      // Brief delay so the user sees the AI's trip-creation response before
+      // navigating to the planning chat. The TripCreated event fires before
+      // the AI's follow-up text, so navigating immediately cuts it off.
       setTimeout(() => {
         router.push(`/trips/${trip.id}/chat`);
-      }, 2000);
+      }, 1500);
     },
     [queryClient, router],
   );
 
   const handleTripSelected = useCallback(
     (trip: SelectedTrip) => {
-      // Navigate to the selected trip's chat after a short delay so the user sees the AI response
-      setTimeout(() => {
-        router.push(`/trips/${trip.id}/chat`);
-      }, 2000);
+      router.push(`/trips/${trip.id}/chat`);
     },
     [router],
   );
@@ -83,6 +82,30 @@ export default function TripsPage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen, closeSidebar]);
 
+  // Focus trap for mobile sidebar
+  useEffect(() => {
+    if (!sidebarOpen || !sidebarRef.current) return;
+    const sidebar = sidebarRef.current;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const focusable = sidebar.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    sidebar.addEventListener("keydown", handleKeyDown);
+    return () => sidebar.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (sidebarOpen) {
@@ -95,10 +118,19 @@ export default function TripsPage() {
     };
   }, [sidebarOpen]);
 
-  // Focus the sidebar when it opens on mobile
+  // Focus the first focusable element inside the sidebar when it opens.
+  // Focusing the container itself (tabIndex=-1) doesn't work reliably —
+  // the first Tab press would escape the focus trap.
   useEffect(() => {
     if (sidebarOpen && sidebarRef.current) {
-      sidebarRef.current.focus();
+      const firstFocusable = sidebarRef.current.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (firstFocusable) {
+        firstFocusable.focus();
+      } else {
+        sidebarRef.current.focus();
+      }
     }
   }, [sidebarOpen]);
 

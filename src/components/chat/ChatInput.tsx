@@ -46,6 +46,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder={t("inputPlaceholder")}
           aria-label={t("inputPlaceholder")}
           rows={1}
+          maxLength={10000}
           disabled={disabled}
           className="flex-1 resize-none rounded-xl border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent disabled:opacity-50"
         />
@@ -58,6 +59,15 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           <Send size={18} aria-hidden="true" />
         </button>
       </div>
+      {text.length > 9000 && (
+        <p
+          className={`text-xs mt-1 text-right max-w-4xl mx-auto ${text.length >= 10000 ? "text-[var(--color-error)]" : "text-[var(--color-text-tertiary)]"}`}
+          role={text.length >= 9900 ? "status" : undefined}
+          aria-live={text.length >= 9900 ? "polite" : undefined}
+        >
+          {text.length.toLocaleString()} / 10,000
+        </p>
+      )}
     </div>
   );
 }

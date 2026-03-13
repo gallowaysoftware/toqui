@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ExternalLink, Plane, Hotel, Ticket } from "lucide-react";
 import { AffiliateDisclosure } from "./AffiliateDisclosure";
 
@@ -42,7 +43,7 @@ function getPartnerInfo(partner: string, category: string) {
   };
 }
 
-export function RecommendationCard({ recommendation }: RecommendationCardProps) {
+export const RecommendationCard = memo(function RecommendationCard({ recommendation }: RecommendationCardProps) {
   const { partner, category, title, description, url, price } = recommendation;
   const { label: partnerLabel, Icon } = getPartnerInfo(partner, category);
 
@@ -98,4 +99,4 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       </div>
     </div>
   );
-}
+});

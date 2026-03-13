@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { RecommendationCard } from "./RecommendationCard";
 import { ChatInput } from "./ChatInput";
@@ -51,7 +51,13 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
 
   useEffect(() => {
     if (autoScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Respect prefers-reduced-motion — CSS media query doesn't affect JS scrollIntoView
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      messagesEndRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? "instant" : "smooth",
+      });
     }
   }, [messages, streamingText, autoScroll]);
 
@@ -74,6 +80,21 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
     setAutoScroll(atBottom);
   };
+
+  // Memoize the streaming message object to avoid defeating React.memo on
+  // MessageBubble — an inline object literal creates a new reference every render.
+  const streamingMessage = useMemo(
+    () => ({
+      id: "streaming",
+      role: "assistant" as const,
+      content: streamingText,
+      personaId: activePersona?.id,
+      personaName: activePersona?.name,
+      personaAvatar: activePersona?.avatarUrl,
+      personaAccentColor: activePersona?.accentColor,
+    }),
+    [streamingText, activePersona?.id, activePersona?.name, activePersona?.avatarUrl, activePersona?.accentColor],
+  );
 
   const emptyPrompt =
     mode === "selection"
@@ -144,19 +165,13 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         )}
         {isStreaming && !streamingText && !toolActivity && <TypingIndicator />}
         {streamingText && (
-          <MessageBubble
-            message={{
-              id: "streaming",
-              role: "assistant",
-              content: streamingText,
-              personaId: activePersona?.id,
-              personaName: activePersona?.name,
-              personaAvatar: activePersona?.avatarUrl,
-              personaAccentColor: activePersona?.accentColor,
-            }}
-            isStreaming
-            showPersonaBadge={false}
-          />
+          <div aria-live="off">
+            <MessageBubble
+              message={streamingMessage}
+              isStreaming
+              showPersonaBadge={false}
+            />
+          </div>
         )}
 
         <div ref={messagesEndRef} />

@@ -19,7 +19,7 @@
   --color-border-strong: #d1d5db;
   --color-text-primary: #111827;
   --color-text-secondary: #4b5563;
-  --color-text-tertiary: #6b7280;
+  --color-text-tertiary: #5f6673;
   --color-accent: #e8654a;
   --color-accent-hover: #c44a32;
   --color-accent-soft: #fef2f0;
@@ -103,7 +103,7 @@
   --color-border-strong: #3d3d66;
   --color-text-primary: #e8e8f0;
   --color-text-secondary: #9ca3b8;
-  --color-text-tertiary: #8b92a8;
+  --color-text-tertiary: #9299ad;
   --color-accent: #f29b85;
   --color-accent-hover: #e8654a;
   --color-accent-soft: #2a1f1e;
@@ -142,4 +142,15 @@
   --color-booking-tour-text: #86efac;
   --color-booking-other-bg: #222240;
   --color-booking-other-text: #9ca3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

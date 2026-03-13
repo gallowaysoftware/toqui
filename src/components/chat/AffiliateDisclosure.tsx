@@ -12,7 +12,7 @@ export function AffiliateDisclosure() {
         className="text-[var(--color-text-tertiary)] mt-0.5 flex-shrink-0"
         aria-hidden="true"
       />
-      <p className="text-[11px] text-[var(--color-text-tertiary)] leading-relaxed">
+      <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
         Toqui may earn a commission from bookings made through these links at no extra cost to you.
       </p>
     </div>

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Markdown, { type Components } from "react-markdown";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 
@@ -40,7 +41,7 @@ interface MessageBubbleProps {
   showPersonaBadge?: boolean;
 }
 
-export function MessageBubble({ message, isStreaming, showPersonaBadge }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, isStreaming, showPersonaBadge }: MessageBubbleProps) {
   const { role, content } = message;
 
   if (role === "system") {
@@ -104,4 +105,4 @@ export function MessageBubble({ message, isStreaming, showPersonaBadge }: Messag
       </div>
     </div>
   );
-}
+});
