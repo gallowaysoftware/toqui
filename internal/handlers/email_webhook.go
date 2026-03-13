@@ -150,40 +150,67 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 
 // matchTrip attempts to find a trip for the user to associate the booking with.
 // Strategy:
-//  1. Look for the most recently created "planning" trip.
-//  2. Fall back to the most recently created trip regardless of status.
-//  3. If no trips exist, return empty string (booking will be unlinked).
+//  1. Try to match the email subject against trip titles and destinations.
+//  2. Fall back to the most recently created "planning" trip.
+//  3. Fall back to the most recently created trip regardless of status.
+//  4. If no trips exist, return empty string (booking will be unlinked).
 func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subject string) string {
 	ctx := r.Context()
 
-	// Try planning trips first (most likely actively being worked on).
-	planningTrips, _, err := h.tripSvc.ListByUser(ctx, user.ID, "planning", 1, 0)
-	if err == nil && len(planningTrips) > 0 {
-		tripID := planningTrips[0].ID.String()
-		slog.Info("email webhook matched planning trip",
-			"trip_id", tripID,
-			"trip_title", planningTrips[0].Title,
+	// Load recent trips for subject-based matching.
+	allTrips, _, err := h.tripSvc.ListByUser(ctx, user.ID, "", 20, 0)
+	if err != nil || len(allTrips) == 0 {
+		slog.Info("email webhook no trip matched, booking will be unlinked",
 			"user_id", user.ID,
 		)
-		return tripID
+		return ""
 	}
 
-	// Fall back to most recent trip of any status.
-	allTrips, _, err := h.tripSvc.ListByUser(ctx, user.ID, "", 1, 0)
-	if err == nil && len(allTrips) > 0 {
-		tripID := allTrips[0].ID.String()
-		slog.Info("email webhook matched recent trip",
-			"trip_id", tripID,
-			"trip_title", allTrips[0].Title,
-			"user_id", user.ID,
-		)
-		return tripID
+	// Try to match the email subject against trip titles or destinations.
+	// A booking confirmation for "Paris" should match a trip titled "Paris Weekend".
+	subjectLower := strings.ToLower(subject)
+	if subjectLower != "" {
+		for _, t := range allTrips {
+			titleLower := strings.ToLower(t.Title)
+			destLower := ""
+			if t.DestinationCountry.Valid {
+				destLower = strings.ToLower(t.DestinationCountry.String)
+			}
+			if (titleLower != "" && strings.Contains(subjectLower, titleLower)) ||
+				(destLower != "" && strings.Contains(subjectLower, destLower)) {
+				tripID := t.ID.String()
+				slog.Info("email webhook matched trip by subject",
+					"trip_id", tripID,
+					"trip_title", t.Title,
+					"subject", subject,
+					"user_id", user.ID,
+				)
+				return tripID
+			}
+		}
 	}
 
-	slog.Info("email webhook no trip matched, booking will be unlinked",
+	// Fall back: prefer the most recent planning trip.
+	for _, t := range allTrips {
+		if t.Status == "planning" {
+			tripID := t.ID.String()
+			slog.Info("email webhook matched planning trip (fallback)",
+				"trip_id", tripID,
+				"trip_title", t.Title,
+				"user_id", user.ID,
+			)
+			return tripID
+		}
+	}
+
+	// Last resort: most recent trip of any status.
+	tripID := allTrips[0].ID.String()
+	slog.Info("email webhook matched recent trip (fallback)",
+		"trip_id", tripID,
+		"trip_title", allTrips[0].Title,
 		"user_id", user.ID,
 	)
-	return ""
+	return tripID
 }
 
 // verifySignature validates the SendGrid Event Webhook ECDSA signature.

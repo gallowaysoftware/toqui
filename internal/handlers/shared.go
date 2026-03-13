@@ -111,7 +111,9 @@ func (h *SharedHandler) HandlePublicView(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("failed to encode shared trip response", "error", err)
+	}
 }
 
 // HandleEnable handles POST /api/trips/share — enables sharing (authenticated).
@@ -154,10 +156,12 @@ func (h *SharedHandler) HandleEnable(w http.ResponseWriter, r *http.Request) {
 	audit.Log(audit.EventTripShare, "user_id", userID.String(), "trip_id", tripID.String())
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(enableSharingResponse{
+	if err := json.NewEncoder(w).Encode(enableSharingResponse{
 		ShareToken: token,
 		ShareURL:   "https://app.toqui.travel/shared/" + token,
-	})
+	}); err != nil {
+		slog.Error("failed to encode enable sharing response", "error", err)
+	}
 }
 
 // HandleDisable handles POST /api/trips/unshare — disables sharing (authenticated).

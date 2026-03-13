@@ -100,7 +100,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
-	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION || req.Msg.TripId == ""
+	// Companion mode can work without a trip (standalone), so don't force it to selection.
+	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION ||
+		(req.Msg.TripId == "" && req.Msg.Mode != toquiv1.ChatMode_CHAT_MODE_COMPANION)
 
 	mode := "planning"
 	switch {
@@ -472,8 +474,13 @@ func sanitizeForPrompt(s string, maxLen int) string {
 	for strings.Contains(result, "  ") {
 		result = strings.ReplaceAll(result, "  ", " ")
 	}
-	if maxLen > 0 && len(result) > maxLen {
-		result = result[:maxLen]
+	// Truncate by rune count, not byte count, to avoid splitting multi-byte
+	// UTF-8 characters (e.g., CJK, emoji) at the boundary.
+	if maxLen > 0 {
+		runes := []rune(result)
+		if len(runes) > maxLen {
+			result = string(runes[:maxLen])
+		}
 	}
 	return result
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -448,7 +449,11 @@ func (h *OAuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 func generateState() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand.Read failing indicates a fundamental OS issue;
+		// panic rather than return a predictable value that enables CSRF.
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
+	}
 	return hex.EncodeToString(b)
 }
 

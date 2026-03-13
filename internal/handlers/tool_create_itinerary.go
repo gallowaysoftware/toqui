@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -93,6 +94,7 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 	}
 
 	var created []dbgen.ItineraryItem
+	var failed []string
 	for _, item := range params.Items {
 		if item.Title == "" {
 			continue
@@ -100,14 +102,16 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		dbItem, err := t.tripSvc.CreateItineraryItem(ctx, t.tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description)
 		if err != nil {
 			slog.Error("create itinerary item", "title", item.Title, "error", err)
+			failed = append(failed, item.Title)
 			continue
 		}
 		created = append(created, dbItem)
 	}
 
 	if len(created) == 0 {
-		return json.Marshal(map[string]string{
-			"error": "failed to create any itinerary items",
+		return json.Marshal(map[string]any{
+			"error":        "failed to create any itinerary items",
+			"failed_items": failed,
 		})
 	}
 
@@ -135,6 +139,12 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		"created_count": len(created),
 		"items":         summary,
 		"message":       fmt.Sprintf("Successfully added %d items to the itinerary.", len(created)),
+	}
+	if len(failed) > 0 {
+		result["failed_count"] = len(failed)
+		result["failed_items"] = failed
+		result["message"] = fmt.Sprintf("Added %d items to the itinerary. %d items failed: %s",
+			len(created), len(failed), strings.Join(failed, ", "))
 	}
 	return json.Marshal(result)
 }
