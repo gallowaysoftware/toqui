@@ -58,6 +58,22 @@ export default function AuthCallbackPage() {
             },
             expiresAt,
           );
+
+          // Verify age server-side using the DOB stored during client-side age gate
+          const storedDob = localStorage.getItem("toqui_age_dob");
+          if (storedDob) {
+            try {
+              await fetch(`${API_URL}/auth/verify-age`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ date_of_birth: storedDob }),
+              });
+            } catch {
+              // Non-blocking — the age interceptor will catch unverified users on RPC calls
+            }
+          }
+
           router.push("/trips");
         } else {
           router.push("/");

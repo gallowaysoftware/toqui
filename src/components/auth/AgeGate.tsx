@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore, useCallback, type FormEvent } from "rea
 import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "toqui_age_verified";
+const DOB_STORAGE_KEY = "toqui_age_dob";
 const EXEMPT_PATHS = ["/privacy", "/terms", "/waitlist"];
 const EXEMPT_PREFIXES = ["/auth"];
 
@@ -91,6 +92,9 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Store DOB for server-side verification after auth
+      const dobStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      localStorage.setItem(DOB_STORAGE_KEY, dobStr);
       localStorage.setItem(STORAGE_KEY, "true");
       // Dispatch synthetic storage event so useSyncExternalStore picks up the
       // change in the same tab (the native "storage" event only fires cross-tab).
