@@ -100,6 +100,15 @@ func AllLocationProfiles() []*LocationProfile {
 	return result
 }
 
+// AllThemeProfiles returns all registered theme profiles.
+func AllThemeProfiles() []*ThemeProfile {
+	result := make([]*ThemeProfile, 0, len(themeProfiles))
+	for _, p := range themeProfiles {
+		result = append(result, p)
+	}
+	return result
+}
+
 // RegisterLocationProfile adds or replaces a location profile.
 func RegisterLocationProfile(p *LocationProfile) {
 	locationProfiles[p.RegionCode] = p
