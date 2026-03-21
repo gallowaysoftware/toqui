@@ -24,3 +24,9 @@ SELECT default_persona_id FROM users WHERE id = $1;
 
 -- name: GetUserSubscriptionTier :one
 SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1;
+
+-- name: SetAgeVerified :exec
+UPDATE users SET age_verified_at = NOW(), updated_at = NOW() WHERE id = $1;
+
+-- name: IsAgeVerified :one
+SELECT COALESCE(age_verified_at IS NOT NULL, false)::boolean AS verified FROM users WHERE id = $1;

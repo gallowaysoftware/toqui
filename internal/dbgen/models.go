@@ -119,15 +119,16 @@ type TripTheme struct {
 }
 
 type User struct {
-	ID               uuid.UUID   `json:"id"`
-	Email            string      `json:"email"`
-	Name             pgtype.Text `json:"name"`
-	GoogleID         string      `json:"google_id"`
-	AvatarUrl        pgtype.Text `json:"avatar_url"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-	DefaultPersonaID pgtype.Text `json:"default_persona_id"`
-	SubscriptionTier string      `json:"subscription_tier"`
+	ID               uuid.UUID          `json:"id"`
+	Email            string             `json:"email"`
+	Name             pgtype.Text        `json:"name"`
+	GoogleID         string             `json:"google_id"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DefaultPersonaID pgtype.Text        `json:"default_persona_id"`
+	SubscriptionTier string             `json:"subscription_tier"`
+	AgeVerifiedAt    pgtype.Timestamptz `json:"age_verified_at"`
 }
 
 type Waitlist struct {

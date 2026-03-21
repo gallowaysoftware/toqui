@@ -14,6 +14,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/config"
 	"github.com/gallowaysoftware/toqui-backend/internal/csrf"
 	"github.com/gallowaysoftware/toqui-backend/internal/db"
+	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
@@ -158,9 +160,16 @@ func main() {
 	rateLimiter := ratelimit.NewInterceptor(10, 60)
 	defer rateLimiter.Stop()
 
+	queries := dbgen.New(pool)
+
+	ageCheckFn := auth.AgeCheckFunc(func(ctx context.Context, userID uuid.UUID) (bool, error) {
+		return queries.IsAgeVerified(ctx, userID)
+	})
+
 	interceptors := connect.WithInterceptors(
 		validate.NewInterceptor(),
 		auth.NewAuthInterceptor(authSvc),
+		auth.NewAgeInterceptor(ageCheckFn),
 		rateLimiter,
 	)
 
@@ -214,6 +223,10 @@ func main() {
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
 	mux.HandleFunc("/auth/refresh", oauthHandler.HandleRefresh)
 	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)
+
+	// Age verification route (authenticated)
+	ageVerifyHandler := handlers.NewAgeVerifyHandler(authSvc, queries)
+	mux.HandleFunc("/auth/verify-age", ageVerifyHandler.HandleVerifyAge)
 
 	// Waitlist routes (public, no auth)
 	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)

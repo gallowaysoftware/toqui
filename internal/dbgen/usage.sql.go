@@ -51,6 +51,8 @@ type IncrementDailyUsageParams struct {
 	MaxCount int32     `json:"max_count"`
 }
 
+// Conditionally increment: only bumps the counter if it's below the limit.
+// Returns the new row. If no row is returned, the limit was already reached.
 func (q *Queries) IncrementDailyUsage(ctx context.Context, arg IncrementDailyUsageParams) (DailyUsage, error) {
 	row := q.db.QueryRow(ctx, incrementDailyUsage, arg.UserID, arg.MaxCount)
 	var i DailyUsage
