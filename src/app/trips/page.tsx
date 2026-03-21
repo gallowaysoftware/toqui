@@ -12,7 +12,7 @@ import type { Trip } from "@/gen/toqui/v1/trip_pb";
 import type { CreatedTrip, SelectedTrip } from "@/lib/hooks/useChat";
 import Link from "next/link";
 import Image from "next/image";
-import { MessageSquare, Settings, LogOut, Menu, X } from "lucide-react";
+import { MessageSquare, Settings, LogOut, Menu, X, Calendar, MapPin } from "lucide-react";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggle";
 
 const statusLabels: Record<number, string> = {
@@ -295,9 +295,21 @@ export default function TripsPage() {
   );
 }
 
+function formatTripDates(start: string, end: string): string {
+  if (!start && !end) return "";
+  const fmt = (s: string) => {
+    const d = new Date(s + "T00:00:00");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+  if (start && end) return `${fmt(start)} – ${fmt(end)}`;
+  if (start) return `From ${fmt(start)}`;
+  return `Until ${fmt(end)}`;
+}
+
 function TripSidebarItem({ trip, onSelect }: { trip: Trip; onSelect: () => void }) {
   const label = statusLabels[trip.status] || "planning";
   const colors = statusColors[label] || statusColors.planning;
+  const dateStr = formatTripDates(trip.startDate, trip.endDate);
 
   return (
     <Link
@@ -310,14 +322,28 @@ function TripSidebarItem({ trip, onSelect }: { trip: Trip; onSelect: () => void 
           {trip.title}
         </span>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${colors}`}
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2 ${colors}`}
         >
           {label}
         </span>
       </div>
       {trip.description && (
-        <p className="text-xs text-[var(--color-text-tertiary)] truncate">{trip.description}</p>
+        <p className="text-xs text-[var(--color-text-tertiary)] truncate mb-1">{trip.description}</p>
       )}
+      <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-tertiary)]">
+        {dateStr && (
+          <span className="flex items-center gap-1">
+            <Calendar size={10} aria-hidden="true" />
+            {dateStr}
+          </span>
+        )}
+        {trip.destinationCountry && (
+          <span className="flex items-center gap-1">
+            <MapPin size={10} aria-hidden="true" />
+            {trip.destinationCountry.toUpperCase()}
+          </span>
+        )}
+      </div>
     </Link>
   );
 }
