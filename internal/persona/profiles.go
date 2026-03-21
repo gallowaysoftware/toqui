@@ -91,6 +91,15 @@ func GetThemeProfile(slug string) *ThemeProfile {
 	return themeProfiles[slug]
 }
 
+// AllLocationProfiles returns all registered location profiles.
+func AllLocationProfiles() []*LocationProfile {
+	result := make([]*LocationProfile, 0, len(locationProfiles))
+	for _, p := range locationProfiles {
+		result = append(result, p)
+	}
+	return result
+}
+
 // RegisterLocationProfile adds or replaces a location profile.
 func RegisterLocationProfile(p *LocationProfile) {
 	locationProfiles[p.RegionCode] = p

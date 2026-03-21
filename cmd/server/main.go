@@ -247,6 +247,11 @@ func main() {
 	// Usage route (authenticated via Bearer token)
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 
+	// Destination guide routes (public, no auth)
+	guideHandler := handlers.NewGuideHandler(newSimpleChatFn(aiProvider))
+	mux.HandleFunc("/api/guides/", guideHandler.HandleGuide)
+	mux.HandleFunc("/api/guides", guideHandler.HandleList)
+
 	// Shared trip routes
 	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
