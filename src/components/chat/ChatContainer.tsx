@@ -7,6 +7,7 @@ import { ChatInput } from "./ChatInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { MessageLimitBanner } from "./MessageLimitBanner";
 import { AITransparencyNotice } from "./AITransparencyNotice";
+import { SuggestedPrompts } from "./SuggestedPrompts";
 import { useChat } from "@/lib/hooks/useChat";
 import { useUsage } from "@/lib/hooks/useUsage";
 import type { ActivePersona, CreatedTrip, SelectedTrip } from "@/lib/hooks/useChat";
@@ -96,12 +97,12 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
     [streamingText, activePersona?.id, activePersona?.name, activePersona?.avatarUrl, activePersona?.accentColor],
   );
 
-  const emptyPrompt =
-    mode === "selection"
-      ? "Hey! Where are we headed? Tell me about your next trip idea."
-      : mode === "companion"
-        ? "I'm here to help while you travel. What do you need?"
-        : "Let's plan your trip. What would you like to figure out?";
+  const handlePromptSelect = useCallback(
+    (message: string) => {
+      handleSend(message);
+    },
+    [handleSend],
+  );
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -141,9 +142,11 @@ export function ChatContainer({ tripId, mode, onTripCreated, onTripSelected }: C
         )}
 
         {messages.length === 0 && !isStreaming && !isLoadingHistory && (
-          <div className="text-center text-[var(--color-text-tertiary)] py-16">
-            <p className="text-lg mb-2">{emptyPrompt}</p>
-          </div>
+          <SuggestedPrompts
+            mode={mode}
+            onSelect={handlePromptSelect}
+            disabled={usage.isAtLimit}
+          />
         )}
 
         {messages.map((msg, i) => {
