@@ -12,7 +12,7 @@ import type { Trip } from "@/gen/toqui/v1/trip_pb";
 import type { CreatedTrip, SelectedTrip } from "@/lib/hooks/useChat";
 import Link from "next/link";
 import Image from "next/image";
-import { MessageSquare, Settings, LogOut, Menu, X, Calendar, MapPin } from "lucide-react";
+import { MessageSquare, Settings, LogOut, Menu, X, Calendar, MapPin, Plus } from "lucide-react";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggle";
 
 const statusLabels: Record<number, string> = {
@@ -229,10 +229,20 @@ export default function TripsPage() {
             <X size={18} aria-hidden="true" />
           </button>
         </div>
+        <div className="px-2 pt-2">
+          <Link
+            href="/trips/new"
+            onClick={closeSidebar}
+            className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+          >
+            <Plus size={16} aria-hidden="true" />
+            {t("newTrip")}
+          </Link>
+        </div>
         <nav className="flex-1 overflow-y-auto p-2" aria-label="Trip list">
           {trips.length === 0 ? (
             <p className="text-xs text-[var(--color-text-tertiary)] p-2">
-              No trips yet. Start chatting!
+              No trips yet. Create one above or start chatting!
             </p>
           ) : (
             trips.map((trip: Trip) => (
