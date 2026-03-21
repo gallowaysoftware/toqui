@@ -379,6 +379,24 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 	return responseText
 }
 
+// estimateCostUSD returns the estimated cost in USD for a request based on
+// provider pricing. Rates are approximate and should be updated when pricing changes.
+func estimateCostUSD(provider string, inputTokens, outputTokens int) float64 {
+	// Per-million-token rates (as of March 2026)
+	var inputRate, outputRate float64
+	switch provider {
+	case "claude":
+		// Haiku-class (fast tier — most common)
+		inputRate, outputRate = 0.25, 1.25
+	case "gemini":
+		// Flash-class (fast tier)
+		inputRate, outputRate = 0.075, 0.30
+	default:
+		return 0
+	}
+	return (float64(inputTokens)*inputRate + float64(outputTokens)*outputRate) / 1_000_000
+}
+
 // logUsage logs token usage with provider and environment labels for cost tracking,
 // and records against the daily token budget if configured.
 func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
@@ -386,12 +404,14 @@ func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
 		return
 	}
 	totalTokens := inputTokens + outputTokens
-	slog.Info("ai request completed",
+	costUSD := estimateCostUSD(s.provider.Name(), inputTokens, outputTokens)
+	slog.Info("ai_request_completed",
 		"provider", s.provider.Name(),
 		"env", os.Getenv("TARGET_ENV"),
 		"input_tokens", inputTokens,
 		"output_tokens", outputTokens,
 		"total_tokens", totalTokens,
+		"estimated_cost_usd", costUSD,
 		"tool_loop_iterations", iterations,
 	)
 

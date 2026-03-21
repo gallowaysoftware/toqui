@@ -53,6 +53,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Use JSON structured logging in non-local environments for Cloud Logging.
+	// Cloud Logging automatically parses JSON from stdout and indexes severity,
+	// message, and structured fields for querying and alerting.
+	if cfg.TargetEnv != "local" {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		})))
+	}
+
 	// Database
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -121,11 +130,14 @@ func main() {
 
 	// Affiliate link builder — generates partner URLs for booking recommendations.
 	// Empty IDs disable affiliate tracking (plain URLs still work).
-	linkBuilder := affiliate.NewLinkBuilder(
-		cfg.SkyscannerAffiliateID,
-		cfg.BookingComAffiliateID,
-		cfg.GetYourGuidePartnerID,
-	)
+	linkBuilder := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{
+		SkyscannerID:   cfg.SkyscannerAffiliateID,
+		BookingComID:   cfg.BookingComAffiliateID,
+		GetYourGuideID: cfg.GetYourGuidePartnerID,
+		ViatorID:       cfg.ViatorPartnerID,
+		DiscoverCarsID: cfg.DiscoverCarsAffiliateID,
+		SafetyWingID:   cfg.SafetyWingReferenceID,
+	})
 
 	if aiProvider == nil {
 		slog.Error("no AI provider available — neither ANTHROPIC_API_KEY nor Vertex AI credentials are configured")
@@ -268,10 +280,10 @@ func main() {
 	// Webhooks are exempt (they use ECDSA signature verification).
 	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/"})
 
-	// Middleware chain: recovery → request ID → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
+	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
 	// IP rate limiter runs after cookie auth so it can use Bearer token (set by
 	// CookieAuth for web browsers) as the rate limit key instead of spoofable X-Forwarded-For.
-	handler := recoveryMiddleware(requestid.Middleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins))))
+	handler := recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins)))))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -378,6 +390,50 @@ func newSimpleChatFn(provider ai.Provider) func(ctx context.Context, system, pro
 		}
 		return response.String(), nil
 	}
+}
+
+// statusWriter wraps http.ResponseWriter to capture the status code.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (sw *statusWriter) WriteHeader(code int) {
+	sw.status = code
+	sw.ResponseWriter.WriteHeader(code)
+}
+
+// requestLoggingMiddleware logs each HTTP request with method, path, status, and
+// duration. In non-local environments these become structured JSON entries in
+// Cloud Logging, queryable for dashboards and alerting.
+func requestLoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip noisy health probes.
+		if r.URL.Path == "/healthz" || r.URL.Path == "/livez" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
+		duration := time.Since(start)
+
+		level := slog.LevelInfo
+		if sw.status >= 500 {
+			level = slog.LevelError
+		} else if sw.status >= 400 {
+			level = slog.LevelWarn
+		}
+
+		slog.Log(r.Context(), level, "http_request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", sw.status,
+			"duration_ms", duration.Milliseconds(),
+			"user_agent", r.Header.Get("User-Agent"),
+		)
+	})
 }
 
 func recoveryMiddleware(next http.Handler) http.Handler {
