@@ -59,9 +59,12 @@ type Config struct {
 	SendGridWebhookKey string
 
 	// Affiliate partners
-	SkyscannerAffiliateID string
-	BookingComAffiliateID string
-	GetYourGuidePartnerID string
+	SkyscannerAffiliateID   string
+	BookingComAffiliateID   string
+	GetYourGuidePartnerID   string
+	ViatorPartnerID         string
+	DiscoverCarsAffiliateID string
+	SafetyWingReferenceID   string
 
 	// Capacity + usage limits
 	MaxFreeUsers      int
@@ -108,6 +111,9 @@ func Load() (*Config, error) {
 		SkyscannerAffiliateID:    os.Getenv("SKYSCANNER_AFFILIATE_ID"),
 		BookingComAffiliateID:    os.Getenv("BOOKINGCOM_AFFILIATE_ID"),
 		GetYourGuidePartnerID:    os.Getenv("GETYOURGUIDE_PARTNER_ID"),
+		ViatorPartnerID:          os.Getenv("VIATOR_PARTNER_ID"),
+		DiscoverCarsAffiliateID:  os.Getenv("DISCOVERCARS_AFFILIATE_ID"),
+		SafetyWingReferenceID:    os.Getenv("SAFETYWING_REFERENCE_ID"),
 		MaxFreeUsers:             getEnvInt("MAX_FREE_USERS", 500),
 		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
