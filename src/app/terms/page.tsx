@@ -22,7 +22,7 @@ export default function TermsOfServicePage() {
             Terms of Service
           </h1>
           <p className="text-sm text-[var(--color-text-tertiary)] mb-8">
-            Last updated: March 8, 2026
+            Last updated: March 21, 2026
           </p>
 
           <section className="space-y-4 text-[var(--color-text-secondary)]">
@@ -115,13 +115,41 @@ export default function TermsOfServicePage() {
             </p>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
-              8. Payments &amp; Purchases
+              8. Payments, Purchases &amp; Refunds
             </h2>
             <p>
               Toqui offers free and paid tiers. Paid features (Trip Pro, Annual Pass) are one-time
-              purchases — there are no recurring subscriptions. All purchases are final unless
-              required otherwise by applicable law. Pricing is displayed at the time of purchase.
+              purchases — there are no recurring subscriptions. Pricing is displayed at the time of
+              purchase and charged via Stripe.
             </p>
+            <p className="mt-2 font-medium text-[var(--color-text-primary)]">Refund Policy</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Trip Pro ($12/trip):</strong> You may request a full refund within 24 hours
+                of purchase if you have not used any Trip Pro features for that trip. After 24 hours,
+                or once Trip Pro features have been used, the purchase is final.
+              </li>
+              <li>
+                <strong>Annual Pass ($49/year):</strong> You may request a full refund within 7 days
+                of purchase if you have not unlocked any trips using the pass. After 7 days, or once
+                any trips have been unlocked, the purchase is final.
+              </li>
+              <li>
+                To request a refund, contact us at{" "}
+                <a
+                  href="mailto:support@toqui.travel"
+                  className="text-[var(--color-accent)] hover:underline"
+                >
+                  support@toqui.travel
+                </a>{" "}
+                with your account email and purchase details.
+              </li>
+              <li>
+                Refunds required by applicable consumer protection law (including but not limited to
+                the Canadian Consumer Protection Act and EU Consumer Rights Directive) will be honored
+                regardless of the above policy.
+              </li>
+            </ul>
 
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mt-8 mb-3">
               9. Intellectual Property
