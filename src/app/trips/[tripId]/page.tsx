@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   MessageSquare,
   Briefcase,
+  List,
   Play,
   CheckCircle,
   Map,
@@ -20,6 +21,7 @@ import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
 import DynamicItineraryMap from "@/components/map/DynamicItineraryMap";
+import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
 import { exportItineraryICal } from "@/lib/export/calendar-export";
 
@@ -236,6 +238,17 @@ export default function TripDetailPage() {
               isLoading={itineraryLoading}
               className="h-[300px] md:h-[400px]"
             />
+          </div>
+        </section>
+
+        {/* Itinerary Timeline */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <List className="text-[var(--color-accent)]" size={20} aria-hidden="true" />
+            <h2 className="font-semibold text-[var(--color-text-primary)]">Itinerary</h2>
+          </div>
+          <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-4">
+            <ItineraryTimeline itinerary={itinerary} isLoading={itineraryLoading} />
           </div>
         </section>
 
