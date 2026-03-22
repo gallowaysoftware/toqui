@@ -140,6 +140,10 @@ func Load() (*Config, error) {
 		slog.Warn("using default JWT secret — set JWT_SECRET for non-local environments")
 	}
 
+	if cfg.HelcimAPIToken == "" && cfg.TargetEnv != "local" {
+		slog.Warn("HELCIM_API_TOKEN not set — payment processing will fail")
+	}
+
 	slog.Info("config loaded", "env", env, "port", cfg.Port)
 	return cfg, nil
 }

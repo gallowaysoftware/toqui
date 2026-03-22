@@ -104,7 +104,7 @@ func (h *CheckoutHandler) HandleValidatePayment(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.paymentSvc.ValidateAndRecordPayment(r.Context(), req.CheckoutToken, req.ResponseData, req.ResponseHash); err != nil {
+	if err := h.paymentSvc.ValidateAndRecordPayment(r.Context(), userID, req.CheckoutToken, req.ResponseData, req.ResponseHash); err != nil {
 		slog.Error("payment validation failed",
 			"error", err,
 			"user_id", userID,

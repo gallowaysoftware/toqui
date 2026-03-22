@@ -227,7 +227,7 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 
 	requestID, err := h.lifecycleSvc.RequestExport(ctx, userID)
 	if err != nil {
-		return nil, internalError(ctx, "request export", err)
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("data export is coming soon"))
 	}
 
 	audit.Log(audit.EventDataExport, "user_id", userID.String())

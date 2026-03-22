@@ -16,6 +16,7 @@ COPY --from=builder /server /server
 COPY --from=builder /migrate /migrate
 COPY db/migrations /migrations
 
+USER nonroot:nonroot
 EXPOSE 8090
 
 ENTRYPOINT ["/server"]

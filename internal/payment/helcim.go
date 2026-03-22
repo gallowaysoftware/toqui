@@ -140,10 +140,21 @@ func (s *Service) InitializeCheckout(ctx context.Context, userID, tripID uuid.UU
 }
 
 // ValidateAndRecordPayment validates the HelcimPay.js response hash and records a successful payment.
-func (s *Service) ValidateAndRecordPayment(ctx context.Context, checkoutToken string, responseData json.RawMessage, responseHash string) error {
+// The userID parameter ensures the authenticated user owns the checkout session (IDOR prevention).
+func (s *Service) ValidateAndRecordPayment(ctx context.Context, userID uuid.UUID, checkoutToken string, responseData json.RawMessage, responseHash string) error {
 	// Look up the session
 	session, err := s.queries.GetCheckoutSessionByToken(ctx, checkoutToken)
 	if err != nil {
+		return fmt.Errorf("checkout session not found: %w", err)
+	}
+
+	// Verify the authenticated user owns this checkout session.
+	if session.UserID != userID {
+		slog.Warn("payment validation IDOR attempt",
+			"authenticated_user", userID,
+			"session_owner", session.UserID,
+			"checkout_token", checkoutToken,
+		)
 		return fmt.Errorf("checkout session not found: %w", err)
 	}
 
