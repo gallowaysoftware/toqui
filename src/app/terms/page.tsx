@@ -22,7 +22,7 @@ export default function TermsOfServicePage() {
             Terms of Service
           </h1>
           <p className="text-sm text-[var(--color-text-tertiary)] mb-8">
-            Last updated: March 21, 2026
+            Last updated: March 22, 2026
           </p>
 
           <section className="space-y-4 text-[var(--color-text-secondary)]">
@@ -120,7 +120,7 @@ export default function TermsOfServicePage() {
             <p>
               Toqui offers free and paid tiers. Paid features (Trip Pro, Annual Pass) are one-time
               purchases — there are no recurring subscriptions. Pricing is displayed at the time of
-              purchase and charged via Stripe.
+              purchase and charged via our payment processor, Helcim.
             </p>
             <p className="mt-2 font-medium text-[var(--color-text-primary)]">Refund Policy</p>
             <ul className="list-disc pl-6 space-y-1">
