@@ -34,6 +34,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/middleware"
+	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
@@ -254,6 +255,13 @@ func main() {
 
 	// Usage route (authenticated via Bearer token)
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
+
+	// Payment routes (authenticated)
+	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
+	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc)
+	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
+	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
+	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)
 
 	// Destination guide routes (public, no auth)
 	guideHandler := handlers.NewGuideHandler(newSimpleChatFn(aiProvider))

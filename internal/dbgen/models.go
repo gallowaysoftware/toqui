@@ -60,6 +60,33 @@ type ExportRequest struct {
 	Status      string             `json:"status"`
 }
 
+type HelcimCheckoutSession struct {
+	ID            uuid.UUID          `json:"id"`
+	UserID        uuid.UUID          `json:"user_id"`
+	TripID        uuid.UUID          `json:"trip_id"`
+	CheckoutToken string             `json:"checkout_token"`
+	SecretToken   string             `json:"secret_token"`
+	AmountCents   int32              `json:"amount_cents"`
+	Currency      string             `json:"currency"`
+	Status        string             `json:"status"`
+	CreatedAt     time.Time          `json:"created_at"`
+	CompletedAt   pgtype.Timestamptz `json:"completed_at"`
+}
+
+type HelcimPayment struct {
+	ID                  uuid.UUID   `json:"id"`
+	UserID              uuid.UUID   `json:"user_id"`
+	TripID              uuid.UUID   `json:"trip_id"`
+	HelcimTransactionID string      `json:"helcim_transaction_id"`
+	ApprovalCode        pgtype.Text `json:"approval_code"`
+	CardToken           pgtype.Text `json:"card_token"`
+	AmountCents         int32       `json:"amount_cents"`
+	Currency            string      `json:"currency"`
+	Status              string      `json:"status"`
+	ResponseHash        pgtype.Text `json:"response_hash"`
+	CreatedAt           time.Time   `json:"created_at"`
+}
+
 type ItineraryItem struct {
 	ID          uuid.UUID          `json:"id"`
 	TripID      uuid.UUID          `json:"trip_id"`
@@ -116,6 +143,15 @@ type TripTheme struct {
 	Confidence float32   `json:"confidence"`
 	Source     string    `json:"source"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+type TripUnlock struct {
+	ID         uuid.UUID   `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+	TripID     uuid.UUID   `json:"trip_id"`
+	PaymentID  pgtype.UUID `json:"payment_id"`
+	Source     string      `json:"source"`
+	UnlockedAt time.Time   `json:"unlocked_at"`
 }
 
 type User struct {

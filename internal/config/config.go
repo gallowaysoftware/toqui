@@ -74,6 +74,10 @@ type Config struct {
 	LLMCacheEnabled bool
 	LLMCacheTTL     time.Duration
 
+	// Helcim payment processing
+	HelcimAPIToken    string
+	TripProPriceCents int // Default 1200 ($12.00 CAD)
+
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
 }
@@ -119,6 +123,8 @@ func Load() (*Config, error) {
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
+		HelcimAPIToken:           os.Getenv("HELCIM_API_TOKEN"),
+		TripProPriceCents:        getEnvInt("TRIP_PRO_PRICE_CENTS", 1200),
 		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
 	}
 
