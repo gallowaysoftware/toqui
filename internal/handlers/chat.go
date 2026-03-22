@@ -21,6 +21,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
+	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
@@ -38,16 +39,18 @@ type ChatHandler struct {
 	locationSvc   *location.Service
 	linkBuilder   *affiliate.LinkBuilder
 	usageSvc      *usage.Service
+	paymentSvc    *payment.Service
 	queries       *dbgen.Queries
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, db dbgen.DBTX) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, db dbgen.DBTX) *ChatHandler {
 	return &ChatHandler{
 		chatSvc:       chatSvc,
 		tripSvc:       tripSvc,
 		themeSvc:      themeSvc,
 		locationCache: locationCache,
 		locationSvc:   locationSvc,
+		paymentSvc:    paymentSvc,
 		linkBuilder:   linkBuilder,
 		usageSvc:      usageSvc,
 		queries:       dbgen.New(db),
@@ -171,7 +174,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var recommendations []affiliate.Recommendation
 	var mu sync.Mutex
 
-	// Suggest expert tool is available in all modes — Toqui can hand off anytime
+	// Check if this trip is unlocked (Trip Pro purchased)
+	var tripUnlocked bool
+	if parsedTripID, parseErr := uuid.Parse(req.Msg.TripId); parseErr == nil && h.paymentSvc != nil {
+		tripUnlocked, _ = h.paymentSvc.IsTripUnlocked(ctx, userID, parsedTripID)
+	}
+
+	// Suggest expert tool — free users get 3 teaser messages, then upgrade prompt
 	suggestExpertTool := NewSuggestExpertTool(h.chatSvc.Personas(), destinationCountry,
 		func(previous, expert *persona.Persona, handoffMessage string) {
 			mu.Lock()
@@ -183,6 +192,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			mu.Unlock()
 		},
 	)
+
+	// Wrap suggest_expert for free-tier users to enforce 3-message teaser
+	var expertTool tools.Tool = suggestExpertTool
+	if !userTier.IsPro() && !tripUnlocked {
+		expertTool = newExpertTeaserGate(suggestExpertTool)
+	}
 
 	// Recommend booking tool is available in all modes. Free-tier users get
 	// affiliate-linked results; Pro-tier users get unbiased recommendations.
@@ -208,7 +223,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			selectedTrips = append(selectedTrips, tripCreatedInfo{ID: tripID, Title: title, Description: description})
 			mu.Unlock()
 		})
-		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, suggestExpertTool}
+		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, expertTool}
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
@@ -216,7 +231,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
 		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes, userTier)
-		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
+		params.ExtraTools = append(params.ExtraTools, expertTool)
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}

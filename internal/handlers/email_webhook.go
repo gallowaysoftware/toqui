@@ -14,10 +14,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/payment"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
@@ -28,15 +31,17 @@ const maxEmailBodySize = 25 << 20
 type EmailWebhookHandler struct {
 	bookingSvc *booking.Service
 	tripSvc    *trip.Service
+	paymentSvc *payment.Service
 	queries    *dbgen.Queries
 	webhookKey string // SendGrid Inbound Parse webhook verification public key (PEM)
 }
 
 // NewEmailWebhookHandler creates a new handler for inbound email webhooks.
-func NewEmailWebhookHandler(bookingSvc *booking.Service, tripSvc *trip.Service, pool *pgxpool.Pool, webhookKey string) *EmailWebhookHandler {
+func NewEmailWebhookHandler(bookingSvc *booking.Service, tripSvc *trip.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, webhookKey string) *EmailWebhookHandler {
 	return &EmailWebhookHandler{
 		bookingSvc: bookingSvc,
 		tripSvc:    tripSvc,
+		paymentSvc: paymentSvc,
 		queries:    dbgen.New(pool),
 		webhookKey: webhookKey,
 	}
@@ -117,6 +122,22 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 
 	// Try to match to an existing trip.
 	tripID := h.matchTrip(r, user, subject)
+
+	// Gate: email forwarding requires Trip Pro (Pro tier or trip unlock).
+	userTier := tier.Parse(user.SubscriptionTier)
+	if !userTier.IsPro() && h.paymentSvc != nil {
+		parsedTripID, parseErr := uuid.Parse(tripID)
+		unlocked := parseErr == nil && func() bool { u, _ := h.paymentSvc.IsTripUnlocked(r.Context(), user.ID, parsedTripID); return u }()
+		if !unlocked {
+			slog.Info("email forwarding blocked — Trip Pro required",
+				"user_id", user.ID,
+				"email", maskEmail(user.Email),
+			)
+			// Return 200 so SendGrid does not retry.
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	}
 
 	// Include subject line as context for AI parsing.
 	fullText := body

@@ -194,9 +194,11 @@ func main() {
 	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
 	defer authLimiter.Stop()
 
+	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
+
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, pool)
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
@@ -257,7 +259,6 @@ func main() {
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 
 	// Payment routes (authenticated)
-	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
 	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc)
 	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
 	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
@@ -274,7 +275,7 @@ func main() {
 	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
 
 	// Email ingestion webhook (outside ConnectRPC)
-	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, cfg.SendGridWebhookKey)
+	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)
 	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)
 
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))
