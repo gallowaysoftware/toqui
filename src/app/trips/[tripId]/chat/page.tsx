@@ -7,6 +7,7 @@ import { ChatContainer } from "@/components/chat/ChatContainer";
 import { useTrip } from "@/lib/hooks/useTrips";
 import { TripStatus } from "@/gen/toqui/v1/trip_pb";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggle";
+import { TripProBanner } from "@/components/payment/TripProBanner";
 
 export default function ChatPage() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -48,6 +49,7 @@ export default function ChatPage() {
           >
             {mode === "companion" ? "Traveling" : "Planning"}
           </span>
+          <TripProBanner tripId={tripId} />
           <ThemeToggleButton />
         </div>
       </header>

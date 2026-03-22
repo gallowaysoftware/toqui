@@ -12,6 +12,7 @@ import { useTransport } from "@/components/providers/GrpcProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { AuthService } from "@/gen/toqui/v1/auth_pb";
 import { ThemeSelector } from "@/components/theme/ThemeToggle";
+import { BillingSection } from "@/components/payment/BillingSection";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
@@ -105,6 +106,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Billing */}
+        <BillingSection />
 
         {/* Appearance */}
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6">
