@@ -69,7 +69,6 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"checkout_token": result.CheckoutToken,
-		"secret_token":   result.SecretToken,
 		"price_cents":    h.paymentSvc.PriceCents(),
 		"currency":       "CAD",
 	})
