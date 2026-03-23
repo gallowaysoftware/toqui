@@ -328,16 +328,16 @@ export default function PrivacyPolicyPage() {
                   <tr className="border-t border-[var(--color-border)]">
                     <td className="px-4 py-2">
                       <a
-                        href="https://stripe.com/privacy"
+                        href="https://www.helcim.com/privacy/"
                         className="text-[var(--color-accent)] hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Stripe
+                        Helcim
                       </a>
                     </td>
                     <td className="px-4 py-2">Payment processing</td>
-                    <td className="px-4 py-2">Payment details (handled by Stripe directly)</td>
+                    <td className="px-4 py-2">Payment details (handled by Helcim directly)</td>
                   </tr>
                   <tr className="border-t border-[var(--color-border)]">
                     <td className="px-4 py-2">

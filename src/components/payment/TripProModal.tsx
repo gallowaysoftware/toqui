@@ -49,6 +49,9 @@ export function TripProModal({ tripId, isOpen, onClose, onSuccess }: TripProModa
   // Listen for HelcimPay.js messages
   const handleHelcimMessage = useCallback(
     (event: MessageEvent) => {
+      // Only accept messages from the Helcim secure checkout domain.
+      if (event.origin !== "https://secure.helcim.app") return;
+
       const token = checkoutTokenRef.current;
       if (!token) return;
 

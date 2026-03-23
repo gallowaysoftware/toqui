@@ -6,7 +6,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export interface CheckoutResult {
   checkout_token: string;
-  secret_token: string;
   price_cents: number;
   currency: string;
 }
