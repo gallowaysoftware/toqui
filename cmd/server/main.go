@@ -276,6 +276,12 @@ func main() {
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
 	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
 
+	// Admin UI (embedded SPA)
+	mux.Handle("/admin-ui/", http.StripPrefix("/admin-ui/", http.FileServer(http.FS(adminStaticFS()))))
+	mux.HandleFunc("/admin-ui", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin-ui/", http.StatusMovedPermanently)
+	})
+
 	// Admin endpoints (authenticated + admin email check)
 	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails)
 	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toqui Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    :root { --pico-primary: #E8654A; }
+    body { max-width: 960px; margin: 0 auto; padding: 1rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--pico-primary); }
+    .stat-card .label { font-size: 0.85rem; color: var(--pico-muted-color); }
+    nav a { margin-right: 1rem; cursor: pointer; }
+    nav a.active { font-weight: 700; text-decoration: underline; }
+    .hidden { display: none; }
+    table { font-size: 0.9rem; }
+    .invite-btn { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+    #auth-error { text-align: center; padding: 4rem 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Toqui Admin</h1>
+  </header>
+
+  <div id="auth-error" class="hidden">
+    <p>You must be logged in as an admin to access this page.</p>
+    <a href="/auth/google/login" role="button">Sign in with Google</a>
+  </div>
+
+  <main id="app" class="hidden">
+    <nav>
+      <a onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</a>
+      <a onclick="showTab('waitlist')" id="tab-waitlist">Waitlist</a>
+      <a onclick="showTab('users')" id="tab-users">Users</a>
+      <a onclick="showTab('tools')" id="tab-tools">Tools</a>
+    </nav>
+
+    <!-- Dashboard -->
+    <section id="view-dashboard">
+      <div class="stats-grid" id="stats-grid"></div>
+    </section>
+
+    <!-- Waitlist -->
+    <section id="view-waitlist" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2>Waitlist</h2>
+        <span id="waitlist-total"></span>
+      </div>
+      <table>
+        <thead><tr><th>Email</th><th>Signed Up</th><th>Invite Code</th><th>Accepted</th><th>Action</th></tr></thead>
+        <tbody id="waitlist-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Users -->
+    <section id="view-users" class="hidden">
+      <h2>Users</h2>
+      <input type="search" id="user-search" placeholder="Search by email or name..." oninput="debounceSearch()">
+      <table>
+        <thead><tr><th>Email</th><th>Name</th><th>Tier</th><th>Created</th></tr></thead>
+        <tbody id="users-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Tools -->
+    <section id="view-tools" class="hidden">
+      <h2>Manual Trip Unlock</h2>
+      <form onsubmit="unlockTrip(event)">
+        <label>User ID <input type="text" id="unlock-user-id" required></label>
+        <label>Trip ID <input type="text" id="unlock-trip-id" required></label>
+        <button type="submit">Unlock Trip</button>
+      </form>
+      <p id="unlock-result"></p>
+    </section>
+  </main>
+
+  <script>
+    const API = window.location.origin;
+
+    async function api(path, opts) {
+      const res = await fetch(API + path, { credentials: 'include', ...opts });
+      if (res.status === 401 || res.status === 403) {
+        document.getElementById('auth-error').classList.remove('hidden');
+        document.getElementById('app').classList.add('hidden');
+        throw new Error('unauthorized');
+      }
+      return res.json();
+    }
+
+    // Tab switching
+    function showTab(name) {
+      document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('nav a').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + name).classList.remove('hidden');
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name === 'dashboard') loadStats();
+      if (name === 'waitlist') loadWaitlist();
+      if (name === 'users') loadUsers();
+    }
+
+    // Dashboard
+    async function loadStats() {
+      const data = await api('/admin/stats');
+      const grid = document.getElementById('stats-grid');
+      grid.innerHTML = '';
+      const stats = [
+        ['Total Users', data.total_users],
+        ['Waitlist', data.waitlist_count],
+        ['Active Trips', data.active_trips],
+        ["Today's Messages", data.daily_messages],
+        ['Pro Interest', data.pro_interest],
+      ];
+      for (const [label, value] of stats) {
+        grid.innerHTML += `<div class="stat-card"><div class="value">${value}</div><div class="label">${label}</div></div>`;
+      }
+    }
+
+    // Waitlist
+    async function loadWaitlist() {
+      const data = await api('/admin/waitlist?page_size=100');
+      document.getElementById('waitlist-total').textContent = `Total: ${data.total}`;
+      const tbody = document.getElementById('waitlist-body');
+      tbody.innerHTML = '';
+      for (const e of (data.entries || [])) {
+        const code = e.invite_code?.String || e.invite_code || '';
+        const codeValid = e.invite_code?.Valid !== false && code;
+        const accepted = e.accepted_at?.Valid ? new Date(e.accepted_at.Time).toLocaleDateString() : '';
+        const inviteBtn = codeValid
+          ? `<code>${code}</code>`
+          : `<button class="invite-btn" onclick="generateInvite('${e.email}', this)">Generate</button>`;
+        tbody.innerHTML += `<tr>
+          <td>${e.email}</td>
+          <td>${new Date(e.signed_up_at).toLocaleDateString()}</td>
+          <td>${inviteBtn}</td>
+          <td>${accepted}</td>
+          <td>${!accepted && !codeValid ? inviteBtn : ''}</td>
+        </tr>`;
+      }
+    }
+
+    async function generateInvite(email, btn) {
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        const data = await api('/admin/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        btn.outerHTML = `<code>${data.invite_code}</code>`;
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Failed';
+      }
+    }
+
+    // Users
+    let searchTimer;
+    function debounceSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => loadUsers(), 300);
+    }
+
+    async function loadUsers() {
+      const q = document.getElementById('user-search').value;
+      const path = q ? `/admin/users?q=${encodeURIComponent(q)}&page_size=50` : '/admin/users?page_size=50';
+      const data = await api(path);
+      const tbody = document.getElementById('users-body');
+      tbody.innerHTML = '';
+      for (const u of (data.users || [])) {
+        const name = u.name?.String || u.name || '';
+        const tier = u.subscription_tier?.String || u.subscription_tier || 'free';
+        tbody.innerHTML += `<tr>
+          <td>${u.email}</td>
+          <td>${name}</td>
+          <td>${tier}</td>
+          <td>${new Date(u.created_at).toLocaleDateString()}</td>
+        </tr>`;
+      }
+    }
+
+    // Trip unlock
+    async function unlockTrip(e) {
+      e.preventDefault();
+      const userId = document.getElementById('unlock-user-id').value;
+      const tripId = document.getElementById('unlock-trip-id').value;
+      const result = document.getElementById('unlock-result');
+      try {
+        await api('/admin/unlock-trip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, trip_id: tripId }),
+        });
+        result.textContent = 'Trip unlocked successfully!';
+        result.style.color = 'green';
+      } catch (err) {
+        result.textContent = 'Failed to unlock trip.';
+        result.style.color = 'red';
+      }
+    }
+
+    // Init
+    (async () => {
+      try {
+        await loadStats();
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('tab-dashboard').classList.add('active');
+      } catch (e) {
+        // auth error already handled
+      }
+    })();
+  </script>
+</body>
+</html>
