@@ -55,3 +55,6 @@ RETURNING *;
 
 -- name: GetTripByShareToken :one
 SELECT * FROM trips WHERE share_token = sqlc.arg(share_token);
+
+-- name: CountActiveTrips :one
+SELECT COUNT(*) FROM trips WHERE status = 'active';

@@ -30,3 +30,12 @@ UPDATE users SET age_verified_at = NOW(), updated_at = NOW() WHERE id = $1;
 
 -- name: IsAgeVerified :one
 SELECT COALESCE(age_verified_at IS NOT NULL, false)::boolean AS verified FROM users WHERE id = $1;
+
+-- name: ListUsers :many
+SELECT * FROM users ORDER BY created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- name: SearchUsers :many
+SELECT * FROM users WHERE email ILIKE '%' || sqlc.arg(query)::text || '%' OR name ILIKE '%' || sqlc.arg(query)::text || '%'
+ORDER BY created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);

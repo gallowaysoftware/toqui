@@ -29,12 +29,12 @@ const maxEmailBodySize = 25 << 20
 
 // EmailWebhookHandler handles inbound email webhooks from SendGrid Inbound Parse.
 type EmailWebhookHandler struct {
-	bookingSvc          *booking.Service
-	tripSvc             *trip.Service
-	paymentSvc          *payment.Service
-	queries             *dbgen.Queries
-	webhookKey          string // SendGrid Inbound Parse webhook verification public key (PEM)
-	skipSignatureForTest bool  // test-only: skip signature verification
+	bookingSvc           *booking.Service
+	tripSvc              *trip.Service
+	paymentSvc           *payment.Service
+	queries              *dbgen.Queries
+	webhookKey           string // SendGrid Inbound Parse webhook verification public key (PEM)
+	skipSignatureForTest bool   // test-only: skip signature verification
 }
 
 // NewEmailWebhookHandler creates a new handler for inbound email webhooks.

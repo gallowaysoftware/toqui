@@ -44,6 +44,17 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countWaitlist = `-- name: CountWaitlist :one
+SELECT COUNT(*) FROM waitlist
+`
+
+func (q *Queries) CountWaitlist(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countWaitlist)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countWaitlistAhead = `-- name: CountWaitlistAhead :one
 SELECT COUNT(*) FROM waitlist
 WHERE signed_up_at < $1
@@ -93,6 +104,43 @@ func (q *Queries) GetWaitlistByInviteCode(ctx context.Context, inviteCode pgtype
 	return i, err
 }
 
+const listWaitlist = `-- name: ListWaitlist :many
+SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at FROM waitlist ORDER BY signed_up_at ASC
+LIMIT $2 OFFSET $1
+`
+
+type ListWaitlistParams struct {
+	PageOffset int32 `json:"page_offset"`
+	PageSize   int32 `json:"page_size"`
+}
+
+func (q *Queries) ListWaitlist(ctx context.Context, arg ListWaitlistParams) ([]Waitlist, error) {
+	rows, err := q.db.Query(ctx, listWaitlist, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Waitlist{}
+	for rows.Next() {
+		var i Waitlist
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.InviteCode,
+			&i.SignedUpAt,
+			&i.InvitedAt,
+			&i.AcceptedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markWaitlistAccepted = `-- name: MarkWaitlistAccepted :exec
 UPDATE waitlist SET accepted_at = NOW()
 WHERE email = $1
@@ -100,5 +148,20 @@ WHERE email = $1
 
 func (q *Queries) MarkWaitlistAccepted(ctx context.Context, email string) error {
 	_, err := q.db.Exec(ctx, markWaitlistAccepted, email)
+	return err
+}
+
+const setWaitlistInviteCode = `-- name: SetWaitlistInviteCode :exec
+UPDATE waitlist SET invite_code = $1, invited_at = NOW()
+WHERE email = $2
+`
+
+type SetWaitlistInviteCodeParams struct {
+	InviteCode pgtype.Text `json:"invite_code"`
+	Email      string      `json:"email"`
+}
+
+func (q *Queries) SetWaitlistInviteCode(ctx context.Context, arg SetWaitlistInviteCodeParams) error {
+	_, err := q.db.Exec(ctx, setWaitlistInviteCode, arg.InviteCode, arg.Email)
 	return err
 }

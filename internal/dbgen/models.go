@@ -102,6 +102,13 @@ type ItineraryItem struct {
 	CreatedAt   time.Time          `json:"created_at"`
 }
 
+type ProInterest struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

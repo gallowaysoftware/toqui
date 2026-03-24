@@ -261,7 +261,7 @@ func main() {
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 
 	// Payment routes (authenticated)
-	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc)
+	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc, pool)
 	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
 	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
 	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)

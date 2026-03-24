@@ -111,6 +111,90 @@ func (q *Queries) IsAgeVerified(ctx context.Context, id uuid.UUID) (bool, error)
 	return verified, err
 }
 
+const listUsers = `-- name: ListUsers :many
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at FROM users ORDER BY created_at DESC
+LIMIT $2 OFFSET $1
+`
+
+type ListUsersParams struct {
+	PageOffset int32 `json:"page_offset"`
+	PageSize   int32 `json:"page_size"`
+}
+
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsers, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Name,
+			&i.GoogleID,
+			&i.AvatarUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DefaultPersonaID,
+			&i.SubscriptionTier,
+			&i.AgeVerifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUsers = `-- name: SearchUsers :many
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at FROM users WHERE email ILIKE '%' || $1::text || '%' OR name ILIKE '%' || $1::text || '%'
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type SearchUsersParams struct {
+	Query      string `json:"query"`
+	PageOffset int32  `json:"page_offset"`
+	PageSize   int32  `json:"page_size"`
+}
+
+func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, searchUsers, arg.Query, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Name,
+			&i.GoogleID,
+			&i.AvatarUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DefaultPersonaID,
+			&i.SubscriptionTier,
+			&i.AgeVerifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setAgeVerified = `-- name: SetAgeVerified :exec
 UPDATE users SET age_verified_at = NOW(), updated_at = NOW() WHERE id = $1
 `

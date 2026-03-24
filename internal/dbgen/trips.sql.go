@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActiveTrips = `-- name: CountActiveTrips :one
+SELECT COUNT(*) FROM trips WHERE status = 'active'
+`
+
+func (q *Queries) CountActiveTrips(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveTrips)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countTripsByUser = `-- name: CountTripsByUser :one
 SELECT COUNT(*) FROM trips WHERE user_id = $1
 `
