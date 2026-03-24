@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const countDailyMessages = `-- name: CountDailyMessages :one
+SELECT COALESCE(SUM(message_count), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE
+`
+
+func (q *Queries) CountDailyMessages(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countDailyMessages)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getDailyUsage = `-- name: GetDailyUsage :one
 SELECT id, user_id, date, message_count, ai_cost_cents, created_at, updated_at FROM daily_usage
 WHERE user_id = $1 AND date = $2

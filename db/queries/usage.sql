@@ -15,3 +15,6 @@ WHERE user_id = sqlc.arg(user_id) AND date = sqlc.arg(date);
 -- name: RecordAICost :exec
 UPDATE daily_usage SET ai_cost_cents = ai_cost_cents + sqlc.arg(cost_cents), updated_at = NOW()
 WHERE user_id = sqlc.arg(user_id) AND date = CURRENT_DATE;
+
+-- name: CountDailyMessages :one
+SELECT COALESCE(SUM(message_count), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE;

@@ -276,6 +276,14 @@ func main() {
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
 	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
 
+	// Admin endpoints (authenticated + admin email check)
+	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails)
+	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
+	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
+	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
+	mux.HandleFunc("/admin/invite", adminHandler.HandleGenerateInvite)
+	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
+
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)
 	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)

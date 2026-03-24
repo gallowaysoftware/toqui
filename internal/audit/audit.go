@@ -24,6 +24,8 @@ const (
 	EventCSRFRejected        = "security.csrf_rejected"
 	EventTripProPurchase     = "payment.trip_pro_purchase"
 	EventPaymentValidation   = "payment.validation_failed"
+	EventAdminInvite         = "admin.invite"
+	EventAdminTripUnlock     = "admin.trip_unlock"
 )
 
 // Log records a structured audit event. All audit events include the event
