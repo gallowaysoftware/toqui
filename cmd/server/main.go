@@ -196,19 +196,19 @@ func main() {
 
 	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
 
-	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter)
+	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, cfg.AllowedEmails, cfg.MaxFreeUsers, authLimiter)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, authLimiter)
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter)
 	waitlistHandler := handlers.NewWaitlistHandler(pool)
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
 	// Shared trip handler (public + authenticated routes)
-	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc)
+	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL)
 
 	// Liveness probe (no auth, no external checks).
 	// Used by Cloud Run to verify the process is alive — never killed due to transient DB issues.

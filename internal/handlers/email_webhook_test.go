@@ -169,8 +169,19 @@ func TestHandleInbound_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandleInbound_EmptyBody(t *testing.T) {
+func TestHandleInbound_NoWebhookKey(t *testing.T) {
 	handler := &EmailWebhookHandler{}
+
+	rr := makeRequest(t, "POST", "/webhooks/email/inbound", nil, nil)
+	handler.HandleInbound(rr.w, rr.r)
+
+	if rr.w.Code != 503 {
+		t.Errorf("expected status 503 when webhook key not configured, got %d", rr.w.Code)
+	}
+}
+
+func TestHandleInbound_EmptyBody(t *testing.T) {
+	handler := &EmailWebhookHandler{webhookKey: "test-key", skipSignatureForTest: true}
 
 	// POST with multipart form but no text/html body
 	fields := map[string]string{

@@ -19,15 +19,17 @@ import (
 // SharedHandler serves the public shared trip endpoint and authenticated
 // enable/disable sharing endpoints.
 type SharedHandler struct {
-	tripSvc *trip.Service
-	authSvc *auth.Service
+	tripSvc     *trip.Service
+	authSvc     *auth.Service
+	frontendURL string
 }
 
 // NewSharedHandler creates a new SharedHandler.
-func NewSharedHandler(tripSvc *trip.Service, authSvc *auth.Service) *SharedHandler {
+func NewSharedHandler(tripSvc *trip.Service, authSvc *auth.Service, frontendURL string) *SharedHandler {
 	return &SharedHandler{
-		tripSvc: tripSvc,
-		authSvc: authSvc,
+		tripSvc:     tripSvc,
+		authSvc:     authSvc,
+		frontendURL: frontendURL,
 	}
 }
 
@@ -158,7 +160,7 @@ func (h *SharedHandler) HandleEnable(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(enableSharingResponse{
 		ShareToken: token,
-		ShareURL:   "https://app.toqui.travel/shared/" + token,
+		ShareURL:   h.frontendURL + "/shared/" + token,
 	}); err != nil {
 		slog.Error("failed to encode enable sharing response", "error", err)
 	}

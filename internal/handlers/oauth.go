@@ -29,10 +29,11 @@ type OAuthHandler struct {
 	secureCookies  bool
 	maxFreeUsers   int
 	allowedDomains []string
+	allowedEmails  []string
 	authLimiter    *ratelimit.AuthLimiter
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
@@ -40,6 +41,7 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 		secureCookies:  secureCookies,
 		maxFreeUsers:   maxFreeUsers,
 		allowedDomains: allowedDomains,
+		allowedEmails:  allowedEmails,
 		authLimiter:    authLimiter,
 	}
 }
@@ -130,7 +132,8 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Capacity check: if user doesn't already exist and we're at capacity,
 	// check for a valid invite code before allowing registration.
-	if h.maxFreeUsers > 0 {
+	// Allow-listed emails bypass this entirely (team + friends/family).
+	if !isEmailAllowListed(info.Email, h.allowedEmails) && h.maxFreeUsers > 0 {
 		_, existErr := h.queries.GetUserByGoogleID(r.Context(), info.ID)
 		if errors.Is(existErr, pgx.ErrNoRows) {
 			// New user — check capacity
@@ -470,6 +473,17 @@ func isEmailDomainAllowed(email string, allowedDomains []string) bool {
 	domain := parts[1]
 	for _, allowed := range allowedDomains {
 		if strings.EqualFold(domain, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+// isEmailAllowListed checks if the email is on the explicit allow-list.
+// Used to bypass capacity/waitlist checks for team and friends/family.
+func isEmailAllowListed(email string, allowedEmails []string) bool {
+	for _, allowed := range allowedEmails {
+		if strings.EqualFold(email, allowed) {
 			return true
 		}
 	}

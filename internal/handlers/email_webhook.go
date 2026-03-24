@@ -29,11 +29,12 @@ const maxEmailBodySize = 25 << 20
 
 // EmailWebhookHandler handles inbound email webhooks from SendGrid Inbound Parse.
 type EmailWebhookHandler struct {
-	bookingSvc *booking.Service
-	tripSvc    *trip.Service
-	paymentSvc *payment.Service
-	queries    *dbgen.Queries
-	webhookKey string // SendGrid Inbound Parse webhook verification public key (PEM)
+	bookingSvc          *booking.Service
+	tripSvc             *trip.Service
+	paymentSvc          *payment.Service
+	queries             *dbgen.Queries
+	webhookKey          string // SendGrid Inbound Parse webhook verification public key (PEM)
+	skipSignatureForTest bool  // test-only: skip signature verification
 }
 
 // NewEmailWebhookHandler creates a new handler for inbound email webhooks.
@@ -63,8 +64,13 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Verify webhook signature if key is configured.
-	if h.webhookKey != "" {
+	// Verify webhook signature. Reject unsigned requests if key is configured.
+	if h.webhookKey == "" {
+		slog.Warn("email webhook rejected: SENDGRID_WEBHOOK_KEY not configured")
+		http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
+		return
+	}
+	if !h.skipSignatureForTest {
 		if err := h.verifySignature(r); err != nil {
 			slog.Warn("email webhook signature verification failed", "error", err)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)

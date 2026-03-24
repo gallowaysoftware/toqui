@@ -24,15 +24,19 @@ type AuthHandler struct {
 	queries        *dbgen.Queries
 	lifecycleSvc   *lifecycle.Service
 	allowedDomains []string
+	allowedEmails  []string
+	maxFreeUsers   int
 	authLimiter    *ratelimit.AuthLimiter
 }
 
-func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
+func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, allowedEmails []string, maxFreeUsers int, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
 	return &AuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
 		lifecycleSvc:   lifecycleSvc,
 		allowedDomains: allowedDomains,
+		allowedEmails:  allowedEmails,
+		maxFreeUsers:   maxFreeUsers,
 		authLimiter:    authLimiter,
 	}
 }
@@ -47,6 +51,20 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
+	}
+
+	// Capacity check for new users (same logic as OAuth web flow).
+	// Allow-listed emails bypass this entirely.
+	if !isEmailAllowListed(info.Email, h.allowedEmails) && h.maxFreeUsers > 0 {
+		_, err := h.queries.GetUserByEmail(ctx, info.Email)
+		if err != nil {
+			// New user — check capacity.
+			count, cerr := h.queries.CountUsers(ctx)
+			if cerr == nil && count >= int64(h.maxFreeUsers) {
+				audit.Log(audit.EventLoginDeniedCapacity, "email", maskEmail(info.Email))
+				return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("service at capacity"))
+			}
+		}
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{

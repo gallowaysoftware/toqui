@@ -80,6 +80,8 @@ type Config struct {
 
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
+	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
+	AdminEmails         []string // Emails allowed to access /admin/* endpoints
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -123,6 +125,8 @@ func Load() (*Config, error) {
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
+		AllowedEmails:            parseCSVEnv("ALLOWED_EMAILS"),
+		AdminEmails:              parseCSVEnv("ADMIN_EMAILS"),
 		HelcimAPIToken:           os.Getenv("HELCIM_API_TOKEN"),
 		TripProPriceCents:        getEnvInt("TRIP_PRO_PRICE_CENTS", 1200),
 		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
