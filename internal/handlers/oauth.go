@@ -249,17 +249,16 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
-	// If the login was initiated from admin, set auth cookies directly and redirect.
-	// Admin doesn't go through the frontend /auth/callback exchange flow.
+	// If the login was initiated from admin, pass the access token via URL fragment.
+	// Admin is on a separate domain (Cloudflare Pages) so cookies won't work cross-origin.
+	// The token is in the URL fragment (#) which is never sent to the server.
 	if c, err := r.Cookie("oauth_return"); err == nil && c.Value == "admin" {
-		auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
-		// Clear the return cookie.
 		clearDomain := ""
 		if h.secureCookies {
 			clearDomain = ".toqui.travel"
 		}
 		http.SetCookie(w, &http.Cookie{Name: "oauth_return", Value: "", Path: "/", Domain: clearDomain, MaxAge: -1})
-		http.Redirect(w, r, "https://admin.toqui.travel/admin-ui/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "https://admin.toqui.travel/#token="+result.AccessToken, http.StatusTemporaryRedirect)
 		return
 	}
 
