@@ -41,9 +41,14 @@ type ChatHandler struct {
 	usageSvc      *usage.Service
 	paymentSvc    *payment.Service
 	queries       *dbgen.Queries
+	adminEmails   map[string]bool
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, db dbgen.DBTX) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, db dbgen.DBTX, adminEmails []string) *ChatHandler {
+	emailSet := make(map[string]bool, len(adminEmails))
+	for _, e := range adminEmails {
+		emailSet[strings.ToLower(strings.TrimSpace(e))] = true
+	}
 	return &ChatHandler{
 		chatSvc:       chatSvc,
 		tripSvc:       tripSvc,
@@ -54,7 +59,19 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 		linkBuilder:   linkBuilder,
 		usageSvc:      usageSvc,
 		queries:       dbgen.New(db),
+		adminEmails:   emailSet,
 	}
+}
+
+func (h *ChatHandler) isAdmin(ctx context.Context, userID uuid.UUID) bool {
+	if len(h.adminEmails) == 0 {
+		return false
+	}
+	user, err := h.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return false
+	}
+	return h.adminEmails[strings.ToLower(user.Email)]
 }
 
 func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toquiv1.SendMessageRequest], stream *connect.ServerStream[toquiv1.SendMessageResponse]) error {
@@ -73,8 +90,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		return connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Check daily message limit before processing
-	if h.usageSvc != nil {
+	// Admin users have unlimited AI interactions.
+	isAdmin := h.isAdmin(ctx, userID)
+
+	// Check daily message limit before processing (skip for admins)
+	if h.usageSvc != nil && !isAdmin {
 		remaining, err := h.usageSvc.IncrementAndCheck(ctx, userID)
 		if err != nil {
 			if errors.Is(err, usage.ErrDailyLimitExceeded) {
