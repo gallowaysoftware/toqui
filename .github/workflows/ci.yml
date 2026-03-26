@@ -142,14 +142,7 @@ jobs:
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
 
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy toqui-backend \
-            --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
-            --project=toqui-staging
-
-      - name: Run migrations
+      - name: Run migrations (before deploy to avoid schema mismatch)
         run: |
           DB_URL=$(gcloud secrets versions access latest \
             --secret=staging-database-url \
@@ -164,8 +157,14 @@ jobs:
             --command="/migrate" \
             --args="-direction,up" \
             --execute-now \
-            --wait \
-            || echo "Migration skipped or no new migrations"
+            --wait
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy toqui-backend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-staging
 
   deploy-prod:
     needs: [lint, test, build]
@@ -197,14 +196,7 @@ jobs:
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
 
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy toqui-backend \
-            --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
-            --project=toqui-prod
-
-      - name: Run migrations
+      - name: Run migrations (before deploy to avoid schema mismatch)
         run: |
           DB_URL=$(gcloud secrets versions access latest \
             --secret=prod-database-url \
@@ -219,5 +211,11 @@ jobs:
             --command="/migrate" \
             --args="-direction,up" \
             --execute-now \
-            --wait \
-            || echo "Migration skipped or no new migrations"
+            --wait
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy toqui-backend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=us-central1 \
+            --project=toqui-prod
