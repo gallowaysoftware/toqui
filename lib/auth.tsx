@@ -47,7 +47,8 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isLoading: boolean;
-  login: (googleAuthCode: string) => Promise<void>;
+  login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
+  user: { id: string; email: string; name: string } | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
   setTokensManually: (access: string, refresh: string) => Promise<void>;
@@ -64,15 +65,22 @@ export function useAuth(): AuthState {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load persisted tokens on mount
   useEffect(() => {
     (async () => {
-      const at = await tokenStorage.get("toqui_access_token");
-      const rt = await tokenStorage.get("toqui_refresh_token");
+      const [at, rt, userJson] = await Promise.all([
+        tokenStorage.get("toqui_access_token"),
+        tokenStorage.get("toqui_refresh_token"),
+        tokenStorage.get("toqui_user"),
+      ]);
       if (at) setAccessToken(at);
       if (rt) setRefreshToken(rt);
+      if (userJson) {
+        try { setUser(JSON.parse(userJson)); } catch { /* ignore corrupt data */ }
+      }
       setIsLoading(false);
     })();
   }, []);
@@ -87,12 +95,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const login = useCallback(async (googleAuthCode: string) => {
+  const login = useCallback(async (googleAuthCode: string, redirectUri?: string) => {
     const transport = createConnectTransport({ baseUrl: API_URL });
     const client = createClient(AuthService, transport);
-    const res = await client.googleLogin({ code: googleAuthCode });
+    const res = await client.googleLogin({
+      code: googleAuthCode,
+      redirectUri: redirectUri ?? "",
+    });
     setAccessToken(res.accessToken);
     setRefreshToken(res.refreshToken);
+    if (res.user) {
+      const u = { id: res.user.id, email: res.user.email, name: res.user.name };
+      setUser(u);
+      await tokenStorage.set("toqui_user", JSON.stringify(u));
+    }
     await tokenStorage.set("toqui_access_token", res.accessToken);
     await tokenStorage.set("toqui_refresh_token", res.refreshToken);
   }, []);
@@ -123,8 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setAccessToken(null);
     setRefreshToken(null);
-    await tokenStorage.delete("toqui_access_token");
-    await tokenStorage.delete("toqui_refresh_token");
+    setUser(null);
+    await Promise.all([
+      tokenStorage.delete("toqui_access_token"),
+      tokenStorage.delete("toqui_refresh_token"),
+      tokenStorage.delete("toqui_user"),
+    ]);
   }, []);
 
   return (
@@ -132,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         accessToken,
         refreshToken,
+        user,
         isLoading,
         login,
         logout,
