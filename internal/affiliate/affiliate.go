@@ -12,6 +12,9 @@ const (
 	PartnerSkyscanner   Partner = "skyscanner"
 	PartnerBookingCom   Partner = "booking_com"
 	PartnerGetYourGuide Partner = "getyourguide"
+	PartnerViator       Partner = "viator"
+	PartnerDiscoverCars Partner = "discovercars"
+	PartnerSafetyWing   Partner = "safetywing"
 	PartnerGeneric      Partner = "generic"
 )
 
@@ -39,15 +42,31 @@ type LinkBuilder struct {
 	skyscannerID   string
 	bookingComID   string
 	getYourGuideID string
+	viatorID       string
+	discoverCarsID string
+	safetyWingID   string
+}
+
+// LinkBuilderConfig holds affiliate partner IDs for constructing a LinkBuilder.
+type LinkBuilderConfig struct {
+	SkyscannerID   string
+	BookingComID   string
+	GetYourGuideID string
+	ViatorID       string
+	DiscoverCarsID string
+	SafetyWingID   string
 }
 
 // NewLinkBuilder creates a LinkBuilder with the given partner IDs.
 // Empty IDs disable that partner's affiliate tracking (plain URLs are returned instead).
-func NewLinkBuilder(skyscannerID, bookingComID, getYourGuideID string) *LinkBuilder {
+func NewLinkBuilder(cfg LinkBuilderConfig) *LinkBuilder {
 	return &LinkBuilder{
-		skyscannerID:   skyscannerID,
-		bookingComID:   bookingComID,
-		getYourGuideID: getYourGuideID,
+		skyscannerID:   cfg.SkyscannerID,
+		bookingComID:   cfg.BookingComID,
+		getYourGuideID: cfg.GetYourGuideID,
+		viatorID:       cfg.ViatorID,
+		discoverCarsID: cfg.DiscoverCarsID,
+		safetyWingID:   cfg.SafetyWingID,
 	}
 }
 
@@ -90,6 +109,44 @@ func (b *LinkBuilder) ActivityURL(query string) string {
 	return "https://www.getyourguide.com/s/?" + params.Encode()
 }
 
+// ViatorActivityURL returns a Viator activity search URL with affiliate tracking.
+// query is a search term like "food tour Rome" or "snorkeling Bali".
+func (b *LinkBuilder) ViatorActivityURL(query string) string {
+	params := url.Values{}
+	params.Set("text", query)
+	if b.viatorID != "" {
+		params.Set("pid", b.viatorID)
+	}
+	return "https://www.viator.com/search/" + query + "?" + params.Encode()
+}
+
+// CarRentalURL returns a DiscoverCars car rental search URL with affiliate tracking.
+// location is the pickup city or airport. pickupDate and dropoffDate are YYYY-MM-DD format.
+func (b *LinkBuilder) CarRentalURL(location, pickupDate, dropoffDate string) string {
+	params := url.Values{}
+	params.Set("location", location)
+	if pickupDate != "" {
+		params.Set("pickup_date", pickupDate)
+	}
+	if dropoffDate != "" {
+		params.Set("dropoff_date", dropoffDate)
+	}
+	if b.discoverCarsID != "" {
+		params.Set("a_aid", b.discoverCarsID)
+	}
+	return "https://www.discovercars.com/?" + params.Encode()
+}
+
+// TravelInsuranceURL returns a SafetyWing travel insurance URL with affiliate tracking.
+// destination is the destination country or region.
+func (b *LinkBuilder) TravelInsuranceURL(destination string) string {
+	base := "https://safetywing.com/nomad-insurance"
+	if b.safetyWingID != "" {
+		return base + "?referenceID=" + url.QueryEscape(b.safetyWingID)
+	}
+	return base
+}
+
 // HasPartner returns true if the given partner has a configured affiliate ID.
 func (b *LinkBuilder) HasPartner(p Partner) bool {
 	switch p {
@@ -99,6 +156,12 @@ func (b *LinkBuilder) HasPartner(p Partner) bool {
 		return b.bookingComID != ""
 	case PartnerGetYourGuide:
 		return b.getYourGuideID != ""
+	case PartnerViator:
+		return b.viatorID != ""
+	case PartnerDiscoverCars:
+		return b.discoverCarsID != ""
+	case PartnerSafetyWing:
+		return b.safetyWingID != ""
 	default:
 		return false
 	}
@@ -113,6 +176,10 @@ func PartnerForCategory(category string) Partner {
 		return PartnerBookingCom
 	case "activity":
 		return PartnerGetYourGuide
+	case "car_rental":
+		return PartnerDiscoverCars
+	case "insurance":
+		return PartnerSafetyWing
 	default:
 		return PartnerGeneric
 	}

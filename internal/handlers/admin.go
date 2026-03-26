@@ -391,6 +391,64 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// HandleRevokeInvite handles POST /admin/revoke-invite — revokes an invite code.
+func (h *AdminHandler) HandleRevokeInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.queries.RevokeWaitlistInvite(r.Context(), req.Email); err != nil {
+		http.Error(w, "failed to revoke invite", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "revoked"})
+}
+
+// HandleDeleteWaitlistEntry handles POST /admin/delete-waitlist — removes an entry.
+func (h *AdminHandler) HandleDeleteWaitlistEntry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.queries.DeleteFromWaitlist(r.Context(), req.Email); err != nil {
+		http.Error(w, "failed to delete entry", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+}
+
 func parseInt(s string) int {
 	var n int
 	for _, c := range s {

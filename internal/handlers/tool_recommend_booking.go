@@ -41,9 +41,9 @@ func NewRecommendBookingTool(linkBuilder *affiliate.LinkBuilder, userTier tier.U
 }
 
 func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
-	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, or activities to book. Returns partner-linked search results with disclosure."
+	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns partner-linked search results with disclosure."
 	if t.userTier.IsPro() {
-		description = "Generate booking recommendations from the best available sources. Use when the user asks about flights, hotels, or activities to book. Returns search results from the best sources."
+		description = "Generate booking recommendations from the best available sources. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns search results from the best sources."
 	}
 
 	return ai.ToolDefinition{
@@ -54,7 +54,7 @@ func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
 			"properties": {
 				"category": {
 					"type": "string",
-					"enum": ["flight", "hotel", "activity"],
+					"enum": ["flight", "hotel", "activity", "car_rental", "insurance"],
 					"description": "Type of booking to recommend"
 				},
 				"query": {
@@ -161,6 +161,27 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		searchURL = t.linkBuilder.ActivityURL(query)
 		title = fmt.Sprintf("Search activities: %s", params.Query)
 		description = fmt.Sprintf("Discover tours, experiences, and activities: %s", params.Query)
+
+	case "car_rental":
+		location := params.Destination
+		if location == "" {
+			location = "your destination"
+		}
+		searchURL = t.linkBuilder.CarRentalURL(location, params.DateFrom, params.DateTo)
+		title = fmt.Sprintf("Search car rentals in %s", location)
+		description = fmt.Sprintf("Compare car rental prices and options in %s", location)
+		if params.DateFrom != "" && params.DateTo != "" {
+			description += fmt.Sprintf(" from %s to %s", params.DateFrom, params.DateTo)
+		}
+
+	case "insurance":
+		dest := params.Destination
+		if dest == "" {
+			dest = "your trip"
+		}
+		searchURL = t.linkBuilder.TravelInsuranceURL(dest)
+		title = fmt.Sprintf("Travel insurance for %s", dest)
+		description = fmt.Sprintf("Get travel medical insurance coverage for %s with SafetyWing Nomad Insurance", dest)
 
 	default:
 		// Fallback for unknown categories — should not happen given the enum constraint

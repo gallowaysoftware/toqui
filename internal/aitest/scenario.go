@@ -175,7 +175,7 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 			selectedTrips = append(selectedTrips, tripEventInfo{ID: id, Title: title, Description: desc})
 			mu.Unlock()
 		})
-		linkBuilder := affiliate.NewLinkBuilder("", "", "")
+		linkBuilder := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{})
 		recommendTool := handlers.NewRecommendBookingTool(linkBuilder, tier.Free, nil)
 		params.ExtraTools = []tools.Tool{createTool, selectTool, suggestExpertTool, recommendTool}
 		params.ExtraSystemContext = env.BuildSelectionContext(ctx, state.UserID)
@@ -227,7 +227,7 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 		params.ExtraTools = append(params.ExtraTools, suggestExpertTool)
 
 		// Booking recommendation tool (mirrors chat.go — free tier in tests)
-		linkBuilder := affiliate.NewLinkBuilder("", "", "")
+		linkBuilder := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{})
 		recommendTool := handlers.NewRecommendBookingTool(linkBuilder, tier.Free, nil)
 		params.ExtraTools = append(params.ExtraTools, recommendTool)
 	}

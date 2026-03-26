@@ -76,6 +76,15 @@ func (q *Queries) CountWaitlistAhead(ctx context.Context, signedUpAt time.Time) 
 	return count, err
 }
 
+const deleteFromWaitlist = `-- name: DeleteFromWaitlist :exec
+DELETE FROM waitlist WHERE email = $1
+`
+
+func (q *Queries) DeleteFromWaitlist(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, deleteFromWaitlist, email)
+	return err
+}
+
 const getWaitlistByEmail = `-- name: GetWaitlistByEmail :one
 SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at FROM waitlist WHERE email = $1
 `
@@ -182,6 +191,16 @@ WHERE email = $1
 
 func (q *Queries) MarkWaitlistAccepted(ctx context.Context, email string) error {
 	_, err := q.db.Exec(ctx, markWaitlistAccepted, email)
+	return err
+}
+
+const revokeWaitlistInvite = `-- name: RevokeWaitlistInvite :exec
+UPDATE waitlist SET invite_code = NULL, invited_at = NULL
+WHERE email = $1
+`
+
+func (q *Queries) RevokeWaitlistInvite(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, revokeWaitlistInvite, email)
 	return err
 }
 

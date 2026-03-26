@@ -6,7 +6,14 @@ import (
 )
 
 func TestNewLinkBuilder(t *testing.T) {
-	b := NewLinkBuilder("sky123", "book456", "gyg789")
+	b := NewLinkBuilder(LinkBuilderConfig{
+		SkyscannerID:   "sky123",
+		BookingComID:   "book456",
+		GetYourGuideID: "gyg789",
+		ViatorID:       "vtr101",
+		DiscoverCarsID: "dc202",
+		SafetyWingID:   "sw303",
+	})
 	if b.skyscannerID != "sky123" {
 		t.Errorf("expected skyscannerID %q, got %q", "sky123", b.skyscannerID)
 	}
@@ -16,10 +23,19 @@ func TestNewLinkBuilder(t *testing.T) {
 	if b.getYourGuideID != "gyg789" {
 		t.Errorf("expected getYourGuideID %q, got %q", "gyg789", b.getYourGuideID)
 	}
+	if b.viatorID != "vtr101" {
+		t.Errorf("expected viatorID %q, got %q", "vtr101", b.viatorID)
+	}
+	if b.discoverCarsID != "dc202" {
+		t.Errorf("expected discoverCarsID %q, got %q", "dc202", b.discoverCarsID)
+	}
+	if b.safetyWingID != "sw303" {
+		t.Errorf("expected safetyWingID %q, got %q", "sw303", b.safetyWingID)
+	}
 }
 
 func TestFlightSearchURL_WithAffiliateID(t *testing.T) {
-	b := NewLinkBuilder("sky123", "", "")
+	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
 	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15")
 
 	if !strings.Contains(u, "skyscanner.com/transport/flights/JFK/PRG/2026-06-15") {
@@ -31,7 +47,7 @@ func TestFlightSearchURL_WithAffiliateID(t *testing.T) {
 }
 
 func TestFlightSearchURL_WithoutAffiliateID(t *testing.T) {
-	b := NewLinkBuilder("", "", "")
+	b := NewLinkBuilder(LinkBuilderConfig{})
 	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15")
 
 	if !strings.Contains(u, "skyscanner.com/transport/flights/JFK/PRG/2026-06-15") {
@@ -43,7 +59,7 @@ func TestFlightSearchURL_WithoutAffiliateID(t *testing.T) {
 }
 
 func TestHotelSearchURL_WithAffiliateID(t *testing.T) {
-	b := NewLinkBuilder("", "book456", "")
+	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
 	u := b.HotelSearchURL("Prague", "2026-06-15", "2026-06-20")
 
 	if !strings.Contains(u, "booking.com/searchresults.html") {
@@ -64,7 +80,7 @@ func TestHotelSearchURL_WithAffiliateID(t *testing.T) {
 }
 
 func TestHotelSearchURL_WithoutAffiliateID(t *testing.T) {
-	b := NewLinkBuilder("", "", "")
+	b := NewLinkBuilder(LinkBuilderConfig{})
 	u := b.HotelSearchURL("Prague", "2026-06-15", "2026-06-20")
 
 	if !strings.Contains(u, "booking.com/searchresults.html") {
@@ -76,7 +92,7 @@ func TestHotelSearchURL_WithoutAffiliateID(t *testing.T) {
 }
 
 func TestHotelSearchURL_NoDates(t *testing.T) {
-	b := NewLinkBuilder("", "book456", "")
+	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
 	u := b.HotelSearchURL("Tokyo", "", "")
 
 	if !strings.Contains(u, "ss=Tokyo") {
@@ -91,7 +107,7 @@ func TestHotelSearchURL_NoDates(t *testing.T) {
 }
 
 func TestActivityURL_WithPartnerID(t *testing.T) {
-	b := NewLinkBuilder("", "", "gyg789")
+	b := NewLinkBuilder(LinkBuilderConfig{GetYourGuideID: "gyg789"})
 	u := b.ActivityURL("walking tour Prague")
 
 	if !strings.Contains(u, "getyourguide.com/s/") {
@@ -106,7 +122,7 @@ func TestActivityURL_WithPartnerID(t *testing.T) {
 }
 
 func TestActivityURL_WithoutPartnerID(t *testing.T) {
-	b := NewLinkBuilder("", "", "")
+	b := NewLinkBuilder(LinkBuilderConfig{})
 	u := b.ActivityURL("cooking class Tokyo")
 
 	if !strings.Contains(u, "getyourguide.com/s/") {
@@ -117,8 +133,108 @@ func TestActivityURL_WithoutPartnerID(t *testing.T) {
 	}
 }
 
+func TestViatorActivityURL_WithPartnerID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{ViatorID: "vtr101"})
+	u := b.ViatorActivityURL("food tour Rome")
+
+	if !strings.Contains(u, "viator.com/search/") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if !strings.Contains(u, "pid=vtr101") {
+		t.Errorf("expected partner ID in URL: %s", u)
+	}
+}
+
+func TestViatorActivityURL_WithoutPartnerID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.ViatorActivityURL("snorkeling Bali")
+
+	if !strings.Contains(u, "viator.com/search/") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if strings.Contains(u, "pid=") {
+		t.Errorf("should not contain pid when empty: %s", u)
+	}
+}
+
+func TestCarRentalURL_WithAffiliateID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{DiscoverCarsID: "dc202"})
+	u := b.CarRentalURL("Lisbon", "2026-07-01", "2026-07-10")
+
+	if !strings.Contains(u, "discovercars.com") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if !strings.Contains(u, "location=Lisbon") {
+		t.Errorf("expected location in URL: %s", u)
+	}
+	if !strings.Contains(u, "pickup_date=2026-07-01") {
+		t.Errorf("expected pickup date in URL: %s", u)
+	}
+	if !strings.Contains(u, "dropoff_date=2026-07-10") {
+		t.Errorf("expected dropoff date in URL: %s", u)
+	}
+	if !strings.Contains(u, "a_aid=dc202") {
+		t.Errorf("expected affiliate ID in URL: %s", u)
+	}
+}
+
+func TestCarRentalURL_WithoutAffiliateID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.CarRentalURL("Lisbon", "2026-07-01", "2026-07-10")
+
+	if !strings.Contains(u, "discovercars.com") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if strings.Contains(u, "a_aid=") {
+		t.Errorf("should not contain affiliate param when ID is empty: %s", u)
+	}
+}
+
+func TestCarRentalURL_NoDates(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{DiscoverCarsID: "dc202"})
+	u := b.CarRentalURL("Tokyo", "", "")
+
+	if !strings.Contains(u, "location=Tokyo") {
+		t.Errorf("expected location in URL: %s", u)
+	}
+	if strings.Contains(u, "pickup_date=") {
+		t.Errorf("should not contain pickup_date when empty: %s", u)
+	}
+	if strings.Contains(u, "dropoff_date=") {
+		t.Errorf("should not contain dropoff_date when empty: %s", u)
+	}
+}
+
+func TestTravelInsuranceURL_WithReferenceID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SafetyWingID: "sw303"})
+	u := b.TravelInsuranceURL("Japan")
+
+	if !strings.Contains(u, "safetywing.com/nomad-insurance") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if !strings.Contains(u, "referenceID=sw303") {
+		t.Errorf("expected reference ID in URL: %s", u)
+	}
+}
+
+func TestTravelInsuranceURL_WithoutReferenceID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.TravelInsuranceURL("Japan")
+
+	if !strings.Contains(u, "safetywing.com/nomad-insurance") {
+		t.Errorf("unexpected URL structure: %s", u)
+	}
+	if strings.Contains(u, "referenceID") {
+		t.Errorf("should not contain referenceID when empty: %s", u)
+	}
+}
+
 func TestHasPartner(t *testing.T) {
-	b := NewLinkBuilder("sky123", "", "gyg789")
+	b := NewLinkBuilder(LinkBuilderConfig{
+		SkyscannerID:   "sky123",
+		GetYourGuideID: "gyg789",
+		DiscoverCarsID: "dc202",
+	})
 
 	tests := []struct {
 		partner Partner
@@ -127,6 +243,9 @@ func TestHasPartner(t *testing.T) {
 		{PartnerSkyscanner, true},
 		{PartnerBookingCom, false},
 		{PartnerGetYourGuide, true},
+		{PartnerViator, false},
+		{PartnerDiscoverCars, true},
+		{PartnerSafetyWing, false},
 		{PartnerGeneric, false},
 	}
 
@@ -146,6 +265,8 @@ func TestPartnerForCategory(t *testing.T) {
 		{"flight", PartnerSkyscanner},
 		{"hotel", PartnerBookingCom},
 		{"activity", PartnerGetYourGuide},
+		{"car_rental", PartnerDiscoverCars},
+		{"insurance", PartnerSafetyWing},
 		{"restaurant", PartnerGeneric},
 		{"unknown", PartnerGeneric},
 		{"", PartnerGeneric},

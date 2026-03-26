@@ -306,6 +306,8 @@ func main() {
 	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
 	mux.HandleFunc("/admin/invite", adminHandler.HandleGenerateInvite)
 	mux.HandleFunc("/admin/send-invite", adminHandler.HandleSendInvite)
+	mux.HandleFunc("/admin/revoke-invite", adminHandler.HandleRevokeInvite)
+	mux.HandleFunc("/admin/delete-waitlist", adminHandler.HandleDeleteWaitlistEntry)
 	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
 
 	// Email ingestion webhook (outside ConnectRPC)

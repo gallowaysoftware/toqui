@@ -41,3 +41,10 @@ SELECT COUNT(*) FROM waitlist WHERE verified_at IS NOT NULL;
 -- name: SetWaitlistInviteCode :exec
 UPDATE waitlist SET invite_code = sqlc.arg(invite_code), invited_at = NOW()
 WHERE email = sqlc.arg(email);
+
+-- name: RevokeWaitlistInvite :exec
+UPDATE waitlist SET invite_code = NULL, invited_at = NULL
+WHERE email = sqlc.arg(email);
+
+-- name: DeleteFromWaitlist :exec
+DELETE FROM waitlist WHERE email = sqlc.arg(email);
