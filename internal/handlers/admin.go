@@ -16,6 +16,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/email"
 )
 
 // AdminHandler serves internal admin endpoints.
@@ -24,14 +25,18 @@ type AdminHandler struct {
 	authSvc     *auth.Service
 	queries     *dbgen.Queries
 	adminEmails []string
+	emailSvc    *email.Sender
+	appURL      string
 }
 
 // NewAdminHandler creates a new AdminHandler.
-func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []string) *AdminHandler {
+func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []string, emailSvc *email.Sender, appURL string) *AdminHandler {
 	return &AdminHandler{
 		authSvc:     authSvc,
 		queries:     dbgen.New(pool),
 		adminEmails: adminEmails,
+		emailSvc:    emailSvc,
+		appURL:      appURL,
 	}
 }
 
@@ -48,7 +53,7 @@ func (h *AdminHandler) authenticateAdmin(r *http.Request) (uuid.UUID, error) {
 	}
 
 	if !isEmailAllowListed(user.Email, h.adminEmails) {
-		slog.Warn("admin access denied", "email", user.Email, "user_id", userID)
+		slog.Warn("admin access denied", "email", user.Email, "user_id", userID, "admin_list", h.adminEmails)
 		return uuid.Nil, errForbidden
 	}
 
@@ -300,6 +305,90 @@ func parsePagination(r *http.Request, defaultSize, maxSize int) (int, int) {
 		}
 	}
 	return size, offset
+}
+
+// HandleSendInvite handles POST /admin/send-invite — creates waitlist entry + invite code + sends email.
+// This is the one-step "invite a friend" flow: enter an email, they get an invite.
+func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	adminID, err := h.authenticateAdmin(r)
+	if err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	ctx := r.Context()
+
+	// Generate invite code
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	code := strings.ToUpper(hex.EncodeToString(b))
+
+	// Create waitlist entry if not exists (auto-verified since admin is inviting)
+	token := hex.EncodeToString(make([]byte, 16))
+	rand.Read([]byte(token))
+	verifyToken := pgtype.Text{String: token, Valid: true}
+	_, addErr := h.queries.AddToWaitlist(ctx, dbgen.AddToWaitlistParams{
+		Email:       req.Email,
+		VerifyToken: verifyToken,
+	})
+	if addErr != nil {
+		// Already on waitlist — that's fine, continue
+		slog.Debug("invite: email already on waitlist", "email", req.Email)
+	}
+
+	// Auto-verify the entry (admin-invited users skip email verification)
+	_, _ = h.queries.VerifyWaitlistEmail(ctx, verifyToken)
+
+	// Set the invite code
+	if err := h.queries.SetWaitlistInviteCode(ctx, dbgen.SetWaitlistInviteCodeParams{
+		InviteCode: pgtype.Text{String: code, Valid: true},
+		Email:      req.Email,
+	}); err != nil {
+		slog.Error("admin send invite: set code failed", "error", err, "email", req.Email)
+		http.Error(w, "failed to set invite code", http.StatusInternalServerError)
+		return
+	}
+
+	// Send invite email
+	emailSent := false
+	if h.emailSvc != nil {
+		if sendErr := h.emailSvc.SendInvite(req.Email, code, h.appURL); sendErr != nil {
+			slog.Error("admin send invite: email failed", "error", sendErr, "email", req.Email)
+		} else {
+			emailSent = true
+		}
+	}
+
+	audit.Log(audit.EventAdminInvite,
+		"admin_id", adminID.String(),
+		"email", req.Email,
+		"invite_code", code,
+		"email_sent", emailSent,
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"email":       req.Email,
+		"invite_code": code,
+		"email_sent":  emailSent,
+	})
 }
 
 func parseInt(s string) int {

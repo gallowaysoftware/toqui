@@ -53,6 +53,27 @@ func (s *Sender) Send(to, subject, body string) error {
 	return nil
 }
 
+// SendInvite sends an invite email with a link to sign up.
+func (s *Sender) SendInvite(to, inviteCode, appURL string) error {
+	subject := "You're invited to Toqui!"
+	body := fmt.Sprintf(`You've been invited to try Toqui — your AI travel companion!
+
+Use your personal invite code to get started:
+
+    %s
+
+Or click this link to sign up directly:
+
+%s/waitlist?invite_code=%s
+
+See you on the road!
+
+— The Toqui Team
+https://toqui.travel`, inviteCode, appURL, inviteCode)
+
+	return s.Send(to, subject, body)
+}
+
 // SendVerification sends a waitlist verification email.
 func (s *Sender) SendVerification(to, verifyURL string) error {
 	subject := "Verify your Toqui waitlist signup"

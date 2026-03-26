@@ -300,11 +300,12 @@ func main() {
 	})
 
 	// Admin endpoints (authenticated + admin email check)
-	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails)
+	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
 	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
 	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
 	mux.HandleFunc("/admin/invite", adminHandler.HandleGenerateInvite)
+	mux.HandleFunc("/admin/send-invite", adminHandler.HandleSendInvite)
 	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
 
 	// Email ingestion webhook (outside ConnectRPC)
