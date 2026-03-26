@@ -48,15 +48,38 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 
 func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	state := generateState()
+
+	// Set Domain so the cookie is available on the callback subdomain (api.*).
+	domain := ""
+	if h.secureCookies {
+		domain = ".toqui.travel"
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
 		Path:     "/",
+		Domain:   domain,
 		MaxAge:   300,
 		HttpOnly: true,
 		Secure:   h.secureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
+
+	// If a return URL is requested (e.g. admin), store it in a cookie.
+	if ret := r.URL.Query().Get("return"); ret == "admin" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "oauth_return",
+			Value:    "admin",
+			Path:     "/",
+			Domain:   domain,
+			MaxAge:   300,
+			HttpOnly: true,
+			Secure:   h.secureCookies,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	http.Redirect(w, r, h.authSvc.AuthCodeURL(state), http.StatusTemporaryRedirect)
 }
 
@@ -227,6 +250,19 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
 	auth.SetOAuthResultCookie(w, string(resultJSON), h.secureCookies)
+
+	// If the login was initiated from admin, redirect back there after auth.
+	if c, err := r.Cookie("oauth_return"); err == nil && c.Value == "admin" {
+		// Clear the return cookie.
+		http.SetCookie(w, &http.Cookie{Name: "oauth_return", Value: "", Path: "/", Domain: func() string {
+			if h.secureCookies {
+				return ".toqui.travel"
+			}
+			return ""
+		}(), MaxAge: -1})
+		http.Redirect(w, r, "https://admin.toqui.travel/admin-ui/", http.StatusTemporaryRedirect)
+		return
+	}
 	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
 
