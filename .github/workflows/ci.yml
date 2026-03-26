@@ -115,7 +115,7 @@ jobs:
     environment: production
 
     env:
-      IMAGE: us-central1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
+      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +130,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker auth
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
 
       - name: Build and push
         run: |
@@ -146,5 +146,5 @@ jobs:
         run: |
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
+            --region=northamerica-northeast1 \
             --project=toqui-prod
