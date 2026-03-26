@@ -1,6 +1,6 @@
 -- name: AddToWaitlist :one
-INSERT INTO waitlist (email)
-VALUES (sqlc.arg(email))
+INSERT INTO waitlist (email, verify_token)
+VALUES (sqlc.arg(email), sqlc.arg(verify_token))
 ON CONFLICT (email) DO NOTHING
 RETURNING *;
 
@@ -13,7 +13,16 @@ SELECT * FROM waitlist WHERE invite_code = sqlc.arg(invite_code);
 -- name: CountWaitlistAhead :one
 SELECT COUNT(*) FROM waitlist
 WHERE signed_up_at < sqlc.arg(signed_up_at)
-AND accepted_at IS NULL;
+AND accepted_at IS NULL
+AND verified_at IS NOT NULL;
+
+-- name: VerifyWaitlistEmail :one
+UPDATE waitlist SET verified_at = NOW()
+WHERE verify_token = sqlc.arg(verify_token) AND verified_at IS NULL
+RETURNING *;
+
+-- name: GetWaitlistByVerifyToken :one
+SELECT * FROM waitlist WHERE verify_token = sqlc.arg(verify_token);
 
 -- name: CountUsers :one
 SELECT COUNT(*) FROM users;
@@ -27,7 +36,7 @@ SELECT * FROM waitlist ORDER BY signed_up_at ASC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- name: CountWaitlist :one
-SELECT COUNT(*) FROM waitlist;
+SELECT COUNT(*) FROM waitlist WHERE verified_at IS NOT NULL;
 
 -- name: SetWaitlistInviteCode :exec
 UPDATE waitlist SET invite_code = sqlc.arg(invite_code), invited_at = NOW()

@@ -13,14 +13,19 @@ import (
 )
 
 const addToWaitlist = `-- name: AddToWaitlist :one
-INSERT INTO waitlist (email)
-VALUES ($1)
+INSERT INTO waitlist (email, verify_token)
+VALUES ($1, $2)
 ON CONFLICT (email) DO NOTHING
-RETURNING id, email, invite_code, signed_up_at, invited_at, accepted_at
+RETURNING id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at
 `
 
-func (q *Queries) AddToWaitlist(ctx context.Context, email string) (Waitlist, error) {
-	row := q.db.QueryRow(ctx, addToWaitlist, email)
+type AddToWaitlistParams struct {
+	Email       string      `json:"email"`
+	VerifyToken pgtype.Text `json:"verify_token"`
+}
+
+func (q *Queries) AddToWaitlist(ctx context.Context, arg AddToWaitlistParams) (Waitlist, error) {
+	row := q.db.QueryRow(ctx, addToWaitlist, arg.Email, arg.VerifyToken)
 	var i Waitlist
 	err := row.Scan(
 		&i.ID,
@@ -29,6 +34,8 @@ func (q *Queries) AddToWaitlist(ctx context.Context, email string) (Waitlist, er
 		&i.SignedUpAt,
 		&i.InvitedAt,
 		&i.AcceptedAt,
+		&i.VerifyToken,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
@@ -45,7 +52,7 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const countWaitlist = `-- name: CountWaitlist :one
-SELECT COUNT(*) FROM waitlist
+SELECT COUNT(*) FROM waitlist WHERE verified_at IS NOT NULL
 `
 
 func (q *Queries) CountWaitlist(ctx context.Context) (int64, error) {
@@ -59,6 +66,7 @@ const countWaitlistAhead = `-- name: CountWaitlistAhead :one
 SELECT COUNT(*) FROM waitlist
 WHERE signed_up_at < $1
 AND accepted_at IS NULL
+AND verified_at IS NOT NULL
 `
 
 func (q *Queries) CountWaitlistAhead(ctx context.Context, signedUpAt time.Time) (int64, error) {
@@ -69,7 +77,7 @@ func (q *Queries) CountWaitlistAhead(ctx context.Context, signedUpAt time.Time) 
 }
 
 const getWaitlistByEmail = `-- name: GetWaitlistByEmail :one
-SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at FROM waitlist WHERE email = $1
+SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at FROM waitlist WHERE email = $1
 `
 
 func (q *Queries) GetWaitlistByEmail(ctx context.Context, email string) (Waitlist, error) {
@@ -82,12 +90,14 @@ func (q *Queries) GetWaitlistByEmail(ctx context.Context, email string) (Waitlis
 		&i.SignedUpAt,
 		&i.InvitedAt,
 		&i.AcceptedAt,
+		&i.VerifyToken,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
 
 const getWaitlistByInviteCode = `-- name: GetWaitlistByInviteCode :one
-SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at FROM waitlist WHERE invite_code = $1
+SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at FROM waitlist WHERE invite_code = $1
 `
 
 func (q *Queries) GetWaitlistByInviteCode(ctx context.Context, inviteCode pgtype.Text) (Waitlist, error) {
@@ -100,12 +110,34 @@ func (q *Queries) GetWaitlistByInviteCode(ctx context.Context, inviteCode pgtype
 		&i.SignedUpAt,
 		&i.InvitedAt,
 		&i.AcceptedAt,
+		&i.VerifyToken,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
+const getWaitlistByVerifyToken = `-- name: GetWaitlistByVerifyToken :one
+SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at FROM waitlist WHERE verify_token = $1
+`
+
+func (q *Queries) GetWaitlistByVerifyToken(ctx context.Context, verifyToken pgtype.Text) (Waitlist, error) {
+	row := q.db.QueryRow(ctx, getWaitlistByVerifyToken, verifyToken)
+	var i Waitlist
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.InviteCode,
+		&i.SignedUpAt,
+		&i.InvitedAt,
+		&i.AcceptedAt,
+		&i.VerifyToken,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
 
 const listWaitlist = `-- name: ListWaitlist :many
-SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at FROM waitlist ORDER BY signed_up_at ASC
+SELECT id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at FROM waitlist ORDER BY signed_up_at ASC
 LIMIT $2 OFFSET $1
 `
 
@@ -130,6 +162,8 @@ func (q *Queries) ListWaitlist(ctx context.Context, arg ListWaitlistParams) ([]W
 			&i.SignedUpAt,
 			&i.InvitedAt,
 			&i.AcceptedAt,
+			&i.VerifyToken,
+			&i.VerifiedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -164,4 +198,26 @@ type SetWaitlistInviteCodeParams struct {
 func (q *Queries) SetWaitlistInviteCode(ctx context.Context, arg SetWaitlistInviteCodeParams) error {
 	_, err := q.db.Exec(ctx, setWaitlistInviteCode, arg.InviteCode, arg.Email)
 	return err
+}
+
+const verifyWaitlistEmail = `-- name: VerifyWaitlistEmail :one
+UPDATE waitlist SET verified_at = NOW()
+WHERE verify_token = $1 AND verified_at IS NULL
+RETURNING id, email, invite_code, signed_up_at, invited_at, accepted_at, verify_token, verified_at
+`
+
+func (q *Queries) VerifyWaitlistEmail(ctx context.Context, verifyToken pgtype.Text) (Waitlist, error) {
+	row := q.db.QueryRow(ctx, verifyWaitlistEmail, verifyToken)
+	var i Waitlist
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.InviteCode,
+		&i.SignedUpAt,
+		&i.InvitedAt,
+		&i.AcceptedAt,
+		&i.VerifyToken,
+		&i.VerifiedAt,
+	)
+	return i, err
 }

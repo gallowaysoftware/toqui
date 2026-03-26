@@ -78,6 +78,13 @@ type Config struct {
 	HelcimAPIToken    string
 	TripProPriceCents int // Default 1200 ($12.00 CAD)
 
+	// SMTP (Google Workspace) for transactional emails
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
 	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
@@ -127,6 +134,11 @@ func Load() (*Config, error) {
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		AllowedEmails:            parseCSVEnv("ALLOWED_EMAILS"),
 		AdminEmails:              parseCSVEnv("ADMIN_EMAILS"),
+		SMTPHost:                 getEnv("SMTP_HOST", "smtp.gmail.com"),
+		SMTPPort:                 getEnv("SMTP_PORT", "587"),
+		SMTPUsername:             os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:             os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:                 getEnv("SMTP_FROM", "Toqui <hello@toqui.travel>"),
 		HelcimAPIToken:           os.Getenv("HELCIM_API_TOKEN"),
 		TripProPriceCents:        getEnvInt("TRIP_PRO_PRICE_CENTS", 1200),
 		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),

@@ -175,10 +175,12 @@ type User struct {
 }
 
 type Waitlist struct {
-	ID         uuid.UUID          `json:"id"`
-	Email      string             `json:"email"`
-	InviteCode pgtype.Text        `json:"invite_code"`
-	SignedUpAt time.Time          `json:"signed_up_at"`
-	InvitedAt  pgtype.Timestamptz `json:"invited_at"`
-	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
+	ID          uuid.UUID          `json:"id"`
+	Email       string             `json:"email"`
+	InviteCode  pgtype.Text        `json:"invite_code"`
+	SignedUpAt  time.Time          `json:"signed_up_at"`
+	InvitedAt   pgtype.Timestamptz `json:"invited_at"`
+	AcceptedAt  pgtype.Timestamptz `json:"accepted_at"`
+	VerifyToken pgtype.Text        `json:"verify_token"`
+	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
 }

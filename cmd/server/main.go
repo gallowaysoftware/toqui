@@ -30,6 +30,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/csrf"
 	"github.com/gallowaysoftware/toqui-backend/internal/db"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/email"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
@@ -204,7 +205,19 @@ func main() {
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter)
-	waitlistHandler := handlers.NewWaitlistHandler(pool)
+	// Email sender for transactional emails (verification, etc.)
+	var emailSender *email.Sender
+	if cfg.SMTPUsername != "" && cfg.SMTPPassword != "" {
+		emailSender = email.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword, cfg.SMTPFrom)
+	} else if cfg.TargetEnv != "local" {
+		slog.Warn("SMTP not configured — waitlist verification emails will be skipped")
+	}
+
+	apiBaseURL := "https://api.toqui.travel"
+	if cfg.TargetEnv == "local" {
+		apiBaseURL = "http://localhost:" + cfg.Port
+	}
+	waitlistHandler := handlers.NewWaitlistHandler(pool, emailSender, apiBaseURL)
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
 	// Shared trip handler (public + authenticated routes)
@@ -255,6 +268,7 @@ func main() {
 
 	// Waitlist routes (public, no auth)
 	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)
+	mux.HandleFunc("/waitlist/verify", waitlistHandler.HandleVerify)
 	mux.HandleFunc("/waitlist/status", waitlistHandler.HandleStatus)
 
 	// Usage route (authenticated via Bearer token)
