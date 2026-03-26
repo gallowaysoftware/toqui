@@ -204,6 +204,9 @@ func main() {
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
+	if cfg.TargetEnv != "local" {
+		auth.SetAuthCookieDomain(".toqui.travel")
+	}
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter)
 	// Email sender for transactional emails (verification, etc.)
 	var emailSender *email.Sender

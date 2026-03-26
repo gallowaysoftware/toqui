@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Toqui Admin</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
     :root { --pico-primary: #E8654A; --pico-primary-hover: #d4573f; }
     body { max-width: 960px; margin: 0 auto; padding: 1rem 1.5rem; }
@@ -38,14 +38,14 @@
   </div>
 
   <!-- Auth gate (shown if not admin) -->
-  <div id="auth-gate" class="hidden">
+  <div id="auth-gate" style="display:none">
     <h2>Toqui Admin</h2>
     <p>You must be signed in as an admin to access this panel.</p>
     <a href="/auth/google/login?redirect=admin" role="button">Sign in with Google</a>
   </div>
 
   <!-- Main app (shown after auth) -->
-  <div id="app" class="hidden">
+  <div id="app" style="display:none">
     <header>
       <div>
         <h1>Toqui Admin</h1>
@@ -112,15 +112,15 @@
     }
 
     function showAuthGate() {
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('app').classList.add('hidden');
-      document.getElementById('auth-gate').classList.remove('hidden');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('auth-gate').style.display = '';
     }
 
     function showApp() {
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('auth-gate').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('app').style.display = '';
     }
 
     // Tab switching

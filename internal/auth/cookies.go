@@ -74,11 +74,19 @@ func OAuthResultFromCookies(r *http.Request) string {
 // Web browsers use these cookies for authentication; the cookie-to-header
 // middleware translates them into Authorization: Bearer headers for handlers.
 // Native apps bypass cookies and set Authorization headers directly.
+// SetAuthCookieDomain sets the domain for auth cookies. Must be called at
+// startup. Empty string = host-only cookies (local dev). ".toqui.travel" for
+// prod so cookies work across api/app/admin subdomains.
+var cookieDomain string
+
+func SetAuthCookieDomain(domain string) { cookieDomain = domain }
+
 func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     AccessTokenCookie,
 		Value:    accessToken,
 		Path:     "/",
+		Domain:   cookieDomain,
 		MaxAge:   accessTokenMaxAge,
 		HttpOnly: true,
 		Secure:   secure,
@@ -87,7 +95,8 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, sec
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshTokenCookie,
 		Value:    refreshToken,
-		Path:     "/auth",
+		Path:     "/",
+		Domain:   cookieDomain,
 		MaxAge:   refreshTokenMaxAge,
 		HttpOnly: true,
 		Secure:   secure,
@@ -101,6 +110,7 @@ func ClearAuthCookies(w http.ResponseWriter, secure bool) {
 		Name:     AccessTokenCookie,
 		Value:    "",
 		Path:     "/",
+		Domain:   cookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   secure,
@@ -109,7 +119,8 @@ func ClearAuthCookies(w http.ResponseWriter, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshTokenCookie,
 		Value:    "",
-		Path:     "/auth",
+		Path:     "/",
+		Domain:   cookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   secure,
