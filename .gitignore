@@ -2,13 +2,15 @@
 node_modules/
 .pnpm-store/
 
-# next.js
-.next/
-out/
+# expo
+.expo/
+dist/
+web-build/
+ios/
+android/
 
 # production
 build/
-dist/
 
 # env files
 .env*.local
@@ -24,4 +26,3 @@ Thumbs.db
 
 # misc
 *.tsbuildinfo
-next-env.d.ts
