@@ -190,6 +190,12 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Always mark waitlist as accepted when the user successfully signs up,
+	// regardless of whether capacity check was needed.
+	if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil && !errors.Is(markErr, pgx.ErrNoRows) {
+		slog.Error("mark waitlist accepted on signup failed", "email", maskEmail(info.Email), "error", markErr)
+	}
+
 	user, err := h.queries.UpsertUserByGoogleID(r.Context(), dbgen.UpsertUserByGoogleIDParams{
 		GoogleID:  info.ID,
 		Email:     info.Email,
