@@ -173,7 +173,7 @@ jobs:
     environment: production
 
     env:
-      IMAGE: us-central1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
+      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
 
     steps:
       - uses: actions/checkout@v4
@@ -188,7 +188,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker auth
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
 
       - name: Build and push
         run: |
@@ -203,10 +203,10 @@ jobs:
             --project=toqui-prod)
           gcloud run jobs deploy toqui-migrate \
             --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
+            --region=northamerica-northeast1 \
             --project=toqui-prod \
             --service-account=toqui-run-toqui-backend@toqui-prod.iam.gserviceaccount.com \
-            --add-cloudsql-instances=toqui-prod:us-central1:toqui-db \
+            --add-cloudsql-instances=toqui-prod:northamerica-northeast1:toqui-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
             --command="/migrate" \
             --args="-direction,up" \
@@ -217,5 +217,5 @@ jobs:
         run: |
           gcloud run deploy toqui-backend \
             --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
+            --region=northamerica-northeast1 \
             --project=toqui-prod
