@@ -208,12 +208,12 @@ func main() {
 		auth.SetAuthCookieDomain(".toqui.travel")
 	}
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter)
-	// Email sender for transactional emails (verification, etc.)
+	// Email sender for transactional emails (verification, invites, etc.)
 	var emailSender *email.Sender
-	if cfg.SMTPUsername != "" && cfg.SMTPPassword != "" {
-		emailSender = email.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword, cfg.SMTPFrom)
+	if cfg.ResendAPIKey != "" {
+		emailSender = email.NewSender(cfg.ResendAPIKey, cfg.EmailFrom)
 	} else if cfg.TargetEnv != "local" {
-		slog.Warn("SMTP not configured — waitlist verification emails will be skipped")
+		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
 
 	apiBaseURL := "https://api.toqui.travel"

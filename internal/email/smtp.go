@@ -1,52 +1,66 @@
-// Package email provides transactional email sending via SMTP.
+// Package email provides transactional email sending via Resend API.
 package email
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
-	"net/smtp"
-	"strings"
+	"net/http"
+	"time"
 )
 
-// Sender sends transactional emails via SMTP.
+// Sender sends transactional emails via Resend.
 type Sender struct {
-	host     string
-	port     string
-	username string
-	password string
-	from     string
+	apiKey string
+	from   string
+	client *http.Client
 }
 
-// NewSender creates a new SMTP email sender.
-// For Google Workspace: host=smtp.gmail.com, port=587, username=hello@toqui.travel, password=app-password.
-func NewSender(host, port, username, password, from string) *Sender {
+// NewSender creates a new Resend email sender.
+func NewSender(apiKey, from string) *Sender {
 	return &Sender{
-		host:     host,
-		port:     port,
-		username: username,
-		password: password,
-		from:     from,
+		apiKey: apiKey,
+		from:   from,
+		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-// Send sends a plain-text email.
+type resendRequest struct {
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Subject string `json:"subject"`
+	Text    string `json:"text"`
+}
+
+// Send sends a plain-text email via Resend.
 func (s *Sender) Send(to, subject, body string) error {
-	auth := smtp.PlainAuth("", s.username, s.password, s.host)
+	payload, _ := json.Marshal(resendRequest{
+		From:    s.from,
+		To:      to,
+		Subject: subject,
+		Text:    body,
+	})
 
-	msg := strings.Join([]string{
-		"From: " + s.from,
-		"To: " + to,
-		"Subject: " + subject,
-		"MIME-Version: 1.0",
-		"Content-Type: text/plain; charset=UTF-8",
-		"",
-		body,
-	}, "\r\n")
+	req, err := http.NewRequest(http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-	addr := s.host + ":" + s.port
-	if err := smtp.SendMail(addr, auth, s.from, []string{to}, []byte(msg)); err != nil {
+	resp, err := s.client.Do(req)
+	if err != nil {
 		slog.Error("email send failed", "to", to, "subject", subject, "error", err)
 		return fmt.Errorf("send email: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		slog.Error("email send failed", "to", to, "subject", subject, "status", resp.StatusCode, "body", string(respBody))
+		return fmt.Errorf("resend API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	slog.Info("email sent", "to", to, "subject", subject)
