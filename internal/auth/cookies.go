@@ -95,7 +95,7 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, sec
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshTokenCookie,
 		Value:    refreshToken,
-		Path:     "/",
+		Path:     "/auth",
 		Domain:   cookieDomain,
 		MaxAge:   refreshTokenMaxAge,
 		HttpOnly: true,
@@ -119,7 +119,7 @@ func ClearAuthCookies(w http.ResponseWriter, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshTokenCookie,
 		Value:    "",
-		Path:     "/",
+		Path:     "/auth",
 		Domain:   cookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,

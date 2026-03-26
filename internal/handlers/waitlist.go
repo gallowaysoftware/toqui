@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -184,7 +185,7 @@ func (h *WaitlistHandler) HandleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect to the app's waitlist page with their email
-	redirectURL := "https://app.toqui.travel/waitlist?email=" + existing.Email + "&verified=true"
+	redirectURL := "https://app.toqui.travel/waitlist?email=" + url.QueryEscape(existing.Email) + "&verified=true"
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
