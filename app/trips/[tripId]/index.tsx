@@ -1,9 +1,12 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays } from "lucide-react-native";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
+import { ItineraryMap } from "@/components/map/ItineraryMap";
+import { exportItineraryPDF } from "@/lib/export/pdf-export";
+import { exportItineraryICal } from "@/lib/export/calendar-export";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 
 export default function TripDetailScreen() {
@@ -64,7 +67,28 @@ export default function TripDetailScreen() {
           </Pressable>
         </View>
 
-        {itinerary && <ItineraryTimeline itinerary={itinerary} />}
+        {itinerary && trip && (
+          <>
+            <View style={styles.exportRow}>
+              <Pressable
+                style={styles.exportButton}
+                onPress={() => exportItineraryPDF(trip, itinerary)}
+              >
+                <FileText color="#e8654a" size={16} />
+                <Text style={styles.exportText}>Export PDF</Text>
+              </Pressable>
+              <Pressable
+                style={styles.exportButton}
+                onPress={() => exportItineraryICal(trip, itinerary)}
+              >
+                <CalendarDays color="#e8654a" size={16} />
+                <Text style={styles.exportText}>Export Calendar</Text>
+              </Pressable>
+            </View>
+            <ItineraryMap itinerary={itinerary} />
+            <ItineraryTimeline itinerary={itinerary} />
+          </>
+        )}
 
         {isPlannable && (
           <Pressable
@@ -122,4 +146,18 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
   },
   statusButtonText: { fontSize: 16, fontWeight: "600", color: "#333" },
+  exportRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  exportButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: 10,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  exportText: { fontSize: 13, fontWeight: "500", color: "#e8654a" },
 });
