@@ -144,7 +144,20 @@
       catch{r.textContent='Failed.';r.style.color='red'}
     }
 
-    (async()=>{try{await api('/admin/stats');showApp()}catch(e){console.error('init failed',e);showAuthGate()}})();
+    (async()=>{
+      const el=document.getElementById('loading');
+      try{
+        el.textContent='Checking auth...';
+        const res=await fetch(API+'/admin/stats',{credentials:'include'});
+        el.textContent='Got response: '+res.status;
+        if(res.status===401||res.status===403){showAuthGate();return}
+        const data=await res.json();
+        showApp();
+      }catch(e){
+        el.textContent='Error: '+e.message;
+        showAuthGate();
+      }
+    })();
   </script>
 </body>
 </html>
