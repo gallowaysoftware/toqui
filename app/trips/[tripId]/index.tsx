@@ -2,11 +2,14 @@ import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { MessageCircle, Calendar, Settings, Play, CheckCircle } from "lucide-react-native";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
+import { useItinerary } from "@/lib/hooks/useItinerary";
+import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 
 export default function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, isLoading } = useTrip(tripId!);
+  const { itinerary } = useItinerary(tripId!);
   const updateTrip = useUpdateTrip();
   const router = useRouter();
 
@@ -60,6 +63,8 @@ export default function TripDetailScreen() {
             <Text style={styles.actionText}>Settings</Text>
           </Pressable>
         </View>
+
+        {itinerary && <ItineraryTimeline itinerary={itinerary} />}
 
         {isPlannable && (
           <Pressable

@@ -4,15 +4,17 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
+import { useTheme } from "@/lib/theme";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { user, logout, accessToken } = useAuth();
   const transport = useTransport();
+  const { colors, mode, setMode, isDark } = useTheme();
   const router = useRouter();
   const client = useMemo(() => createClient(AuthService, transport), [transport]);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -93,6 +95,34 @@ export default function SettingsScreen() {
             </Text>
           )}
         </Pressable>
+      </View>
+
+      {/* Appearance */}
+      <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.sectionHeader}>
+          <Sun color={colors.textPrimary} size={20} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Appearance</Text>
+        </View>
+        <View style={styles.themeRow}>
+          {([
+            { key: "light" as const, label: "Light", Icon: Sun },
+            { key: "dark" as const, label: "Dark", Icon: Moon },
+            { key: "system" as const, label: "System", Icon: Monitor },
+          ]).map(({ key, label, Icon }) => (
+            <Pressable
+              key={key}
+              style={[
+                styles.themeOption,
+                { borderColor: mode === key ? colors.accent : colors.border },
+                mode === key && { backgroundColor: colors.accentSoft },
+              ]}
+              onPress={() => setMode(key)}
+            >
+              <Icon color={mode === key ? colors.accent : colors.textSecondary} size={18} />
+              <Text style={[styles.themeLabel, { color: mode === key ? colors.accent : colors.textSecondary }]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {/* Legal */}
@@ -198,4 +228,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deleteText: { color: "#ef4444", fontWeight: "600" },
+  themeRow: { flexDirection: "row", gap: 10 },
+  themeOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  themeLabel: { fontSize: 13, fontWeight: "500" },
 });
