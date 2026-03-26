@@ -47,8 +47,15 @@ func (s *Service) AuthCodeURL(state string) string {
 	return s.oauthConfig.AuthCodeURL(state)
 }
 
-func (s *Service) ExchangeCode(ctx context.Context, code string) (*GoogleUserInfo, error) {
-	token, err := s.oauthConfig.Exchange(ctx, code)
+// ExchangeCode exchanges a Google authorization code for user info.
+// If redirectURI is non-empty, it overrides the configured redirect URI.
+// This is needed for mobile clients whose redirect URI differs from the server's.
+func (s *Service) ExchangeCode(ctx context.Context, code string, redirectURI ...string) (*GoogleUserInfo, error) {
+	var opts []oauth2.AuthCodeOption
+	if len(redirectURI) > 0 && redirectURI[0] != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("redirect_uri", redirectURI[0]))
+	}
+	token, err := s.oauthConfig.Exchange(ctx, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("exchange code: %w", err)
 	}

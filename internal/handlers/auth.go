@@ -42,7 +42,7 @@ func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lif
 }
 
 func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toquiv1.GoogleLoginRequest]) (*connect.Response[toquiv1.GoogleLoginResponse], error) {
-	info, err := h.authSvc.ExchangeCode(ctx, req.Msg.Code)
+	info, err := h.authSvc.ExchangeCode(ctx, req.Msg.Code, req.Msg.RedirectUri)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
