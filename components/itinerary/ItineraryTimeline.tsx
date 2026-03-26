@@ -87,8 +87,8 @@ function DaySection({ day, index }: { day: ItineraryDay; index: number }) {
         {day.date ? (
           <Text style={[styles.dayDate, { color: colors.textSecondary }]}>{day.date}</Text>
         ) : null}
-        {day.title ? (
-          <Text style={[styles.dayTitle, { color: colors.textPrimary }]}>{day.title}</Text>
+        {day.summary ? (
+          <Text style={[styles.dayTitle, { color: colors.textPrimary }]}>{day.summary}</Text>
         ) : null}
       </View>
       {day.items.length > 0 ? (

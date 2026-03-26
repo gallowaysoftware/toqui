@@ -43,7 +43,7 @@ export default function SharedTripScreen() {
   const { data, isLoading, error } = useQuery<SharedTripResponse>({
     queryKey: ["shared-trip", token],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/shared/${token}`);
+      const res = await fetch(`${API_URL}/shared/${encodeURIComponent(token!)}`);
       if (!res.ok) throw new Error(`Failed to load shared trip (${res.status})`);
       return res.json();
     },

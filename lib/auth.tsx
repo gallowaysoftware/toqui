@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 import { Platform } from "react-native";
 import { createClient } from "@connectrpc/connect";
@@ -147,19 +148,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, []);
 
+  const value = useMemo(
+    () => ({ accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually }),
+    [accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        accessToken,
-        refreshToken,
-        user,
-        isLoading,
-        login,
-        logout,
-        refreshTokens,
-        setTokensManually,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

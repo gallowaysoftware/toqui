@@ -25,7 +25,10 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
   return (
     <Pressable
       style={styles.card}
-      onPress={() => Linking.openURL(recommendation.url)}
+      onPress={() => {
+        const url = recommendation.url;
+        if (url.startsWith("https://")) Linking.openURL(url);
+      }}
     >
       <View style={styles.header}>
         <Icon color="#e8654a" size={20} />

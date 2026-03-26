@@ -8,14 +8,12 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
-// Google OAuth discovery document
-const discovery = AuthSession.useAutoDiscovery
-  ? undefined // Let expo-auth-session auto-discover
-  : {
-      authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-      tokenEndpoint: "https://oauth2.googleapis.com/token",
-      revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-    };
+// Google's well-known discovery endpoints
+const discovery: AuthSession.DiscoveryDocument = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 export function useGoogleAuth() {
   const { login } = useAuth();
@@ -24,12 +22,13 @@ export function useGoogleAuth() {
     scheme: "toqui",
   });
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+  const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: GOOGLE_CLIENT_ID,
       scopes: ["openid", "profile", "email"],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
+      usePKCE: true,
     },
     discovery,
   );

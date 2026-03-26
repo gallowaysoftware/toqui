@@ -125,6 +125,23 @@ export function useChat(
     onResourceExhaustedRef.current = options?.onResourceExhausted;
   }, [options?.onResourceExhausted]);
 
+  // Reset state when tripId changes
+  useEffect(() => {
+    setMessages([]);
+    setStreamingText("");
+    setIsStreaming(false);
+    setActivePersona(null);
+    setToolActivity(null);
+    setCreatedTrip(null);
+    setSelectedTrip(null);
+    setHasMoreHistory(false);
+    sessionIdRef.current = "";
+    activePersonaRef.current = null;
+    historyLoadedRef.current = null;
+    nextPageTokenRef.current = "";
+    isSendingRef.current = false;
+  }, [tripId]);
+
   // Load chat history
   useEffect(() => {
     if (!tripId) return;

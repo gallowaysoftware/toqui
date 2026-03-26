@@ -20,7 +20,7 @@ function ThemedStack() {
   const { colors, isDark } = useTheme();
   return (
     <>
-      <StatusBar style={isDark ? "light" : "light"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.accent },

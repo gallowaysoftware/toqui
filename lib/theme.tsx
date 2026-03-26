@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useColorScheme, Platform } from "react-native";
 
 export interface ThemeColors {
@@ -136,10 +136,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     mode === "dark" || (mode === "system" && systemScheme === "dark");
   const colors = isDark ? darkColors : lightColors;
 
+  const value = useMemo(
+    () => ({ colors, mode, isDark, setMode }),
+    [colors, mode, isDark, setMode],
+  );
+
   if (!loaded) return null;
 
   return (
-    <ThemeContext.Provider value={{ colors, mode, isDark, setMode }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
