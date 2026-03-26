@@ -27,6 +27,7 @@ type GoogleLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	RedirectUri   string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	CodeVerifier  string                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"` // PKCE code verifier (optional, for S256 challenge)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,6 +72,13 @@ func (x *GoogleLoginRequest) GetCode() string {
 func (x *GoogleLoginRequest) GetRedirectUri() string {
 	if x != nil {
 		return x.RedirectUri
+	}
+	return ""
+}
+
+func (x *GoogleLoginRequest) GetCodeVerifier() string {
+	if x != nil {
+		return x.CodeVerifier
 	}
 	return ""
 }
@@ -586,10 +594,11 @@ var File_toqui_v1_auth_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"]\n" +
+	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x01\n" +
 	"\x12GoogleLoginRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
-	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\"\x81\x01\n" +
+	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
+	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\x81\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +

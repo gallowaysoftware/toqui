@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,19 +46,53 @@ func NewService(clientID, clientSecret, redirectURI, jwtSecret string) *Service 
 	}
 }
 
-func (s *Service) AuthCodeURL(state string) string {
-	return s.oauthConfig.AuthCodeURL(state)
+// GeneratePKCE creates a PKCE code verifier and its S256 challenge.
+func GeneratePKCE() (verifier, challenge string, err error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", "", fmt.Errorf("generate PKCE verifier: %w", err)
+	}
+	verifier = base64.RawURLEncoding.EncodeToString(buf)
+	h := sha256.Sum256([]byte(verifier))
+	challenge = base64.RawURLEncoding.EncodeToString(h[:])
+	return verifier, challenge, nil
+}
+
+// AuthCodeURL returns the Google OAuth authorization URL with PKCE S256 challenge.
+func (s *Service) AuthCodeURL(state, codeChallenge string) string {
+	return s.oauthConfig.AuthCodeURL(state,
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+	)
+}
+
+// AllowedRedirectURIs is the set of redirect URIs that clients may use.
+// The server's configured redirect URI is always allowed.
+var AllowedRedirectURIs = map[string]bool{}
+
+// ExchangeCodeOpts holds optional parameters for ExchangeCode.
+type ExchangeCodeOpts struct {
+	RedirectURI  string // Override redirect URI (validated against allowlist)
+	CodeVerifier string // PKCE code verifier for S256 challenge verification
 }
 
 // ExchangeCode exchanges a Google authorization code for user info.
-// If redirectURI is non-empty, it overrides the configured redirect URI.
-// This is needed for mobile clients whose redirect URI differs from the server's.
-func (s *Service) ExchangeCode(ctx context.Context, code string, redirectURI ...string) (*GoogleUserInfo, error) {
-	var opts []oauth2.AuthCodeOption
-	if len(redirectURI) > 0 && redirectURI[0] != "" {
-		opts = append(opts, oauth2.SetAuthURLParam("redirect_uri", redirectURI[0]))
+// Accepts optional ExchangeCodeOpts for redirect URI override and PKCE verification.
+func (s *Service) ExchangeCode(ctx context.Context, code string, optsList ...ExchangeCodeOpts) (*GoogleUserInfo, error) {
+	var authOpts []oauth2.AuthCodeOption
+	if len(optsList) > 0 {
+		o := optsList[0]
+		if o.RedirectURI != "" {
+			if !AllowedRedirectURIs[o.RedirectURI] && o.RedirectURI != s.oauthConfig.RedirectURL {
+				return nil, fmt.Errorf("redirect_uri not allowed: %s", o.RedirectURI)
+			}
+			authOpts = append(authOpts, oauth2.SetAuthURLParam("redirect_uri", o.RedirectURI))
+		}
+		if o.CodeVerifier != "" {
+			authOpts = append(authOpts, oauth2.SetAuthURLParam("code_verifier", o.CodeVerifier))
+		}
 	}
-	token, err := s.oauthConfig.Exchange(ctx, code, opts...)
+	token, err := s.oauthConfig.Exchange(ctx, code, authOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("exchange code: %w", err)
 	}

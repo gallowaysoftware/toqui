@@ -80,7 +80,25 @@ func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	http.Redirect(w, r, h.authSvc.AuthCodeURL(state), http.StatusTemporaryRedirect)
+	// PKCE: generate code verifier + challenge, store verifier in cookie.
+	verifier, challenge, err := auth.GeneratePKCE()
+	if err != nil {
+		slog.Error("PKCE generation failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_pkce",
+		Value:    verifier,
+		Path:     "/",
+		Domain:   domain,
+		MaxAge:   300,
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.Redirect(w, r, h.authSvc.AuthCodeURL(state, challenge), http.StatusTemporaryRedirect)
 }
 
 // oauthResult is the JSON payload stored in the temporary cookie
@@ -134,13 +152,28 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		MaxAge: -1,
 	})
 
+	// Retrieve PKCE verifier from cookie
+	var codeVerifier string
+	if pkceCookie, pkceErr := r.Cookie("oauth_pkce"); pkceErr == nil {
+		codeVerifier = pkceCookie.Value
+	}
+	// Clear the PKCE cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:   "oauth_pkce",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Redirect(w, r, h.frontendURL+"/?error=missing_code", http.StatusTemporaryRedirect)
 		return
 	}
 
-	info, err := h.authSvc.ExchangeCode(r.Context(), code)
+	info, err := h.authSvc.ExchangeCode(r.Context(), code, auth.ExchangeCodeOpts{
+		CodeVerifier: codeVerifier,
+	})
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=exchange_failed", http.StatusTemporaryRedirect)
 		return

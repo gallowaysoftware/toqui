@@ -20,6 +20,7 @@ service AuthService {
 message GoogleLoginRequest {
   string code = 1 [(buf.validate.field).string.min_len = 1];
   string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
+  string code_verifier = 3;  // PKCE code verifier (optional, for S256 challenge)
 }
 
 message GoogleLoginResponse {
