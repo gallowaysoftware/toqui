@@ -2,12 +2,10 @@ import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from "
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Plus, MapPin, ChevronRight } from "lucide-react-native";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@connectrpc/connect";
 import { useAuth } from "@/lib/auth";
-import { useTransport } from "@/lib/transport";
 import { useGoogleAuth } from "@/lib/google-auth";
-import { TripService, TripStatus } from "@gen/toqui/v1/trip_pb";
+import { useTrips } from "@/lib/hooks/useTrips";
+import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
@@ -43,19 +41,9 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
 export default function TripsScreen() {
   const { t } = useTranslation();
   const { accessToken, isLoading: authLoading } = useAuth();
-  const transport = useTransport();
   const router = useRouter();
   const { signIn, isReady: authReady } = useGoogleAuth();
-
-  const { data: trips, isLoading: tripsLoading } = useQuery({
-    queryKey: ["trips"],
-    queryFn: async () => {
-      const client = createClient(TripService, transport);
-      const res = await client.listTrips({});
-      return res.trips;
-    },
-    enabled: !!accessToken,
-  });
+  const { trips, isLoading: tripsLoading } = useTrips();
 
   if (authLoading) {
     return (
