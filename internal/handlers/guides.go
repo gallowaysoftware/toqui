@@ -30,10 +30,28 @@ type cachedGuide struct {
 }
 
 // NewGuideHandler creates a new GuideHandler.
+// Starts a background goroutine to evict expired cache entries every hour.
 func NewGuideHandler(chatFn SimpleChatFn) *GuideHandler {
-	return &GuideHandler{
+	h := &GuideHandler{
 		chatFn: chatFn,
 		cache:  make(map[string]*cachedGuide),
+	}
+	go h.evictExpired()
+	return h
+}
+
+func (h *GuideHandler) evictExpired() {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		h.mu.Lock()
+		for key, cached := range h.cache {
+			if now.After(cached.expiresAt) {
+				delete(h.cache, key)
+			}
+		}
+		h.mu.Unlock()
 	}
 }
 

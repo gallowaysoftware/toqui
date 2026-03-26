@@ -162,6 +162,12 @@ func (s *Service) ValidateAndRecordPayment(ctx context.Context, userID uuid.UUID
 		return fmt.Errorf("checkout session already %s", session.Status)
 	}
 
+	// Reject sessions older than 1 hour to prevent stale token abuse.
+	if time.Since(session.CreatedAt) > time.Hour {
+		_ = s.queries.MarkCheckoutSessionExpired(ctx, checkoutToken)
+		return fmt.Errorf("checkout session expired")
+	}
+
 	// Validate hash: SHA-256(JSON(data) + secretToken)
 	cleanedData, err := compactJSON(responseData)
 	if err != nil {
