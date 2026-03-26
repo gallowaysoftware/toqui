@@ -448,6 +448,8 @@ func newSimpleChatFn(provider ai.Provider) func(ctx context.Context, system, pro
 }
 
 // statusWriter wraps http.ResponseWriter to capture the status code.
+// It also implements http.Flusher so server-streaming RPCs (e.g. chat)
+// can flush chunks to the client.
 type statusWriter struct {
 	http.ResponseWriter
 	status int
@@ -456,6 +458,12 @@ type statusWriter struct {
 func (sw *statusWriter) WriteHeader(code int) {
 	sw.status = code
 	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (sw *statusWriter) Flush() {
+	if f, ok := sw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // requestLoggingMiddleware logs each HTTP request with method, path, status, and
