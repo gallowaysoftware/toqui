@@ -6,15 +6,16 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    setupFiles: ["./src/test/setup.tsx"],
-    include: ["src/**/*.test.{ts,tsx}"],
-    exclude: ["node_modules", ".next"],
-    css: { modules: { classNameStrategy: "non-scoped" } },
     globals: true,
+    setupFiles: ["./vitest.setup.ts"],
+    include: ["**/__tests__/**/*.test.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    exclude: ["node_modules", "dist", ".expo"],
   },
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      { find: /^@gen\/(.*)/, replacement: path.resolve(__dirname, "src/gen/$1") },
+      { find: /^@\/(.*)/, replacement: path.resolve(__dirname, "$1") },
+      { find: "react-native", replacement: "react-native-web" },
+    ],
   },
 });

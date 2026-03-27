@@ -10,141 +10,143 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  NODE_VERSION: "24"
+
 jobs:
-  lint:
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .node-version
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type check
-        run: pnpm tsc --noEmit
-
-      - name: Format check
-        run: pnpm prettier --check .
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
 
   test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .node-version
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Test
-        run: pnpm test
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 
   build:
+    name: Build (${{ matrix.platform }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [web, ios, android]
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .node-version
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npx expo export --platform ${{ matrix.platform }} --output-dir dist/${{ matrix.platform }} --clear
+      - uses: actions/upload-artifact@v4
+        if: matrix.platform == 'web'
+        with:
+          name: web-build
+          path: dist/web
 
   deploy-staging:
-    needs: [lint, test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    name: Deploy to Staging
+    needs: [typecheck, test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-
-    env:
-      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
-
+    environment: staging
     steps:
       - uses: actions/checkout@v4
-
-      - name: Authenticate to GCP
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build with staging API URL baked in (Expo reads env at build time)
+      - name: Build web for staging
+        run: EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+      - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker auth
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Build and push
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push Docker image
         run: |
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=https://staging-api.toqui.travel \
-            -t $IMAGE:${{ github.sha }} \
-            -t $IMAGE:latest \
-            .
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
-
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy toqui-frontend \
-            --image=$IMAGE:${{ github.sha }} \
-            --region=us-central1 \
-            --project=toqui-staging
-
-  deploy-prod:
-    needs: [lint, test, build]
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-
-    env:
-      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_PROD_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_PROD_SERVICE_ACCOUNT }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker auth
-        run: gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
-
-      - name: Build and push
-        run: |
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=https://api.toqui.travel \
-            -t $IMAGE:${{ github.sha }} \
-            -t $IMAGE:latest \
-            .
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
-
-      - name: Deploy to Cloud Run
-        run: |
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
-            --project=toqui-prod
+            --project=toqui-staging \
+            --port=8080 \
+            --allow-unauthenticated
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: [typecheck, test, build]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build with prod API URL baked in (Expo reads env at build time)
+      - name: Build web for production
+        run: EXPO_PUBLIC_API_URL=https://api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push Docker image
+        run: |
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
+          gcloud run deploy toqui-frontend \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=northamerica-northeast1 \
+            --project=toqui-prod \
+            --port=8080 \
+            --allow-unauthenticated

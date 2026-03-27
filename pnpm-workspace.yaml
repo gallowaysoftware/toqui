@@ -1,1 +1,3 @@
-onlyBuiltDependencies: "@bufbuild/buf"
+packages: []
+onlyBuiltDependencies:
+  - "@bufbuild/buf"
