@@ -1,6 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090";
+import { getConfig } from "@/lib/config";
 
 export interface WaitlistJoinResponse {
   position: number;
@@ -15,7 +14,7 @@ export interface WaitlistStatusResponse {
 export function useJoinWaitlist() {
   return useMutation<WaitlistJoinResponse, Error, { email: string }>({
     mutationFn: async ({ email }) => {
-      const res = await fetch(`${API_URL}/waitlist`, {
+      const res = await fetch(`${getConfig().apiUrl}/waitlist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -33,7 +32,7 @@ export function useWaitlistStatus(email: string | null) {
   return useQuery<WaitlistStatusResponse>({
     queryKey: ["waitlist-status", email],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/waitlist/status?email=${encodeURIComponent(email!)}`);
+      const res = await fetch(`${getConfig().apiUrl}/waitlist/status?email=${encodeURIComponent(email!)}`);
       if (!res.ok) throw new Error(`Failed to check status (${res.status})`);
       return res.json();
     },

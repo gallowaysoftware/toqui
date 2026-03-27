@@ -3,6 +3,7 @@ import type { Transport } from "@connectrpc/connect";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { useAuth } from "./auth";
+import { getConfig } from "./config";
 
 const TransportContext = createContext<Transport | null>(null);
 
@@ -14,7 +15,6 @@ export function useTransport(): Transport {
   return transport;
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090";
 
 export function TransportProvider({ children }: { children: React.ReactNode }) {
   const { accessToken, refreshTokens } = useAuth();
@@ -34,7 +34,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
   const transport = useMemo(
     () =>
       createConnectTransport({
-        baseUrl: API_URL,
+        baseUrl: getConfig().apiUrl,
         interceptors: [
           (next) => async (req) => {
             if (tokenRef.current) {

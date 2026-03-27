@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,6 +7,7 @@ import { TransportProvider } from "@/lib/transport";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
+import { loadConfig } from "@/lib/config";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +44,14 @@ function ThemedStack() {
 }
 
 export default function RootLayout() {
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  useEffect(() => {
+    loadConfig().then(() => setConfigLoaded(true));
+  }, []);
+
+  if (!configLoaded) return null;
+
   return (
     <ThemeProvider>
       <I18nProvider>

@@ -83,12 +83,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Build with staging env vars baked in (Expo reads env at build time)
+      # Build web (no secrets baked in — config.json is generated at runtime)
       - name: Build web for staging
-        run: |
-          EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel \
-          EXPO_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-          npx expo export --platform web --output-dir dist/web --clear
+        run: npx expo export --platform web --output-dir dist/web --clear
       # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
       - name: Build Docker image
         run: |
@@ -114,7 +111,9 @@ jobs:
             --region=us-central1 \
             --project=toqui-staging \
             --port=8080 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel" \
+            --set-secrets="GOOGLE_CLIENT_ID=staging-google-client-id:latest"
 
   deploy-prod:
     name: Deploy to Production
@@ -132,12 +131,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Build with prod env vars baked in (Expo reads env at build time)
+      # Build web (no secrets baked in — config.json is generated at runtime)
       - name: Build web for production
-        run: |
-          EXPO_PUBLIC_API_URL=https://api.toqui.travel \
-          EXPO_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-          npx expo export --platform web --output-dir dist/web --clear
+        run: npx expo export --platform web --output-dir dist/web --clear
       # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
       - name: Build Docker image
         run: |
@@ -163,4 +159,6 @@ jobs:
             --region=northamerica-northeast1 \
             --project=toqui-prod \
             --port=8080 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel" \
+            --set-secrets="GOOGLE_CLIENT_ID=prod-google-client-id:latest"

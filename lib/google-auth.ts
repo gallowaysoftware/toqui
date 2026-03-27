@@ -2,11 +2,10 @@ import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
 import { useAuth } from "./auth";
+import { getConfig } from "./config";
 
 // Complete the auth session on web (needed for redirect-based flows)
 WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 // Google's well-known discovery endpoints
 const discovery: AuthSession.DiscoveryDocument = {
@@ -17,6 +16,7 @@ const discovery: AuthSession.DiscoveryDocument = {
 
 export function useGoogleAuth() {
   const { login } = useAuth();
+  const { googleClientId } = getConfig();
 
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "toqui",
@@ -24,7 +24,7 @@ export function useGoogleAuth() {
 
   const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: GOOGLE_CLIENT_ID,
+      clientId: googleClientId,
       scopes: ["openid", "profile", "email"],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,

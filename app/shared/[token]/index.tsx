@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MapPin, Calendar } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090";
+import { getConfig } from "@/lib/config";
 
 interface SharedTripInfo {
   title: string;
@@ -43,7 +43,7 @@ export default function SharedTripScreen() {
   const { data, isLoading, error } = useQuery<SharedTripResponse>({
     queryKey: ["shared-trip", token],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/shared/${encodeURIComponent(token!)}`);
+      const res = await fetch(`${getConfig().apiUrl}/shared/${encodeURIComponent(token!)}`);
       if (!res.ok) throw new Error(`Failed to load shared trip (${res.status})`);
       return res.json();
     },

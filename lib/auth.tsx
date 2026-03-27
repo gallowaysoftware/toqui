@@ -11,7 +11,7 @@ import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090";
+import { getConfig } from "./config";
 
 // Token storage: SecureStore on native (Keychain/Keystore), sessionStorage on web.
 // sessionStorage is used instead of localStorage so tokens don't persist across
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const login = useCallback(async (googleAuthCode: string, redirectUri?: string) => {
-    const transport = createConnectTransport({ baseUrl: API_URL });
+    const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
     const client = createClient(AuthService, transport);
     const res = await client.googleLogin({
       code: googleAuthCode,
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const rt = await tokenStorage.get("toqui_refresh_token");
     if (!rt) return null;
     try {
-      const transport = createConnectTransport({ baseUrl: API_URL });
+      const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
       const client = createClient(AuthService, transport);
       const res = await client.refreshToken({ refreshToken: rt });
       setAccessToken(res.accessToken);
