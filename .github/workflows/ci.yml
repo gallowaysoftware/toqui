@@ -86,16 +86,17 @@ jobs:
       # Build with staging API URL baked in (Expo reads env at build time)
       - name: Build web for staging
         run: EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+      # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
+      - name: Build Docker image
+        run: |
+          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build Docker image
-        run: |
-          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - name: Push Docker image
         run: |
           IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
@@ -131,16 +132,17 @@ jobs:
       # Build with prod API URL baked in (Expo reads env at build time)
       - name: Build web for production
         run: EXPO_PUBLIC_API_URL=https://api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+      # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
+      - name: Build Docker image
+        run: |
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build Docker image
-        run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - name: Push Docker image
         run: |
           IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
