@@ -345,7 +345,7 @@ describe("Token storage — web platform isolation", () => {
     // This is acceptable because it contains only {id, email, name}
     webTokenStorage.set("toqui_user", JSON.stringify({ id: "1", email: "a@b.com", name: "Test" }));
     const stored = sessionStorageSpy.setItem.mock.calls.find(
-      (c: [string, string]) => c[0] === "toqui_user"
+      (c) => c[0] === "toqui_user"
     );
     expect(stored).toBeDefined();
     const parsed = JSON.parse(stored![1]);

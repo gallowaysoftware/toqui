@@ -120,10 +120,12 @@ export async function exportItineraryICal(trip: Trip, itinerary: Itinerary): Pro
     return;
   }
 
-  // Native: write to temp file and share
-  const { cacheDirectory, writeAsStringAsync } = await import("expo-file-system");
-  const { shareAsync } = await import("expo-sharing");
-  const fileUri = (cacheDirectory ?? "") + filename;
-  await writeAsStringAsync(fileUri, icsContent);
-  await shareAsync(fileUri, { mimeType: "text/calendar", UTI: "com.apple.ical.ics" });
+  // Native: write to temp file and share via expo-file-system + expo-sharing
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const FileSystem = require("expo-file-system");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Sharing = require("expo-sharing");
+  const fileUri = (FileSystem.cacheDirectory ?? "") + filename;
+  await FileSystem.writeAsStringAsync(fileUri, icsContent);
+  await Sharing.shareAsync(fileUri, { mimeType: "text/calendar", UTI: "com.apple.ical.ics" });
 }
