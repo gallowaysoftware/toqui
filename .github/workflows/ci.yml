@@ -94,17 +94,17 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Build and push Docker image
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
-          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
       - name: Deploy to Cloud Run
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
-            --region=northamerica-northeast1 \
+            --region=us-central1 \
             --project=toqui-staging \
             --port=8080 \
             --allow-unauthenticated
