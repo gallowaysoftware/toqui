@@ -33,6 +33,8 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
         blurOnSubmit={false}
       />
       <Pressable
+        role="button"
+        aria-label="Send"
         style={[styles.sendButton, (!text.trim() || disabled) && styles.disabledButton]}
         onPress={handleSend}
         disabled={!text.trim() || disabled}
