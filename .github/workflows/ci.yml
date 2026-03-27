@@ -92,10 +92,13 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
           IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+      - name: Push Docker image
+        run: |
+          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
@@ -134,10 +137,13 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
           IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+      - name: Push Docker image
+        run: |
+          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
           gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
