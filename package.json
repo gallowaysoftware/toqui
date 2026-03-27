@@ -12,7 +12,7 @@
     "build:android": "expo export --platform android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "jest",
+    "test": "vitest run",
     "generate": "buf generate --template buf.gen.yaml ../toqui-backend/proto"
   },
   "dependencies": {

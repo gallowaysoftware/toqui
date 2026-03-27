@@ -29,6 +29,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
   build:
     name: Build (${{ matrix.platform }})
     runs-on: ubuntu-latest
@@ -45,7 +60,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: npx expo export --platform ${{ matrix.platform }} --output-dir dist/${{ matrix.platform }}
+      - run: npx expo export --platform ${{ matrix.platform }} --output-dir dist/${{ matrix.platform }} --clear
       - uses: actions/upload-artifact@v4
         if: matrix.platform == 'web'
         with:
@@ -54,40 +69,31 @@ jobs:
 
   deploy-staging:
     name: Deploy to Staging
-    needs: [typecheck, build]
+    needs: [typecheck, test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: staging
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: pnpm/action-setup@v4
         with:
-          name: web-build
-          path: dist/web
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build with staging API URL baked in (Expo reads env at build time)
+      - name: Build web for staging
+        run: EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      # Build Docker image for Cloud Run (static web serve)
       - name: Build and push Docker image
         run: |
-          cat > Dockerfile <<'DOCKERFILE'
-          FROM nginx:alpine
-          COPY dist/web /usr/share/nginx/html
-          COPY nginx.conf /etc/nginx/conf.d/default.conf
-          EXPOSE 8080
-          DOCKERFILE
-          cat > nginx.conf <<'NGINX'
-          server {
-            listen 8080;
-            root /usr/share/nginx/html;
-            location / {
-              try_files $uri $uri/ /index.html;
-            }
-          }
-          NGINX
           IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
           gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
@@ -100,22 +106,28 @@ jobs:
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
             --project=toqui-staging \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel" \
             --port=8080 \
             --allow-unauthenticated
 
   deploy-prod:
     name: Deploy to Production
-    needs: [typecheck, build]
+    needs: [typecheck, test, build]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: pnpm/action-setup@v4
         with:
-          name: web-build
-          path: dist/web
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build with prod API URL baked in (Expo reads env at build time)
+      - name: Build web for production
+        run: EXPO_PUBLIC_API_URL=https://api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
       - id: auth
         uses: google-github-actions/auth@v2
         with:
@@ -124,21 +136,6 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Build and push Docker image
         run: |
-          cat > Dockerfile <<'DOCKERFILE'
-          FROM nginx:alpine
-          COPY dist/web /usr/share/nginx/html
-          COPY nginx.conf /etc/nginx/conf.d/default.conf
-          EXPOSE 8080
-          DOCKERFILE
-          cat > nginx.conf <<'NGINX'
-          server {
-            listen 8080;
-            root /usr/share/nginx/html;
-            location / {
-              try_files $uri $uri/ /index.html;
-            }
-          }
-          NGINX
           IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
           gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
@@ -151,6 +148,5 @@ jobs:
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
             --project=toqui-prod \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel" \
             --port=8080 \
             --allow-unauthenticated
