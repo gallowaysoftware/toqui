@@ -83,9 +83,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Build with staging API URL baked in (Expo reads env at build time)
+      # Build with staging env vars baked in (Expo reads env at build time)
       - name: Build web for staging
-        run: EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+        run: |
+          EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel \
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+          npx expo export --platform web --output-dir dist/web --clear
       # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
       - name: Build Docker image
         run: |
@@ -129,9 +132,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Build with prod API URL baked in (Expo reads env at build time)
+      # Build with prod env vars baked in (Expo reads env at build time)
       - name: Build web for production
-        run: EXPO_PUBLIC_API_URL=https://api.toqui.travel npx expo export --platform web --output-dir dist/web --clear
+        run: |
+          EXPO_PUBLIC_API_URL=https://api.toqui.travel \
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+          npx expo export --platform web --output-dir dist/web --clear
       # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
       - name: Build Docker image
         run: |
