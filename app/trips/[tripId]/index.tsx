@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays } from "lucide-react-native";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
+import { ProUpgrade } from "@/components/checkout/ProUpgrade";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { ItineraryMap } from "@/components/map/ItineraryMap";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
@@ -40,6 +41,8 @@ export default function TripDetailScreen() {
             {trip.startDate}{trip.startDate && trip.endDate ? " → " : ""}{trip.endDate}
           </Text>
         )}
+
+        <ProUpgrade tripId={tripId!} />
 
         <View style={styles.actions}>
           <Pressable

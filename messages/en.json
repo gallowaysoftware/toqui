@@ -92,6 +92,22 @@
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again."
   },
+  "checkout": {
+    "title": "Unlock Trip Pro",
+    "price": "$12 CAD",
+    "priceDescription": "One-time payment per trip",
+    "unlockButton": "Unlock This Trip",
+    "benefits": {
+      "experts": "Unlimited access to local expert personas",
+      "bookings": "Unbiased booking recommendations",
+      "email": "Email forwarding for automatic booking import"
+    },
+    "success": "Trip Unlocked!",
+    "successDescription": "You now have full Pro access for this trip.",
+    "error": "Payment failed. Please try again.",
+    "webOnly": "Payments are currently available on the web version.",
+    "webOnlyLink": "Open in browser to upgrade"
+  },
   "waitlist": {
     "title": "We're at capacity!",
     "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",
