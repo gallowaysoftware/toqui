@@ -26,6 +26,7 @@ const (
 	EventPaymentValidation   = "payment.validation_failed"
 	EventAdminInvite         = "admin.invite"
 	EventAdminTripUnlock     = "admin.trip_unlock"
+	EventAdminGrantPro       = "admin.grant_pro"
 )
 
 // Log records a structured audit event. All audit events include the event

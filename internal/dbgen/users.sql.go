@@ -233,6 +233,20 @@ func (q *Queries) SetUserDefaultPersona(ctx context.Context, arg SetUserDefaultP
 	return i, err
 }
 
+const setUserSubscriptionTier = `-- name: SetUserSubscriptionTier :exec
+UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE email = $2
+`
+
+type SetUserSubscriptionTierParams struct {
+	SubscriptionTier string `json:"subscription_tier"`
+	Email            string `json:"email"`
+}
+
+func (q *Queries) SetUserSubscriptionTier(ctx context.Context, arg SetUserSubscriptionTierParams) error {
+	_, err := q.db.Exec(ctx, setUserSubscriptionTier, arg.SubscriptionTier, arg.Email)
+	return err
+}
+
 const upsertUserByGoogleID = `-- name: UpsertUserByGoogleID :one
 INSERT INTO users (google_id, email, name, avatar_url)
 VALUES ($1, $2, $3, $4)

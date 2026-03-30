@@ -31,6 +31,9 @@ UPDATE users SET age_verified_at = NOW(), updated_at = NOW() WHERE id = $1;
 -- name: IsAgeVerified :one
 SELECT COALESCE(age_verified_at IS NOT NULL, false)::boolean AS verified FROM users WHERE id = $1;
 
+-- name: SetUserSubscriptionTier :exec
+UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE email = $2;
+
 -- name: ListUsers :many
 SELECT * FROM users ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);

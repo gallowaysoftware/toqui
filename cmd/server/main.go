@@ -309,6 +309,7 @@ func main() {
 	mux.HandleFunc("/admin/revoke-invite", adminHandler.HandleRevokeInvite)
 	mux.HandleFunc("/admin/delete-waitlist", adminHandler.HandleDeleteWaitlistEntry)
 	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
+	mux.HandleFunc("/admin/grant-pro", adminHandler.HandleGrantPro)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)

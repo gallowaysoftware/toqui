@@ -391,6 +391,57 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// HandleGrantPro handles POST /admin/grant-pro — sets a user's subscription tier.
+func (h *AdminHandler) HandleGrantPro(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	adminID, err := h.authenticateAdmin(r)
+	if err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email string `json:"email"`
+		Tier  string `json:"tier"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	if req.Tier != "free" && req.Tier != "pro" {
+		http.Error(w, "tier must be 'free' or 'pro'", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.queries.SetUserSubscriptionTier(r.Context(), dbgen.SetUserSubscriptionTierParams{
+		SubscriptionTier: req.Tier,
+		Email:            req.Email,
+	}); err != nil {
+		slog.Error("admin grant pro failed", "error", err, "email", req.Email)
+		http.Error(w, "failed to update tier (is the user registered?)", http.StatusBadRequest)
+		return
+	}
+
+	audit.Log(audit.EventAdminGrantPro,
+		"admin_id", adminID.String(),
+		"email", req.Email,
+		"tier", req.Tier,
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"email":  req.Email,
+		"tier":   req.Tier,
+		"status": "updated",
+	})
+}
+
 // HandleRevokeInvite handles POST /admin/revoke-invite — revokes an invite code.
 func (h *AdminHandler) HandleRevokeInvite(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
