@@ -103,10 +103,12 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
+	tier := h.lookupTier(ctx, user.ID)
+
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshResult.Token,
-		User:         userToProto(&user),
+		User:         userToProto(&user, tier),
 	}), nil
 }
 
@@ -194,10 +196,12 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 
 	audit.Log(audit.EventTokenRefresh, "user_id", user.ID.String(), "ip", ip)
 
+	tier := h.lookupTier(ctx, user.ID)
+
 	return connect.NewResponse(&toquiv1.RefreshTokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshResult.Token,
-		User:         userToProto(&user),
+		User:         userToProto(&user, tier),
 	}), nil
 }
 
@@ -212,8 +216,10 @@ func (h *AuthHandler) GetCurrentUser(ctx context.Context, _ *connect.Request[toq
 		return nil, internalError(ctx, "get current user", err)
 	}
 
+	tier := h.lookupTier(ctx, user.ID)
+
 	return connect.NewResponse(&toquiv1.GetCurrentUserResponse{
-		User: userToProto(&user),
+		User: userToProto(&user, tier),
 	}), nil
 }
 
@@ -259,10 +265,21 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 	}), nil
 }
 
-func userToProto(u *dbgen.User) *toquiv1.User {
+func (h *AuthHandler) lookupTier(ctx context.Context, userID uuid.UUID) string {
+	if raw, err := h.queries.GetUserSubscriptionTier(ctx, userID); err == nil {
+		return raw
+	}
+	return "free"
+}
+
+func userToProto(u *dbgen.User, subscriptionTier string) *toquiv1.User {
+	if subscriptionTier == "" {
+		subscriptionTier = "free"
+	}
 	user := &toquiv1.User{
-		Id:    u.ID.String(),
-		Email: u.Email,
+		Id:               u.ID.String(),
+		Email:            u.Email,
+		SubscriptionTier: subscriptionTier,
 	}
 	if u.Name.Valid {
 		user.Name = u.Name.String

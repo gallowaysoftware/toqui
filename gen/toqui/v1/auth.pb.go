@@ -328,14 +328,15 @@ func (x *GetCurrentUserResponse) GetUser() *User {
 }
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	AvatarUrl     string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email            string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Name             string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	AvatarUrl        string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	SubscriptionTier string                 `protobuf:"bytes,6,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -401,6 +402,13 @@ func (x *User) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *User) GetSubscriptionTier() string {
+	if x != nil {
+		return x.SubscriptionTier
+	}
+	return ""
 }
 
 // Account deletion — GDPR Article 17 (Right to Erasure)
@@ -611,7 +619,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x17\n" +
 	"\x15GetCurrentUserRequest\"<\n" +
 	"\x16GetCurrentUserResponse\x12\"\n" +
-	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x9a\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\xc7\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -619,7 +627,8 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"9\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12+\n" +
+	"\x11subscription_tier\x18\x06 \x01(\tR\x10subscriptionTier\"9\n" +
 	"\x14DeleteAccountRequest\x12!\n" +
 	"\aconfirm\x18\x01 \x01(\bB\a\xbaH\x04j\x02\b\x01R\aconfirm\"P\n" +
 	"\x15DeleteAccountResponse\x12\x1d\n" +

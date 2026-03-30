@@ -90,6 +90,7 @@ type Trip struct {
 	Themes []string `protobuf:"bytes,10,rep,name=themes,proto3" json:"themes,omitempty"`
 	// Primary destination country (ISO 3166-1 alpha-2) for persona matching
 	DestinationCountry string `protobuf:"bytes,11,opt,name=destination_country,json=destinationCountry,proto3" json:"destination_country,omitempty"`
+	IsUnlocked         bool   `protobuf:"varint,12,opt,name=is_unlocked,json=isUnlocked,proto3" json:"is_unlocked,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -199,6 +200,13 @@ func (x *Trip) GetDestinationCountry() string {
 		return x.DestinationCountry
 	}
 	return ""
+}
+
+func (x *Trip) GetIsUnlocked() bool {
+	if x != nil {
+		return x.IsUnlocked
+	}
+	return false
 }
 
 type Itinerary struct {
@@ -1137,7 +1145,7 @@ var File_toqui_v1_trip_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\x8e\x03\n" +
+	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xaf\x03\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
@@ -1153,7 +1161,9 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x16\n" +
 	"\x06themes\x18\n" +
 	" \x03(\tR\x06themes\x12/\n" +
-	"\x13destination_country\x18\v \x01(\tR\x12destinationCountry\"P\n" +
+	"\x13destination_country\x18\v \x01(\tR\x12destinationCountry\x12\x1f\n" +
+	"\vis_unlocked\x18\f \x01(\bR\n" +
+	"isUnlocked\"P\n" +
 	"\tItinerary\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12*\n" +
 	"\x04days\x18\x02 \x03(\v2\x16.toqui.v1.ItineraryDayR\x04days\"\x9a\x01\n" +
