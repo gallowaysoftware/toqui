@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
@@ -18,6 +18,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const client = useMemo(() => createClient(AuthService, transport), [transport]);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const isPro = user?.tier === "pro";
 
   const exportData = useMutation({
     mutationFn: async () => {
@@ -74,6 +75,33 @@ export default function SettingsScreen() {
           <LogOut color="#e8654a" size={18} />
           <Text style={styles.actionText}>{t("common.signOut")}</Text>
         </Pressable>
+      </View>
+
+      {/* Plan & Billing */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <CreditCard color="#333" size={20} />
+          <Text style={styles.sectionTitle}>{t("settings.billing.title")}</Text>
+        </View>
+        <View style={styles.billingPlanRow}>
+          <Text style={styles.billingLabel}>{t("settings.billing.currentPlan")}</Text>
+          <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
+            <Text style={[styles.planBadgeText, isPro && styles.planBadgeTextPro]}>
+              {isPro ? t("settings.billing.pro") : t("settings.billing.free")}
+            </Text>
+          </View>
+        </View>
+        {isPro ? (
+          <Text style={styles.billingDescription}>{t("settings.billing.proDescription")}</Text>
+        ) : (
+          <>
+            <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
+            <Pressable style={styles.learnMoreRow}>
+              <ExternalLink color="#e8654a" size={14} />
+              <Text style={styles.learnMoreText}>{t("settings.billing.learnMore")}</Text>
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* Data */}
@@ -240,4 +268,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   themeLabel: { fontSize: 13, fontWeight: "500" },
+  billingPlanRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  billingLabel: { fontSize: 14, color: "#666" },
+  planBadge: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  planBadgePro: { backgroundColor: "#e8654a" },
+  planBadgeText: { fontSize: 13, fontWeight: "600", color: "#666" },
+  planBadgeTextPro: { color: "#fff" },
+  billingDescription: { fontSize: 14, color: "#999", lineHeight: 20 },
+  learnMoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 4,
+  },
+  learnMoreText: { fontSize: 14, fontWeight: "500", color: "#e8654a" },
 });

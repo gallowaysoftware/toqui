@@ -84,7 +84,23 @@
     "deleting": "Deleting...",
     "exportData": "Export My Data",
     "exporting": "Exporting...",
-    "exported": "Export Requested"
+    "exported": "Export Requested",
+    "billing": {
+      "title": "Plan & Billing",
+      "currentPlan": "Current Plan",
+      "free": "Free",
+      "pro": "Pro",
+      "freeDescription": "Basic travel planning with AI companion",
+      "proDescription": "Full access to expert personas and unbiased recommendations",
+      "learnMore": "Learn More"
+    }
+  },
+  "trial": {
+    "active": "Pro Trial Active",
+    "daysRemaining": "{{days}} days remaining",
+    "hoursRemaining": "Less than a day remaining",
+    "expired": "Trial ended",
+    "upgradePrompt": "Upgrade to keep Pro features"
   },
   "chat": {
     "planningPrompt": "Start planning your trip! Tell me where you want to go.",

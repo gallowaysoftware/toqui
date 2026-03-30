@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
+import { useTrialStatus } from "@/lib/hooks/useTrialStatus";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { ItineraryMap } from "@/components/map/ItineraryMap";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
@@ -11,9 +13,11 @@ import { exportItineraryICal } from "@/lib/export/calendar-export";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 
 export default function TripDetailScreen() {
+  const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, isLoading } = useTrip(tripId!);
   const { itinerary } = useItinerary(tripId!);
+  const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
   const router = useRouter();
 
@@ -40,6 +44,28 @@ export default function TripDetailScreen() {
           <Text style={styles.dates}>
             {trip.startDate}{trip.startDate && trip.endDate ? " → " : ""}{trip.endDate}
           </Text>
+        )}
+
+        {isTrialActive && (
+          <View style={styles.trialBanner}>
+            <Clock color="#2563eb" size={16} />
+            <Text style={styles.trialBannerText}>
+              {t("trial.active")}
+              {" — "}
+              {isLastDay
+                ? t("trial.hoursRemaining")
+                : t("trial.daysRemaining", { days: daysRemaining })}
+            </Text>
+          </View>
+        )}
+
+        {isTrialExpired && (
+          <View style={[styles.trialBanner, styles.trialBannerExpired]}>
+            <AlertTriangle color="#b45309" size={16} />
+            <Text style={styles.trialBannerExpiredText}>
+              {t("trial.expired")} — {t("trial.upgradePrompt")}
+            </Text>
+          </View>
         )}
 
         <ProUpgrade tripId={tripId!} />
@@ -163,4 +189,18 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
   },
   exportText: { fontSize: 13, fontWeight: "500", color: "#e8654a" },
+  trialBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  trialBannerText: { fontSize: 14, color: "#1e40af", fontWeight: "500", flex: 1 },
+  trialBannerExpired: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
+  trialBannerExpiredText: { fontSize: 14, color: "#92400e", fontWeight: "500", flex: 1 },
 });
