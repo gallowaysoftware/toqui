@@ -41,6 +41,7 @@ type Config struct {
 
 	// Firestore
 	FirestoreProjectID    string
+	FirestoreDatabaseID   string
 	FirestoreEmulatorHost string
 
 	// Frontend URL for CORS (primary origin)
@@ -112,6 +113,7 @@ func Load() (*Config, error) {
 		VertexAILocation:         getEnv("VERTEX_AI_LOCATION", "us-central1"),
 		DailyAITokenBudget:       getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
 		FirestoreProjectID:       getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
+		FirestoreDatabaseID:      getEnv("FIRESTORE_DATABASE_ID", ""),
 		FirestoreEmulatorHost:    os.Getenv("FIRESTORE_EMULATOR_HOST"),
 		FrontendURL:              getEnv("FRONTEND_URL", "http://localhost:3000"),
 		GoogleCustomSearchAPIKey: os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),

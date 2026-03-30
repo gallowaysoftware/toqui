@@ -379,6 +379,13 @@ func newFirestoreClient(ctx context.Context, cfg *config.Config) (*firestore.Cli
 	if cfg.FirestoreEmulatorHost != "" {
 		os.Setenv("FIRESTORE_EMULATOR_HOST", cfg.FirestoreEmulatorHost)
 	}
+	if cfg.FirestoreDatabaseID != "" {
+		client, err := firestore.NewClientWithDatabase(ctx, cfg.FirestoreProjectID, cfg.FirestoreDatabaseID)
+		if err != nil {
+			return nil, fmt.Errorf("create firestore client (database %s): %w", cfg.FirestoreDatabaseID, err)
+		}
+		return client, nil
+	}
 	client, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("create firestore client: %w", err)
