@@ -83,6 +83,13 @@ export type Trip = Message<"toqui.v1.Trip"> & {
    * @generated from field: string destination_country = 11;
    */
   destinationCountry: string;
+
+  /**
+   * Whether the trip is unlocked (pro feature access)
+   *
+   * @generated from field: bool is_unlocked = 12;
+   */
+  isUnlocked: boolean;
 };
 
 /**

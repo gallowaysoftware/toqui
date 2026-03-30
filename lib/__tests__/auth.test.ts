@@ -100,7 +100,7 @@ describe("AuthProvider", () => {
 
     expect(result.current.accessToken).toBe("at-123");
     expect(result.current.refreshToken).toBe("rt-456");
-    expect(result.current.user).toEqual(user);
+    expect(result.current.user).toEqual({ ...user, tier: "free" });
   });
 
   it("handles corrupt user JSON gracefully on hydration", async () => {
@@ -139,6 +139,7 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
+      tier: "free",
     });
 
     // Verify persistence
@@ -148,6 +149,7 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
+      tier: "free",
     });
   });
 

@@ -44,12 +44,21 @@ const tokenStorage = {
   },
 };
 
+export type SubscriptionTier = "free" | "pro";
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  tier: SubscriptionTier;
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isLoading: boolean;
   login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
-  user: { id: string; email: string; name: string } | null;
+  user: AuthUser | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
   setTokensManually: (access: string, refresh: string) => Promise<void>;
@@ -66,7 +75,7 @@ export function useAuth(): AuthState {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load persisted tokens on mount
@@ -80,7 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (at) setAccessToken(at);
       if (rt) setRefreshToken(rt);
       if (userJson) {
-        try { setUser(JSON.parse(userJson)); } catch { /* ignore corrupt data */ }
+        try {
+          const parsed = JSON.parse(userJson);
+          const tier = parsed.tier === "pro" ? "pro" : "free" as const;
+          setUser({ ...parsed, tier });
+        } catch { /* ignore corrupt data */ }
       }
       setIsLoading(false);
     })();
@@ -106,7 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(res.accessToken);
     setRefreshToken(res.refreshToken);
     if (res.user) {
-      const u = { id: res.user.id, email: res.user.email, name: res.user.name };
+      const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
+      const u: AuthUser = { id: res.user.id, email: res.user.email, name: res.user.name, tier };
       setUser(u);
       await tokenStorage.set("toqui_user", JSON.stringify(u));
     }

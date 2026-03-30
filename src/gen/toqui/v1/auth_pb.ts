@@ -175,6 +175,11 @@ export type User = Message<"toqui.v1.User"> & {
    * @generated from field: google.protobuf.Timestamp created_at = 5;
    */
   createdAt?: Timestamp;
+
+  /**
+   * @generated from field: string subscription_tier = 6;
+   */
+  subscriptionTier: string;
 };
 
 /**
