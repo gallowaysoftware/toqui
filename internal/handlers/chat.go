@@ -194,10 +194,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var recommendations []affiliate.Recommendation
 	var mu sync.Mutex
 
-	// Check if this trip is unlocked (Trip Pro purchased)
+	// Check if this trip is unlocked (Trip Pro purchased or trial active)
 	var tripUnlocked bool
-	if parsedTripID, parseErr := uuid.Parse(req.Msg.TripId); parseErr == nil && h.paymentSvc != nil {
-		tripUnlocked, _ = h.paymentSvc.IsTripUnlocked(ctx, userID, parsedTripID)
+	if parsedTripID, parseErr := uuid.Parse(req.Msg.TripId); parseErr == nil {
+		if h.paymentSvc != nil {
+			tripUnlocked, _ = h.paymentSvc.IsTripUnlocked(ctx, userID, parsedTripID)
+		}
+		if !tripUnlocked && h.queries != nil {
+			if active, err := h.queries.IsTripTrialActive(ctx, parsedTripID); err == nil && active {
+				tripUnlocked = true
+			}
+		}
 	}
 
 	// Suggest expert tool — free users get 3 teaser messages, then upgrade prompt

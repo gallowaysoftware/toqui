@@ -142,6 +142,8 @@ type Trip struct {
 	ArchiveAfter       pgtype.Timestamptz `json:"archive_after"`
 	ArchivedAt         pgtype.Timestamptz `json:"archived_at"`
 	ShareToken         pgtype.Text        `json:"share_token"`
+	TrialStartedAt     pgtype.Timestamptz `json:"trial_started_at"`
+	TrialEndsAt        pgtype.Timestamptz `json:"trial_ends_at"`
 }
 
 type TripTheme struct {

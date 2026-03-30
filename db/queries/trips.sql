@@ -58,3 +58,10 @@ SELECT * FROM trips WHERE share_token = sqlc.arg(share_token);
 
 -- name: CountActiveTrips :one
 SELECT COUNT(*) FROM trips WHERE status = 'active';
+
+-- name: StartTripTrial :exec
+UPDATE trips SET trial_started_at = NOW(), trial_ends_at = NOW() + INTERVAL '3 days', updated_at = NOW()
+WHERE id = $1 AND trial_started_at IS NULL;
+
+-- name: IsTripTrialActive :one
+SELECT COALESCE(trial_ends_at > NOW(), false)::boolean AS active FROM trips WHERE id = $1;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -25,10 +26,11 @@ type TripHandler struct {
 	tripSvc      *trip.Service
 	lifecycleSvc *lifecycle.Service
 	themeSvc     *theme.Service
+	queries      *dbgen.Queries
 }
 
-func NewTripHandler(tripSvc *trip.Service, lifecycleSvc *lifecycle.Service, themeSvc *theme.Service) *TripHandler {
-	return &TripHandler{tripSvc: tripSvc, lifecycleSvc: lifecycleSvc, themeSvc: themeSvc}
+func NewTripHandler(tripSvc *trip.Service, lifecycleSvc *lifecycle.Service, themeSvc *theme.Service, queries *dbgen.Queries) *TripHandler {
+	return &TripHandler{tripSvc: tripSvc, lifecycleSvc: lifecycleSvc, themeSvc: themeSvc, queries: queries}
 }
 
 func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toquiv1.CreateTripRequest]) (*connect.Response[toquiv1.CreateTripResponse], error) {
@@ -61,6 +63,17 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 	// Fire-and-forget: tag trip themes via AI
 	if h.themeSvc != nil {
 		h.themeSvc.TagTripAsync(userID, t.ID, t.Title, t.Description.String)
+	}
+
+	// Auto-grant 3-day Pro trial on first trip creation
+	if h.queries != nil {
+		if count, err := h.queries.CountTripsByUser(ctx, userID); err == nil && count == 1 {
+			if err := h.queries.StartTripTrial(ctx, t.ID); err != nil {
+				slog.Warn("failed to start trip trial", "error", err, "trip_id", t.ID)
+			} else {
+				slog.Info("first-trip trial started", "user_id", userID, "trip_id", t.ID)
+			}
+		}
 	}
 
 	return connect.NewResponse(&toquiv1.CreateTripResponse{Trip: tripToProto(t)}), nil
