@@ -1,266 +1,113 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
-	"sort"
+	"strconv"
 	"strings"
-	"sync"
-	"time"
-
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 )
 
-// SimpleChatFn is a function that sends a prompt to an AI provider and returns the response.
-type SimpleChatFn func(ctx context.Context, system, prompt string) (string, error)
-
-// GuideHandler serves destination guide content generated from persona profiles.
-type GuideHandler struct {
-	chatFn SimpleChatFn
-
-	mu    sync.RWMutex
-	cache map[string]*cachedGuide
+// Guide represents a destination guide for the marketing site.
+type Guide struct {
+	Slug             string `json:"slug"`
+	Title            string `json:"title"`
+	PersonaName      string `json:"persona_name"`
+	PersonaSpecialty string `json:"persona_specialty"`
+	Destination      string `json:"destination"`
+	Country          string `json:"country"`
+	Theme            string `json:"theme"`
+	Excerpt          string `json:"excerpt"`
+	Content          string `json:"content,omitempty"`
+	CTAText          string `json:"cta_text"`
+	CTAURL           string `json:"cta_url"`
 }
 
-type cachedGuide struct {
-	guide     *destinationGuide
-	expiresAt time.Time
+// GuidesHandler serves public destination guide endpoints.
+type GuidesHandler struct {
+	guides []Guide
+	bySlug map[string]*Guide
 }
 
-// NewGuideHandler creates a new GuideHandler.
-// Starts a background goroutine to evict expired cache entries every hour.
-func NewGuideHandler(chatFn SimpleChatFn) *GuideHandler {
-	h := &GuideHandler{
-		chatFn: chatFn,
-		cache:  make(map[string]*cachedGuide),
+// NewGuidesHandler creates a new GuidesHandler with static guide data.
+func NewGuidesHandler(appURL string) *GuidesHandler {
+	guides := staticGuides(appURL)
+	bySlug := make(map[string]*Guide, len(guides))
+	for i := range guides {
+		bySlug[guides[i].Slug] = &guides[i]
 	}
-	go h.evictExpired()
-	return h
+	return &GuidesHandler{guides: guides, bySlug: bySlug}
 }
 
-func (h *GuideHandler) evictExpired() {
-	ticker := time.NewTicker(time.Hour)
-	defer ticker.Stop()
-	for range ticker.C {
-		now := time.Now()
-		h.mu.Lock()
-		for key, cached := range h.cache {
-			if now.After(cached.expiresAt) {
-				delete(h.cache, key)
-			}
-		}
-		h.mu.Unlock()
-	}
-}
-
-type destinationListItem struct {
-	Code        string   `json:"code"`
-	Name        string   `json:"name"`
-	AccentColor string   `json:"accent_color"`
-	Themes      []string `json:"themes,omitempty"`
-}
-
-type themeListItem struct {
-	Slug        string `json:"slug"`
-	DisplayName string `json:"display_name"`
-}
-
-type guideSection struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
-
-type destinationGuide struct {
-	Code        string         `json:"code"`
-	Name        string         `json:"name"`
-	AccentColor string         `json:"accent_color"`
-	Theme       string         `json:"theme,omitempty"`
-	ThemeName   string         `json:"theme_name,omitempty"`
-	Sections    []guideSection `json:"sections"`
-	GeneratedAt string         `json:"generated_at"`
-}
-
-// HandleList handles GET /api/guides — returns available destinations and themes.
-func (h *GuideHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+// HandleListGuides handles GET /api/guides — returns all guides (without full content).
+func (h *GuidesHandler) HandleListGuides(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	profiles := persona.AllLocationProfiles()
-	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i].Name < profiles[j].Name
-	})
-
-	items := make([]destinationListItem, 0, len(profiles))
-	for _, p := range profiles {
-		items = append(items, destinationListItem{
-			Code:        p.RegionCode,
-			Name:        p.Name,
-			AccentColor: p.AccentColor,
-		})
+	limit := len(h.guides)
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n < limit {
+			limit = n
+		}
 	}
 
-	themeProfiles := persona.AllThemeProfiles()
-	sort.Slice(themeProfiles, func(i, j int) bool {
-		return themeProfiles[i].DisplayName < themeProfiles[j].DisplayName
-	})
-
-	themes := make([]themeListItem, 0, len(themeProfiles))
-	for _, t := range themeProfiles {
-		themes = append(themes, themeListItem{
-			Slug:        t.Slug,
-			DisplayName: t.DisplayName,
-		})
+	result := make([]Guide, 0, limit)
+	for i := 0; i < limit && i < len(h.guides); i++ {
+		g := h.guides[i]
+		g.Content = ""
+		result = append(result, g)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{
-		"destinations": items,
-		"themes":       themes,
-	}); err != nil {
-		slog.Error("failed to encode guides list", "error", err)
-	}
+	json.NewEncoder(w).Encode(map[string]any{"guides": result, "total": len(h.guides)})
 }
 
-// HandleGuide handles GET /api/guides/{code}[?theme=slug] — generates or returns cached guide.
-func (h *GuideHandler) HandleGuide(w http.ResponseWriter, r *http.Request) {
+// HandleGetGuide handles GET /api/guides/{slug} — returns a single guide with full content.
+func (h *GuidesHandler) HandleGetGuide(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract country code from path: /api/guides/IT
-	code := strings.TrimPrefix(r.URL.Path, "/api/guides/")
-	code = strings.ToUpper(strings.TrimSuffix(code, "/"))
-	if code == "" {
-		h.HandleList(w, r)
+	slug := strings.TrimPrefix(r.URL.Path, "/api/guides/")
+	slug = strings.TrimSuffix(slug, "/")
+
+	guide, ok := h.bySlug[slug]
+	if !ok {
+		http.Error(w, "guide not found", http.StatusNotFound)
 		return
 	}
-
-	profile := persona.GetLocationProfile(code)
-	if profile == nil {
-		http.Error(w, "destination not found", http.StatusNotFound)
-		return
-	}
-
-	// Optional theme filter
-	themeSlug := strings.ToLower(r.URL.Query().Get("theme"))
-	var themeProfile *persona.ThemeProfile
-	if themeSlug != "" {
-		themeProfile = persona.GetThemeProfile(themeSlug)
-		if themeProfile == nil {
-			http.Error(w, "theme not found", http.StatusNotFound)
-			return
-		}
-	}
-
-	// Cache key includes theme
-	cacheKey := code
-	if themeSlug != "" {
-		cacheKey = code + ":" + themeSlug
-	}
-
-	// Check cache (24-hour TTL)
-	h.mu.RLock()
-	if cached, ok := h.cache[cacheKey]; ok && time.Now().Before(cached.expiresAt) {
-		h.mu.RUnlock()
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(cached.guide); err != nil {
-			slog.Error("failed to encode cached guide", "error", err)
-		}
-		return
-	}
-	h.mu.RUnlock()
-
-	// Generate guide
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	defer cancel()
-
-	guide, err := h.generateGuide(ctx, profile, themeProfile)
-	if err != nil {
-		slog.Error("guide generation failed", "code", code, "theme", themeSlug, "error", err)
-		http.Error(w, "guide generation failed", http.StatusInternalServerError)
-		return
-	}
-
-	// Cache the result
-	h.mu.Lock()
-	h.cache[cacheKey] = &cachedGuide{
-		guide:     guide,
-		expiresAt: time.Now().Add(24 * time.Hour),
-	}
-	h.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(guide); err != nil {
-		slog.Error("failed to encode guide", "error", err)
-	}
+	json.NewEncoder(w).Encode(guide)
 }
 
-func (h *GuideHandler) generateGuide(ctx context.Context, location *persona.LocationProfile, theme *persona.ThemeProfile) (*destinationGuide, error) {
-	system := "You are a travel guide writer. Write concise, helpful travel guide content. " +
-		"Use 2-3 short paragraphs per section. Be specific with names of places, dishes, and tips. " +
-		"Do not use markdown formatting — write plain text only.\n\n" +
-		location.Flavor
-
-	guide := &destinationGuide{
-		Code:        location.RegionCode,
-		Name:        location.Name,
-		AccentColor: location.AccentColor,
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+func staticGuides(appURL string) []Guide {
+	return []Guide{
+		{Slug: "tokyo-food", Title: "Tokyo Food Guide by Hana", PersonaName: "Hana", PersonaSpecialty: "Japanese Cuisine", Destination: "Tokyo", Country: "JP", Theme: "food", Excerpt: "From Tsukiji's outer market to hidden izakayas in Shimokitazawa, Hana reveals where Tokyo's best meals are hiding.", Content: "Tokyo is arguably the greatest food city on Earth — more Michelin stars than Paris, and the real magic happens at ¥800 ramen counters and standing sushi bars.\n\nStart your morning at Tsukiji Outer Market. Skip the tourist-facing stalls near the entrance and head deeper — Turret Coffee for a perfect drip, then tamagoyaki from Yamachō. For lunch, Fuunji in Shinjuku serves the city's best tsukemen (dipping ramen) — expect a 30-minute line, but it moves fast.\n\nFor dinner, Shimokitazawa's backstreets hide incredible izakayas. Try Shirube for yakitori grilled over binchotan charcoal — order the tsukune (chicken meatball) and negima (chicken and leek). In Shibuya, Genki Sushi's conveyor belt is genuinely good and fun, but for a splurge, book Sushi Saito a month ahead.\n\nDon't skip depachika — department store basement food halls. Isetan in Shinjuku and Mitsukoshi in Ginza have the best selections.", CTAText: "Plan your Tokyo food trip with Hana", CTAURL: appURL},
+		{Slug: "paris-culture", Title: "Paris Culture Guide by Marie", PersonaName: "Marie", PersonaSpecialty: "French Art & Culture", Destination: "Paris", Country: "FR", Theme: "history", Excerpt: "Beyond the Louvre and Eiffel Tower — Marie shows you the Paris that Parisians actually love.", Content: "Paris rewards those who wander. The grand monuments are magnificent, but the city's soul lives in its neighborhoods.\n\nStart in the Marais — Place des Vosges is Paris's oldest planned square, built by Henri IV in 1612. The Musée Carnavalet (free!) tells the story of Paris itself. Walk through to the Jewish quarter on Rue des Rosiers for the best falafel outside the Middle East.\n\nSkip the Louvre queue and visit the Musée de l'Orangerie instead — Monet's Water Lilies displayed exactly as he intended, in two oval rooms flooded with natural light. Then walk through the Tuileries to the Palais Royal — the hidden gardens where the French Revolution was sparked.\n\nIn the evening, cross to the Left Bank. The Panthéon is underrated — Foucault's pendulum still swings, proving the Earth rotates. Finish at Shakespeare and Company, the legendary bookshop, then walk along the Seine at dusk.", CTAText: "Plan your Paris trip with Marie", CTAURL: appURL},
+		{Slug: "barcelona-nightlife", Title: "Barcelona Nightlife Guide by Carlos", PersonaName: "Carlos", PersonaSpecialty: "Barcelona After Dark", Destination: "Barcelona", Country: "ES", Theme: "nightlife", Excerpt: "Carlos knows every rooftop bar, underground club, and late-night tapas spot in Barcelona.", Content: "Barcelona doesn't start its evening until 10pm. Dinner at 9 is early. Clubs don't fill until 2am. Adjust your clock.\n\nStart with sunset drinks at a rooftop bar. La Isabela at Hotel 1898 on Las Ramblas has incredible views without the pretension. Or head to Terraza Martínez on Montjuïc hill for panoramic city and sea views.\n\nFor pre-club tapas, skip the tourist traps on Las Ramblas. Try Bar Cañete on Carrer de la Unió — sit at the bar and order jamón ibérico and patatas bravas. In El Born, La Vinya del Senyor has exceptional wine by the glass opposite Santa Maria del Mar.\n\nFor clubs, Razzmatazz in Poblenou has five rooms spanning indie rock to techno. Sala Apolo in Poble-sec hosts Nasty Mondays and Nitsa Club. For something intimate, Marula Café in the Gothic Quarter plays funk, soul, and jazz until late.", CTAText: "Plan your Barcelona nights with Carlos", CTAURL: appURL},
+		{Slug: "rome-history", Title: "Rome History Guide by Marco", PersonaName: "Marco", PersonaSpecialty: "Ancient & Renaissance Rome", Destination: "Rome", Country: "IT", Theme: "history", Excerpt: "Marco walks you through 2,800 years of history — from the Roman Forum to hidden Renaissance chapels.", Content: "Rome is a palimpsest — every era built on top of the last. You can stand in one spot and see Republican-era ruins, a medieval church, a Baroque fountain, and a modern café.\n\nStart at the Forum at opening time (8:30am). Walk the Via Sacra where triumphal processions passed, see the Temple of Vesta where the sacred flame burned for 700 years, and climb the Palatine Hill for the view that emperors saw.\n\nAfter lunch, skip the Vatican Museum crowds and visit San Clemente instead — a 12th-century church built over a 4th-century church built over a 1st-century Roman house built over a Mithraic temple. Four layers of history, one building.\n\nFor the Renaissance, Santa Maria del Popolo has two Caravaggios that you can stand inches from — no crowds, no tickets.", CTAText: "Plan your Rome trip with Marco", CTAURL: appURL},
+		{Slug: "bangkok-street-food", Title: "Bangkok Street Food Guide by Niran", PersonaName: "Niran", PersonaSpecialty: "Thai Street Food", Destination: "Bangkok", Country: "TH", Theme: "food", Excerpt: "Niran guides you through Bangkok's legendary street food scene — from Chinatown to Victory Monument.", Content: "Bangkok's street food is the best in the world — bold, cheap, and everywhere. The key rule: eat where the locals queue.\n\nStart at Yaowarat (Chinatown) after dark. T&K Seafood's charcoal-grilled river prawns are legendary — order the tom yum goong too. Walk down Soi Texas for kuay jab and finish with mango sticky rice from a cart.\n\nFor lunch, Wattana Panich near Ekkamai has been simmering the same beef broth since 1927 — their neua toon is liquid history. Near Victory Monument, the boat noodle alley serves tiny bowls for ฿15 each — you'll eat five.\n\nDon't miss Jay Fai — the street food vendor with a Michelin star. Her crab omelette and drunken noodles justify the 2-hour wait. For everyday pad thai, Thip Samai on Mahachai Road wraps theirs in a crispy egg net.", CTAText: "Plan your Bangkok food trip with Niran", CTAURL: appURL},
+		{Slug: "london-history", Title: "London History Guide by Eleanor", PersonaName: "Eleanor", PersonaSpecialty: "British History & Heritage", Destination: "London", Country: "GB", Theme: "history", Excerpt: "Eleanor navigates London's 2,000 years — from Roman walls to Victorian grandeur.", Content: "London doesn't show off its history like Rome does — you have to know where to look.\n\nStart at the Tower of London early morning. Ask a Yeoman Warder about the ravens — legend says if they leave, the kingdom falls. Walk along the Thames to the remains of the Roman wall near Tower Hill station.\n\nCross to the South Bank for the Globe Theatre — Shakespeare's \"Wooden O\" rebuilt 200 meters from its original site. Time your visit for a standing-room groundling ticket (£5).\n\nFor hidden history, visit Dennis Severs' House in Spitalfields — a Georgian townhouse preserved as if the Huguenot family just stepped out. Book the candlelit Monday evening session.", CTAText: "Plan your London trip with Eleanor", CTAURL: appURL},
+		{Slug: "marrakech-food", Title: "Marrakech Food Guide by Fatima", PersonaName: "Fatima", PersonaSpecialty: "Moroccan Cuisine", Destination: "Marrakech", Country: "MA", Theme: "food", Excerpt: "Fatima takes you from the spice souks to rooftop feasts.", Content: "Marrakech cuisine is a love letter to spice, patience, and hospitality.\n\nStart at Jemaa el-Fnaa at dusk when the food stalls fire up. Stall 14 and Stall 1 are consistently good for harira soup and lamb mechoui. For snails in spiced broth, find the vendors near the Café de France side.\n\nFor a proper tagine, skip the medina restaurants with aggressive touts. Al Fassia — a women-run restaurant — serves the city's best traditional cooking. Their lamb tagine with prunes and almonds is revelatory.\n\nVisit the spice souk in the morning. Buy ras el hanout from Herboriste du Paradis — smell before you buy. For a cooking class, La Maison Arabe's atelier teaches proper couscous technique.", CTAText: "Plan your Marrakech trip with Fatima", CTAURL: appURL},
+		{Slug: "lisbon-food", Title: "Lisbon Food Guide by Ana", PersonaName: "Ana", PersonaSpecialty: "Portuguese Cuisine", Destination: "Lisbon", Country: "PT", Theme: "food", Excerpt: "Ana knows every tasca, pastelaria, and wine bar in Lisbon.", Content: "Lisbon is Europe's most underrated food city. The seafood is pristine, the pastéis de nata are divine, and the wine costs a fraction of Paris prices.\n\nStart at Pastéis de Belém — these custard tarts have been made with the same secret recipe since 1837. Sprinkle cinnamon and powdered sugar.\n\nFor lunch, Taberna da Rua das Flores in Chiado is perfect — tiny, no menu, the chef makes what's fresh. In Alfama, Zé da Mouraria serves the city's best bacalhau à brás.\n\nFor dinner, Cervejaria Ramiro is Lisbon's legendary seafood hall — order tiger prawns, percebes, and finish with a steak sandwich. Pair everything with vinho verde.", CTAText: "Plan your Lisbon food trip with Ana", CTAURL: appURL},
+		{Slug: "mexico-city-food", Title: "Mexico City Food Guide by Diego", PersonaName: "Diego", PersonaSpecialty: "Mexican Cuisine", Destination: "Mexico City", Country: "MX", Theme: "food", Excerpt: "Diego navigates CDMX's vibrant food scene — from street tacos to world-class mezcalerías.", Content: "Mexico City's food scene is staggering in its depth. Every neighborhood has its own taco culture.\n\nFor breakfast tacos, Tacos de Canasta Los Especiales in Roma Norte serves basket tacos — soft, steamed, filled with chicharrón. At El Huequito, try tacos al pastor on their vertical spit since 1959.\n\nFor lunch, Mercado de San Juan is the city's gourmet market. In Coyoacán, Mercado de Coyoacán has the best tostadas.\n\nFor dinner, Pujol's mole madre has been aging since 2013. But also try Contramar for the iconic tuna tostadas. For mezcal, Bósforo in Centro Histórico has over 100 varieties.", CTAText: "Plan your Mexico City trip with Diego", CTAURL: appURL},
+		{Slug: "istanbul-culture", Title: "Istanbul Culture Guide by Elif", PersonaName: "Elif", PersonaSpecialty: "Turkish History & Culture", Destination: "Istanbul", Country: "TR", Theme: "history", Excerpt: "Elif bridges East and West — exploring Istanbul's Byzantine, Ottoman, and modern heritage.", Content: "Istanbul is the only city that spans two continents, and its culture reflects millennia of civilization.\n\nStart at Hagia Sophia — a church for 916 years, a mosque for 481, a museum for 86, now a mosque again. The massive dome seems to float. Go early.\n\nWalk to the Basilica Cistern — 336 marble columns supporting what was once the city's water supply. Two have upside-down Medusa heads. Then climb to the Grand Bazaar, one of the oldest covered markets in the world.\n\nCross the Galata Bridge to the modern city. The Galata Tower offers the best panoramic view. End at a rooftop restaurant in Karaköy watching the sun set over the Golden Horn.", CTAText: "Plan your Istanbul trip with Elif", CTAURL: appURL},
+		{Slug: "bali-adventure", Title: "Bali Adventure Guide by Made", PersonaName: "Made", PersonaSpecialty: "Balinese Adventure & Nature", Destination: "Bali", Country: "ID", Theme: "adventure", Excerpt: "Made takes you beyond the beach resorts — volcanoes, rice terraces, and hidden waterfalls.", Content: "Bali's real magic is inland and underwater. The volcanoes, jungles, and Hindu temples are where the island's soul lives.\n\nHike Mount Batur for sunrise — start at 3:30am from Toya Bungkah village. The 2-hour climb is moderate, and watching dawn break over the crater lake is unforgettable.\n\nFor rice terraces, skip crowded Tegallalang and visit Jatiluwih instead — a UNESCO World Heritage Site that's genuinely stunning and much quieter.\n\nFor waterfalls, Sekumpul in the north is Bali's most beautiful — go early for the best light. For diving, the USAT Liberty wreck at Tulamben is a shore dive accessible to beginners.", CTAText: "Plan your Bali adventure with Made", CTAURL: appURL},
+		{Slug: "seoul-food", Title: "Seoul Food Guide by Jisoo", PersonaName: "Jisoo", PersonaSpecialty: "Korean Cuisine", Destination: "Seoul", Country: "KR", Theme: "food", Excerpt: "Jisoo navigates Seoul's incredible food scene — from Gwangjang Market to Michelin-starred BBQ.", Content: "Seoul is a food city that operates on a different level. Korean cuisine — fermented, grilled, soupy, spicy — is addictive.\n\nStart at Gwangjang Market for bindaetteok (mung bean pancakes) and mayak gimbap (addictive mini rice rolls). For tteokbokki, the center aisle stalls have been perfecting theirs for decades.\n\nFor Korean BBQ, Maple Tree House in Itaewon serves premium hanwoo beef. In Mapo-gu, Yeontabal is where locals go for samgyeopsal.\n\nFor refined Korean, Jungsik in Gangnam reimagines classic dishes. For comfort food, find any restaurant serving doenjang jjigae — the banchan side dishes are the true measure of skill.", CTAText: "Plan your Seoul food trip with Jisoo", CTAURL: appURL},
+		{Slug: "scotland-distilleries", Title: "Scotland Distillery Guide by Ewan", PersonaName: "Ewan", PersonaSpecialty: "Scotch Whisky", Destination: "Scotland", Country: "GB", Theme: "distilleries", Excerpt: "Ewan tours Speyside, Islay, and the Highlands — from cask rooms to hidden drams.", Content: "Scotland has over 130 working distilleries, each reflecting its landscape — peaty Islay, honeyed Speyside, coastal Highland.\n\nStart on Islay. Laphroaig's tour lets you see the floor maltings where barley is dried over peat fires. Ardbeg next door has an excellent restaurant. Bruichladdich is the most experimental.\n\nIn Speyside, Glenfiddich is the most polished tour, but The Macallan's new distillery building is architecturally stunning. BenRiach offers intimate warehouse tastings straight from the cask.\n\nDon't miss the independents. Kilchoman on Islay does everything from barley to bottle on-site. Wolfburn near Thurso is Scotland's most northerly mainland distillery.", CTAText: "Plan your Scotland whisky tour with Ewan", CTAURL: appURL},
+		{Slug: "vietnam-food", Title: "Vietnam Food Guide by Linh", PersonaName: "Linh", PersonaSpecialty: "Vietnamese Cuisine", Destination: "Vietnam", Country: "VN", Theme: "food", Excerpt: "Linh navigates Vietnam's incredible regional food — from Hanoi's phở to Hội An's cao lầu.", Content: "Vietnamese food changes completely every few hundred kilometers. Northern cuisine is subtle, central is bold and spicy, southern is sweet and herbaceous.\n\nIn Hanoi, Phở Gia Truyền on Bát Đàn Street has served the same recipe since the 1950s — go at 6am. For bún chả, Bún Chả Hương Liên in the Old Quarter is the spot.\n\nIn Hội An, get cao lầu — a dish that exists only here. Bà Bé on the market side street makes the best version. The white rose dumplings at Morning Glory are also unique to this town.\n\nIn Saigon, Bánh mì Huỳnh Hoa makes the city's best bánh mì. For cơm tấm, any neighborhood joint with plastic chairs and a charcoal grill will be excellent.", CTAText: "Plan your Vietnam food trip with Linh", CTAURL: appURL},
+		{Slug: "iceland-nature", Title: "Iceland Nature Guide by Sigrid", PersonaName: "Sigrid", PersonaSpecialty: "Icelandic Landscapes", Destination: "Iceland", Country: "IS", Theme: "nature", Excerpt: "Sigrid takes you beyond the Golden Circle to Iceland's raw, untouched landscapes.", Content: "Iceland feels like another planet. The geology is young, active, and visible.\n\nDrive the Snæfellsnes Peninsula — glaciers, lava fields, sea cliffs, and the fishing village of Arnarstapi. Kirkjufell mountain at dawn is one of the most photographed spots in the country.\n\nFor the Highlands (summer only, 4x4 required), Landmannalaugar is surreal — rhyolite mountains in every color with natural hot springs at the trailhead.\n\nIn winter, the Westfjords are Iceland's most remote and dramatic region. The Dynjandi waterfall — seven cascading tiers — is genuinely jaw-dropping and often completely deserted.", CTAText: "Plan your Iceland trip with Sigrid", CTAURL: appURL},
+		{Slug: "greece-romance", Title: "Greece Romance Guide by Sophia", PersonaName: "Sophia", PersonaSpecialty: "Greek Islands & Romance", Destination: "Greece", Country: "GR", Theme: "romance", Excerpt: "Sophia plans the perfect couples' escape across the Greek Islands.", Content: "The Greek Islands were made for romance. The light is golden, the pace is slow, and every sunset feels like it's performing just for you.\n\nFor a truly romantic escape, try Folegandros — Santorini's quieter neighbor. The chora has cliff-edge tavernas with Aegean views and no cruise ship crowds.\n\nIf you do Santorini, skip Oia's sunset crowds. Book a private catamaran cruise instead. For dinner, Metaxi Mas in Exo Gonia has the island's best food away from the tourist center.\n\nFor beaches, Milos has Greece's most stunning coastline — Sarakiniko's lunar rock formations, Kleftiko's sea caves, and Firiplaka's colorful cliffs. Rent a boat for the day.", CTAText: "Plan your Greece romance with Sophia", CTAURL: appURL},
+		{Slug: "new-york-food", Title: "New York Food Guide by Marcus", PersonaName: "Marcus", PersonaSpecialty: "NYC Food Scene", Destination: "New York", Country: "US", Theme: "food", Excerpt: "Marcus covers every borough's best — from dollar pizza to tasting menus.", Content: "New York's food scene is the world's most diverse — 800+ languages spoken means 800+ cuisines represented.\n\nFor pizza, Di Fara in Midwood, Brooklyn has been making the same perfect pie since 1965. In Manhattan, Joe's Pizza on Carmine Street is the quintessential New York slice.\n\nFor bagels, Russ & Daughters on Houston Street has been serving smoked fish and bagels since 1914. Order the Classic.\n\nIn Queens, Jackson Heights is the city's most exciting food neighborhood — samosa chat, Tibetan momos, Colombian arepas. For a splurge, Le Bernardin is the finest seafood restaurant in the country.", CTAText: "Plan your NYC food trip with Marcus", CTAURL: appURL},
+		{Slug: "peru-adventure", Title: "Peru Adventure Guide by Miguel", PersonaName: "Miguel", PersonaSpecialty: "Andean Adventure", Destination: "Peru", Country: "PE", Theme: "adventure", Excerpt: "Miguel goes beyond Machu Picchu — trekking, surfing, and exploring the Amazon.", Content: "Peru is South America's ultimate adventure destination — Andes to Amazon to Pacific coast.\n\nSkip the classic Inca Trail and hike the Salkantay Trek instead — 5 days through diverse ecosystems from snow-capped passes to cloud forest, arriving at Machu Picchu from the back.\n\nInstead of crowded Vinicunca, hike Palccoyo — three rainbow mountains, one-third the altitude gain, almost no tourists.\n\nFor the Amazon, fly to Puerto Maldonado and book Tambopata Research Center — macaw clay licks at dawn, giant river otters, and night jungle walks.", CTAText: "Plan your Peru adventure with Miguel", CTAURL: appURL},
+		{Slug: "amsterdam-art", Title: "Amsterdam Art Guide by Willem", PersonaName: "Willem", PersonaSpecialty: "Dutch Art & Design", Destination: "Amsterdam", Country: "NL", Theme: "art", Excerpt: "Willem guides you through Golden Age masterpieces and cutting-edge contemporary art.", Content: "Amsterdam punches far above its weight in art. Three world-class museums within walking distance, and a contemporary scene rivaling Berlin.\n\nStart at the Rijksmuseum. Go straight to the Gallery of Honour for Rembrandt's Night Watch. Then find Vermeer's Milkmaid. Budget 3 hours.\n\nThe Van Gogh Museum next door has the world's largest collection. The chronological layout shows his evolution from dark Dutch realism to explosive color.\n\nFor contemporary art, explore NDSM Wharf in Amsterdam-Noord — a former shipyard with studios, street art, and the Straat Museum. Take the free ferry from Central Station.", CTAText: "Plan your Amsterdam art trip with Willem", CTAURL: appURL},
+		{Slug: "india-food", Title: "India Food Guide by Priya", PersonaName: "Priya", PersonaSpecialty: "Indian Regional Cuisine", Destination: "India", Country: "IN", Theme: "food", Excerpt: "Priya navigates India's staggering culinary diversity — from Delhi's Chandni Chowk to Kerala's backwaters.", Content: "Indian food is not one cuisine — it's dozens, each as complex as French or Japanese cooking.\n\nIn Old Delhi, Chandni Chowk is India's greatest street food corridor. Parathe Wali Gali has served stuffed flatbreads since the 1870s. Karim's seekh kebabs and nihari are legendary.\n\nIn Mumbai, vada pav is the city's icon. Ashok Vada Pav near Kirti College is the gold standard. Eat at Parsi café Britannia & Co for berry pulao.\n\nIn Kerala, a thali at a toddy shop — fish curry, avial, thoran on a banana leaf — is an experience. The backwater houseboats serve kettle-cooked karimeen caught that morning.", CTAText: "Plan your India food trip with Priya", CTAURL: appURL},
+		{Slug: "argentina-wine", Title: "Argentina Wine Guide by Valentina", PersonaName: "Valentina", PersonaSpecialty: "Argentine Wine", Destination: "Mendoza", Country: "AR", Theme: "wine", Excerpt: "Valentina tours Mendoza's vineyards — high-altitude Malbec, asado pairings, and hidden bodegas.", Content: "Mendoza sits at the foot of the Andes, and the altitude gives its wines a character you won't find anywhere else.\n\nStart in Luján de Cuyo. Bodega Catena Zapata's pyramid winery is architecturally stunning. Achaval-Ferrer pours single-vineyard Malbecs that show how terroir shapes the grape.\n\nThe Uco Valley is where the most exciting wines are being made. Zuccardi Valle de Uco was named world's best vineyard three years running.\n\nPair wine with asado — Francis Mallmann's Siete Fuegos is the pinnacle. For casual, any bodega with a parilla will serve incredible provoleta and entraña.", CTAText: "Plan your Mendoza wine trip with Valentina", CTAURL: appURL},
+		{Slug: "new-zealand-adventure", Title: "New Zealand Adventure Guide by Aroha", PersonaName: "Aroha", PersonaSpecialty: "Kiwi Outdoor Life", Destination: "New Zealand", Country: "NZ", Theme: "adventure", Excerpt: "Aroha knows every trail, fjord, and geothermal wonder in Aotearoa.", Content: "New Zealand packs an absurd amount of adventure into a country smaller than Japan.\n\nThe Tongariro Alpine Crossing is the greatest day hike — 19.4km across volcanic terrain, past emerald lakes and steaming vents. Start early, bring layers.\n\nIn Fiordland, skip Milford Sound crowds for Doubtful Sound — ten times the size, genuine wilderness. Book an overnight cruise.\n\nFor adrenaline, Queenstown delivers — bungy, jet boating, the Nevis Swing. But also try canyoning in Wanaka — the most underrated adventure activity in the country.", CTAText: "Plan your NZ adventure with Aroha", CTAURL: appURL},
+		{Slug: "prague-history", Title: "Prague History Guide by Jan", PersonaName: "Jan", PersonaSpecialty: "Czech History & Architecture", Destination: "Prague", Country: "CZ", Theme: "history", Excerpt: "Jan reveals Prague's layers — from Romanesque cellars to Art Nouveau grandeur.", Content: "Prague survived WWII almost unscathed — every architectural period from Romanesque to Cubist is represented.\n\nStart at Prague Castle early. St. Vitus Cathedral took 600 years to build. The Alfons Mucha stained glass window fuses Art Nouveau with religious iconography. Walk down through the Golden Lane.\n\nCross Charles Bridge before 8am. Touch the bronze plaque of St. John of Nepomuk for good luck. In the Old Town, look up at the Art Nouveau buildings on Pařížská Street.\n\nFor hidden history, visit the nuclear bunker under Hotel Jalta — a Cold War listening post. The Jewish Quarter's 77,297 names inscribed on Pinkas Synagogue's walls tell a sobering story.", CTAText: "Plan your Prague trip with Jan", CTAURL: appURL},
+		{Slug: "japan-adventure", Title: "Japan Adventure Guide by Kenji", PersonaName: "Kenji", PersonaSpecialty: "Japanese Outdoor Adventure", Destination: "Japan", Country: "JP", Theme: "adventure", Excerpt: "Kenji goes beyond the temples — hiking, skiing, and wild camping in Japan's backcountry.", Content: "Japan is 73% mountainous, and most visitors never leave the cities. The backcountry is stunning and uncrowded.\n\nThe Kumano Kodo pilgrimage trail is Japan's Camino — ancient forest paths connecting sacred shrines, with mountain guesthouses serving kaiseki dinners. The Nakahechi route takes 3-4 days.\n\nIn winter, Hakuba's backcountry skiing rivals the Alps — deep, dry powder and tree runs. For something unique, try snow-shoeing to wild onsen.\n\nIn summer, the Yakushima Island moss forests inspired Princess Mononoke — the Shiratani Unsuikyō Ravine hike through ancient cedar trees is genuinely magical.", CTAText: "Plan your Japan adventure with Kenji", CTAURL: appURL},
 	}
-
-	name := location.Name
-
-	// Build section prompts based on whether a theme is provided
-	type sectionDef struct {
-		title  string
-		prompt string
-	}
-
-	var defs []sectionDef
-
-	if theme != nil {
-		// Theme-specific guide: inject theme expertise into system prompt
-		system += "\n\n" + theme.Flavor
-		guide.Theme = theme.Slug
-		guide.ThemeName = theme.DisplayName
-
-		themeName := theme.DisplayName
-		defs = []sectionDef{
-			{"Overview", "Write a 2-paragraph overview of " + name + " specifically through the lens of " + themeName + ". Why is " + name + " a great destination for " + themeName + " enthusiasts?"},
-			{"Top Experiences", "List the top 5-6 " + themeName + " experiences, venues, or activities in " + name + ". Be specific with names and brief descriptions."},
-			{"Insider Tips", "Give 5-6 insider tips for experiencing " + themeName + " in " + name + " like a local. Include practical advice, timing, etiquette, and hidden gems."},
-			{"Where to Go", "Describe the best neighborhoods, districts, or regions in " + name + " for " + themeName + ". What makes each area unique?"},
-			{"Best Time to Visit", "When is the best time to visit " + name + " for " + themeName + "? Cover seasonal events, festivals, or peak periods specific to " + themeName + "."},
-			{"Budget Guide", "What should visitors expect to spend on " + themeName + " in " + name + "? Cover price ranges, where to splurge, and where to save."},
-		}
-	} else {
-		// General destination guide
-		defs = []sectionDef{
-			{"Overview", "Write a 2-paragraph overview of " + name + " as a travel destination. What makes it special and who should visit?"},
-			{"Top Highlights", "List the top 5-6 must-see attractions and experiences in " + name + ". Brief description for each."},
-			{"Food & Dining", "Describe the food and dining scene in " + name + ". What dishes to try, where to eat, and any dining customs to know."},
-			{"Getting Around", "How to get around in " + name + " — transportation options, tips for travelers, and what to know about getting from the airport."},
-			{"Best Time to Visit", "When is the best time to visit " + name + "? Cover seasons, weather, peak vs off-peak, and any major events or festivals."},
-			{"Practical Tips", "Give 5-6 practical tips for first-time visitors to " + name + ". Cover cultural etiquette, money, safety, and common mistakes to avoid."},
-		}
-	}
-
-	guide.Sections = make([]guideSection, 0, len(defs))
-	for _, def := range defs {
-		text, err := h.chatFn(ctx, system, def.prompt)
-		if err != nil {
-			return nil, err
-		}
-		guide.Sections = append(guide.Sections, guideSection{
-			Title:   def.title,
-			Content: strings.TrimSpace(text),
-		})
-	}
-
-	return guide, nil
 }

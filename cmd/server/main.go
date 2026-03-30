@@ -283,10 +283,10 @@ func main() {
 	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
 	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)
 
-	// Destination guide routes (public, no auth)
-	guideHandler := handlers.NewGuideHandler(newSimpleChatFn(aiProvider))
-	mux.HandleFunc("/api/guides/", guideHandler.HandleGuide)
-	mux.HandleFunc("/api/guides", guideHandler.HandleList)
+	// Public destination guides (no auth required)
+	guidesHandler := handlers.NewGuidesHandler(cfg.FrontendURL)
+	mux.HandleFunc("/api/guides/", guidesHandler.HandleGetGuide)
+	mux.HandleFunc("/api/guides", guidesHandler.HandleListGuides)
 
 	// Shared trip routes
 	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
