@@ -16,7 +16,7 @@ env:
 jobs:
   typecheck:
     name: Type Check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,7 +31,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,7 +46,7 @@ jobs:
 
   build:
     name: Build (${{ matrix.platform }})
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         platform: [web, ios, android]
@@ -71,7 +71,7 @@ jobs:
     name: Deploy to Staging
     needs: [typecheck, test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -119,7 +119,7 @@ jobs:
     name: Deploy to Production
     needs: [typecheck, test, build]
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: production
     steps:
       - uses: actions/checkout@v4
