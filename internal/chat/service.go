@@ -1,15 +1,18 @@
 package chat
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/ledongthuc/pdf"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
@@ -650,14 +653,25 @@ func buildAttachmentBlocks(textContent string, attachments []Attachment) []ai.Co
 			})
 
 		case att.MediaType == "application/pdf":
-			// PDF attachments → note the file (no heavy parsing yet)
-			// If the PDF data is small enough, try to extract readable text;
-			// otherwise just inform the AI about the attachment.
-			blocks = append(blocks, ai.ContentBlock{
-				Type: "text",
-				Text: fmt.Sprintf("[Attached PDF: %s (%d bytes) — PDF content extraction is not yet supported. The user has attached a PDF file named %q.]",
-					att.Filename, len(att.Data), att.Filename),
-			})
+			// PDF attachments → extract text and inject as context.
+			// Falls back to a filename-only note if extraction fails.
+			extractedText, err := extractPDFText(att.Data)
+			if err != nil || strings.TrimSpace(extractedText) == "" {
+				slog.Warn("pdf text extraction failed, falling back to filename note",
+					"filename", att.Filename,
+					"error", err,
+				)
+				blocks = append(blocks, ai.ContentBlock{
+					Type: "text",
+					Text: fmt.Sprintf("[Attached PDF: %s (%d bytes) — the PDF content could not be extracted. Please ask the user to copy and paste the relevant text.]",
+						att.Filename, len(att.Data)),
+				})
+			} else {
+				blocks = append(blocks, ai.ContentBlock{
+					Type: "text",
+					Text: fmt.Sprintf("[Attached PDF: %s]\n%s", att.Filename, extractedText),
+				})
+			}
 
 		default:
 			slog.Warn("unsupported attachment media type in content block builder",
@@ -668,4 +682,53 @@ func buildAttachmentBlocks(textContent string, attachments []Attachment) []ai.Co
 	}
 
 	return blocks
+}
+
+// maxPDFTextBytes is the maximum number of characters extracted from a PDF
+// to avoid overflowing the AI context window.
+const maxPDFTextBytes = 10_000
+
+// extractPDFText extracts plain text from a PDF given its raw bytes.
+// It uses the ledongthuc/pdf library for pure-Go extraction.
+// The returned text is capped at maxPDFTextBytes characters.
+func extractPDFText(data []byte) (string, error) {
+	r := bytes.NewReader(data)
+	reader, err := pdf.NewReader(r, int64(len(data)))
+	if err != nil {
+		return "", fmt.Errorf("open pdf: %w", err)
+	}
+
+	plainTextReader, err := reader.GetPlainText()
+	if err != nil {
+		return "", fmt.Errorf("get plain text: %w", err)
+	}
+
+	var sb strings.Builder
+	buf := make([]byte, 4096)
+	for {
+		n, readErr := plainTextReader.Read(buf)
+		if n > 0 {
+			remaining := maxPDFTextBytes - sb.Len()
+			if remaining <= 0 {
+				sb.WriteString("\n[... content truncated to stay within context limit ...]")
+				break
+			}
+			chunk := buf[:n]
+			if len(chunk) > remaining {
+				chunk = chunk[:remaining]
+				sb.Write(chunk)
+				sb.WriteString("\n[... content truncated to stay within context limit ...]")
+				break
+			}
+			sb.Write(chunk)
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return sb.String(), fmt.Errorf("read pdf text: %w", readErr)
+		}
+	}
+
+	return sb.String(), nil
 }
