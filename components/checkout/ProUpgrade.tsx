@@ -32,7 +32,7 @@ function loadHelcimJS(): Promise<void> {
     }
     const script = document.createElement("script");
     script.id = "helcim-pay-js";
-    script.src = "https://mydev.helcim.com/helcim-pay/services/start.js";
+    script.src = "https://secure.helcim.com/helcim-pay/services/start.js";
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("Failed to load Helcim.js"));
     document.head.appendChild(script);
