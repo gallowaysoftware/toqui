@@ -324,7 +324,7 @@ func main() {
 	})
 
 	// Admin endpoints (authenticated + admin email check)
-	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL)
+	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL, lifecycleSvc)
 	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
 	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
 	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
@@ -334,6 +334,7 @@ func main() {
 	mux.HandleFunc("/admin/delete-waitlist", adminHandler.HandleDeleteWaitlistEntry)
 	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
 	mux.HandleFunc("/admin/grant-pro", adminHandler.HandleGrantPro)
+	mux.HandleFunc("/admin/delete-user", adminHandler.HandleDeleteUser)
 	mux.HandleFunc("/admin/metrics", adminHandler.HandleMetrics)
 	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
 

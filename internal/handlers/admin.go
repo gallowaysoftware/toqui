@@ -18,26 +18,29 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/email"
+	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 )
 
 // AdminHandler serves internal admin endpoints.
 // All endpoints require JWT auth + email in the admin allow-list.
 type AdminHandler struct {
-	authSvc     *auth.Service
-	queries     *dbgen.Queries
-	adminEmails []string
-	emailSvc    *email.Sender
-	appURL      string
+	authSvc      *auth.Service
+	queries      *dbgen.Queries
+	adminEmails  []string
+	emailSvc     *email.Sender
+	appURL       string
+	lifecycleSvc *lifecycle.Service
 }
 
 // NewAdminHandler creates a new AdminHandler.
-func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []string, emailSvc *email.Sender, appURL string) *AdminHandler {
+func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []string, emailSvc *email.Sender, appURL string, lifecycleSvc *lifecycle.Service) *AdminHandler {
 	return &AdminHandler{
-		authSvc:     authSvc,
-		queries:     dbgen.New(pool),
-		adminEmails: adminEmails,
-		emailSvc:    emailSvc,
-		appURL:      appURL,
+		authSvc:      authSvc,
+		queries:      dbgen.New(pool),
+		adminEmails:  adminEmails,
+		emailSvc:     emailSvc,
+		appURL:       appURL,
+		lifecycleSvc: lifecycleSvc,
 	}
 }
 
@@ -560,6 +563,53 @@ func (h *AdminHandler) HandleRevokeInvite(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "revoked"})
+}
+
+// HandleDeleteUser handles POST /admin/delete-user — permanently deletes a user and all their data.
+func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	adminID, err := h.authenticateAdmin(r)
+	if err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	user, err := h.queries.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.lifecycleSvc.DeleteUser(r.Context(), user.ID); err != nil {
+		slog.Error("admin delete user failed", "error", err, "email", req.Email)
+		http.Error(w, "failed to delete user", http.StatusInternalServerError)
+		return
+	}
+
+	audit.Log(audit.EventAdminDeleteUser,
+		"admin_id", adminID.String(),
+		"email", req.Email,
+		"user_id", user.ID.String(),
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"email":  req.Email,
+		"status": "deleted",
+	})
 }
 
 // HandleDeleteWaitlistEntry handles POST /admin/delete-waitlist — removes an entry.

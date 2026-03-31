@@ -27,6 +27,7 @@ const (
 	EventAdminInvite         = "admin.invite"
 	EventAdminTripUnlock     = "admin.trip_unlock"
 	EventAdminGrantPro       = "admin.grant_pro"
+	EventAdminDeleteUser     = "admin.delete_user"
 	EventReferralRedeem      = "referral.redeem"
 )
 
