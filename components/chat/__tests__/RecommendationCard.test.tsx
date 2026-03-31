@@ -14,6 +14,19 @@ vi.mock("react-native", async () => {
   };
 });
 
+vi.mock("@/lib/theme", () => ({
+  useTheme: () => ({
+    colors: {
+      surface: "#fff",
+      border: "#e0e0e0",
+      textPrimary: "#333",
+      textSecondary: "#666",
+      textTertiary: "#999",
+      accent: "#BF4028",
+    },
+  }),
+}));
+
 // Mock lucide icons to simple spans
 vi.mock("lucide-react-native", () => ({
   ExternalLink: ({ color, size }: { color: string; size: number }) => (

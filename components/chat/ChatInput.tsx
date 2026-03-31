@@ -1,6 +1,7 @@
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
 import { useState, useCallback, useRef } from "react";
 import { Send, Paperclip, X } from "lucide-react-native";
+import { useTheme } from "@/lib/theme";
 
 interface AttachmentFile {
   filename: string;
@@ -38,6 +39,7 @@ function validateFile(file: File): string | null {
 }
 
 export function ChatInput({ onSend, disabled, placeholder = "Type a message..." }: ChatInputProps) {
+  const { colors } = useTheme();
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -129,6 +131,86 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
     },
   } as Record<string, unknown> : {};
 
+  const styles = StyleSheet.create({
+    wrapper: {
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    container: {
+      flexDirection: "row",
+      padding: 12,
+      alignItems: "flex-end",
+    },
+    dragging: {
+      backgroundColor: colors.accentSoft,
+    },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      fontSize: 15,
+      maxHeight: 120,
+      color: colors.textPrimary,
+      backgroundColor: colors.inputBg,
+    },
+    attachButton: {
+      width: 44,
+      height: 44,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 4,
+    },
+    sendButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 22,
+      width: 44,
+      height: 44,
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 8,
+    },
+    disabledButton: {
+      opacity: 0.4,
+    },
+    attachmentRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingTop: 8,
+    },
+    attachmentChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.surfaceTertiary,
+      borderRadius: 16,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      maxWidth: 200,
+    },
+    attachmentName: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      flex: 1,
+    },
+    errorText: {
+      fontSize: 12,
+      color: colors.error,
+      paddingHorizontal: 12,
+      paddingTop: 4,
+    },
+    focusedButton: {
+      outlineWidth: 2,
+      outlineColor: colors.accent,
+      outlineStyle: "solid",
+    },
+  });
+
   return (
     <View style={styles.wrapper}>
       {attachments.length > 0 && (
@@ -142,7 +224,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
                 accessibilityLabel={`Remove ${a.filename}`}
                 accessibilityRole="button"
               >
-                <X color="#666" size={14} />
+                <X color={colors.textSecondary} size={14} />
               </Pressable>
             </View>
           ))}
@@ -160,14 +242,14 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           accessibilityLabel="Attach file"
           accessibilityRole="button"
         >
-          <Paperclip color={disabled ? "#ccc" : "#999"} size={20} />
+          <Paperclip color={disabled ? colors.border : colors.textTertiary} size={20} />
         </Pressable>
         <TextInput
           style={styles.input}
           value={text}
           onChangeText={setText}
           placeholder={isDragging ? "Drop files here..." : placeholder}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.textTertiary}
           multiline
           maxLength={10000}
           editable={!disabled}
@@ -204,82 +286,3 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  container: {
-    flexDirection: "row",
-    padding: 12,
-    alignItems: "flex-end",
-  },
-  dragging: {
-    backgroundColor: "#fef3f0",
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
-    maxHeight: 120,
-    color: "#333",
-  },
-  attachButton: {
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 4,
-  },
-  sendButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 22,
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  disabledButton: {
-    opacity: 0.4,
-  },
-  attachmentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-  },
-  attachmentChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: 200,
-  },
-  attachmentName: {
-    fontSize: 12,
-    color: "#444",
-    flex: 1,
-  },
-  errorText: {
-    fontSize: 12,
-    color: "#c81e1e",
-    paddingHorizontal: 12,
-    paddingTop: 4,
-  },
-  focusedButton: {
-    outlineWidth: 2,
-    outlineColor: "#BF4028",
-    outlineStyle: "solid",
-  },
-});

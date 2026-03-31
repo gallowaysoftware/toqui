@@ -9,6 +9,25 @@ vi.mock("lucide-react-native", () => ({
   X: () => <span data-testid="x-icon" />,
 }));
 
+vi.mock("@/lib/theme", () => ({
+  useTheme: () => ({
+    colors: {
+      surface: "#fff",
+      surfaceSecondary: "#f5f5f5",
+      surfaceTertiary: "#f0f0f0",
+      inputBg: "#fff",
+      inputBorder: "#e0e0e0",
+      textPrimary: "#333",
+      textSecondary: "#666",
+      textTertiary: "#999",
+      border: "#e0e0e0",
+      accent: "#BF4028",
+      accentSoft: "#fef3f0",
+      error: "#c81e1e",
+    },
+  }),
+}));
+
 describe("ChatInput", () => {
   describe("sending messages", () => {
     it("calls onSend with trimmed text when send button is pressed", () => {
