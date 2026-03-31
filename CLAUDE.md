@@ -289,6 +289,15 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 ## Pre-Commit Requirements
 
+### Keep CI Green — This Is Critical
+
+**MANDATORY**: CI must stay green at all times on `main`. Every push triggers lint, tests, build, and deploy-prod (workflow_dispatch only). If a change breaks CI, fix it immediately.
+
+- Push triggers `deploy-staging` (which fails — staging is torn down). That's expected.
+- `workflow_dispatch` triggers `deploy-prod`. Run `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main` to deploy.
+- Always run `go build ./...` and `go test ./...` locally before pushing.
+- Run `gofmt -w <file>` on any Go files you edit — CI runs `gofmt` check and will fail if not formatted.
+
 ### Documentation Updates
 
 **MANDATORY**: Before every commit/push, update all relevant documentation:
