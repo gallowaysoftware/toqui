@@ -57,6 +57,10 @@ graph TB
 | `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
+| `internal/email/`       | Transactional email via Resend API (waitlist verification, invite emails)                   |
+| `internal/payment/`     | Helcim payment processing (Trip Pro checkout sessions, validation)                          |
+| `internal/requestid/`   | HTTP middleware — generates unique request IDs, sets `X-Request-ID` response header         |
+| `internal/tier/`        | User subscription tier logic (Free / Pro) and feature gating                               |
 | `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
 | `internal/aitest/`      | AI integration test harness (build tag: `aitest`)                                         |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
@@ -86,11 +90,12 @@ graph TB
 Every ConnectRPC request passes through the interceptor chain:
 
 ```
-Request → validate.Interceptor → auth.Interceptor → ratelimit.Interceptor → Handler
+Request → validate.Interceptor → auth.Interceptor → age.Interceptor → ratelimit.Interceptor → Handler
 ```
 
 - **validate**: Enforces `buf.validate` constraints on request protos (string lengths, UUID format, lat/lng bounds). Returns `InvalidArgument` on failure.
 - **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure.
+- **age**: Enforces age verification gate — users who haven't completed `POST /auth/verify-age` cannot access gated RPCs. Returns `PermissionDenied` if age not verified.
 - **ratelimit**: Per-user token bucket. Separate limits for AI RPCs (SendMessage) vs general RPCs. Returns `ResourceExhausted` when exceeded.
 
 ## Development
@@ -155,6 +160,22 @@ Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. All environmen
 
 Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). See `env/.env.local` for the full local dev config.
 
+**Additional environment variables** (see `internal/config/config.go` for full list):
+
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `HELCIM_API_TOKEN` | (none) | Helcim payment gateway API token |
+| `TRIP_PRO_PRICE_CENTS` | `1200` | Trip Pro price in cents ($12.00) |
+| `RESEND_API_KEY` | (none) | Resend transactional email API key |
+| `EMAIL_FROM` | `Toqui <hello@toqui.travel>` | From address for outbound emails |
+| `ADMIN_EMAILS` | (none) | Comma-separated list of admin email addresses |
+| `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
+| `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
+| `FIRESTORE_DATABASE_ID` | (none) | Firestore database ID (uses default if unset) |
+| `SENDGRID_WEBHOOK_KEY` | (none) | ECDSA public key for SendGrid webhook verification |
+| `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
+| `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
+
 ## Trip Mode System
 
 ```mermaid
@@ -212,7 +233,7 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `create_trip`            | selection | AI creates a new trip when user describes travel plans                                                                                                 | `TripCreated`          |
 | `select_trip`            | selection | AI matches vague references to existing trips                                                                                                          | `TripSelected`         |
 | `create_itinerary_items` | planning  | AI adds structured day-by-day itinerary items                                                                                                          | `ItineraryUpdate`      |
-| `suggest_expert`         | all modes | Toqui hands off to a composed expert persona                                                                                                           | `PersonaSwitch`        |
+| `suggest_expert`         | all modes | Toqui hands off to a composed expert persona. **Free-tier gate**: limited to 3 expert handoffs per session, then returns an upgrade prompt directing the user to Trip Pro. | `PersonaSwitch`        |
 | `recommend_booking`      | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
 | `nearby_places`          | companion | Find nearby places using user's cached location (location-aware)                                                                                       | —                      |
 | `web_search`             | all modes | Search the web for current info (global tool registry)                                                                                                 | —                      |
@@ -442,29 +463,77 @@ Migrations are copied to `/migrations` in the image. The `cmd/migrate` binary re
 
 HTTP routes (outside ConnectRPC):
 
+### Auth routes
 - `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
 - `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
-- `POST /auth/exchange` — Reads cookie, returns `{access_token, refresh_token, user_id, email, name, avatar_url, expires_at}` as JSON, sets auth cookies, clears OAuth cookie (one-time use)
-- `POST /auth/refresh` — Cookie-based token refresh for web browsers. Reads `toqui_refresh` cookie, rotates tokens (same JTI/family logic as gRPC RPC), sets new auth cookies, returns `{user, expires_at}` (no tokens in body)
-- `POST /auth/logout` — Reads `toqui_refresh` cookie, revokes refresh token JTI, clears auth cookies, returns 204
-- `POST /waitlist` — Public. JSON body `{"email":"..."}`. Returns `{"position":N}`
+- `POST /auth/exchange` — Reads OAuth cookie, returns `{user, expires_at}`, sets `toqui_access`/`toqui_refresh` HttpOnly cookies
+- `POST /auth/refresh` — Cookie-based token refresh. Rotates tokens (JTI/family), sets new cookies, returns `{user, expires_at}`
+- `POST /auth/logout` — Revokes refresh token, clears auth cookies, returns 204
+- `POST /auth/verify-age` — Authenticated. JSON body `{"date_of_birth":"YYYY-MM-DD"}`. Verifies user is 18+, stores verification.
+
+### Waitlist routes
+- `POST /waitlist` — Public. JSON `{"email":"..."}`. Sends verification email via Resend, returns `{"message":"Check your email to verify your waitlist signup!"}`. Re-submission resends verification. In local dev (no RESEND_API_KEY), auto-verifies.
+- `GET /waitlist/verify?token=TOKEN` — Public. Verifies email, completes waitlist signup, shows position.
 - `GET /waitlist/status?email=...` — Public. Returns `{"position":N,"total":M}`
-- `GET /api/usage` — Authenticated (Bearer token or cookie). Returns `{"used":N,"limit":M,"resets_at":"..."}`
+
+### Usage & guides (public/authenticated)
+- `GET /api/usage` — Authenticated. Returns `{"used":N,"limit":M,"resets_at":"..."}`
+- `GET /api/guides` — Public. Lists all destination guides (slug, title, destination).
+- `GET /api/guides/{slug}` — Public. Returns full destination guide content.
+
+### Trip sharing
+- `POST /api/trips/share` — Authenticated. Enables trip sharing, returns share token.
+- `POST /api/trips/unshare` — Authenticated. Disables trip sharing.
+- `GET /shared/{token}` — Public. Returns shared trip view (no auth required).
+
+### Referral
+- `GET /api/referral` — Authenticated. Returns user's referral code and stats.
+- `POST /api/referral/redeem` — Authenticated. Redeems a referral code.
+
+### Payment / checkout
+- `POST /api/checkout` — Authenticated. Creates Helcim checkout session for Trip Pro purchase (`{"trip_id":"..."}`). Returns Helcim checkout URL/token.
+- `POST /api/checkout/validate` — Authenticated. Validates payment after Helcim callback. Unlocks trip if successful.
+- `GET /api/checkout/status?trip_id=...` — Authenticated. Returns `{"unlocked":true/false}`.
+
+### Admin (requires admin auth: Bearer + email in ADMIN_EMAILS)
+- `GET /admin/stats` — Dashboard stats (users, waitlist, trips, messages)
+- `GET /admin/users?search=&limit=&offset=` — Paginated user list
+- `GET /admin/waitlist?limit=&offset=` — Paginated waitlist entries
+- `POST /admin/invite` — Generate invite code
+- `POST /admin/send-invite` — Send invite email via Resend
+- `POST /admin/revoke-invite` — Revoke invite code
+- `POST /admin/delete-waitlist` — Delete waitlist entry
+- `POST /admin/unlock-trip` — Admin unlock a trip (grant Pro access)
+- `POST /admin/grant-pro` — Grant Pro status to a user
+- `GET /admin/metrics` — System metrics
+
+### Webhooks
+- `POST /webhooks/email/inbound` — SendGrid inbound email webhook (ECDSA signature verified). Processes forwarded booking emails.
+
+### Health checks
+- `GET /livez` — Liveness probe (always 200 if server is running)
+- `GET /readyz` — Readiness probe (checks DB connectivity)
+- `GET /healthz` — Health check with DB ping
+- `GET /health` — Detailed health check (component statuses + uptime)
+
+### Debug (local only)
+- `GET /debug/pprof/*` — Go profiling endpoints (disabled in staging/prod)
 
 ## Security Hardening
 
 ### Middleware Chain
 
 ```
-Request → recovery → requestID → securityHeaders → ipRateLimit → CORS → cookieAuth → CSRF → handler
+Request → recovery → requestID → requestLogging → securityHeaders → CORS → cookieAuth → ipRateLimit → CSRF → handler
 ```
 
 - **Recovery**: Panic recovery with structured error logging
 - **Request ID**: Generates unique request IDs for tracing
+- **Request logging**: Structured HTTP request/response logging (method, path, status, duration) via slog
 - **Security headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security` (HTTPS only)
-- **IP rate limit**: Per-IP request rate limiting (separate from per-user ConnectRPC rate limiting)
 - **CORS**: Cross-origin resource sharing for frontend origins. `Access-Control-Allow-Credentials: true` on all routes (required for browsers to send HttpOnly cookies on cross-origin same-site requests). CSRF middleware prevents abuse.
 - **Cookie auth**: Reads `toqui_access` HttpOnly cookie and sets `Authorization: Bearer` header on the request. Passthrough if `Authorization` header already present (native apps). See `internal/middleware/cookieauth.go`.
+- **IP rate limit**: Per-IP request rate limiting (separate from per-user ConnectRPC rate limiting). Runs AFTER cookieAuth so the limiter can use the user identity set by cookieAuth for smarter rate limiting.
 - **CSRF**: Origin/Referer header validation for state-changing requests (POST/PUT/DELETE/PATCH). Exempt: webhooks (have their own ECDSA auth). Non-browser clients (no Origin/Referer) are allowed through.
 - **Request body limits**: All REST POST handlers use `http.MaxBytesReader(w, r.Body, 1<<20)` — 1MB max
 
@@ -501,6 +570,9 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 - `auth.logout`, `auth.account_delete`, `auth.data_export`
 - `trip.share`, `trip.unshare`
 - `security.csrf_rejected`
+- `payment.trip_pro_purchase`, `payment.validation_failed` — Helcim payment audit trail
+- `admin.invite`, `admin.trip_unlock`, `admin.grant_pro` — Admin action audit trail
+- `referral.redeem` — Referral code redemption
 
 ### Cookie Encoding (OAuth)
 
@@ -531,6 +603,35 @@ New users are subject to a capacity cap controlled by `MAX_FREE_USERS` (default:
 - New users with a valid invite code are admitted and their waitlist entry is marked as accepted
 
 Tables: `waitlist` (email, invite_code, signed_up_at, invited_at, accepted_at)
+
+### Email Verification Flow
+Waitlist signups now require email verification:
+1. `POST /waitlist` — accepts email, sends verification link via Resend, returns a "check your email" message
+2. `GET /waitlist/verify?token=TOKEN` — verifies email, shows position in waitlist
+3. Re-submission of an existing unverified email resends the verification email
+4. In local dev (no `RESEND_API_KEY`), entries are auto-verified immediately
+
+## Additional Features
+
+### Payment & Trip Pro
+The `internal/payment/` package handles Helcim payment integration for Trip Pro ($12/trip):
+- `POST /api/checkout` initializes a Helcim checkout session
+- After payment, `POST /api/checkout/validate` unlocks the trip in the database
+- `GET /api/checkout/status` lets the frontend poll unlock status
+- Unlocked trips have access to unlimited messages, all personas, and export features
+- Stale checkout sessions have a TTL check at validation time
+
+### Referral System
+Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POST /api/referral/redeem`. Redemption is audit-logged. Referral stats (count of referred users) are returned with the code.
+
+### Destination Guides API
+Static destination guide content served at `/api/guides` (list) and `/api/guides/{slug}` (detail). Used by the marketing site's guide pages. Public endpoints — no auth required.
+
+### Trip Sharing
+Users can share a trip publicly via `POST /api/trips/share`, which generates a share token. The public view is accessible at `/shared/{token}` without authentication. Sharing can be revoked via `POST /api/trips/unshare`.
+
+### Inbound Email Webhook
+`POST /webhooks/email/inbound` processes emails forwarded to the platform (e.g., booking confirmations forwarded to the user's Toqui email address). Payload is ECDSA-signed by SendGrid and verified before processing.
 
 ## Daily Usage Limits
 
