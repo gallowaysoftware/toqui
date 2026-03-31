@@ -136,14 +136,19 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           {attachments.map((a, i) => (
             <View key={`${a.filename}-${i}`} style={styles.attachmentChip}>
               <Text style={styles.attachmentName} numberOfLines={1}>{a.filename}</Text>
-              <Pressable onPress={() => removeAttachment(i)} hitSlop={8}>
+              <Pressable
+                onPress={() => removeAttachment(i)}
+                hitSlop={8}
+                accessibilityLabel={`Remove ${a.filename}`}
+                accessibilityRole="button"
+              >
                 <X color="#666" size={14} />
               </Pressable>
             </View>
           ))}
         </View>
       )}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={styles.errorText} accessibilityLiveRegion="polite">{error}</Text> : null}
       <View
         style={[styles.container, isDragging && styles.dragging]}
         {...webDragProps}
@@ -152,6 +157,8 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           style={styles.attachButton}
           onPress={handleFileSelect}
           disabled={disabled}
+          accessibilityLabel="Attach file"
+          accessibilityRole="button"
         >
           <Paperclip color={disabled ? "#ccc" : "#999"} size={20} />
         </Pressable>
@@ -170,6 +177,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
         <Pressable
           role="button"
           aria-label="Send"
+          accessibilityLabel="Send message"
           style={[styles.sendButton, (!text.trim() && attachments.length === 0 || disabled) && styles.disabledButton]}
           onPress={handleSend}
           disabled={(!text.trim() && attachments.length === 0) || disabled}
@@ -220,17 +228,17 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   attachButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 4,
   },
   sendButton: {
     backgroundColor: "#BF4028",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,

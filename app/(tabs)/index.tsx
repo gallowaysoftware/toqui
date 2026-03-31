@@ -28,7 +28,7 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const statusLabel = t(labelKey);
 
   return (
-    <Pressable style={styles.tripCard} onPress={onPress}>
+    <Pressable style={styles.tripCard} onPress={onPress} accessibilityLabel={`Open trip: ${trip.title}`} accessibilityRole="button">
       <View style={styles.tripCardContent}>
         <View style={styles.tripCardHeader}>
           <Text style={styles.tripTitle} numberOfLines={1}>{trip.title}</Text>
@@ -111,7 +111,7 @@ export default function TripsScreen() {
     return (
       <View style={styles.center}>
         <AlertCircle color="#BF4028" size={40} style={styles.errorIcon} />
-        <Text style={styles.errorTitle}>{t("trips.loadError")}</Text>
+        <Text style={styles.errorTitle} accessibilityLiveRegion="assertive">{t("trips.loadError")}</Text>
         <Text style={styles.errorSubtitle}>{t("trips.loadErrorSubtitle")}</Text>
         <Pressable
           style={styles.retryButton}
@@ -141,6 +141,8 @@ export default function TripsScreen() {
                   params: { destination: dest.title },
                 })
               }
+              accessibilityLabel={`Start a trip to ${dest.title}`}
+              accessibilityRole="button"
             >
               <Text style={styles.destinationFlag}>{dest.flag}</Text>
               <View style={styles.destinationInfo}>
@@ -157,6 +159,8 @@ export default function TripsScreen() {
         <Pressable
           style={styles.primaryButton}
           onPress={() => router.push("/trips/new" as never)}
+          accessibilityLabel="New Trip"
+          accessibilityRole="button"
         >
           <Plus color="#fff" size={18} />
           <Text style={styles.buttonText}>{t("trips.newTrip")}</Text>
@@ -181,6 +185,8 @@ export default function TripsScreen() {
           <Pressable
             style={styles.newTripButton}
             onPress={() => router.push("/trips/new" as never)}
+            accessibilityLabel="New Trip"
+            accessibilityRole="button"
           >
             <Plus color="#BF4028" size={18} />
             <Text style={styles.newTripText}>{t("trips.newTrip")}</Text>

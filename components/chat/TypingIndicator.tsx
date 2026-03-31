@@ -5,8 +5,13 @@ interface TypingIndicatorProps {
 }
 
 export function TypingIndicator({ toolName }: TypingIndicatorProps) {
+  const label = toolName ? `Using ${toolName}` : "AI is typing";
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={label}
+    >
       {toolName ? (
         <Text style={styles.text}>Using {toolName}...</Text>
       ) : (

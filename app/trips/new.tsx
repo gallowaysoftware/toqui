@@ -51,6 +51,7 @@ export default function NewTripScreen() {
         value={title}
         onChangeText={setTitle}
         autoFocus
+        accessibilityLabel="Trip title"
       />
 
       <Text style={styles.label}>{t("tripCreate.descriptionLabel")}</Text>
@@ -62,6 +63,7 @@ export default function NewTripScreen() {
         onChangeText={setDescription}
         multiline
         numberOfLines={3}
+        accessibilityLabel="Trip description"
       />
 
       <View style={styles.dateRow}>

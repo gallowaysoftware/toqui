@@ -62,10 +62,10 @@ export default function TripSettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>{t("tripSettings.editTitle")}</Text>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} />
+      <TextInput style={styles.input} value={title} onChangeText={setTitle} accessibilityLabel="Trip title" />
 
       <Text style={styles.label}>{t("tripSettings.editDescription")}</Text>
-      <TextInput style={[styles.input, styles.textArea]} value={description} onChangeText={setDescription} multiline />
+      <TextInput style={[styles.input, styles.textArea]} value={description} onChangeText={setDescription} multiline accessibilityLabel="Trip description" />
 
       <View style={styles.dateRow}>
         <View style={styles.dateField}>

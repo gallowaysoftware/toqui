@@ -110,7 +110,12 @@ export default function ChatScreen() {
               <TypingIndicator />
             ) : null}
             {isStreaming && (
-              <Pressable style={styles.stopButton} onPress={abortStream}>
+              <Pressable
+                style={styles.stopButton}
+                onPress={abortStream}
+                accessibilityLabel="Stop generating"
+                accessibilityRole="button"
+              >
                 <Text style={styles.stopButtonText}>Stop generating</Text>
               </Pressable>
             )}
