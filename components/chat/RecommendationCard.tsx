@@ -79,5 +79,5 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   ctaText: { fontSize: 13, fontWeight: "600", color: "#BF4028" },
-  disclosure: { fontSize: 10, color: "#999", marginTop: 8, lineHeight: 14 },
+  disclosure: { fontSize: 10, color: "#767676", marginTop: 8, lineHeight: 14 },
 });

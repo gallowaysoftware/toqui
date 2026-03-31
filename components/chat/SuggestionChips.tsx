@@ -1,4 +1,4 @@
-import { Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { Text, Pressable, StyleSheet, ScrollView, Platform } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
 
 interface Suggestion {
@@ -47,4 +47,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   text: { fontSize: 13, color: "#BF4028", fontWeight: "500" },
+  chipFocused: {
+    outlineWidth: 2,
+    outlineColor: "#BF4028",
+    outlineStyle: "solid",
+  },
 });

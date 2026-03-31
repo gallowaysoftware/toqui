@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle } from "lucide-react-native";
@@ -20,15 +20,20 @@ const DESTINATIONS = [
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const { t } = useTranslation();
   const statusConfig: Record<number, { labelKey: string; color: string }> = {
-    [TripStatus.PLANNING]: { labelKey: "trips.status.planning", color: "#3b82f6" },
-    [TripStatus.ACTIVE]: { labelKey: "trips.status.active", color: "#22c55e" },
-    [TripStatus.COMPLETED]: { labelKey: "trips.status.completed", color: "#9ca3af" },
+    [TripStatus.PLANNING]: { labelKey: "trips.status.planning", color: "#1d4ed8" },
+    [TripStatus.ACTIVE]: { labelKey: "trips.status.active", color: "#16a34a" },
+    [TripStatus.COMPLETED]: { labelKey: "trips.status.completed", color: "#6b7280" },
   };
-  const { labelKey, color: statusColor } = statusConfig[trip.status] ?? { labelKey: "trips.status.planning", color: "#9ca3af" };
+  const { labelKey, color: statusColor } = statusConfig[trip.status] ?? { labelKey: "trips.status.planning", color: "#6b7280" };
   const statusLabel = t(labelKey);
 
   return (
-    <Pressable style={styles.tripCard} onPress={onPress} accessibilityLabel={`Open trip: ${trip.title}`} accessibilityRole="button">
+    <Pressable
+      style={styles.tripCard}
+      onPress={onPress}
+      accessibilityLabel={`Open trip: ${trip.title}`}
+      accessibilityRole="button"
+    >
       <View style={styles.tripCardContent}>
         <View style={styles.tripCardHeader}>
           <Text style={styles.tripTitle} numberOfLines={1}>{trip.title}</Text>
@@ -205,7 +210,7 @@ const styles = StyleSheet.create({
   signInTagline: { fontSize: 17, color: "#666", textAlign: "center", marginBottom: 28 },
   valueProps: { marginBottom: 32, width: "100%" },
   valueProp: { fontSize: 14, color: "#555", textAlign: "center", lineHeight: 24, marginBottom: 6 },
-  signInNote: { fontSize: 12, color: "#999", textAlign: "center", marginTop: 12 },
+  signInNote: { fontSize: 12, color: "#6b6b6b", textAlign: "center", marginTop: 12 },
   title: { fontSize: 32, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
   subtitle: { fontSize: 16, color: "#666", textAlign: "center", marginBottom: 32 },
   welcomeContent: { padding: 24, alignItems: "center" },
@@ -226,7 +231,7 @@ const styles = StyleSheet.create({
   destinationFlag: { fontSize: 28, marginRight: 12 },
   destinationInfo: { flex: 1 },
   destinationName: { fontSize: 16, fontWeight: "600", color: "#333" },
-  destinationHook: { fontSize: 13, color: "#888", marginTop: 2 },
+  destinationHook: { fontSize: 13, color: "#767676", marginTop: 2 },
   primaryButton: {
     backgroundColor: "#BF4028",
     borderRadius: 8,
@@ -280,7 +285,7 @@ const styles = StyleSheet.create({
   proBadgeText: { fontSize: 11, fontWeight: "700", color: "#fff" },
   tripDescription: { fontSize: 14, color: "#666", marginBottom: 8 },
   tripMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  tripMetaText: { fontSize: 12, color: "#999" },
+  tripMetaText: { fontSize: 12, color: "#767676" },
   errorIcon: { marginBottom: 16 },
   errorTitle: { fontSize: 18, fontWeight: "600", color: "#333", marginBottom: 6, textAlign: "center" },
   errorSubtitle: { fontSize: 14, color: "#888", textAlign: "center", marginBottom: 24 },
@@ -291,4 +296,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  focusedCard: {
+    outlineWidth: 2,
+    outlineColor: "#BF4028",
+    outlineStyle: "solid",
+  },
 });

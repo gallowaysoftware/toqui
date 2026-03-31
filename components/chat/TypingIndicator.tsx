@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 13,
-    color: "#888",
+    color: "#767676",
     fontStyle: "italic",
   },
   dots: {

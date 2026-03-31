@@ -178,7 +178,10 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           role="button"
           aria-label="Send"
           accessibilityLabel="Send message"
-          style={[styles.sendButton, (!text.trim() && attachments.length === 0 || disabled) && styles.disabledButton]}
+          style={[
+            styles.sendButton,
+            (!text.trim() && attachments.length === 0 || disabled) && styles.disabledButton,
+          ]}
           onPress={handleSend}
           disabled={(!text.trim() && attachments.length === 0) || disabled}
         >
@@ -270,8 +273,13 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: "#ef4444",
+    color: "#c81e1e",
     paddingHorizontal: 12,
     paddingTop: 4,
+  },
+  focusedButton: {
+    outlineWidth: 2,
+    outlineColor: "#BF4028",
+    outlineStyle: "solid",
   },
 });

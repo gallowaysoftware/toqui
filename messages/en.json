@@ -83,8 +83,8 @@
   },
   "tripCreate": {
     "title": "New Trip",
-    "whereLabel": "Where are you going?",
-    "wherePlaceholder": "e.g. Two weeks in Japan",
+    "whereLabel": "Name your trip",
+    "wherePlaceholder": "e.g. Two weeks in Japan, NYC weekend",
     "descriptionLabel": "Tell us more (optional)",
     "descriptionPlaceholder": "e.g. First time visiting, interested in food and temples, traveling as a couple",
     "startDate": "Start date (optional)",
