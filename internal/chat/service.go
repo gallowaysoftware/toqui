@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -75,10 +76,20 @@ type SendMessageParams struct {
 	LocationLat float64
 	LocationLng float64
 
+	// Attachments are file attachments (images, PDFs, text) sent with the message.
+	Attachments []Attachment
+
 	// ExtraTools are additional tools available for this request (e.g., create_trip in selection mode)
 	ExtraTools []tools.Tool
 	// ExtraSystemContext is appended to the system prompt (e.g., trip list for selection mode)
 	ExtraSystemContext string
+}
+
+// Attachment represents a file attached to a chat message.
+type Attachment struct {
+	Filename  string
+	MediaType string
+	Data      []byte
 }
 
 func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-chan StreamEvent, string, error) {
@@ -154,6 +165,16 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 			})
 		}
 		messages = append(messages, m)
+	}
+
+	// If the current message has attachments, enrich the last user message
+	// with multimodal content blocks so the AI provider receives them.
+	if len(params.Attachments) > 0 && len(messages) > 0 {
+		last := &messages[len(messages)-1]
+		if last.Role == "user" {
+			last.ContentBlocks = buildAttachmentBlocks(last.Content, params.Attachments)
+			last.Content = "" // Content is now in ContentBlocks
+		}
 	}
 
 	systemPrompt := activePersona.SystemPrompt(params.Mode)
@@ -585,4 +606,66 @@ func (s *Service) GetHistory(ctx context.Context, userID uuid.UUID, tripID, sess
 		return nil, fmt.Errorf("session not found: %w", err)
 	}
 	return s.chatStore.GetMessages(ctx, userID.String(), tripID, sessionID, limit)
+}
+
+// buildAttachmentBlocks converts the user's text content and attachments into
+// multimodal content blocks suitable for the AI provider.
+//
+// Images are sent as base64-encoded image blocks (Claude vision / Gemini inlineData).
+// Text files and CSVs are inlined as text blocks.
+// PDFs are noted by filename (full PDF parsing is not yet implemented).
+func buildAttachmentBlocks(textContent string, attachments []Attachment) []ai.ContentBlock {
+	blocks := make([]ai.ContentBlock, 0, 1+len(attachments))
+
+	// Lead with the user's text message
+	if textContent != "" {
+		blocks = append(blocks, ai.ContentBlock{
+			Type: "text",
+			Text: textContent,
+		})
+	}
+
+	for _, att := range attachments {
+		switch {
+		case strings.HasPrefix(att.MediaType, "image/"):
+			// Image attachments → vision content blocks
+			blocks = append(blocks, ai.ContentBlock{
+				Type: "image",
+				Source: &ai.ImageSource{
+					Type:      "base64",
+					MediaType: att.MediaType,
+					Data:      base64.StdEncoding.EncodeToString(att.Data),
+				},
+			})
+
+		case att.MediaType == "text/plain" || att.MediaType == "text/csv":
+			// Text/CSV attachments → inline text blocks
+			label := "text file"
+			if att.MediaType == "text/csv" {
+				label = "CSV file"
+			}
+			blocks = append(blocks, ai.ContentBlock{
+				Type: "text",
+				Text: fmt.Sprintf("[Attached %s: %s]\n%s", label, att.Filename, string(att.Data)),
+			})
+
+		case att.MediaType == "application/pdf":
+			// PDF attachments → note the file (no heavy parsing yet)
+			// If the PDF data is small enough, try to extract readable text;
+			// otherwise just inform the AI about the attachment.
+			blocks = append(blocks, ai.ContentBlock{
+				Type: "text",
+				Text: fmt.Sprintf("[Attached PDF: %s (%d bytes) — PDF content extraction is not yet supported. The user has attached a PDF file named %q.]",
+					att.Filename, len(att.Data), att.Filename),
+			})
+
+		default:
+			slog.Warn("unsupported attachment media type in content block builder",
+				"media_type", att.MediaType,
+				"filename", att.Filename,
+			)
+		}
+	}
+
+	return blocks
 }

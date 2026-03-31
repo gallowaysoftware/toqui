@@ -84,7 +84,9 @@ type SendMessageRequest struct {
 	Mode         ChatMode `protobuf:"varint,4,opt,name=mode,proto3,enum=toqui.v1.ChatMode" json:"mode,omitempty"`
 	UserLocation *LatLng  `protobuf:"bytes,5,opt,name=user_location,json=userLocation,proto3" json:"user_location,omitempty"`
 	// Optional: override the active persona for this message
-	PersonaId     string `protobuf:"bytes,6,opt,name=persona_id,json=personaId,proto3" json:"persona_id,omitempty"`
+	PersonaId string `protobuf:"bytes,6,opt,name=persona_id,json=personaId,proto3" json:"persona_id,omitempty"`
+	// Optional: file attachments (images, PDFs, text files)
+	Attachments   []*Attachment `protobuf:"bytes,7,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -161,6 +163,81 @@ func (x *SendMessageRequest) GetPersonaId() string {
 	return ""
 }
 
+func (x *SendMessageRequest) GetAttachments() []*Attachment {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+type Attachment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	MediaType     string                 `protobuf:"bytes,2,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"` // e.g. "image/jpeg", "application/pdf"
+	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Attachment) Reset() {
+	*x = Attachment{}
+	mi := &file_toqui_v1_chat_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Attachment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Attachment) ProtoMessage() {}
+
+func (x *Attachment) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_chat_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Attachment.ProtoReflect.Descriptor instead.
+func (*Attachment) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Attachment) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *Attachment) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
+	}
+	return ""
+}
+
+func (x *Attachment) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *Attachment) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
 type SendMessageResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Event:
@@ -182,7 +259,7 @@ type SendMessageResponse struct {
 
 func (x *SendMessageResponse) Reset() {
 	*x = SendMessageResponse{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[1]
+	mi := &file_toqui_v1_chat_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -194,7 +271,7 @@ func (x *SendMessageResponse) String() string {
 func (*SendMessageResponse) ProtoMessage() {}
 
 func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[1]
+	mi := &file_toqui_v1_chat_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -207,7 +284,7 @@ func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
 func (*SendMessageResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{1}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SendMessageResponse) GetEvent() isSendMessageResponse_Event {
@@ -381,7 +458,7 @@ type TripCreated struct {
 
 func (x *TripCreated) Reset() {
 	*x = TripCreated{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[2]
+	mi := &file_toqui_v1_chat_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +470,7 @@ func (x *TripCreated) String() string {
 func (*TripCreated) ProtoMessage() {}
 
 func (x *TripCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[2]
+	mi := &file_toqui_v1_chat_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +483,7 @@ func (x *TripCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripCreated.ProtoReflect.Descriptor instead.
 func (*TripCreated) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{2}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TripCreated) GetTrip() *Trip {
@@ -426,7 +503,7 @@ type TripSelected struct {
 
 func (x *TripSelected) Reset() {
 	*x = TripSelected{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[3]
+	mi := &file_toqui_v1_chat_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -438,7 +515,7 @@ func (x *TripSelected) String() string {
 func (*TripSelected) ProtoMessage() {}
 
 func (x *TripSelected) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[3]
+	mi := &file_toqui_v1_chat_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -451,7 +528,7 @@ func (x *TripSelected) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripSelected.ProtoReflect.Descriptor instead.
 func (*TripSelected) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{3}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TripSelected) GetTrip() *Trip {
@@ -474,7 +551,7 @@ type PersonaSwitch struct {
 
 func (x *PersonaSwitch) Reset() {
 	*x = PersonaSwitch{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[4]
+	mi := &file_toqui_v1_chat_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -486,7 +563,7 @@ func (x *PersonaSwitch) String() string {
 func (*PersonaSwitch) ProtoMessage() {}
 
 func (x *PersonaSwitch) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[4]
+	mi := &file_toqui_v1_chat_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -499,7 +576,7 @@ func (x *PersonaSwitch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersonaSwitch.ProtoReflect.Descriptor instead.
 func (*PersonaSwitch) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{4}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PersonaSwitch) GetPreviousPersona() *Persona {
@@ -532,7 +609,7 @@ type TextDelta struct {
 
 func (x *TextDelta) Reset() {
 	*x = TextDelta{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[5]
+	mi := &file_toqui_v1_chat_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +621,7 @@ func (x *TextDelta) String() string {
 func (*TextDelta) ProtoMessage() {}
 
 func (x *TextDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[5]
+	mi := &file_toqui_v1_chat_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +634,7 @@ func (x *TextDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TextDelta.ProtoReflect.Descriptor instead.
 func (*TextDelta) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{5}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TextDelta) GetText() string {
@@ -577,7 +654,7 @@ type ToolCall struct {
 
 func (x *ToolCall) Reset() {
 	*x = ToolCall{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[6]
+	mi := &file_toqui_v1_chat_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +666,7 @@ func (x *ToolCall) String() string {
 func (*ToolCall) ProtoMessage() {}
 
 func (x *ToolCall) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[6]
+	mi := &file_toqui_v1_chat_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +679,7 @@ func (x *ToolCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolCall.ProtoReflect.Descriptor instead.
 func (*ToolCall) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{6}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ToolCall) GetToolName() string {
@@ -629,7 +706,7 @@ type ToolResult struct {
 
 func (x *ToolResult) Reset() {
 	*x = ToolResult{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[7]
+	mi := &file_toqui_v1_chat_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -641,7 +718,7 @@ func (x *ToolResult) String() string {
 func (*ToolResult) ProtoMessage() {}
 
 func (x *ToolResult) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[7]
+	mi := &file_toqui_v1_chat_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -654,7 +731,7 @@ func (x *ToolResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolResult.ProtoReflect.Descriptor instead.
 func (*ToolResult) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{7}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ToolResult) GetToolName() string {
@@ -681,7 +758,7 @@ type ItineraryUpdate struct {
 
 func (x *ItineraryUpdate) Reset() {
 	*x = ItineraryUpdate{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[8]
+	mi := &file_toqui_v1_chat_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -693,7 +770,7 @@ func (x *ItineraryUpdate) String() string {
 func (*ItineraryUpdate) ProtoMessage() {}
 
 func (x *ItineraryUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[8]
+	mi := &file_toqui_v1_chat_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -706,7 +783,7 @@ func (x *ItineraryUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItineraryUpdate.ProtoReflect.Descriptor instead.
 func (*ItineraryUpdate) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{8}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ItineraryUpdate) GetTripId() string {
@@ -734,7 +811,7 @@ type MessageComplete struct {
 
 func (x *MessageComplete) Reset() {
 	*x = MessageComplete{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[9]
+	mi := &file_toqui_v1_chat_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +823,7 @@ func (x *MessageComplete) String() string {
 func (*MessageComplete) ProtoMessage() {}
 
 func (x *MessageComplete) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[9]
+	mi := &file_toqui_v1_chat_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +836,7 @@ func (x *MessageComplete) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageComplete.ProtoReflect.Descriptor instead.
 func (*MessageComplete) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{9}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *MessageComplete) GetMessageId() string {
@@ -792,7 +869,7 @@ type SessionCreated struct {
 
 func (x *SessionCreated) Reset() {
 	*x = SessionCreated{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[10]
+	mi := &file_toqui_v1_chat_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +881,7 @@ func (x *SessionCreated) String() string {
 func (*SessionCreated) ProtoMessage() {}
 
 func (x *SessionCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[10]
+	mi := &file_toqui_v1_chat_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +894,7 @@ func (x *SessionCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionCreated.ProtoReflect.Descriptor instead.
 func (*SessionCreated) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{10}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SessionCreated) GetSessionId() string {
@@ -837,7 +914,7 @@ type ErrorEvent struct {
 
 func (x *ErrorEvent) Reset() {
 	*x = ErrorEvent{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[11]
+	mi := &file_toqui_v1_chat_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -849,7 +926,7 @@ func (x *ErrorEvent) String() string {
 func (*ErrorEvent) ProtoMessage() {}
 
 func (x *ErrorEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[11]
+	mi := &file_toqui_v1_chat_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -862,7 +939,7 @@ func (x *ErrorEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorEvent.ProtoReflect.Descriptor instead.
 func (*ErrorEvent) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{11}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ErrorEvent) GetMessage() string {
@@ -893,7 +970,7 @@ type ChatSession struct {
 
 func (x *ChatSession) Reset() {
 	*x = ChatSession{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[12]
+	mi := &file_toqui_v1_chat_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -905,7 +982,7 @@ func (x *ChatSession) String() string {
 func (*ChatSession) ProtoMessage() {}
 
 func (x *ChatSession) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[12]
+	mi := &file_toqui_v1_chat_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -918,7 +995,7 @@ func (x *ChatSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatSession.ProtoReflect.Descriptor instead.
 func (*ChatSession) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{12}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ChatSession) GetId() string {
@@ -977,7 +1054,7 @@ type ChatMessage struct {
 
 func (x *ChatMessage) Reset() {
 	*x = ChatMessage{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[13]
+	mi := &file_toqui_v1_chat_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -989,7 +1066,7 @@ func (x *ChatMessage) String() string {
 func (*ChatMessage) ProtoMessage() {}
 
 func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[13]
+	mi := &file_toqui_v1_chat_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1002,7 +1079,7 @@ func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
 func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{13}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ChatMessage) GetId() string {
@@ -1059,7 +1136,7 @@ type GetChatHistoryRequest struct {
 
 func (x *GetChatHistoryRequest) Reset() {
 	*x = GetChatHistoryRequest{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[14]
+	mi := &file_toqui_v1_chat_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1071,7 +1148,7 @@ func (x *GetChatHistoryRequest) String() string {
 func (*GetChatHistoryRequest) ProtoMessage() {}
 
 func (x *GetChatHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[14]
+	mi := &file_toqui_v1_chat_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1084,7 +1161,7 @@ func (x *GetChatHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChatHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetChatHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{14}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetChatHistoryRequest) GetSessionId() string {
@@ -1118,7 +1195,7 @@ type GetChatHistoryResponse struct {
 
 func (x *GetChatHistoryResponse) Reset() {
 	*x = GetChatHistoryResponse{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[15]
+	mi := &file_toqui_v1_chat_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1130,7 +1207,7 @@ func (x *GetChatHistoryResponse) String() string {
 func (*GetChatHistoryResponse) ProtoMessage() {}
 
 func (x *GetChatHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[15]
+	mi := &file_toqui_v1_chat_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1143,7 +1220,7 @@ func (x *GetChatHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChatHistoryResponse.ProtoReflect.Descriptor instead.
 func (*GetChatHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{15}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetChatHistoryResponse) GetMessages() []*ChatMessage {
@@ -1170,7 +1247,7 @@ type ListChatSessionsRequest struct {
 
 func (x *ListChatSessionsRequest) Reset() {
 	*x = ListChatSessionsRequest{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[16]
+	mi := &file_toqui_v1_chat_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1182,7 +1259,7 @@ func (x *ListChatSessionsRequest) String() string {
 func (*ListChatSessionsRequest) ProtoMessage() {}
 
 func (x *ListChatSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[16]
+	mi := &file_toqui_v1_chat_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1195,7 +1272,7 @@ func (x *ListChatSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListChatSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{16}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListChatSessionsRequest) GetTripId() string {
@@ -1222,7 +1299,7 @@ type ListChatSessionsResponse struct {
 
 func (x *ListChatSessionsResponse) Reset() {
 	*x = ListChatSessionsResponse{}
-	mi := &file_toqui_v1_chat_proto_msgTypes[17]
+	mi := &file_toqui_v1_chat_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1234,7 +1311,7 @@ func (x *ListChatSessionsResponse) String() string {
 func (*ListChatSessionsResponse) ProtoMessage() {}
 
 func (x *ListChatSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_chat_proto_msgTypes[17]
+	mi := &file_toqui_v1_chat_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1247,7 +1324,7 @@ func (x *ListChatSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListChatSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{17}
+	return file_toqui_v1_chat_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListChatSessionsResponse) GetSessions() []*ChatSession {
@@ -1268,7 +1345,7 @@ var File_toqui_v1_chat_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/chat.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\x1a\x16toqui/v1/persona.proto\x1a\x13toqui/v1/trip.proto\"\xf0\x01\n" +
+	"\x13toqui/v1/chat.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\x1a\x16toqui/v1/persona.proto\x1a\x13toqui/v1/trip.proto\"\xa8\x02\n" +
 	"\x12SendMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
@@ -1278,7 +1355,16 @@ const file_toqui_v1_chat_proto_rawDesc = "" +
 	"\x04mode\x18\x04 \x01(\x0e2\x12.toqui.v1.ChatModeR\x04mode\x125\n" +
 	"\ruser_location\x18\x05 \x01(\v2\x10.toqui.v1.LatLngR\fuserLocation\x12\x1d\n" +
 	"\n" +
-	"persona_id\x18\x06 \x01(\tR\tpersonaId\"\x80\x05\n" +
+	"persona_id\x18\x06 \x01(\tR\tpersonaId\x126\n" +
+	"\vattachments\x18\a \x03(\v2\x14.toqui.v1.AttachmentR\vattachments\"z\n" +
+	"\n" +
+	"Attachment\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\x02 \x01(\tR\tmediaType\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x04 \x01(\x03R\tsizeBytes\"\x80\x05\n" +
 	"\x13SendMessageResponse\x124\n" +
 	"\n" +
 	"text_delta\x18\x01 \x01(\v2\x13.toqui.v1.TextDeltaH\x00R\ttextDelta\x121\n" +
@@ -1395,76 +1481,78 @@ func file_toqui_v1_chat_proto_rawDescGZIP() []byte {
 }
 
 var file_toqui_v1_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_toqui_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_toqui_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_toqui_v1_chat_proto_goTypes = []any{
 	(ChatMode)(0),                    // 0: toqui.v1.ChatMode
 	(*SendMessageRequest)(nil),       // 1: toqui.v1.SendMessageRequest
-	(*SendMessageResponse)(nil),      // 2: toqui.v1.SendMessageResponse
-	(*TripCreated)(nil),              // 3: toqui.v1.TripCreated
-	(*TripSelected)(nil),             // 4: toqui.v1.TripSelected
-	(*PersonaSwitch)(nil),            // 5: toqui.v1.PersonaSwitch
-	(*TextDelta)(nil),                // 6: toqui.v1.TextDelta
-	(*ToolCall)(nil),                 // 7: toqui.v1.ToolCall
-	(*ToolResult)(nil),               // 8: toqui.v1.ToolResult
-	(*ItineraryUpdate)(nil),          // 9: toqui.v1.ItineraryUpdate
-	(*MessageComplete)(nil),          // 10: toqui.v1.MessageComplete
-	(*SessionCreated)(nil),           // 11: toqui.v1.SessionCreated
-	(*ErrorEvent)(nil),               // 12: toqui.v1.ErrorEvent
-	(*ChatSession)(nil),              // 13: toqui.v1.ChatSession
-	(*ChatMessage)(nil),              // 14: toqui.v1.ChatMessage
-	(*GetChatHistoryRequest)(nil),    // 15: toqui.v1.GetChatHistoryRequest
-	(*GetChatHistoryResponse)(nil),   // 16: toqui.v1.GetChatHistoryResponse
-	(*ListChatSessionsRequest)(nil),  // 17: toqui.v1.ListChatSessionsRequest
-	(*ListChatSessionsResponse)(nil), // 18: toqui.v1.ListChatSessionsResponse
-	nil,                              // 19: toqui.v1.ChatMessage.MetadataEntry
-	(*LatLng)(nil),                   // 20: toqui.v1.LatLng
-	(*Trip)(nil),                     // 21: toqui.v1.Trip
-	(*Persona)(nil),                  // 22: toqui.v1.Persona
-	(*Itinerary)(nil),                // 23: toqui.v1.Itinerary
-	(*timestamppb.Timestamp)(nil),    // 24: google.protobuf.Timestamp
-	(*PaginationRequest)(nil),        // 25: toqui.v1.PaginationRequest
-	(*PaginationResponse)(nil),       // 26: toqui.v1.PaginationResponse
+	(*Attachment)(nil),               // 2: toqui.v1.Attachment
+	(*SendMessageResponse)(nil),      // 3: toqui.v1.SendMessageResponse
+	(*TripCreated)(nil),              // 4: toqui.v1.TripCreated
+	(*TripSelected)(nil),             // 5: toqui.v1.TripSelected
+	(*PersonaSwitch)(nil),            // 6: toqui.v1.PersonaSwitch
+	(*TextDelta)(nil),                // 7: toqui.v1.TextDelta
+	(*ToolCall)(nil),                 // 8: toqui.v1.ToolCall
+	(*ToolResult)(nil),               // 9: toqui.v1.ToolResult
+	(*ItineraryUpdate)(nil),          // 10: toqui.v1.ItineraryUpdate
+	(*MessageComplete)(nil),          // 11: toqui.v1.MessageComplete
+	(*SessionCreated)(nil),           // 12: toqui.v1.SessionCreated
+	(*ErrorEvent)(nil),               // 13: toqui.v1.ErrorEvent
+	(*ChatSession)(nil),              // 14: toqui.v1.ChatSession
+	(*ChatMessage)(nil),              // 15: toqui.v1.ChatMessage
+	(*GetChatHistoryRequest)(nil),    // 16: toqui.v1.GetChatHistoryRequest
+	(*GetChatHistoryResponse)(nil),   // 17: toqui.v1.GetChatHistoryResponse
+	(*ListChatSessionsRequest)(nil),  // 18: toqui.v1.ListChatSessionsRequest
+	(*ListChatSessionsResponse)(nil), // 19: toqui.v1.ListChatSessionsResponse
+	nil,                              // 20: toqui.v1.ChatMessage.MetadataEntry
+	(*LatLng)(nil),                   // 21: toqui.v1.LatLng
+	(*Trip)(nil),                     // 22: toqui.v1.Trip
+	(*Persona)(nil),                  // 23: toqui.v1.Persona
+	(*Itinerary)(nil),                // 24: toqui.v1.Itinerary
+	(*timestamppb.Timestamp)(nil),    // 25: google.protobuf.Timestamp
+	(*PaginationRequest)(nil),        // 26: toqui.v1.PaginationRequest
+	(*PaginationResponse)(nil),       // 27: toqui.v1.PaginationResponse
 }
 var file_toqui_v1_chat_proto_depIdxs = []int32{
 	0,  // 0: toqui.v1.SendMessageRequest.mode:type_name -> toqui.v1.ChatMode
-	20, // 1: toqui.v1.SendMessageRequest.user_location:type_name -> toqui.v1.LatLng
-	6,  // 2: toqui.v1.SendMessageResponse.text_delta:type_name -> toqui.v1.TextDelta
-	7,  // 3: toqui.v1.SendMessageResponse.tool_call:type_name -> toqui.v1.ToolCall
-	8,  // 4: toqui.v1.SendMessageResponse.tool_result:type_name -> toqui.v1.ToolResult
-	9,  // 5: toqui.v1.SendMessageResponse.itinerary_update:type_name -> toqui.v1.ItineraryUpdate
-	10, // 6: toqui.v1.SendMessageResponse.message_complete:type_name -> toqui.v1.MessageComplete
-	11, // 7: toqui.v1.SendMessageResponse.session_created:type_name -> toqui.v1.SessionCreated
-	12, // 8: toqui.v1.SendMessageResponse.error:type_name -> toqui.v1.ErrorEvent
-	5,  // 9: toqui.v1.SendMessageResponse.persona_switch:type_name -> toqui.v1.PersonaSwitch
-	3,  // 10: toqui.v1.SendMessageResponse.trip_created:type_name -> toqui.v1.TripCreated
-	4,  // 11: toqui.v1.SendMessageResponse.trip_selected:type_name -> toqui.v1.TripSelected
-	21, // 12: toqui.v1.TripCreated.trip:type_name -> toqui.v1.Trip
-	21, // 13: toqui.v1.TripSelected.trip:type_name -> toqui.v1.Trip
-	22, // 14: toqui.v1.PersonaSwitch.previous_persona:type_name -> toqui.v1.Persona
-	22, // 15: toqui.v1.PersonaSwitch.new_persona:type_name -> toqui.v1.Persona
-	23, // 16: toqui.v1.ItineraryUpdate.itinerary:type_name -> toqui.v1.Itinerary
-	0,  // 17: toqui.v1.ChatSession.mode:type_name -> toqui.v1.ChatMode
-	24, // 18: toqui.v1.ChatSession.created_at:type_name -> google.protobuf.Timestamp
-	24, // 19: toqui.v1.ChatSession.last_message_at:type_name -> google.protobuf.Timestamp
-	19, // 20: toqui.v1.ChatMessage.metadata:type_name -> toqui.v1.ChatMessage.MetadataEntry
-	24, // 21: toqui.v1.ChatMessage.created_at:type_name -> google.protobuf.Timestamp
-	25, // 22: toqui.v1.GetChatHistoryRequest.pagination:type_name -> toqui.v1.PaginationRequest
-	14, // 23: toqui.v1.GetChatHistoryResponse.messages:type_name -> toqui.v1.ChatMessage
-	26, // 24: toqui.v1.GetChatHistoryResponse.pagination:type_name -> toqui.v1.PaginationResponse
-	25, // 25: toqui.v1.ListChatSessionsRequest.pagination:type_name -> toqui.v1.PaginationRequest
-	13, // 26: toqui.v1.ListChatSessionsResponse.sessions:type_name -> toqui.v1.ChatSession
-	26, // 27: toqui.v1.ListChatSessionsResponse.pagination:type_name -> toqui.v1.PaginationResponse
-	1,  // 28: toqui.v1.ChatService.SendMessage:input_type -> toqui.v1.SendMessageRequest
-	15, // 29: toqui.v1.ChatService.GetChatHistory:input_type -> toqui.v1.GetChatHistoryRequest
-	17, // 30: toqui.v1.ChatService.ListChatSessions:input_type -> toqui.v1.ListChatSessionsRequest
-	2,  // 31: toqui.v1.ChatService.SendMessage:output_type -> toqui.v1.SendMessageResponse
-	16, // 32: toqui.v1.ChatService.GetChatHistory:output_type -> toqui.v1.GetChatHistoryResponse
-	18, // 33: toqui.v1.ChatService.ListChatSessions:output_type -> toqui.v1.ListChatSessionsResponse
-	31, // [31:34] is the sub-list for method output_type
-	28, // [28:31] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	21, // 1: toqui.v1.SendMessageRequest.user_location:type_name -> toqui.v1.LatLng
+	2,  // 2: toqui.v1.SendMessageRequest.attachments:type_name -> toqui.v1.Attachment
+	7,  // 3: toqui.v1.SendMessageResponse.text_delta:type_name -> toqui.v1.TextDelta
+	8,  // 4: toqui.v1.SendMessageResponse.tool_call:type_name -> toqui.v1.ToolCall
+	9,  // 5: toqui.v1.SendMessageResponse.tool_result:type_name -> toqui.v1.ToolResult
+	10, // 6: toqui.v1.SendMessageResponse.itinerary_update:type_name -> toqui.v1.ItineraryUpdate
+	11, // 7: toqui.v1.SendMessageResponse.message_complete:type_name -> toqui.v1.MessageComplete
+	12, // 8: toqui.v1.SendMessageResponse.session_created:type_name -> toqui.v1.SessionCreated
+	13, // 9: toqui.v1.SendMessageResponse.error:type_name -> toqui.v1.ErrorEvent
+	6,  // 10: toqui.v1.SendMessageResponse.persona_switch:type_name -> toqui.v1.PersonaSwitch
+	4,  // 11: toqui.v1.SendMessageResponse.trip_created:type_name -> toqui.v1.TripCreated
+	5,  // 12: toqui.v1.SendMessageResponse.trip_selected:type_name -> toqui.v1.TripSelected
+	22, // 13: toqui.v1.TripCreated.trip:type_name -> toqui.v1.Trip
+	22, // 14: toqui.v1.TripSelected.trip:type_name -> toqui.v1.Trip
+	23, // 15: toqui.v1.PersonaSwitch.previous_persona:type_name -> toqui.v1.Persona
+	23, // 16: toqui.v1.PersonaSwitch.new_persona:type_name -> toqui.v1.Persona
+	24, // 17: toqui.v1.ItineraryUpdate.itinerary:type_name -> toqui.v1.Itinerary
+	0,  // 18: toqui.v1.ChatSession.mode:type_name -> toqui.v1.ChatMode
+	25, // 19: toqui.v1.ChatSession.created_at:type_name -> google.protobuf.Timestamp
+	25, // 20: toqui.v1.ChatSession.last_message_at:type_name -> google.protobuf.Timestamp
+	20, // 21: toqui.v1.ChatMessage.metadata:type_name -> toqui.v1.ChatMessage.MetadataEntry
+	25, // 22: toqui.v1.ChatMessage.created_at:type_name -> google.protobuf.Timestamp
+	26, // 23: toqui.v1.GetChatHistoryRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	15, // 24: toqui.v1.GetChatHistoryResponse.messages:type_name -> toqui.v1.ChatMessage
+	27, // 25: toqui.v1.GetChatHistoryResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	26, // 26: toqui.v1.ListChatSessionsRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	14, // 27: toqui.v1.ListChatSessionsResponse.sessions:type_name -> toqui.v1.ChatSession
+	27, // 28: toqui.v1.ListChatSessionsResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	1,  // 29: toqui.v1.ChatService.SendMessage:input_type -> toqui.v1.SendMessageRequest
+	16, // 30: toqui.v1.ChatService.GetChatHistory:input_type -> toqui.v1.GetChatHistoryRequest
+	18, // 31: toqui.v1.ChatService.ListChatSessions:input_type -> toqui.v1.ListChatSessionsRequest
+	3,  // 32: toqui.v1.ChatService.SendMessage:output_type -> toqui.v1.SendMessageResponse
+	17, // 33: toqui.v1.ChatService.GetChatHistory:output_type -> toqui.v1.GetChatHistoryResponse
+	19, // 34: toqui.v1.ChatService.ListChatSessions:output_type -> toqui.v1.ListChatSessionsResponse
+	32, // [32:35] is the sub-list for method output_type
+	29, // [29:32] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_chat_proto_init() }
@@ -1475,7 +1563,7 @@ func file_toqui_v1_chat_proto_init() {
 	file_toqui_v1_common_proto_init()
 	file_toqui_v1_persona_proto_init()
 	file_toqui_v1_trip_proto_init()
-	file_toqui_v1_chat_proto_msgTypes[1].OneofWrappers = []any{
+	file_toqui_v1_chat_proto_msgTypes[2].OneofWrappers = []any{
 		(*SendMessageResponse_TextDelta)(nil),
 		(*SendMessageResponse_ToolCall)(nil),
 		(*SendMessageResponse_ToolResult)(nil),
@@ -1493,7 +1581,7 @@ func file_toqui_v1_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_toqui_v1_chat_proto_rawDesc), len(file_toqui_v1_chat_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

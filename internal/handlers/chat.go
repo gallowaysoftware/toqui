@@ -90,6 +90,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		return connect.NewError(connect.CodeInternal, err)
 	}
 
+	// Validate attachments
+	if err := validateAttachments(req.Msg.Attachments); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	// Admin users have unlimited AI interactions.
 	isAdmin := h.isAdmin(ctx, userID)
 
@@ -158,6 +163,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
+	// Convert proto attachments to chat service attachments
+	var attachments []chat.Attachment
+	for _, a := range req.Msg.Attachments {
+		attachments = append(attachments, chat.Attachment{
+			Filename:  a.Filename,
+			MediaType: a.MediaType,
+			Data:      a.Data,
+		})
+	}
+
 	params := chat.SendMessageParams{
 		UserID:             userID,
 		TripID:             req.Msg.TripId,
@@ -167,6 +182,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		PersonaID:          req.Msg.PersonaId,
 		DestinationCountry: destinationCountry,
 		TripThemes:         tripThemes,
+		Attachments:        attachments,
 	}
 
 	// Inject ephemeral location (companion mode only).
@@ -688,6 +704,51 @@ func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&toquiv1.ListChatSessionsResponse{
 		Sessions: protoSessions,
 	}), nil
+}
+
+// Attachment validation constants.
+const (
+	maxAttachments     = 5
+	maxAttachmentBytes = 10 * 1024 * 1024 // 10 MB
+)
+
+// allowedAttachmentTypes is the set of media types accepted for chat attachments.
+var allowedAttachmentTypes = map[string]bool{
+	"image/jpeg":      true,
+	"image/png":       true,
+	"image/gif":       true,
+	"image/webp":      true,
+	"application/pdf": true,
+	"text/plain":      true,
+	"text/csv":        true,
+}
+
+// validateAttachments checks that attachments conform to size, count, and type limits.
+func validateAttachments(attachments []*toquiv1.Attachment) error {
+	if len(attachments) == 0 {
+		return nil
+	}
+	if len(attachments) > maxAttachments {
+		return fmt.Errorf("too many attachments: %d (max %d)", len(attachments), maxAttachments)
+	}
+	for i, a := range attachments {
+		if a.Filename == "" {
+			return fmt.Errorf("attachment %d: filename is required", i)
+		}
+		if a.MediaType == "" {
+			return fmt.Errorf("attachment %d: media_type is required", i)
+		}
+		if !allowedAttachmentTypes[a.MediaType] {
+			return fmt.Errorf("attachment %d: unsupported media type %q", i, a.MediaType)
+		}
+		if len(a.Data) == 0 {
+			return fmt.Errorf("attachment %d: data is empty", i)
+		}
+		if int64(len(a.Data)) > maxAttachmentBytes {
+			return fmt.Errorf("attachment %d: size %d bytes exceeds maximum %d bytes", i, len(a.Data), maxAttachmentBytes)
+		}
+	}
+	return nil
 }
 
 func chatModeFromString(mode string) toquiv1.ChatMode {

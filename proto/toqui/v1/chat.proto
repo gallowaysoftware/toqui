@@ -25,6 +25,15 @@ message SendMessageRequest {
   LatLng user_location = 5;
   // Optional: override the active persona for this message
   string persona_id = 6;
+  // Optional: file attachments (images, PDFs, text files)
+  repeated Attachment attachments = 7;
+}
+
+message Attachment {
+  string filename = 1;
+  string media_type = 2; // e.g. "image/jpeg", "application/pdf"
+  bytes data = 3;
+  int64 size_bytes = 4;
 }
 
 enum ChatMode {

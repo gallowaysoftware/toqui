@@ -134,6 +134,33 @@ func (c *ClaudeProvider) buildRequest(req *ChatRequest) map[string]any {
 				"role":    msg.Role,
 				"content": content,
 			}
+		} else if len(msg.ContentBlocks) > 0 {
+			// Multimodal content (text + images)
+			var content []map[string]any
+			for _, block := range msg.ContentBlocks {
+				switch block.Type {
+				case "text":
+					content = append(content, map[string]any{
+						"type": "text",
+						"text": block.Text,
+					})
+				case "image":
+					if block.Source != nil {
+						content = append(content, map[string]any{
+							"type": "image",
+							"source": map[string]any{
+								"type":       block.Source.Type,
+								"media_type": block.Source.MediaType,
+								"data":       block.Source.Data,
+							},
+						})
+					}
+				}
+			}
+			m = map[string]any{
+				"role":    msg.Role,
+				"content": content,
+			}
 		} else {
 			m = map[string]any{
 				"role":    msg.Role,

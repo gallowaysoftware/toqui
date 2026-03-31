@@ -186,6 +186,23 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 					},
 				})
 			}
+		} else if len(msg.ContentBlocks) > 0 {
+			// Multimodal content (text + images).
+			for _, block := range msg.ContentBlocks {
+				switch block.Type {
+				case "text":
+					parts = append(parts, map[string]any{"text": block.Text})
+				case "image":
+					if block.Source != nil {
+						parts = append(parts, map[string]any{
+							"inlineData": map[string]any{
+								"mimeType": block.Source.MediaType,
+								"data":     block.Source.Data,
+							},
+						})
+					}
+				}
+			}
 		} else {
 			// Plain text message.
 			parts = append(parts, map[string]any{"text": msg.Content})

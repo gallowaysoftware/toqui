@@ -43,6 +43,25 @@ type Message struct {
 	Content     string       `json:"content"`
 	ToolCalls   []ToolCall   `json:"tool_calls,omitempty"`
 	ToolResults []ToolResult `json:"tool_results,omitempty"`
+	// ContentBlocks allows multimodal content (text + images) for user messages.
+	// When set, Content is ignored and these blocks are serialized directly.
+	ContentBlocks []ContentBlock `json:"content_blocks,omitempty"`
+}
+
+// ContentBlock represents a single block within a multimodal message.
+type ContentBlock struct {
+	Type string `json:"type"` // "text" or "image"
+	// Text content (when Type == "text")
+	Text string `json:"text,omitempty"`
+	// Image source (when Type == "image")
+	Source *ImageSource `json:"source,omitempty"`
+}
+
+// ImageSource is the base64-encoded image data for the Claude API.
+type ImageSource struct {
+	Type      string `json:"type"`       // "base64"
+	MediaType string `json:"media_type"` // e.g. "image/jpeg"
+	Data      string `json:"data"`       // base64-encoded bytes
 }
 
 type Event struct {
