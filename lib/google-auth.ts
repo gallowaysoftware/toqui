@@ -1,6 +1,7 @@
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
+import { Platform } from "react-native";
 import { useAuth } from "./auth";
 import { getConfig } from "./config";
 
@@ -18,9 +19,11 @@ export function useGoogleAuth() {
   const { login } = useAuth();
   const { googleClientId } = getConfig();
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "toqui",
-  });
+  // On web, use the explicit origin to match Google Console's authorized redirect URIs.
+  // On native, use the scheme-based URI for deep linking.
+  const redirectUri = Platform.OS === "web"
+    ? `${window.location.origin}/`
+    : AuthSession.makeRedirectUri({ scheme: "toqui" });
 
   const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
