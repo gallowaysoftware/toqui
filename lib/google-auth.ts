@@ -22,7 +22,7 @@ export function useGoogleAuth() {
   // On web, use the explicit origin to match Google Console's authorized redirect URIs.
   // On native, use the scheme-based URI for deep linking.
   const redirectUri = Platform.OS === "web"
-    ? `${window.location.origin}/`
+    ? `${window.location.origin}/auth/callback`
     : AuthSession.makeRedirectUri({ scheme: "toqui" });
 
   const [request, , promptAsync] = AuthSession.useAuthRequest(
