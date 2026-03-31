@@ -123,7 +123,6 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
-<<<<<<< HEAD
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
   expertBanner: {
     backgroundColor: "#fff8f0",
