@@ -31,7 +31,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       }}
     >
       <View style={styles.header}>
-        <Icon color="#e8654a" size={20} />
+        <Icon color="#BF4028" size={20} />
         <Text style={styles.partner}>{partnerLabel}</Text>
       </View>
       <Text style={styles.title}>{recommendation.title}</Text>
@@ -43,7 +43,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       ) : null}
       <View style={styles.cta}>
         <Text style={styles.ctaText}>View on {partnerLabel}</Text>
-        <ExternalLink color="#e8654a" size={14} />
+        <ExternalLink color="#BF4028" size={14} />
       </View>
       {recommendation.disclosure ? (
         <Text style={styles.disclosure}>{recommendation.disclosure}</Text>
@@ -72,12 +72,12 @@ const styles = StyleSheet.create({
   partner: { fontSize: 12, fontWeight: "600", color: "#666" },
   title: { fontSize: 15, fontWeight: "600", color: "#333", marginBottom: 4 },
   description: { fontSize: 13, color: "#666", marginBottom: 6, lineHeight: 18 },
-  price: { fontSize: 16, fontWeight: "700", color: "#e8654a", marginBottom: 8 },
+  price: { fontSize: 16, fontWeight: "700", color: "#BF4028", marginBottom: 8 },
   cta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
-  ctaText: { fontSize: 13, fontWeight: "600", color: "#e8654a" },
+  ctaText: { fontSize: 13, fontWeight: "600", color: "#BF4028" },
   disclosure: { fontSize: 10, color: "#999", marginTop: 8, lineHeight: 14 },
 });

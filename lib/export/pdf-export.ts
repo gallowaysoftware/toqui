@@ -52,7 +52,7 @@ function buildItineraryHTML(trip: Trip, itinerary: Itinerary): string {
   <meta charset="utf-8"/>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 32px; color: #333; max-width: 800px; margin: 0 auto; }
-    h1 { color: #e8654a; margin-bottom: 4px; }
+    h1 { color: #BF4028; margin-bottom: 4px; }
     .meta { color: #888; font-size: 14px; margin-bottom: 24px; }
     .description { color: #666; font-size: 15px; line-height: 1.5; margin-bottom: 24px; }
   </style>

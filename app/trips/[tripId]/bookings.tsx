@@ -66,7 +66,7 @@ export default function BookingsScreen() {
   }, [tripId, deleteBooking]);
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#e8654a" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color="#BF4028" /></View>;
   }
 
   return (
@@ -116,7 +116,7 @@ export default function BookingsScreen() {
             </View>
           ) : (
             <Pressable style={styles.addButton} onPress={() => setShowAdd(true)}>
-              <Plus color="#e8654a" size={18} />
+              <Plus color="#BF4028" size={18} />
               <Text style={styles.addButtonText}>Add Booking</Text>
             </Pressable>
           )
@@ -164,11 +164,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
     borderStyle: "dashed",
     marginBottom: 12,
   },
-  addButtonText: { color: "#e8654a", fontSize: 16, fontWeight: "600" },
+  addButtonText: { color: "#BF4028", fontSize: 16, fontWeight: "600" },
   addForm: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   addActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 },
   cancelButton: { padding: 10 },
   cancelText: { color: "#666", fontWeight: "500" },
-  submitButton: { backgroundColor: "#e8654a", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
+  submitButton: { backgroundColor: "#BF4028", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
   disabledButton: { opacity: 0.5 },
   submitText: { color: "#fff", fontWeight: "600" },
 });

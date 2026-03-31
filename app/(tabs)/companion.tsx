@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, color: "#666" },
   messageList: { padding: 16, flexGrow: 1 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
   streamingBubble: {
     maxWidth: "85%",
@@ -123,5 +123,5 @@ const styles = StyleSheet.create({
 const markdownStyles = StyleSheet.create({
   body: { fontSize: 15, color: "#333", lineHeight: 22 },
   strong: { fontWeight: "700" },
-  link: { color: "#e8654a" },
+  link: { color: "#BF4028" },
 });

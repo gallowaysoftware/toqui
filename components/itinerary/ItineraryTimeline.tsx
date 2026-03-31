@@ -5,7 +5,7 @@ import type { Itinerary, ItineraryDay, ItineraryItem } from "@gen/toqui/v1/trip_
 
 // Day colors cycle — same palette as the original map markers
 const dayColors = [
-  "#e8654a", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6",
+  "#BF4028", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6",
   "#ec4899", "#06b6d4", "#ef4444", "#10b981", "#6366f1",
 ];
 

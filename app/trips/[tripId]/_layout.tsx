@@ -4,7 +4,7 @@ export default function TripDetailLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#e8654a" },
+        headerStyle: { backgroundColor: "#BF4028" },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold" },
       }}

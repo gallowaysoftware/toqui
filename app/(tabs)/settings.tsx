@@ -73,7 +73,7 @@ export default function SettingsScreen() {
           </View>
         )}
         <Pressable style={styles.actionRow} onPress={logout}>
-          <LogOut color="#e8654a" size={18} />
+          <LogOut color="#BF4028" size={18} />
           <Text style={styles.actionText}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
@@ -98,7 +98,7 @@ export default function SettingsScreen() {
           <>
             <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
             <Pressable style={styles.learnMoreRow}>
-              <ExternalLink color="#e8654a" size={14} />
+              <ExternalLink color="#BF4028" size={14} />
               <Text style={styles.learnMoreText}>{t("settings.billing.learnMore")}</Text>
             </Pressable>
           </>
@@ -108,7 +108,7 @@ export default function SettingsScreen() {
       {/* Refer a Friend */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Gift color="#e8654a" size={20} />
+          <Gift color="#BF4028" size={20} />
           <Text style={styles.sectionTitle}>{t("referral.title")}</Text>
         </View>
         <ReferralCard />
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
           disabled={exportData.isPending}
         >
           {exportData.isPending ? (
-            <ActivityIndicator color="#e8654a" size="small" />
+            <ActivityIndicator color="#BF4028" size="small" />
           ) : (
             <Text style={styles.outlineButtonText}>
               {exportData.isSuccess ? t("settings.exported") : t("settings.exportData")}
@@ -236,17 +236,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
   },
-  actionText: { fontSize: 15, color: "#e8654a", fontWeight: "500" },
+  actionText: { fontSize: 15, color: "#BF4028", fontWeight: "500" },
   linkText: { fontSize: 15, color: "#666" },
   outlineButton: {
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
     borderRadius: 8,
     padding: 12,
     alignItems: "center",
   },
   disabledButton: { opacity: 0.5 },
-  outlineButtonText: { color: "#e8654a", fontWeight: "600" },
+  outlineButtonText: { color: "#BF4028", fontWeight: "600" },
   dangerWarning: { fontSize: 14, color: "#666", marginBottom: 12, lineHeight: 20 },
   dangerLabel: { fontSize: 13, color: "#999", marginBottom: 6 },
   dangerInput: {
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  planBadgePro: { backgroundColor: "#e8654a" },
+  planBadgePro: { backgroundColor: "#BF4028" },
   planBadgeText: { fontSize: 13, fontWeight: "600", color: "#666" },
   planBadgeTextPro: { color: "#fff" },
   billingDescription: { fontSize: 14, color: "#999", lineHeight: 20 },
@@ -302,5 +302,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 4,
   },
-  learnMoreText: { fontSize: 14, fontWeight: "500", color: "#e8654a" },
+  learnMoreText: { fontSize: 14, fontWeight: "500", color: "#BF4028" },
 });
