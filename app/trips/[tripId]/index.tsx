@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
@@ -11,6 +12,9 @@ import { ItineraryMap } from "@/components/map/ItineraryMap";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
 import { exportItineraryICal } from "@/lib/export/calendar-export";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
+import { useAuth } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
+import { getConfig } from "@/lib/config";
 
 export default function TripDetailScreen() {
   const { t } = useTranslation();
@@ -20,6 +24,8 @@ export default function TripDetailScreen() {
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
   const router = useRouter();
+  const { accessToken } = useAuth();
+  const [isSharing, setIsSharing] = useState(false);
 
   if (isLoading || !trip) {
     return (
@@ -31,6 +37,34 @@ export default function TripDetailScreen() {
 
   const isPlannable = trip.status === TripStatus.PLANNING;
   const isActive = trip.status === TripStatus.ACTIVE;
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const res = await authFetch(
+        `${getConfig().apiUrl}/api/trips/share`,
+        accessToken,
+        { method: "POST", body: JSON.stringify({ trip_id: tripId }) },
+      );
+      if (!res.ok) {
+        throw new Error(`Failed to enable sharing (${res.status})`);
+      }
+      const data: { share_token: string } = await res.json();
+      const shareUrl = `https://app.toqui.travel/shared/${data.share_token}`;
+      await Share.share({
+        message: `${trip.title} — ${shareUrl}`,
+        url: shareUrl,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("User did not share")) {
+        // User cancelled the share sheet — not an error
+        return;
+      }
+      Alert.alert(t("common.error"));
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   return (
     <>
@@ -93,6 +127,19 @@ export default function TripDetailScreen() {
           >
             <Settings color="#e8654a" size={24} />
             <Text style={styles.actionText}>Settings</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.actionButton}
+            onPress={handleShare}
+            disabled={isSharing}
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#e8654a" />
+            ) : (
+              <Share2 color="#e8654a" size={24} />
+            )}
+            <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
 
