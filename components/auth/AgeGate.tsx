@@ -1,6 +1,9 @@
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
+import { getConfig } from "@/lib/config";
 
 const STORAGE_KEY = "toqui_age_verified";
 
@@ -50,6 +53,7 @@ interface AgeGateProps {
 
 export function AgeGate({ children }: AgeGateProps) {
   const { colors } = useTheme();
+  const { accessToken } = useAuth();
   const [verified, setVerifiedState] = useState<boolean | null>(null);
   const [denied, setDenied] = useState(false);
   const [year, setYear] = useState("");
@@ -61,7 +65,7 @@ export function AgeGate({ children }: AgeGateProps) {
     isVerified().then(setVerifiedState);
   }, []);
 
-  const handleVerify = useCallback(() => {
+  const handleVerify = useCallback(async () => {
     setError("");
     const dob = parseDate(year, month, day);
     if (!dob) {
@@ -73,9 +77,24 @@ export function AgeGate({ children }: AgeGateProps) {
       setDenied(true);
       return;
     }
+
+    // Record verification on the backend so the age interceptor allows RPCs.
+    if (accessToken) {
+      const dobStr = `${dob.getFullYear()}-${String(dob.getMonth() + 1).padStart(2, "0")}-${String(dob.getDate()).padStart(2, "0")}`;
+      try {
+        await authFetch(`${getConfig().apiUrl}/auth/verify-age`, accessToken, {
+          method: "POST",
+          body: JSON.stringify({ date_of_birth: dobStr }),
+        });
+      } catch {
+        // If the backend call fails, still allow local verification so the
+        // user isn't stuck. The backend will retry on the next RPC attempt.
+      }
+    }
+
     void setVerified();
     setVerifiedState(true);
-  }, [year, month, day]);
+  }, [year, month, day, accessToken]);
 
   if (verified === null) return null; // loading
   if (verified) return <>{children}</>;

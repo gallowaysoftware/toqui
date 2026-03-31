@@ -121,9 +121,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5" },
   messageList: { padding: 16, flexGrow: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+  emptyContainer: { alignItems: "center", paddingTop: 100, paddingBottom: 24 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
+  emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
   expertBanner: {
     backgroundColor: "#fff8f0",
     borderTopWidth: 1,

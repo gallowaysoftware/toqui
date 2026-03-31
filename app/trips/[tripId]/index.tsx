@@ -102,8 +102,6 @@ export default function TripDetailScreen() {
           </View>
         )}
 
-        <ProUpgrade tripId={tripId!} />
-
         <View style={styles.actions}>
           <Pressable
             style={styles.actionButton}
@@ -165,6 +163,8 @@ export default function TripDetailScreen() {
             <ItineraryTimeline itinerary={itinerary} />
           </>
         )}
+
+        <ProUpgrade tripId={tripId!} />
 
         {isPlannable && (
           <Pressable
