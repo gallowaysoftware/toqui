@@ -48,6 +48,7 @@ import (
 )
 
 func main() {
+	startTime := time.Now()
 	ctx := context.Background()
 
 	cfg, err := config.Load()
@@ -268,6 +269,11 @@ func main() {
 	// Age verification route (authenticated)
 	ageVerifyHandler := handlers.NewAgeVerifyHandler(authSvc, queries)
 	mux.HandleFunc("/auth/verify-age", ageVerifyHandler.HandleVerifyAge)
+
+	// Health checks (public, no auth — for load balancer probes)
+	healthHandler := handlers.NewHealthHandler(pool, startTime)
+	mux.HandleFunc("/health", healthHandler.HandleHealth)
+	mux.HandleFunc("/ready", healthHandler.HandleReadiness)
 
 	// Waitlist routes (public, no auth)
 	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)
