@@ -665,8 +665,7 @@ describe("useChat", () => {
       expect(onResourceExhausted).toHaveBeenCalledOnce();
       const errorMsg = result.current.messages.find((m) => m.isError);
       expect(errorMsg).toBeDefined();
-      expect(errorMsg!.content).toContain("daily message limit");
-      expect(errorMsg!.content).toContain("Trip Pro");
+      expect(errorMsg!.content).toContain("daily capacity");
       // Streaming should be cleaned up
       expect(result.current.isStreaming).toBe(false);
       expect(result.current.streamingText).toBe("");

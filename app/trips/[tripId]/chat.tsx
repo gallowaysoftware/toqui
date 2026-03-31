@@ -31,7 +31,6 @@ const CHAT_SUGGESTION_DEFS = [
 export default function ChatScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { t } = useTranslation();
   const router = useRouter();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const {
