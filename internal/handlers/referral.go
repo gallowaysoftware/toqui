@@ -69,7 +69,7 @@ func (h *ReferralHandler) HandleGetReferralCode(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"code":                 ref.Code,
-		"link":                 h.appURL + "/waitlist?ref=" + ref.Code,
+		"link":                 h.appURL + "/?ref=" + ref.Code,
 		"successful_referrals": successful,
 		"rewards_earned":       rewards,
 	})
