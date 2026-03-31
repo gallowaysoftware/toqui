@@ -1148,7 +1148,7 @@ describe("useChat", () => {
   // =========================================================================
 
   describe("stream error event", () => {
-    it("logs but does not crash on error event in stream", async () => {
+    it("shows error message and continues stream on error event", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       mockSendMessage.mockReturnValue(
@@ -1170,9 +1170,11 @@ describe("useChat", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith("Stream error:", "something bad");
-      // Stream continues after error event
-      expect(result.current.messages).toHaveLength(2);
-      expect(result.current.messages[1].content).toBe("still works");
+      // Error event surfaces as an error message, stream continues after it
+      expect(result.current.messages).toHaveLength(3);
+      expect(result.current.messages[1].content).toBe("something bad");
+      expect(result.current.messages[1].isError).toBe(true);
+      expect(result.current.messages[2].content).toBe("still works");
 
       consoleSpy.mockRestore();
     });
