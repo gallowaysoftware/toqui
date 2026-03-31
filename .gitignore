@@ -26,3 +26,7 @@ Thumbs.db
 
 # misc
 *.tsbuildinfo
+
+# claude code
+.claude/worktrees/
+.claude/launch.json
