@@ -11,6 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { CheckCircle, Star, Mail, BookOpen, ExternalLink } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
+import { useTheme } from "@/lib/theme";
 
 interface ProUpgradeProps {
   tripId: string;
@@ -41,6 +42,7 @@ function loadHelcimJS(): Promise<void> {
 
 export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -97,10 +99,116 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
     }
   }, [initCheckout, validatePayment, onUnlocked]);
 
+  const styles = StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    price: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: colors.accent,
+      marginBottom: 2,
+    },
+    priceDescription: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginBottom: 16,
+    },
+    benefits: {
+      gap: 10,
+      marginBottom: 20,
+    },
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    benefitText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      flex: 1,
+    },
+    unlockButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    unlockButtonDisabled: {
+      opacity: 0.6,
+    },
+    unlockButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    error: {
+      color: colors.error,
+      fontSize: 13,
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    webOnly: {
+      alignItems: "center",
+      gap: 8,
+    },
+    webOnlyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    webOnlyLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    webOnlyLinkText: {
+      fontSize: 14,
+      color: colors.accent,
+      fontWeight: "500",
+    },
+    successContainer: {
+      backgroundColor: colors.successBg,
+      borderRadius: 12,
+      padding: 20,
+      marginBottom: 20,
+      alignItems: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    successTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.success,
+    },
+    successDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+  });
+
   if (checkingStatus) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="small" color="#BF4028" />
+        <ActivityIndicator size="small" color={colors.accent} />
       </View>
     );
   }
@@ -108,7 +216,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   if (unlocked) {
     return (
       <View style={styles.successContainer}>
-        <CheckCircle color="#22c55e" size={28} />
+        <CheckCircle color={colors.success} size={28} />
         <Text style={styles.successTitle}>{t("checkout.success")}</Text>
         <Text style={styles.successDescription}>
           {t("checkout.successDescription")}
@@ -120,7 +228,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Star color="#BF4028" size={22} />
+        <Star color={colors.accent} size={22} />
         <Text style={styles.title}>{t("checkout.title")}</Text>
       </View>
 
@@ -131,15 +239,15 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
 
       <View style={styles.benefits}>
         <View style={styles.benefitRow}>
-          <BookOpen color="#666" size={16} />
+          <BookOpen color={colors.textSecondary} size={16} />
           <Text style={styles.benefitText}>{t("checkout.benefits.experts")}</Text>
         </View>
         <View style={styles.benefitRow}>
-          <CheckCircle color="#666" size={16} />
+          <CheckCircle color={colors.textSecondary} size={16} />
           <Text style={styles.benefitText}>{t("checkout.benefits.bookings")}</Text>
         </View>
         <View style={styles.benefitRow}>
-          <Mail color="#666" size={16} />
+          <Mail color={colors.textSecondary} size={16} />
           <Text style={styles.benefitText}>{t("checkout.benefits.email")}</Text>
         </View>
       </View>
@@ -167,7 +275,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
             style={styles.webOnlyLink}
             onPress={() => Linking.openURL("https://toqui.app")}
           >
-            <ExternalLink color="#BF4028" size={14} />
+            <ExternalLink color={colors.accent} size={14} />
             <Text style={styles.webOnlyLinkText}>
               {t("checkout.webOnlyLink")}
             </Text>
@@ -177,109 +285,3 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#333",
-  },
-  price: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#BF4028",
-    marginBottom: 2,
-  },
-  priceDescription: {
-    fontSize: 13,
-    color: "#999",
-    marginBottom: 16,
-  },
-  benefits: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  benefitRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  benefitText: {
-    fontSize: 14,
-    color: "#444",
-    flex: 1,
-  },
-  unlockButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  unlockButtonDisabled: {
-    opacity: 0.6,
-  },
-  unlockButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: 13,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  webOnly: {
-    alignItems: "center",
-    gap: 8,
-  },
-  webOnlyText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  webOnlyLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  webOnlyLinkText: {
-    fontSize: 14,
-    color: "#BF4028",
-    fontWeight: "500",
-  },
-  successContainer: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#bbf7d0",
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#22c55e",
-  },
-  successDescription: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-});

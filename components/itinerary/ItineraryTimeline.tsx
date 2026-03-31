@@ -45,7 +45,7 @@ function TimelineItem({ item, color }: { item: ItineraryItem; color: string }) {
     <View style={styles.itemRow}>
       <View style={styles.itemTimeline}>
         <View style={[styles.itemDot, { backgroundColor: color }]}>
-          <Icon color="#fff" size={10} />
+          <Icon color={colors.userBubbleText} size={10} />
         </View>
         <View style={[styles.itemLine, { backgroundColor: colors.border }]} />
       </View>
@@ -82,7 +82,7 @@ function DaySection({ day, index }: { day: ItineraryDay; index: number }) {
     <View style={styles.daySection}>
       <View style={[styles.dayHeader, { borderColor: color }]}>
         <View style={[styles.dayBadge, { backgroundColor: color }]}>
-          <Text style={styles.dayBadgeText}>Day {day.dayNumber}</Text>
+          <Text style={[styles.dayBadgeText, { color: colors.surface }]}>Day {day.dayNumber}</Text>
         </View>
         {day.date ? (
           <Text style={[styles.dayDate, { color: colors.textSecondary }]}>{day.date}</Text>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   daySection: { marginBottom: 20 },
   dayHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10, borderLeftWidth: 3, paddingLeft: 10 },
   dayBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  dayBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  dayBadgeText: { fontSize: 12, fontWeight: "700" },
   dayDate: { fontSize: 13 },
   dayTitle: { fontSize: 14, fontWeight: "500", flex: 1 },
   emptyDay: { fontSize: 13, fontStyle: "italic", paddingLeft: 34, marginBottom: 8 },

@@ -5,6 +5,7 @@ import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizonta
 import { useBookings, useIngestBooking, useDeleteBooking } from "@/lib/hooks/useBookings";
 import { BookingType } from "@gen/toqui/v1/booking_pb";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
+import { useTheme } from "@/lib/theme";
 
 const typeConfig: Record<number, { label: string; color: string; Icon: typeof Plane }> = {
   [BookingType.FLIGHT]: { label: "Flight", color: "#3b82f6", Icon: Plane },
@@ -20,20 +21,46 @@ const typeConfig: Record<number, { label: string; color: string; Icon: typeof Pl
 function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => void }) {
   const config = typeConfig[booking.type] ?? typeConfig[BookingType.OTHER]!;
   const { Icon } = config;
+  const { colors } = useTheme();
+
+  const cardStyles = StyleSheet.create({
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    typeIndicator: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    cardContent: { flex: 1 },
+    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+    cardType: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    cardMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 1 },
+  });
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.typeIndicator, { backgroundColor: config.color }]}>
+    <View style={cardStyles.card}>
+      <View style={[cardStyles.typeIndicator, { backgroundColor: config.color }]}>
         <Icon color="#fff" size={16} />
       </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{booking.title || "Untitled booking"}</Text>
-        <Text style={styles.cardType}>{config.label}</Text>
-        {booking.provider ? <Text style={styles.cardMeta}>{booking.provider}</Text> : null}
-        {booking.confirmationCode ? <Text style={styles.cardMeta}>#{booking.confirmationCode}</Text> : null}
+      <View style={cardStyles.cardContent}>
+        <Text style={cardStyles.cardTitle} numberOfLines={1}>{booking.title || "Untitled booking"}</Text>
+        <Text style={cardStyles.cardType}>{config.label}</Text>
+        {booking.provider ? <Text style={cardStyles.cardMeta}>{booking.provider}</Text> : null}
+        {booking.confirmationCode ? <Text style={cardStyles.cardMeta}>#{booking.confirmationCode}</Text> : null}
       </View>
       <Pressable onPress={onDelete} hitSlop={8}>
-        <Trash2 color="#999" size={18} />
+        <Trash2 color={colors.textTertiary} size={18} />
       </Pressable>
     </View>
   );
@@ -44,6 +71,7 @@ export default function BookingsScreen() {
   const { bookings, isLoading } = useBookings(tripId!);
   const ingestBooking = useIngestBooking();
   const deleteBooking = useDeleteBooking();
+  const { colors } = useTheme();
   const [showAdd, setShowAdd] = useState(false);
   const [rawText, setRawText] = useState("");
 
@@ -65,8 +93,56 @@ export default function BookingsScreen() {
     ]);
   }, [tripId, deleteBooking]);
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    list: { padding: 16 },
+    empty: { alignItems: "center", paddingTop: 40 },
+    emptyText: { fontSize: 16, fontWeight: "600", color: colors.textSecondary },
+    emptySubtext: { fontSize: 14, color: colors.textTertiary, marginTop: 4 },
+    addButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 14,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
+      marginBottom: 12,
+    },
+    addButtonText: { color: colors.accent, fontSize: 16, fontWeight: "600" },
+    addForm: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 14,
+      minHeight: 100,
+      textAlignVertical: "top",
+      color: colors.textPrimary,
+      backgroundColor: colors.inputBg,
+    },
+    addActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 },
+    cancelButton: { padding: 10 },
+    cancelText: { color: colors.textSecondary, fontWeight: "500" },
+    submitButton: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
+    disabledButton: { opacity: 0.5 },
+    submitText: { color: "#fff", fontWeight: "600" },
+  });
+
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#BF4028" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={colors.accent} /></View>;
   }
 
   return (
@@ -90,7 +166,7 @@ export default function BookingsScreen() {
               <TextInput
                 style={styles.textArea}
                 placeholder="Paste booking confirmation text or email..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textTertiary}
                 value={rawText}
                 onChangeText={setRawText}
                 multiline
@@ -116,7 +192,7 @@ export default function BookingsScreen() {
             </View>
           ) : (
             <Pressable style={styles.addButton} onPress={() => setShowAdd(true)}>
-              <Plus color="#BF4028" size={18} />
+              <Plus color={colors.accent} size={18} />
               <Text style={styles.addButtonText}>Add Booking</Text>
             </Pressable>
           )
@@ -125,72 +201,3 @@ export default function BookingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  list: { padding: 16 },
-  empty: { alignItems: "center", paddingTop: 40 },
-  emptyText: { fontSize: 16, fontWeight: "600", color: "#666" },
-  emptySubtext: { fontSize: 14, color: "#999", marginTop: 4 },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  typeIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  cardContent: { flex: 1 },
-  cardTitle: { fontSize: 15, fontWeight: "600", color: "#333" },
-  cardType: { fontSize: 12, color: "#666", marginTop: 2 },
-  cardMeta: { fontSize: 12, color: "#999", marginTop: 1 },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BF4028",
-    borderStyle: "dashed",
-    marginBottom: 12,
-  },
-  addButtonText: { color: "#BF4028", fontSize: 16, fontWeight: "600" },
-  addForm: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    minHeight: 100,
-    textAlignVertical: "top",
-    color: "#333",
-  },
-  addActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 },
-  cancelButton: { padding: 10 },
-  cancelText: { color: "#666", fontWeight: "500" },
-  submitButton: { backgroundColor: "#BF4028", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
-  disabledButton: { opacity: 0.5 },
-  submitText: { color: "#fff", fontWeight: "600" },
-});

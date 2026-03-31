@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { useState } from "react";
+import { useTheme } from "@/lib/theme";
 
 interface DatePickerProps {
   value: string; // "YYYY-MM-DD" or ""
@@ -23,9 +24,10 @@ function parseDateString(value: string): Date | undefined {
 }
 
 function WebDatePicker({ value, onChange, placeholder, label }: DatePickerProps) {
+  const { colors } = useTheme();
   return (
     <View>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text> : null}
       <input
         type="date"
         value={value}
@@ -33,13 +35,13 @@ function WebDatePicker({ value, onChange, placeholder, label }: DatePickerProps)
         placeholder={placeholder}
         style={{
           borderWidth: 1,
-          borderColor: "#ccc",
+          borderColor: colors.inputBorder,
           borderStyle: "solid",
           borderRadius: 8,
           padding: 12,
           fontSize: 16,
-          color: "#333",
-          backgroundColor: "#fff",
+          color: colors.textPrimary,
+          backgroundColor: colors.inputBg,
           width: "100%",
           boxSizing: "border-box" as const,
         }}
@@ -49,18 +51,19 @@ function WebDatePicker({ value, onChange, placeholder, label }: DatePickerProps)
 }
 
 function NativeDatePicker({ value, onChange, placeholder, label }: DatePickerProps) {
+  const { colors } = useTheme();
   const [showPicker, setShowPicker] = useState(false);
-
-  // Lazy-require to avoid bundling on web
-  const handlePress = () => setShowPicker(true);
 
   const displayText = value || placeholder || "Select date";
 
   return (
     <View>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <Pressable style={styles.nativeInput} onPress={handlePress}>
-        <Text style={[styles.nativeInputText, !value && styles.placeholderText]}>
+      {label ? <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text> : null}
+      <Pressable
+        style={[styles.nativeInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+        onPress={() => setShowPicker(true)}
+      >
+        <Text style={[styles.nativeInputText, { color: value ? colors.textPrimary : colors.textTertiary }]}>
           {displayText}
         </Text>
       </Pressable>
@@ -117,21 +120,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
     marginBottom: 6,
   },
   nativeInput: {
-    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     padding: 12,
   },
   nativeInputText: {
     fontSize: 16,
-    color: "#333",
-  },
-  placeholderText: {
-    color: "#999",
   },
 });

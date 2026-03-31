@@ -4,10 +4,12 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
+import { useTheme } from "@/lib/theme";
 
 export default function NewTripScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { colors } = useTheme();
   const { destination } = useLocalSearchParams<{ destination?: string }>();
   const createTrip = useCreateTrip();
 
@@ -41,13 +43,41 @@ export default function NewTripScreen() {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    content: { padding: 16 },
+    label: { fontSize: 14, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, marginTop: 16 },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    textArea: { minHeight: 80, textAlignVertical: "top" },
+    dateRow: { flexDirection: "row", gap: 12 },
+    dateField: { flex: 1 },
+    submitButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      padding: 16,
+      alignItems: "center",
+      marginTop: 24,
+    },
+    disabledButton: { opacity: 0.5 },
+    submitText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+    errorText: { color: colors.error, fontSize: 14, textAlign: "center", marginTop: 12 },
+  });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>{t("tripCreate.whereLabel")}</Text>
       <TextInput
         style={styles.input}
         placeholder={t("tripCreate.wherePlaceholder")}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.textTertiary}
         value={title}
         onChangeText={setTitle}
         autoFocus
@@ -58,7 +88,7 @@ export default function NewTripScreen() {
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder={t("tripCreate.descriptionPlaceholder")}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.textTertiary}
         value={description}
         onChangeText={setDescription}
         multiline
@@ -109,31 +139,3 @@ export default function NewTripScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  content: { padding: 16 },
-  label: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 6, marginTop: 16 },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: "#333",
-  },
-  textArea: { minHeight: 80, textAlignVertical: "top" },
-  dateRow: { flexDirection: "row", gap: 12 },
-  dateField: { flex: 1 },
-  submitButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 8,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  disabledButton: { opacity: 0.5 },
-  submitText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  errorText: { color: "#ef4444", fontSize: 14, textAlign: "center", marginTop: 12 },
-});

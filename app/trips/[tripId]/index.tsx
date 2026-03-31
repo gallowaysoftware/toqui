@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2 } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
@@ -15,6 +16,7 @@ import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
+import { useTheme } from "@/lib/theme";
 
 function formatTripDate(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00Z`);
@@ -26,27 +28,132 @@ function formatTripDate(dateStr: string): string {
   }).format(date);
 }
 
+function countDays(startDate: string, endDate: string): number {
+  const start = new Date(startDate + "T00:00:00Z");
+  const end = new Date(endDate + "T00:00:00Z");
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
 export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, isLoading } = useTrip(tripId!);
-  const { itinerary } = useItinerary(tripId!);
+  const { itinerary, coveredDays, isLoading: isItineraryLoading } = useItinerary(tripId!);
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
   const router = useRouter();
   const { accessToken } = useAuth();
+  const { colors } = useTheme();
   const [isSharing, setIsSharing] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const dismissalKey = `toqui_planning_dismissed_${tripId}`;
+
+  useEffect(() => {
+    AsyncStorage.getItem(dismissalKey).then((val) => {
+      if (val === "true") setBannerDismissed(true);
+    });
+  }, [dismissalKey]);
+
+  const handleDismissBanner = () => {
+    setBannerDismissed(true);
+    void AsyncStorage.setItem(dismissalKey, "true");
+  };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    content: { padding: 16 },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    description: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 16 },
+    dates: { fontSize: 14, color: colors.textTertiary, marginBottom: 20 },
+    actions: { flexDirection: "row", gap: 12, marginBottom: 24 },
+    actionButton: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    actionText: { fontSize: 14, fontWeight: "500", color: colors.textPrimary },
+    statusButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 14,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statusButtonText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    exportRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+    exportButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      padding: 10,
+      backgroundColor: colors.surface,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    exportText: { fontSize: 13, fontWeight: "500", color: colors.accent },
+    trialBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "#eff6ff",
+      borderWidth: 1,
+      borderColor: "#bfdbfe",
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 16,
+    },
+    trialBannerText: { fontSize: 14, color: "#1e40af", fontWeight: "500", flex: 1 },
+    trialBannerExpired: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
+    trialBannerExpiredText: { fontSize: 14, color: "#92400e", fontWeight: "500", flex: 1 },
+    continuationBanner: {
+      backgroundColor: colors.accentSoft,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.accent,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    continuationBannerContent: { flex: 1 },
+    continuationBannerText: { fontSize: 14, color: colors.textPrimary, fontWeight: "500", marginBottom: 6 },
+    continuationBannerCta: { fontSize: 14, color: colors.accent, fontWeight: "600" },
+    continuationBannerDismiss: { padding: 4 },
+  });
 
   if (isLoading || !trip) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#BF4028" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
   const isPlannable = trip.status === TripStatus.PLANNING;
   const isActive = trip.status === TripStatus.ACTIVE;
+
+  const totalDays =
+    trip.startDate && trip.endDate ? countDays(trip.startDate, trip.endDate) : 0;
+  const showContinuationBanner =
+    isPlannable &&
+    totalDays > 0 &&
+    !isItineraryLoading &&
+    coveredDays < totalDays * 0.7 &&
+    !bannerDismissed;
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -119,7 +226,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/chat` as never)}
           >
-            <MessageCircle color="#BF4028" size={24} />
+            <MessageCircle color={colors.accent} size={24} />
             <Text style={styles.actionText}>Chat</Text>
           </Pressable>
 
@@ -127,7 +234,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/bookings` as never)}
           >
-            <Calendar color="#BF4028" size={24} />
+            <Calendar color={colors.accent} size={24} />
             <Text style={styles.actionText}>Bookings</Text>
           </Pressable>
 
@@ -135,7 +242,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/settings` as never)}
           >
-            <Settings color="#BF4028" size={24} />
+            <Settings color={colors.accent} size={24} />
             <Text style={styles.actionText}>Settings</Text>
           </Pressable>
 
@@ -145,13 +252,29 @@ export default function TripDetailScreen() {
             disabled={isSharing}
           >
             {isSharing ? (
-              <ActivityIndicator size="small" color="#BF4028" />
+              <ActivityIndicator size="small" color={colors.accent} />
             ) : (
-              <Share2 color="#BF4028" size={24} />
+              <Share2 color={colors.accent} size={24} />
             )}
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
+
+        {showContinuationBanner && (
+          <View style={styles.continuationBanner}>
+            <View style={styles.continuationBannerContent}>
+              <Text style={styles.continuationBannerText}>
+                {`Only ${coveredDays} of ${totalDays} days planned`}
+              </Text>
+              <Pressable onPress={() => router.push(`/trips/${tripId}/chat` as never)}>
+                <Text style={styles.continuationBannerCta}>Continue planning →</Text>
+              </Pressable>
+            </View>
+            <Pressable style={styles.continuationBannerDismiss} onPress={handleDismissBanner}>
+              <X color={colors.textTertiary} size={16} />
+            </Pressable>
+          </View>
+        )}
 
         {itinerary && trip && (
           <>
@@ -160,14 +283,14 @@ export default function TripDetailScreen() {
                 style={styles.exportButton}
                 onPress={() => exportItineraryPDF(trip, itinerary)}
               >
-                <FileText color="#BF4028" size={16} />
+                <FileText color={colors.accent} size={16} />
                 <Text style={styles.exportText}>Export PDF</Text>
               </Pressable>
               <Pressable
                 style={styles.exportButton}
                 onPress={() => exportItineraryICal(trip, itinerary)}
               >
-                <CalendarDays color="#BF4028" size={16} />
+                <CalendarDays color={colors.accent} size={16} />
                 <Text style={styles.exportText}>Export Calendar</Text>
               </Pressable>
             </View>
@@ -203,63 +326,3 @@ export default function TripDetailScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  content: { padding: 16 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  description: { fontSize: 15, color: "#666", lineHeight: 22, marginBottom: 16 },
-  dates: { fontSize: 14, color: "#999", marginBottom: 20 },
-  actions: { flexDirection: "row", gap: 12, marginBottom: 24 },
-  actionButton: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  actionText: { fontSize: 14, fontWeight: "500", color: "#333" },
-  statusButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  statusButtonText: { fontSize: 16, fontWeight: "600", color: "#333" },
-  exportRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  exportButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    padding: 10,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  exportText: { fontSize: 13, fontWeight: "500", color: "#BF4028" },
-  trialBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#eff6ff",
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  trialBannerText: { fontSize: 14, color: "#1e40af", fontWeight: "500", flex: 1 },
-  trialBannerExpired: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
-  trialBannerExpiredText: { fontSize: 14, color: "#92400e", fontWeight: "500", flex: 1 },
-});

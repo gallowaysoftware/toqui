@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { user, logout, accessToken } = useAuth();
   const transport = useTransport();
-  const { colors, mode, setMode, isDark } = useTheme();
+  const { colors, mode, setMode } = useTheme();
   const router = useRouter();
   const client = useMemo(() => createClient(AuthService, transport), [transport]);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -52,6 +52,102 @@ export default function SettingsScreen() {
     );
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    content: { padding: 16, paddingBottom: 40 },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    emptyText: { fontSize: 16, color: colors.textSecondary },
+    section: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    dangerSection: { borderColor: colors.error },
+    sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+    sectionTitle: { fontSize: 16, fontWeight: "600", color: colors.textSecondary },
+    accountInfo: { marginBottom: 12 },
+    userName: { fontSize: 16, fontWeight: "600", color: colors.textSecondary },
+    userEmail: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+    actionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.surfaceTertiary,
+    },
+    actionText: { fontSize: 15, color: colors.accent, fontWeight: "500" },
+    linkText: { fontSize: 15, color: colors.textSecondary },
+    outlineButton: {
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: "center",
+    },
+    disabledButton: { opacity: 0.5 },
+    outlineButtonText: { color: colors.accent, fontWeight: "600" },
+    dangerWarning: { fontSize: 14, color: colors.textSecondary, marginBottom: 12, lineHeight: 20 },
+    dangerLabel: { fontSize: 13, color: colors.textTertiary, marginBottom: 6 },
+    dangerInput: {
+      borderWidth: 1,
+      borderColor: colors.error,
+      borderRadius: 8,
+      padding: 10,
+      fontSize: 14,
+      marginBottom: 12,
+      color: colors.textPrimary,
+    },
+    deleteButton: {
+      borderWidth: 1,
+      borderColor: colors.error,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: "center",
+    },
+    deleteText: { color: colors.error, fontWeight: "600" },
+    themeRow: { flexDirection: "row", gap: 10 },
+    themeOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      padding: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    themeLabel: { fontSize: 13, fontWeight: "500" },
+    billingPlanRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    billingLabel: { fontSize: 14, color: colors.textSecondary },
+    planBadge: {
+      backgroundColor: colors.surfaceTertiary,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    planBadgePro: { backgroundColor: colors.accent },
+    planBadgeText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    planBadgeTextPro: { color: "#fff" },
+    billingDescription: { fontSize: 14, color: colors.textTertiary, lineHeight: 20 },
+    learnMoreRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 10,
+      paddingVertical: 4,
+    },
+    learnMoreText: { fontSize: 14, fontWeight: "500", color: colors.accent },
+  });
+
   if (!accessToken) {
     return (
       <View style={styles.center}>
@@ -65,7 +161,7 @@ export default function SettingsScreen() {
       {/* Account Info */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <User color="#333" size={20} />
+          <User color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>{t("settings.account")}</Text>
         </View>
         {user && (
@@ -75,7 +171,7 @@ export default function SettingsScreen() {
           </View>
         )}
         <Pressable style={styles.actionRow} onPress={logout}>
-          <LogOut color="#BF4028" size={18} />
+          <LogOut color={colors.accent} size={18} />
           <Text style={styles.actionText}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
@@ -83,7 +179,7 @@ export default function SettingsScreen() {
       {/* Plan & Billing */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <CreditCard color="#333" size={20} />
+          <CreditCard color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>{t("settings.billing.title")}</Text>
         </View>
         <View style={styles.billingPlanRow}>
@@ -100,7 +196,7 @@ export default function SettingsScreen() {
           <>
             <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
             <Pressable style={styles.learnMoreRow}>
-              <ExternalLink color="#BF4028" size={14} />
+              <ExternalLink color={colors.accent} size={14} />
               <Text style={styles.learnMoreText}>{t("settings.billing.learnMore")}</Text>
             </Pressable>
           </>
@@ -110,7 +206,7 @@ export default function SettingsScreen() {
       {/* Refer a Friend */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Gift color="#BF4028" size={20} />
+          <Gift color={colors.accent} size={20} />
           <Text style={styles.sectionTitle}>{t("referral.title")}</Text>
         </View>
         <ReferralCard />
@@ -119,7 +215,7 @@ export default function SettingsScreen() {
       {/* Data */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Download color="#333" size={20} />
+          <Download color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>{t("settings.exportData")}</Text>
         </View>
         <Pressable
@@ -128,7 +224,7 @@ export default function SettingsScreen() {
           disabled={exportData.isPending}
         >
           {exportData.isPending ? (
-            <ActivityIndicator color="#BF4028" size="small" />
+            <ActivityIndicator color={colors.accent} size="small" />
           ) : (
             <Text style={styles.outlineButtonText}>
               {exportData.isSuccess ? t("settings.exported") : t("settings.exportData")}
@@ -168,15 +264,15 @@ export default function SettingsScreen() {
       {/* Legal */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <FileText color="#333" size={20} />
+          <FileText color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>Legal</Text>
         </View>
         <Pressable style={styles.actionRow} onPress={() => router.push("/privacy" as never)}>
-          <Shield color="#666" size={16} />
+          <Shield color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Privacy Policy</Text>
         </Pressable>
         <Pressable style={styles.actionRow} onPress={() => router.push("/terms" as never)}>
-          <FileText color="#666" size={16} />
+          <FileText color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Terms of Service</Text>
         </Pressable>
       </View>
@@ -184,7 +280,7 @@ export default function SettingsScreen() {
       {/* Help & Feedback */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MessageSquare color="#333" size={20} />
+          <MessageSquare color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>{t("feedback.title")}</Text>
         </View>
         <Pressable style={styles.outlineButton} onPress={() => setFeedbackVisible(true)}>
@@ -200,8 +296,8 @@ export default function SettingsScreen() {
       {/* Danger Zone */}
       <View style={[styles.section, styles.dangerSection]}>
         <View style={styles.sectionHeader}>
-          <Trash2 color="#ef4444" size={20} />
-          <Text style={[styles.sectionTitle, { color: "#ef4444" }]}>{t("settings.deleteAccount")}</Text>
+          <Trash2 color={colors.error} size={20} />
+          <Text style={[styles.sectionTitle, { color: colors.error }]}>{t("settings.deleteAccount")}</Text>
         </View>
         <Text style={styles.dangerWarning}>{t("settings.deleteWarning")}</Text>
         <Text style={styles.dangerLabel}>{t("settings.typeDelete")}</Text>
@@ -210,7 +306,7 @@ export default function SettingsScreen() {
           value={deleteConfirm}
           onChangeText={setDeleteConfirm}
           placeholder="DELETE"
-          placeholderTextColor="#ccc"
+          placeholderTextColor={colors.borderStrong}
           autoCapitalize="characters"
         />
         <Pressable
@@ -226,99 +322,3 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { fontSize: 16, color: "#666" },
-  section: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  dangerSection: { borderColor: "#fca5a5" },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: "600", color: "#333" },
-  accountInfo: { marginBottom: 12 },
-  userName: { fontSize: 16, fontWeight: "600", color: "#333" },
-  userEmail: { fontSize: 14, color: "#666", marginTop: 2 },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  actionText: { fontSize: 15, color: "#BF4028", fontWeight: "500" },
-  linkText: { fontSize: 15, color: "#666" },
-  outlineButton: {
-    borderWidth: 1,
-    borderColor: "#BF4028",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-  },
-  disabledButton: { opacity: 0.5 },
-  outlineButtonText: { color: "#BF4028", fontWeight: "600" },
-  dangerWarning: { fontSize: 14, color: "#666", marginBottom: 12, lineHeight: 20 },
-  dangerLabel: { fontSize: 13, color: "#999", marginBottom: 6 },
-  dangerInput: {
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
-    marginBottom: 12,
-    color: "#333",
-  },
-  deleteButton: {
-    borderWidth: 1,
-    borderColor: "#ef4444",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-  },
-  deleteText: { color: "#ef4444", fontWeight: "600" },
-  themeRow: { flexDirection: "row", gap: 10 },
-  themeOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  themeLabel: { fontSize: 13, fontWeight: "500" },
-  billingPlanRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  billingLabel: { fontSize: 14, color: "#666" },
-  planBadge: {
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  planBadgePro: { backgroundColor: "#BF4028" },
-  planBadgeText: { fontSize: 13, fontWeight: "600", color: "#666" },
-  planBadgeTextPro: { color: "#fff" },
-  billingDescription: { fontSize: 14, color: "#999", lineHeight: 20 },
-  learnMoreRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-    paddingVertical: 4,
-  },
-  learnMoreText: { fontSize: 14, fontWeight: "500", color: "#BF4028" },
-});

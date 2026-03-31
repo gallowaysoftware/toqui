@@ -1,5 +1,6 @@
-import { Text, Pressable, StyleSheet, ScrollView, Platform } from "react-native";
+import { Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
+import { useTheme } from "@/lib/theme";
 
 interface Suggestion {
   key: string;
@@ -13,6 +14,29 @@ interface SuggestionChipsProps {
 }
 
 export function SuggestionChips({ suggestions, onSelect }: SuggestionChipsProps) {
+  const { colors } = useTheme();
+
+  const styles = StyleSheet.create({
+    row: { flexDirection: "row", gap: 8, paddingHorizontal: 16 },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    text: { fontSize: 13, color: colors.accent, fontWeight: "500" },
+    chipFocused: {
+      outlineWidth: 2,
+      outlineColor: colors.accent,
+      outlineStyle: "solid",
+    },
+  });
+
   return (
     <ScrollView
       horizontal
@@ -25,31 +49,10 @@ export function SuggestionChips({ suggestions, onSelect }: SuggestionChipsProps)
           style={styles.chip}
           onPress={() => onSelect(label)}
         >
-          <Icon color="#BF4028" size={14} />
+          <Icon color={colors.accent} size={14} />
           <Text style={styles.text}>{label}</Text>
         </Pressable>
       ))}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 8, paddingHorizontal: 16 },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#BF4028",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  text: { fontSize: 13, color: "#BF4028", fontWeight: "500" },
-  chipFocused: {
-    outlineWidth: 2,
-    outlineColor: "#BF4028",
-    outlineStyle: "solid",
-  },
-});
