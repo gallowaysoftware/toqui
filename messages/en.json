@@ -44,6 +44,8 @@
     "newTrip": "New Trip",
     "empty": "No trips yet. Start planning your next adventure!",
     "createFirst": "Create Your First Trip",
+    "proBadge": "Pro",
+    "trialBadge": "Trial",
     "status": {
       "planning": "Planning",
       "active": "Active",

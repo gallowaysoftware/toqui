@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
@@ -9,6 +9,7 @@ import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+  const { t } = useTranslation();
   const statusConfig: Record<number, { label: string; color: string }> = {
     [TripStatus.PLANNING]: { label: "planning", color: "#3b82f6" },
     [TripStatus.ACTIVE]: { label: "active", color: "#22c55e" },
@@ -24,6 +25,12 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.statusText}>{statusLabel}</Text>
           </View>
+          {trip.isUnlocked && (
+            <View style={styles.proBadge}>
+              <Crown color="#fff" size={10} />
+              <Text style={styles.proBadgeText}>{t("trips.proBadge")}</Text>
+            </View>
+          )}
         </View>
         {trip.description ? (
           <Text style={styles.tripDescription} numberOfLines={2}>{trip.description}</Text>
@@ -167,6 +174,16 @@ const styles = StyleSheet.create({
   tripTitle: { fontSize: 16, fontWeight: "600", color: "#333", flex: 1 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   statusText: { fontSize: 11, fontWeight: "600", color: "#fff", textTransform: "capitalize" },
+  proBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#e8654a",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  proBadgeText: { fontSize: 11, fontWeight: "700", color: "#fff" },
   tripDescription: { fontSize: 14, color: "#666", marginBottom: 8 },
   tripMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
   tripMetaText: { fontSize: 12, color: "#999" },
