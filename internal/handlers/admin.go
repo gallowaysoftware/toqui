@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -106,6 +107,51 @@ func (h *AdminHandler) HandleStats(w http.ResponseWriter, r *http.Request) {
 		"active_trips":   activeTrips,
 		"daily_messages": dailyMessages,
 		"pro_interest":   proInterest,
+	})
+}
+
+// HandleMetrics handles GET /admin/metrics — detailed business KPIs.
+func (h *AdminHandler) HandleMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	ctx := r.Context()
+	totalUsers, _ := h.queries.CountTotalUsers(ctx)
+	active7d, _ := h.queries.CountActiveUsersLast7Days(ctx)
+	proUsers, _ := h.queries.CountProUsers(ctx)
+	signupsToday, _ := h.queries.CountSignupsToday(ctx)
+	signups7d, _ := h.queries.CountSignupsLast7Days(ctx)
+	totalTrips, _ := h.queries.CountTotalTrips(ctx)
+	activeTrips, _ := h.queries.CountActiveTrips(ctx)
+	messagesToday, _ := h.queries.CountMessagesToday(ctx)
+	purchases, _ := h.queries.CountTripProPurchases(ctx)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"users": map[string]any{
+			"total":        totalUsers,
+			"active_7d":    active7d,
+			"pro":          proUsers,
+			"signups_today": signupsToday,
+			"signups_7d":   signups7d,
+		},
+		"trips": map[string]any{
+			"total":  totalTrips,
+			"active": activeTrips,
+		},
+		"engagement": map[string]any{
+			"messages_today": messagesToday,
+		},
+		"revenue": map[string]any{
+			"trip_pro_purchases": purchases,
+		},
+		"generated_at": time.Now().UTC(),
 	})
 }
 
