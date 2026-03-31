@@ -167,6 +167,18 @@
     "rewardsEarned": "{{count}} rewards earned",
     "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for a free Trip Pro unlock! {{link}}"
   },
+  "feedback": {
+    "title": "Send Feedback",
+    "typeBug": "Bug Report",
+    "typeFeature": "Feature Request",
+    "typeGeneral": "General Feedback",
+    "typeChatQuality": "Chat Quality",
+    "messagePlaceholder": "Tell us what's on your mind...",
+    "submit": "Send Feedback",
+    "success": "Thanks for your feedback!",
+    "successDetail": "We read every submission and use it to improve Toqui.",
+    "error": "Failed to send feedback. Please try again."
+  },
   "waitlist": {
     "title": "We're at capacity!",
     "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",
