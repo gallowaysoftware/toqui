@@ -4,18 +4,19 @@ AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Fi
 
 ## Project Structure
 
-This is a 4-repo project under `github.com/gallowaysoftware`:
+This is a 5-repo project under `github.com/gallowaysoftware`:
 
-- **toqui-backend** (this repo) — Go backend, gRPC API, AI orchestration
-- **toqui** — Next.js TypeScript web frontend
-- **toqui-terraform** — Terraform GCP infrastructure (staging + prod)
-- **toqui-site** — Astro static marketing site
+- **toqui-backend** (this repo) — Go backend, ConnectRPC API, AI orchestration
+- **toqui** — Expo React Native app (web + iOS + Android)
+- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure
+- **toqui-site** — Astro static marketing site (Cloudflare Pages)
+- **toqui-admin** — Vite React admin panel (Cloudflare Pages)
 
 ## Architecture
 
 ```mermaid
 graph TB
-    FE[Frontend - Next.js] -->|ConnectRPC| BE[Backend - Go :8090]
+    FE[Frontend - Expo React Native] -->|ConnectRPC| BE[Backend - Go :8090]
     BE --> PG[(PostgreSQL + PostGIS)]
     BE --> FS[(Firestore)]
     BE --> AI[Claude API]
@@ -111,15 +112,16 @@ TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toq
 
 ### CI/CD
 
-GitHub Actions on push to `main` and all PRs (GitHub-hosted runners, `ubuntu-latest`):
+GitHub Actions on push to `main` and all PRs (self-hosted runners on Unraid, 3 replicas):
 
-- **toqui-backend**: lint, test (with coverage), build run in parallel → **deploy to staging** (main only, Cloud Run)
-- **toqui**: lint+typecheck, test, build run in parallel → **deploy to staging** (main only, Cloud Run)
-- **toqui-site**: install → build
+- **toqui-backend**: lint, test (with coverage), build run in parallel → **deploy to prod** (main only, Cloud Run)
+- **toqui**: lint+typecheck, test, build run in parallel → **deploy to prod** (main only, Cloud Run)
+- **toqui-site**: build (Cloudflare Pages auto-deploys from main)
+- **toqui-admin**: build (Cloudflare Pages auto-deploys from main)
 
-**Staging auto-deploy**: Push to `main` triggers a `deploy-staging` job that builds a Docker image, pushes to Artifact Registry, deploys to Cloud Run via `gcloud run deploy`, and runs migrations via Cloud Run Jobs. Uses Workload Identity Federation (keyless GCP auth).
+**Prod auto-deploy**: Push to `main` triggers `deploy-prod` job: Docker build → push to Artifact Registry → run migrations via Cloud Run Jobs → deploy to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). Migrations run BEFORE deploy to avoid schema mismatch.
 
-**Prod deploy**: Manual trigger via `workflow_dispatch` on `main` branch. Same Docker build + push + Cloud Run deploy + migrations pattern, but targeting `toqui-prod` project with separate WIF credentials (`GCP_PROD_WIF_PROVIDER`, `GCP_PROD_SERVICE_ACCOUNT`). Requires `production` GitHub environment approval.
+**Staging**: Torn down to save costs. `staging-ci/` Terraform environment keeps WIF + Artifact Registry alive for CI builds. Runtime can be recreated on demand via `terraform apply` in `environments/staging/`.
 
 ### Task Tracking
 
@@ -272,7 +274,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 1. **CLAUDE.md** — Update this file and any other repo CLAUDE.md files affected by the changes (architecture, deployment, security patterns, new packages)
 2. **MEMORY.md** — Update the shared memory file at `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md` with completed work, status changes, and any new patterns
-3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 4 repos
+3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 5 repos
 
 ### Adversarial Review
 
@@ -358,59 +360,63 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 
 **Two GCP projects** under the Toqui folder in the `thegalloways.ca` org:
 
-- **toqui-staging** — Cloud Run (backend + frontend) + Global HTTPS LB + Cloud DNS + managed SSL, Cloud SQL `db-f1-micro`, custom domains (`staging-api.toqui.travel`, `staging-app.toqui.travel`)
-- **toqui-prod** — Cloud Run services behind global HTTPS LB, Cloud SQL `db-g1-small`, custom domains (`api.toqui.travel`, `app.toqui.travel`, `toqui.travel`) — Terraform defined, not yet applied
+- **toqui-staging** — CI infrastructure only (WIF + Artifact Registry). Runtime torn down to save ~$32/mo.
+- **toqui-prod** — LIVE. Cloud Run (backend + frontend) + Global HTTPS LB + Cloud Armor WAF + Certificate Manager SSL. Cloud SQL `db-g1-small` (private IP, HA, backups). Domains: `api.toqui.travel`, `app.toqui.travel`. Marketing site + admin on Cloudflare Pages.
 
-Both use Cloud SQL PostgreSQL 16 (public IP for Cloud Run), Firestore (native mode), Secret Manager, and Artifact Registry.
+Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Artifact Registry, Resend (email), Helcim (payments).
 
-### Deploying to Staging
+**Company**: Galloway Software Inc., Prince Edward Island, Canada.
 
-**Automatic**: Push to `main` → GitHub Actions builds Docker image, pushes to Artifact Registry, deploys to Cloud Run, runs migrations via Cloud Run Jobs. Uses WIF (keyless GCP auth).
+### Deploying to Prod
+
+**Automatic**: Push to `main` → GitHub Actions runs migrations via Cloud Run Jobs FIRST, then builds Docker image, pushes to Artifact Registry, and deploys to Cloud Run. Migrations run before deploy to avoid schema mismatch. Uses WIF (keyless GCP auth).
 
 **Manual** (if needed):
 
 ```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+IMAGE=us-central1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
 
-# Build, push, deploy
+# Build and push
 docker build --platform linux/amd64 -t $IMAGE:latest .
 docker push $IMAGE:latest
-gcloud run deploy toqui-backend --image=$IMAGE:latest --region=us-central1 --project=toqui-staging
 
-# Run migrations
+# Run migrations FIRST
 gcloud run jobs deploy toqui-migrate --image=$IMAGE:latest \
-  --region=us-central1 --project=toqui-staging \
+  --region=us-central1 --project=toqui-prod \
   --command=/migrate --args="-direction,up" --execute-now
+
+# Then deploy
+gcloud run deploy toqui-backend --image=$IMAGE:latest --region=us-central1 --project=toqui-prod
 ```
 
 ### Rolling Back
 
 ```bash
 # List available revisions
-gcloud run revisions list --service=toqui-backend --region=us-central1 --project=toqui-staging
+gcloud run revisions list --service=toqui-backend --region=us-central1 --project=toqui-prod
 
 # Route traffic to previous revision
 gcloud run services update-traffic toqui-backend \
-  --to-revisions=<previous-revision>=100 --region=us-central1 --project=toqui-staging
+  --to-revisions=<previous-revision>=100 --region=us-central1 --project=toqui-prod
 
 # Roll back one database migration
 gcloud run jobs deploy toqui-migrate --image=$IMAGE:<previous-sha> \
-  --region=us-central1 --project=toqui-staging \
+  --region=us-central1 --project=toqui-prod \
   --command=/migrate --args="-direction,down,-steps,1" --execute-now
 ```
 
-### Checking Staging Logs
+### Checking Prod Logs
 
 ```bash
 # Cloud Run logs (real-time)
-gcloud run services logs read toqui-backend --region=us-central1 --project=toqui-staging --limit=100
+gcloud run services logs read toqui-backend --region=us-central1 --project=toqui-prod --limit=100
 
 # Or via Cloud Logging
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="toqui-backend"' \
-  --project=toqui-staging --limit=50 --format=json
+  --project=toqui-prod --limit=50 --format=json
 ```
 
-Staging is publicly accessible at `https://staging-api.toqui.travel` (backend) and `https://staging-app.toqui.travel` (frontend).
+Prod is publicly accessible at `https://api.toqui.travel` (backend) and `https://app.toqui.travel` (frontend).
 
 ### Docker Image
 
@@ -498,7 +504,7 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 
 ### Cookie Encoding (OAuth)
 
-The `toqui_oauth_result` cookie uses **base64url encoding** (`base64.RawURLEncoding`) because Go's `net/http` silently strips `"` characters from cookie values per RFC 6265. The JSON payload would be corrupted without encoding. The cookie uses `SameSite=None` + `Secure=true` because the frontend (`staging-app`) and backend (`staging-api`) are on different subdomains.
+The `toqui_oauth_result` cookie uses **base64url encoding** (`base64.RawURLEncoding`) because Go's `net/http` silently strips `"` characters from cookie values per RFC 6265. The JSON payload would be corrupted without encoding. The cookie uses `SameSite=None` + `Secure=true` because the frontend (`app.toqui.travel`) and backend (`api.toqui.travel`) are on different subdomains.
 
 ### Security Checklist for New Handlers
 
@@ -570,12 +576,13 @@ Token counts are accumulated across tool loop iterations. Usage is parsed from C
 
 ## Cross-Repo Consistency
 
-**IMPORTANT**: This project spans 4 repos. When making changes that affect shared documentation (architecture, deployment, CI/CD, security patterns, staging/prod status), update CLAUDE.md in ALL repos to keep them consistent:
+**IMPORTANT**: This project spans 5 repos. When making changes that affect shared documentation (architecture, deployment, CI/CD, security patterns, staging/prod status), update CLAUDE.md in ALL repos to keep them consistent:
 
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md` (this file)
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-admin/CLAUDE.md`
 
 Also update the shared memory file: `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md`
 
