@@ -39,7 +39,15 @@ export function useGoogleAuth() {
   const signIn = useCallback(async () => {
     const result = await promptAsync();
     if (result?.type === "success" && result.params.code) {
-      await login(result.params.code, redirectUri);
+      try {
+        await login(result.params.code, redirectUri);
+      } catch (err) {
+        console.error("Google login failed:", err);
+      }
+    } else if (result?.type === "dismiss") {
+      // Popup was likely severed by Google's COOP headers.
+      // The auth/callback page handles login directly in this case.
+      console.debug("Auth popup dismissed — callback page will handle login");
     }
   }, [promptAsync, login, redirectUri]);
 
