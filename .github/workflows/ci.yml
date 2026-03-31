@@ -152,7 +152,7 @@ jobs:
             --region=us-central1 \
             --project=toqui-staging \
             --service-account=toqui-run-toqui-backend@toqui-staging.iam.gserviceaccount.com \
-            --add-cloudsql-instances=toqui-staging:us-central1:toqui-db \
+            --set-cloudsql-instances=toqui-staging:us-central1:toqui-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
             --command="/migrate" \
             --args="-direction,up" \
@@ -206,7 +206,7 @@ jobs:
             --region=northamerica-northeast1 \
             --project=toqui-prod \
             --service-account=toqui-run-toqui-backend@toqui-prod.iam.gserviceaccount.com \
-            --add-cloudsql-instances=toqui-prod:northamerica-northeast1:toqui-db \
+            --set-cloudsql-instances=toqui-prod:northamerica-northeast1:toqui-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
             --command="/migrate" \
             --args="-direction,up" \
