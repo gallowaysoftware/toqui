@@ -87,8 +87,8 @@
     "wherePlaceholder": "e.g. Two weeks in Japan",
     "descriptionLabel": "Tell us more (optional)",
     "descriptionPlaceholder": "e.g. First time visiting, interested in food and temples, traveling as a couple",
-    "startDate": "Start date",
-    "endDate": "End date",
+    "startDate": "Start date (optional)",
+    "endDate": "End date (optional)",
     "submit": "Start Planning",
     "submitting": "Creating...",
     "dateRangeError": "End date must be on or after start date"

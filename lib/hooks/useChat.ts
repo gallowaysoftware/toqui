@@ -127,6 +127,7 @@ export function useChat(
   const [historyError, setHistoryError] = useState<string | null>(null);
   const isSendingRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
   const historyLoadedRef = useRef<string | null>(null);
@@ -259,6 +260,10 @@ export function useChat(
       if (isSendingRef.current) return;
       isSendingRef.current = true;
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const timeout = setTimeout(() => controller.abort(), 60_000);
+
       const displayContent = attachments?.length
         ? `${content}${content ? "\n" : ""}[${attachments.map((a) => a.filename).join(", ")}]`
         : content;
@@ -286,7 +291,7 @@ export function useChat(
           content,
           mode: modeToProto[mode] ?? ChatMode.SELECTION,
           attachments: protoAttachments,
-        })) {
+        }, { signal: controller.signal })) {
           const resp = event;
           switch (resp.event.case) {
             case "textDelta":
@@ -418,7 +423,15 @@ export function useChat(
         }
       } catch (error) {
         console.error("Chat error:", error);
-        if (error instanceof ConnectError && error.code === Code.ResourceExhausted) {
+        const isAbort =
+          (error instanceof DOMException && error.name === "AbortError") ||
+          (error instanceof Error && error.name === "AbortError");
+        if (isAbort) {
+          setMessages((prev) => [
+            ...prev,
+            { id: uuid(), role: "assistant", content: "Stream timed out. Please try again.", isError: true },
+          ]);
+        } else if (error instanceof ConnectError && error.code === Code.ResourceExhausted) {
           onResourceExhaustedRef.current?.();
           const errMsg = error.message;
           const isDailyLimit = errMsg.includes("daily message limit");
@@ -440,6 +453,8 @@ export function useChat(
           ]);
         }
       } finally {
+        clearTimeout(timeout);
+        abortControllerRef.current = null;
         setStreamingText("");
         setIsStreaming(false);
         setToolActivity(null);
@@ -448,6 +463,10 @@ export function useChat(
     },
     [tripId, mode, transport],
   );
+
+  const abortStream = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   return {
     messages,
@@ -461,6 +480,7 @@ export function useChat(
     createdTrip,
     selectedTrip,
     sendMessage,
+    abortStream,
     hasMoreHistory,
     loadMoreHistory,
   };

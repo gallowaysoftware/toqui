@@ -41,6 +41,7 @@ export default function ChatScreen() {
     historyError,
     toolActivity,
     sendMessage,
+    abortStream,
     loadMoreHistory,
   } = useChat(tripId, "planning", {
     onExpertLimitReached: () => setShowExpertBanner(true),
@@ -108,6 +109,11 @@ export default function ChatScreen() {
             ) : isStreaming && !toolActivity ? (
               <TypingIndicator />
             ) : null}
+            {isStreaming && (
+              <Pressable style={styles.stopButton} onPress={abortStream}>
+                <Text style={styles.stopButtonText}>Stop generating</Text>
+              </Pressable>
+            )}
           </>
         }
       />
@@ -156,6 +162,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  stopButton: {
+    alignSelf: "center",
+    marginTop: 4,
+    marginBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#BF4028",
+  },
+  stopButtonText: { fontSize: 13, color: "#BF4028", fontWeight: "600" },
   streamingBubble: {
     maxWidth: "85%",
     padding: 12,
