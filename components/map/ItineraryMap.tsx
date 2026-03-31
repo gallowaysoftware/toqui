@@ -127,8 +127,8 @@ export function ItineraryMap({ itinerary, height = 300 }: ItineraryMapProps) {
             coordinate={marker.coordinate}
             title={marker.title}
           >
-            <View style={[styles.marker, { backgroundColor: marker.color }]}>
-              <Text style={styles.markerText}>{marker.dayNumber}</Text>
+            <View style={[styles.marker, { backgroundColor: marker.color, borderColor: colors.surface }]}>
+              <Text style={[styles.markerText, { color: colors.surface }]}>{marker.dayNumber}</Text>
             </View>
           </PointAnnotation>
         ))}
@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#fff",
   },
-  markerText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  markerText: { fontSize: 12, fontWeight: "700" },
 });

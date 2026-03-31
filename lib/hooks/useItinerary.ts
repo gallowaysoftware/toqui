@@ -19,5 +19,11 @@ export function useItinerary(tripId: string) {
     enabled: !!accessToken && !!tripId,
   });
 
-  return { itinerary, isLoading };
+  const coveredDays = useMemo(() => {
+    if (!itinerary?.days) return 0;
+    const dates = new Set(itinerary.days.map((d) => d.date).filter(Boolean));
+    return dates.size;
+  }, [itinerary]);
+
+  return { itinerary, isLoading, coveredDays };
 }

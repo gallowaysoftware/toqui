@@ -20,6 +20,7 @@ import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import type { ChatMessage } from "@/lib/hooks/useChat";
+import { useTheme } from "@/lib/theme";
 
 const CHAT_SUGGESTION_DEFS = [
   { key: "itinerary", icon: MapPin },
@@ -32,6 +33,7 @@ export default function ChatScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
+  const { colors } = useTheme();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const {
     messages,
@@ -61,6 +63,62 @@ export default function ChatScreen() {
     return <MessageBubble message={item} />;
   }, []);
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    messageList: { padding: 16, flexGrow: 1 },
+    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+    emptyContainer: { alignItems: "center", paddingTop: 100, paddingBottom: 24 },
+    emptyTitle: { fontSize: 20, fontWeight: "bold", color: colors.accent, marginBottom: 8 },
+    emptySubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
+    errorTitle: { fontSize: 20, fontWeight: "bold", color: colors.error, marginBottom: 8 },
+    retryButton: { backgroundColor: colors.accent, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 24 },
+    retryButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+    expertBanner: {
+      backgroundColor: colors.accentSoft,
+      borderTopWidth: 1,
+      borderTopColor: colors.accent,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      alignItems: "center",
+    },
+    expertBannerText: { fontSize: 13, color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    expertBannerButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 16,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+    },
+    expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+    stopButton: {
+      alignSelf: "center",
+      marginTop: 4,
+      marginBottom: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    stopButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
+    streamingBubble: {
+      maxWidth: "85%",
+      padding: 12,
+      borderRadius: 16,
+      borderBottomLeftRadius: 4,
+      backgroundColor: colors.assistantBubble,
+      borderWidth: 1,
+      borderColor: colors.assistantBubbleBorder,
+      alignSelf: "flex-start",
+      marginBottom: 8,
+    },
+  });
+
+  const markdownStyles = {
+    body: { fontSize: 15, color: colors.textPrimary, lineHeight: 22 },
+    strong: { fontWeight: "700" as const },
+    link: { color: colors.accent },
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -77,7 +135,7 @@ export default function ChatScreen() {
         ListEmptyComponent={
           isLoadingHistory ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#BF4028" />
+              <ActivityIndicator size="large" color={colors.accent} />
             </View>
           ) : historyError && !isStreaming ? (
             <View style={styles.emptyContainer}>
@@ -140,59 +198,3 @@ export default function ChatScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  messageList: { padding: 16, flexGrow: 1 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-  emptyContainer: { alignItems: "center", paddingTop: 100, paddingBottom: 24 },
-  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
-  errorTitle: { fontSize: 20, fontWeight: "bold", color: "#c0392b", marginBottom: 8 },
-  retryButton: { backgroundColor: "#BF4028", borderRadius: 16, paddingVertical: 8, paddingHorizontal: 24 },
-  retryButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  expertBanner: {
-    backgroundColor: "#fff8f0",
-    borderTopWidth: 1,
-    borderTopColor: "#BF4028",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: "center",
-  },
-  expertBannerText: { fontSize: 13, color: "#333", marginBottom: 6, textAlign: "center" },
-  expertBannerButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-  },
-  expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  stopButton: {
-    alignSelf: "center",
-    marginTop: 4,
-    marginBottom: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#BF4028",
-  },
-  stopButtonText: { fontSize: 13, color: "#BF4028", fontWeight: "600" },
-  streamingBubble: {
-    maxWidth: "85%",
-    padding: 12,
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    alignSelf: "flex-start",
-    marginBottom: 8,
-  },
-});
-
-const markdownStyles = StyleSheet.create({
-  body: { fontSize: 15, color: "#333", lineHeight: 22 },
-  strong: { fontWeight: "700" },
-  link: { color: "#BF4028" },
-});

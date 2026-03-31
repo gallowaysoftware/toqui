@@ -196,7 +196,7 @@ export function AgeGate({ children }: AgeGateProps) {
       {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
 
       <Pressable style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleVerify}>
-        <Text style={styles.buttonText}>Verify Age</Text>
+        <Text style={[styles.buttonText, { color: colors.userBubbleText }]}>Verify Age</Text>
       </Pressable>
     </View>
   );
@@ -219,5 +219,5 @@ const styles = StyleSheet.create({
   },
   error: { fontSize: 14, textAlign: "center", marginBottom: 12 },
   button: { borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  buttonText: { fontSize: 16, fontWeight: "600" },
 });

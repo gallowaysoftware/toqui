@@ -4,11 +4,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
+import { useTheme } from "@/lib/theme";
 
 export default function TripSettingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { t } = useTranslation();
   const router = useRouter();
+  const { colors } = useTheme();
   const { trip, isLoading } = useTrip(tripId!);
   const updateTrip = useUpdateTrip();
   const deleteTrip = useDeleteTrip();
@@ -27,8 +29,54 @@ export default function TripSettingsScreen() {
     }
   }, [trip]);
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    content: { padding: 16 },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    label: { fontSize: 14, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, marginTop: 16 },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    textArea: { minHeight: 80, textAlignVertical: "top" },
+    dateRow: { flexDirection: "row", gap: 12 },
+    dateField: { flex: 1 },
+    saveButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      padding: 14,
+      alignItems: "center",
+      marginTop: 24,
+    },
+    disabledButton: { opacity: 0.5 },
+    saveText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+    dangerZone: {
+      marginTop: 40,
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+    dangerTitle: { fontSize: 16, fontWeight: "600", color: colors.error, marginBottom: 8 },
+    dangerWarning: { fontSize: 14, color: colors.textSecondary, marginBottom: 16, lineHeight: 20 },
+    deleteButton: {
+      borderWidth: 1,
+      borderColor: colors.error,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: "center",
+    },
+    deleteText: { color: colors.error, fontWeight: "600" },
+  });
+
   if (isLoading || !trip) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#BF4028" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={colors.accent} /></View>;
   }
 
   const handleSave = async () => {
@@ -112,49 +160,3 @@ export default function TripSettingsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  content: { padding: 16 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  label: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 6, marginTop: 16 },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: "#333",
-  },
-  textArea: { minHeight: 80, textAlignVertical: "top" },
-  dateRow: { flexDirection: "row", gap: 12 },
-  dateField: { flex: 1 },
-  saveButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 8,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  disabledButton: { opacity: 0.5 },
-  saveText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  dangerZone: {
-    marginTop: 40,
-    padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-  },
-  dangerTitle: { fontSize: 16, fontWeight: "600", color: "#ef4444", marginBottom: 8 },
-  dangerWarning: { fontSize: 14, color: "#666", marginBottom: 16, lineHeight: 20 },
-  deleteButton: {
-    borderWidth: 1,
-    borderColor: "#ef4444",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-  },
-  deleteText: { color: "#ef4444", fontWeight: "600" },
-});

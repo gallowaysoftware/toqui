@@ -11,7 +11,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
         headerStyle: { backgroundColor: colors.accent },
-        headerTintColor: "#fff",
+        headerTintColor: colors.userBubbleText,
         headerTitleStyle: { fontWeight: "bold" },
         sceneStyle: { backgroundColor: colors.surfaceSecondary },
       }}

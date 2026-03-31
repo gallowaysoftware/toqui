@@ -12,6 +12,7 @@ import { MapPin, Utensils, Compass, Globe } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -29,6 +30,7 @@ const COMPANION_SUGGESTION_DEFS = [
 export default function CompanionScreen() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
+  const { colors } = useTheme();
   const {
     messages,
     streamingText,
@@ -50,6 +52,33 @@ export default function CompanionScreen() {
     }
     return <MessageBubble message={item} />;
   }, []);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    emptyText: { fontSize: 16, color: colors.textSecondary },
+    messageList: { padding: 16, flexGrow: 1 },
+    emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+    emptyTitle: { fontSize: 20, fontWeight: "bold", color: colors.accent, marginBottom: 8 },
+    emptySubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
+    streamingBubble: {
+      maxWidth: "85%",
+      padding: 12,
+      borderRadius: 16,
+      borderBottomLeftRadius: 4,
+      backgroundColor: colors.assistantBubble,
+      borderWidth: 1,
+      borderColor: colors.assistantBubbleBorder,
+      alignSelf: "flex-start",
+      marginBottom: 8,
+    },
+  });
+
+  const markdownStyles = {
+    body: { fontSize: 15, color: colors.assistantBubbleText, lineHeight: 22 },
+    strong: { fontWeight: "700" as const },
+    link: { color: colors.accent },
+  };
 
   if (!accessToken) {
     return (
@@ -98,30 +127,3 @@ export default function CompanionScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { fontSize: 16, color: "#666" },
-  messageList: { padding: 16, flexGrow: 1 },
-  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: "#595959", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
-  streamingBubble: {
-    maxWidth: "85%",
-    padding: 12,
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    alignSelf: "flex-start",
-    marginBottom: 8,
-  },
-});
-
-const markdownStyles = StyleSheet.create({
-  body: { fontSize: 15, color: "#333", lineHeight: 22 },
-  strong: { fontWeight: "700" },
-  link: { color: "#BF4028" },
-});

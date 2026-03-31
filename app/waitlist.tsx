@@ -1,10 +1,12 @@
 import { View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "@/lib/theme";
 import { useJoinWaitlist, useWaitlistStatus } from "@/lib/hooks/useWaitlist";
 
 export default function WaitlistScreen() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const [email, setEmail] = useState("");
   const [joinedEmail, setJoinedEmail] = useState<string | null>(null);
   const joinWaitlist = useJoinWaitlist();
@@ -15,6 +17,40 @@ export default function WaitlistScreen() {
     await joinWaitlist.mutateAsync({ email: email.trim() });
     setJoinedEmail(email.trim());
   };
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: colors.surface },
+    title: { fontSize: 24, fontWeight: "bold", textAlign: "center", color: colors.textPrimary, marginBottom: 12 },
+    subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: 32 },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 14,
+      fontSize: 15,
+      marginBottom: 12,
+      color: colors.textPrimary,
+    },
+    joinButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      padding: 14,
+      alignItems: "center",
+    },
+    disabledButton: { opacity: 0.5 },
+    joinText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+    errorText: { color: colors.error, fontSize: 14, textAlign: "center", marginTop: 12 },
+    positionCard: {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 24,
+      alignItems: "center",
+      marginBottom: 24,
+    },
+    positionLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
+    positionNumber: { fontSize: 48, fontWeight: "bold", color: colors.accent },
+    note: { fontSize: 14, color: colors.textTertiary, textAlign: "center", lineHeight: 20 },
+  });
 
   if (joinedEmail && status) {
     return (
@@ -38,7 +74,7 @@ export default function WaitlistScreen() {
       <TextInput
         style={styles.input}
         placeholder={t("waitlist.emailPlaceholder")}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.textTertiary}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -66,37 +102,3 @@ export default function WaitlistScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: "#fff" },
-  title: { fontSize: 24, fontWeight: "bold", textAlign: "center", color: "#333", marginBottom: 12 },
-  subtitle: { fontSize: 15, color: "#666", textAlign: "center", lineHeight: 22, marginBottom: 32 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 14,
-    fontSize: 15,
-    marginBottom: 12,
-    color: "#333",
-  },
-  joinButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 8,
-    padding: 14,
-    alignItems: "center",
-  },
-  disabledButton: { opacity: 0.5 },
-  joinText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  errorText: { color: "#ef4444", fontSize: 14, textAlign: "center", marginTop: 12 },
-  positionCard: {
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  positionLabel: { fontSize: 14, color: "#666", marginBottom: 8 },
-  positionNumber: { fontSize: 48, fontWeight: "bold", color: "#BF4028" },
-  note: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20 },
-});

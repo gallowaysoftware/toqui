@@ -1,12 +1,16 @@
 import { Stack } from "expo-router";
+import { useTheme } from "@/lib/theme";
 
 export default function TripDetailLayout() {
+  const { colors } = useTheme();
+
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#BF4028" },
-        headerTintColor: "#fff",
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontWeight: "bold" },
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen name="index" options={{ title: "Trip" }} />
