@@ -242,6 +242,18 @@ Both generate from the trip itinerary and are accessible from the trip settings 
 
 ## Pre-Commit Requirements
 
+### Keep CI Green — This Is Critical
+
+**MANDATORY**: CI must stay green at all times on `main`. Every push triggers tests, typecheck, and builds. If a change breaks CI, fix it immediately before doing anything else.
+
+Common failure causes in this repo:
+- Adding new icons/exports used in components without updating the `vi.mock("lucide-react-native", ...)` in `components/chat/__tests__/ChatInput.test.tsx`
+- Adding new hooks (`useAuth`, etc.) to components that have tests rendering them without the provider — mock the hook instead
+- Test assertions that check message counts or button roles when the UI structure has changed (e.g., adding a new button)
+- TypeScript: `PressableStateCallbackType` only has `pressed` — not `focused` or `hovered`
+
+Always run `pnpm typecheck` locally before pushing. After pushing, watch the CI run and fix failures immediately.
+
 ### Adversarial Review
 
 **MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes.

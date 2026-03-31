@@ -50,7 +50,7 @@ describe("ChatInput", () => {
 
       const input = screen.getByPlaceholderText("Type a message...");
       fireEvent.change(input, { target: { value: "   \t\n  " } });
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
       expect(onSend).not.toHaveBeenCalled();
     });
