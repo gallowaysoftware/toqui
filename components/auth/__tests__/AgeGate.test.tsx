@@ -12,6 +12,11 @@ vi.mock("react-native", async () => {
   };
 });
 
+// Mock auth so AgeGate doesn't require AuthProvider in tests
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ accessToken: null }),
+}));
+
 import { AgeGate } from "@/components/auth/AgeGate";
 import { ThemeProvider } from "@/lib/theme";
 
