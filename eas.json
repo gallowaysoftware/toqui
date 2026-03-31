@@ -14,10 +14,31 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.toqui.travel"
+      }
+    },
+    "local:development": {
+      "extends": "development",
+      "local": true
+    },
+    "local:preview": {
+      "extends": "preview",
+      "local": true
+    },
+    "local:production": {
+      "extends": "production",
+      "local": true
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "YOUR_APPLE_ID@example.com",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_TEAM_ID"
+      }
+    }
   }
 }
