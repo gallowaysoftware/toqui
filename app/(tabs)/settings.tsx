@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare } from "lucide-react-native";
+import FeedbackModal from "@/components/feedback/FeedbackModal";
 import ReferralCard from "@/components/referral/ReferralCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
@@ -19,6 +20,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const client = useMemo(() => createClient(AuthService, transport), [transport]);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const isPro = user?.tier === "pro";
 
   const exportData = useMutation({
@@ -178,6 +180,22 @@ export default function SettingsScreen() {
           <Text style={styles.linkText}>Terms of Service</Text>
         </Pressable>
       </View>
+
+      {/* Help & Feedback */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MessageSquare color="#333" size={20} />
+          <Text style={styles.sectionTitle}>{t("feedback.title")}</Text>
+        </View>
+        <Pressable style={styles.outlineButton} onPress={() => setFeedbackVisible(true)}>
+          <Text style={styles.outlineButtonText}>{t("feedback.title")}</Text>
+        </Pressable>
+      </View>
+
+      <FeedbackModal
+        visible={feedbackVisible}
+        onClose={() => setFeedbackVisible(false)}
+      />
 
       {/* Danger Zone */}
       <View style={[styles.section, styles.dangerSection]}>
