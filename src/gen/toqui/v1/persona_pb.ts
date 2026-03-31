@@ -10,12 +10,8 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/persona.proto.
  */
-export const file_toqui_v1_persona: GenFile =
-  /*@__PURE__*/
-  fileDesc(
-    "ChZ0b3F1aS92MS9wZXJzb25hLnByb3RvEgh0b3F1aS52MSLsAQoHUGVyc29uYRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSEAoIZ3JlZXRpbmcYBSABKAkSIwoEdHlwZRgGIAEoDjIVLnRvcXVpLnYxLlBlcnNvbmFUeXBlEhMKC3JlZ2lvbl9jb2RlGAcgASgJEhMKC2xvY2FsZV9uYW1lGAggASgJEhMKC3NwZWNpYWx0aWVzGAkgAygJEhQKDGFjY2VudF9jb2xvchgKIAEoCRISCgppc19kZWZhdWx0GAsgASgIImQKE0xpc3RQZXJzb25hc1JlcXVlc3QSIwoEdHlwZRgBIAEoDjIVLnRvcXVpLnYxLlBlcnNvbmFUeXBlEhMKC3JlZ2lvbl9jb2RlGAIgASgJEhMKC3NwZWNpYWx0aWVzGAMgAygJIjsKFExpc3RQZXJzb25hc1Jlc3BvbnNlEiMKCHBlcnNvbmFzGAEgAygLMhEudG9xdWkudjEuUGVyc29uYSIwChFHZXRQZXJzb25hUmVxdWVzdBIbCgpwZXJzb25hX2lkGAEgASgJQge6SARyAhABIjgKEkdldFBlcnNvbmFSZXNwb25zZRIiCgdwZXJzb25hGAEgASgLMhEudG9xdWkudjEuUGVyc29uYSI3ChhTZXREZWZhdWx0UGVyc29uYVJlcXVlc3QSGwoKcGVyc29uYV9pZBgBIAEoCUIHukgEcgIQASI/ChlTZXREZWZhdWx0UGVyc29uYVJlc3BvbnNlEiIKB3BlcnNvbmEYASABKAsyES50b3F1aS52MS5QZXJzb25hInUKFVJlc29sdmVQZXJzb25hUmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIQCghsYXRpdHVkZRgCIAEoARIRCglsb25naXR1ZGUYAyABKAESDAoEbW9kZRgEIAEoCRIOCgZ0aGVtZXMYBSADKAkifgoWUmVzb2x2ZVBlcnNvbmFSZXNwb25zZRIiCgdwZXJzb25hGAEgASgLMhEudG9xdWkudjEuUGVyc29uYRIXCg9oYW5kb2ZmX21lc3NhZ2UYAiABKAkSJwoMaGFuZG9mZl9mcm9tGAMgASgLMhEudG9xdWkudjEuUGVyc29uYSqiAQoLUGVyc29uYVR5cGUSHAoYUEVSU09OQV9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTUEVSU09OQV9UWVBFX0dMT0JBTBABEhwKGFBFUlNPTkFfVFlQRV9MT0NBTF9HVUlERRACEhsKF1BFUlNPTkFfVFlQRV9TUEVDSUFMSVNUEAMSIQodUEVSU09OQV9UWVBFX0xPQ0FMX1NQRUNJQUxJU1QQBDLbAgoOUGVyc29uYVNlcnZpY2USTQoMTGlzdFBlcnNvbmFzEh0udG9xdWkudjEuTGlzdFBlcnNvbmFzUmVxdWVzdBoeLnRvcXVpLnYxLkxpc3RQZXJzb25hc1Jlc3BvbnNlEkcKCkdldFBlcnNvbmESGy50b3F1aS52MS5HZXRQZXJzb25hUmVxdWVzdBocLnRvcXVpLnYxLkdldFBlcnNvbmFSZXNwb25zZRJcChFTZXREZWZhdWx0UGVyc29uYRIiLnRvcXVpLnYxLlNldERlZmF1bHRQZXJzb25hUmVxdWVzdBojLnRvcXVpLnYxLlNldERlZmF1bHRQZXJzb25hUmVzcG9uc2USUwoOUmVzb2x2ZVBlcnNvbmESHy50b3F1aS52MS5SZXNvbHZlUGVyc29uYVJlcXVlc3QaIC50b3F1aS52MS5SZXNvbHZlUGVyc29uYVJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM",
-    [file_buf_validate_validate],
-  );
+export const file_toqui_v1_persona: GenFile = /*@__PURE__*/
+  fileDesc("ChZ0b3F1aS92MS9wZXJzb25hLnByb3RvEgh0b3F1aS52MSLsAQoHUGVyc29uYRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSEAoIZ3JlZXRpbmcYBSABKAkSIwoEdHlwZRgGIAEoDjIVLnRvcXVpLnYxLlBlcnNvbmFUeXBlEhMKC3JlZ2lvbl9jb2RlGAcgASgJEhMKC2xvY2FsZV9uYW1lGAggASgJEhMKC3NwZWNpYWx0aWVzGAkgAygJEhQKDGFjY2VudF9jb2xvchgKIAEoCRISCgppc19kZWZhdWx0GAsgASgIImQKE0xpc3RQZXJzb25hc1JlcXVlc3QSIwoEdHlwZRgBIAEoDjIVLnRvcXVpLnYxLlBlcnNvbmFUeXBlEhMKC3JlZ2lvbl9jb2RlGAIgASgJEhMKC3NwZWNpYWx0aWVzGAMgAygJIjsKFExpc3RQZXJzb25hc1Jlc3BvbnNlEiMKCHBlcnNvbmFzGAEgAygLMhEudG9xdWkudjEuUGVyc29uYSIwChFHZXRQZXJzb25hUmVxdWVzdBIbCgpwZXJzb25hX2lkGAEgASgJQge6SARyAhABIjgKEkdldFBlcnNvbmFSZXNwb25zZRIiCgdwZXJzb25hGAEgASgLMhEudG9xdWkudjEuUGVyc29uYSI3ChhTZXREZWZhdWx0UGVyc29uYVJlcXVlc3QSGwoKcGVyc29uYV9pZBgBIAEoCUIHukgEcgIQASI/ChlTZXREZWZhdWx0UGVyc29uYVJlc3BvbnNlEiIKB3BlcnNvbmEYASABKAsyES50b3F1aS52MS5QZXJzb25hInUKFVJlc29sdmVQZXJzb25hUmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIQCghsYXRpdHVkZRgCIAEoARIRCglsb25naXR1ZGUYAyABKAESDAoEbW9kZRgEIAEoCRIOCgZ0aGVtZXMYBSADKAkifgoWUmVzb2x2ZVBlcnNvbmFSZXNwb25zZRIiCgdwZXJzb25hGAEgASgLMhEudG9xdWkudjEuUGVyc29uYRIXCg9oYW5kb2ZmX21lc3NhZ2UYAiABKAkSJwoMaGFuZG9mZl9mcm9tGAMgASgLMhEudG9xdWkudjEuUGVyc29uYSqiAQoLUGVyc29uYVR5cGUSHAoYUEVSU09OQV9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTUEVSU09OQV9UWVBFX0dMT0JBTBABEhwKGFBFUlNPTkFfVFlQRV9MT0NBTF9HVUlERRACEhsKF1BFUlNPTkFfVFlQRV9TUEVDSUFMSVNUEAMSIQodUEVSU09OQV9UWVBFX0xPQ0FMX1NQRUNJQUxJU1QQBDLbAgoOUGVyc29uYVNlcnZpY2USTQoMTGlzdFBlcnNvbmFzEh0udG9xdWkudjEuTGlzdFBlcnNvbmFzUmVxdWVzdBoeLnRvcXVpLnYxLkxpc3RQZXJzb25hc1Jlc3BvbnNlEkcKCkdldFBlcnNvbmESGy50b3F1aS52MS5HZXRQZXJzb25hUmVxdWVzdBocLnRvcXVpLnYxLkdldFBlcnNvbmFSZXNwb25zZRJcChFTZXREZWZhdWx0UGVyc29uYRIiLnRvcXVpLnYxLlNldERlZmF1bHRQZXJzb25hUmVxdWVzdBojLnRvcXVpLnYxLlNldERlZmF1bHRQZXJzb25hUmVzcG9uc2USUwoOUmVzb2x2ZVBlcnNvbmESHy50b3F1aS52MS5SZXNvbHZlUGVyc29uYVJlcXVlc3QaIC50b3F1aS52MS5SZXNvbHZlUGVyc29uYVJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM", [file_buf_validate_validate]);
 
 /**
  * @generated from message toqui.v1.Persona
@@ -89,8 +85,7 @@ export type Persona = Message<"toqui.v1.Persona"> & {
  * Describes the message toqui.v1.Persona.
  * Use `create(PersonaSchema)` to create a new message.
  */
-export const PersonaSchema: GenMessage<Persona> =
-  /*@__PURE__*/
+export const PersonaSchema: GenMessage<Persona> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 0);
 
 /**
@@ -117,8 +112,7 @@ export type ListPersonasRequest = Message<"toqui.v1.ListPersonasRequest"> & {
  * Describes the message toqui.v1.ListPersonasRequest.
  * Use `create(ListPersonasRequestSchema)` to create a new message.
  */
-export const ListPersonasRequestSchema: GenMessage<ListPersonasRequest> =
-  /*@__PURE__*/
+export const ListPersonasRequestSchema: GenMessage<ListPersonasRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 1);
 
 /**
@@ -135,8 +129,7 @@ export type ListPersonasResponse = Message<"toqui.v1.ListPersonasResponse"> & {
  * Describes the message toqui.v1.ListPersonasResponse.
  * Use `create(ListPersonasResponseSchema)` to create a new message.
  */
-export const ListPersonasResponseSchema: GenMessage<ListPersonasResponse> =
-  /*@__PURE__*/
+export const ListPersonasResponseSchema: GenMessage<ListPersonasResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 2);
 
 /**
@@ -153,8 +146,7 @@ export type GetPersonaRequest = Message<"toqui.v1.GetPersonaRequest"> & {
  * Describes the message toqui.v1.GetPersonaRequest.
  * Use `create(GetPersonaRequestSchema)` to create a new message.
  */
-export const GetPersonaRequestSchema: GenMessage<GetPersonaRequest> =
-  /*@__PURE__*/
+export const GetPersonaRequestSchema: GenMessage<GetPersonaRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 3);
 
 /**
@@ -171,8 +163,7 @@ export type GetPersonaResponse = Message<"toqui.v1.GetPersonaResponse"> & {
  * Describes the message toqui.v1.GetPersonaResponse.
  * Use `create(GetPersonaResponseSchema)` to create a new message.
  */
-export const GetPersonaResponseSchema: GenMessage<GetPersonaResponse> =
-  /*@__PURE__*/
+export const GetPersonaResponseSchema: GenMessage<GetPersonaResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 4);
 
 /**
@@ -189,8 +180,7 @@ export type SetDefaultPersonaRequest = Message<"toqui.v1.SetDefaultPersonaReques
  * Describes the message toqui.v1.SetDefaultPersonaRequest.
  * Use `create(SetDefaultPersonaRequestSchema)` to create a new message.
  */
-export const SetDefaultPersonaRequestSchema: GenMessage<SetDefaultPersonaRequest> =
-  /*@__PURE__*/
+export const SetDefaultPersonaRequestSchema: GenMessage<SetDefaultPersonaRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 5);
 
 /**
@@ -207,8 +197,7 @@ export type SetDefaultPersonaResponse = Message<"toqui.v1.SetDefaultPersonaRespo
  * Describes the message toqui.v1.SetDefaultPersonaResponse.
  * Use `create(SetDefaultPersonaResponseSchema)` to create a new message.
  */
-export const SetDefaultPersonaResponseSchema: GenMessage<SetDefaultPersonaResponse> =
-  /*@__PURE__*/
+export const SetDefaultPersonaResponseSchema: GenMessage<SetDefaultPersonaResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 6);
 
 /**
@@ -247,8 +236,7 @@ export type ResolvePersonaRequest = Message<"toqui.v1.ResolvePersonaRequest"> & 
  * Describes the message toqui.v1.ResolvePersonaRequest.
  * Use `create(ResolvePersonaRequestSchema)` to create a new message.
  */
-export const ResolvePersonaRequestSchema: GenMessage<ResolvePersonaRequest> =
-  /*@__PURE__*/
+export const ResolvePersonaRequestSchema: GenMessage<ResolvePersonaRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 7);
 
 /**
@@ -275,8 +263,7 @@ export type ResolvePersonaResponse = Message<"toqui.v1.ResolvePersonaResponse"> 
  * Describes the message toqui.v1.ResolvePersonaResponse.
  * Use `create(ResolvePersonaResponseSchema)` to create a new message.
  */
-export const ResolvePersonaResponseSchema: GenMessage<ResolvePersonaResponse> =
-  /*@__PURE__*/
+export const ResolvePersonaResponseSchema: GenMessage<ResolvePersonaResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_persona, 8);
 
 /**
@@ -320,8 +307,7 @@ export enum PersonaType {
 /**
  * Describes the enum toqui.v1.PersonaType.
  */
-export const PersonaTypeSchema: GenEnum<PersonaType> =
-  /*@__PURE__*/
+export const PersonaTypeSchema: GenEnum<PersonaType> = /*@__PURE__*/
   enumDesc(file_toqui_v1_persona, 0);
 
 /**
@@ -337,7 +323,7 @@ export const PersonaService: GenService<{
     methodKind: "unary";
     input: typeof ListPersonasRequestSchema;
     output: typeof ListPersonasResponseSchema;
-  };
+  },
   /**
    * Get a specific persona by ID
    *
@@ -347,7 +333,7 @@ export const PersonaService: GenService<{
     methodKind: "unary";
     input: typeof GetPersonaRequestSchema;
     output: typeof GetPersonaResponseSchema;
-  };
+  },
   /**
    * Set the user's default persona preference
    *
@@ -357,7 +343,7 @@ export const PersonaService: GenService<{
     methodKind: "unary";
     input: typeof SetDefaultPersonaRequestSchema;
     output: typeof SetDefaultPersonaResponseSchema;
-  };
+  },
   /**
    * Resolve which persona to use for a given context (location, trip themes, mode)
    *
@@ -367,5 +353,7 @@ export const PersonaService: GenService<{
     methodKind: "unary";
     input: typeof ResolvePersonaRequestSchema;
     output: typeof ResolvePersonaResponseSchema;
-  };
-}> = /*@__PURE__*/ serviceDesc(file_toqui_v1_persona, 0);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_toqui_v1_persona, 0);
+

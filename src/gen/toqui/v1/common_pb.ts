@@ -10,12 +10,8 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/common.proto.
  */
-export const file_toqui_v1_common: GenFile =
-  /*@__PURE__*/
-  fileDesc(
-    "ChV0b3F1aS92MS9jb21tb24ucHJvdG8SCHRvcXVpLnYxIl8KBkxhdExuZxIpCghsYXRpdHVkZRgBIAEoAUIXukgUEhIZAAAAAACAVkApAAAAAACAVsASKgoJbG9uZ2l0dWRlGAIgASgBQhe6SBQSEhkAAAAAAIBmQCkAAAAAAIBmwCIxCglEYXRlUmFuZ2USEgoKc3RhcnRfZGF0ZRgBIAEoCRIQCghlbmRfZGF0ZRgCIAEoCSJFChFQYWdpbmF0aW9uUmVxdWVzdBIcCglwYWdlX3NpemUYASABKAVCCbpIBhoEGGQoABISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAVCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw",
-    [file_buf_validate_validate],
-  );
+export const file_toqui_v1_common: GenFile = /*@__PURE__*/
+  fileDesc("ChV0b3F1aS92MS9jb21tb24ucHJvdG8SCHRvcXVpLnYxIl8KBkxhdExuZxIpCghsYXRpdHVkZRgBIAEoAUIXukgUEhIZAAAAAACAVkApAAAAAACAVsASKgoJbG9uZ2l0dWRlGAIgASgBQhe6SBQSEhkAAAAAAIBmQCkAAAAAAIBmwCIxCglEYXRlUmFuZ2USEgoKc3RhcnRfZGF0ZRgBIAEoCRIQCghlbmRfZGF0ZRgCIAEoCSJFChFQYWdpbmF0aW9uUmVxdWVzdBIcCglwYWdlX3NpemUYASABKAVCCbpIBhoEGGQoABISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAVCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * @generated from message toqui.v1.LatLng
@@ -36,7 +32,8 @@ export type LatLng = Message<"toqui.v1.LatLng"> & {
  * Describes the message toqui.v1.LatLng.
  * Use `create(LatLngSchema)` to create a new message.
  */
-export const LatLngSchema: GenMessage<LatLng> = /*@__PURE__*/ messageDesc(file_toqui_v1_common, 0);
+export const LatLngSchema: GenMessage<LatLng> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_common, 0);
 
 /**
  * @generated from message toqui.v1.DateRange
@@ -61,8 +58,7 @@ export type DateRange = Message<"toqui.v1.DateRange"> & {
  * Describes the message toqui.v1.DateRange.
  * Use `create(DateRangeSchema)` to create a new message.
  */
-export const DateRangeSchema: GenMessage<DateRange> =
-  /*@__PURE__*/
+export const DateRangeSchema: GenMessage<DateRange> = /*@__PURE__*/
   messageDesc(file_toqui_v1_common, 1);
 
 /**
@@ -84,8 +80,7 @@ export type PaginationRequest = Message<"toqui.v1.PaginationRequest"> & {
  * Describes the message toqui.v1.PaginationRequest.
  * Use `create(PaginationRequestSchema)` to create a new message.
  */
-export const PaginationRequestSchema: GenMessage<PaginationRequest> =
-  /*@__PURE__*/
+export const PaginationRequestSchema: GenMessage<PaginationRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_common, 2);
 
 /**
@@ -107,6 +102,6 @@ export type PaginationResponse = Message<"toqui.v1.PaginationResponse"> & {
  * Describes the message toqui.v1.PaginationResponse.
  * Use `create(PaginationResponseSchema)` to create a new message.
  */
-export const PaginationResponseSchema: GenMessage<PaginationResponse> =
-  /*@__PURE__*/
+export const PaginationResponseSchema: GenMessage<PaginationResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_common, 3);
+

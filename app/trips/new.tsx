@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
+import { DatePicker } from "@/components/DatePicker";
 
 export default function NewTripScreen() {
   const { t } = useTranslation();
@@ -53,23 +54,19 @@ export default function NewTripScreen() {
 
       <View style={styles.dateRow}>
         <View style={styles.dateField}>
-          <Text style={styles.label}>{t("tripCreate.startDate")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#999"
+          <DatePicker
+            label={t("tripCreate.startDate")}
             value={startDate}
-            onChangeText={setStartDate}
+            onChange={setStartDate}
+            placeholder="YYYY-MM-DD"
           />
         </View>
         <View style={styles.dateField}>
-          <Text style={styles.label}>{t("tripCreate.endDate")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#999"
+          <DatePicker
+            label={t("tripCreate.endDate")}
             value={endDate}
-            onChangeText={setEndDate}
+            onChange={setEndDate}
+            placeholder="YYYY-MM-DD"
           />
         </View>
       </View>

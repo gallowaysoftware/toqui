@@ -12,12 +12,8 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/auth.proto.
  */
-export const file_toqui_v1_auth: GenFile =
-  /*@__PURE__*/
-  fileDesc(
-    "ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJKChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAEiYAoTR29vZ2xlTG9naW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciI1ChNSZWZyZXNoVG9rZW5SZXF1ZXN0Eh4KDXJlZnJlc2hfdG9rZW4YASABKAlCB7pIBHICEAEiYQoUUmVmcmVzaFRva2VuUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXIiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0IjYKFkdldEN1cnJlbnRVc2VyUmVzcG9uc2USHAoEdXNlchgBIAEoCzIOLnRvcXVpLnYxLlVzZXIicwoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiMAoURGVsZXRlQWNjb3VudFJlcXVlc3QSGAoHY29uZmlybRgBIAEoCEIHukgEagIIASI8ChVEZWxldGVBY2NvdW50UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIhMKEUV4cG9ydERhdGFSZXF1ZXN0IjkKEkV4cG9ydERhdGFSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkymAMKC0F1dGhTZXJ2aWNlEkoKC0dvb2dsZUxvZ2luEhwudG9xdWkudjEuR29vZ2xlTG9naW5SZXF1ZXN0Gh0udG9xdWkudjEuR29vZ2xlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw",
-    [file_buf_validate_validate, file_google_protobuf_timestamp],
-  );
+export const file_toqui_v1_auth: GenFile = /*@__PURE__*/
+  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJhChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCSJgChNHb29nbGVMb2dpblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIjUKE1JlZnJlc2hUb2tlblJlcXVlc3QSHgoNcmVmcmVzaF90b2tlbhgBIAEoCUIHukgEcgIQASJhChRSZWZyZXNoVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIXChVHZXRDdXJyZW50VXNlclJlcXVlc3QiNgoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIcCgR1c2VyGAEgASgLMg4udG9xdWkudjEuVXNlciKOAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRc3Vic2NyaXB0aW9uX3RpZXIYBiABKAkiMAoURGVsZXRlQWNjb3VudFJlcXVlc3QSGAoHY29uZmlybRgBIAEoCEIHukgEagIIASI8ChVEZWxldGVBY2NvdW50UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIhMKEUV4cG9ydERhdGFSZXF1ZXN0IjkKEkV4cG9ydERhdGFSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkymAMKC0F1dGhTZXJ2aWNlEkoKC0dvb2dsZUxvZ2luEhwudG9xdWkudjEuR29vZ2xlTG9naW5SZXF1ZXN0Gh0udG9xdWkudjEuR29vZ2xlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message toqui.v1.GoogleLoginRequest
@@ -32,14 +28,20 @@ export type GoogleLoginRequest = Message<"toqui.v1.GoogleLoginRequest"> & {
    * @generated from field: string redirect_uri = 2;
    */
   redirectUri: string;
+
+  /**
+   * PKCE code verifier (optional, for S256 challenge)
+   *
+   * @generated from field: string code_verifier = 3;
+   */
+  codeVerifier: string;
 };
 
 /**
  * Describes the message toqui.v1.GoogleLoginRequest.
  * Use `create(GoogleLoginRequestSchema)` to create a new message.
  */
-export const GoogleLoginRequestSchema: GenMessage<GoogleLoginRequest> =
-  /*@__PURE__*/
+export const GoogleLoginRequestSchema: GenMessage<GoogleLoginRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 0);
 
 /**
@@ -66,8 +68,7 @@ export type GoogleLoginResponse = Message<"toqui.v1.GoogleLoginResponse"> & {
  * Describes the message toqui.v1.GoogleLoginResponse.
  * Use `create(GoogleLoginResponseSchema)` to create a new message.
  */
-export const GoogleLoginResponseSchema: GenMessage<GoogleLoginResponse> =
-  /*@__PURE__*/
+export const GoogleLoginResponseSchema: GenMessage<GoogleLoginResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 1);
 
 /**
@@ -84,8 +85,7 @@ export type RefreshTokenRequest = Message<"toqui.v1.RefreshTokenRequest"> & {
  * Describes the message toqui.v1.RefreshTokenRequest.
  * Use `create(RefreshTokenRequestSchema)` to create a new message.
  */
-export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> =
-  /*@__PURE__*/
+export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 2);
 
 /**
@@ -112,21 +112,20 @@ export type RefreshTokenResponse = Message<"toqui.v1.RefreshTokenResponse"> & {
  * Describes the message toqui.v1.RefreshTokenResponse.
  * Use `create(RefreshTokenResponseSchema)` to create a new message.
  */
-export const RefreshTokenResponseSchema: GenMessage<RefreshTokenResponse> =
-  /*@__PURE__*/
+export const RefreshTokenResponseSchema: GenMessage<RefreshTokenResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 3);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserRequest
  */
-export type GetCurrentUserRequest = Message<"toqui.v1.GetCurrentUserRequest"> & {};
+export type GetCurrentUserRequest = Message<"toqui.v1.GetCurrentUserRequest"> & {
+};
 
 /**
  * Describes the message toqui.v1.GetCurrentUserRequest.
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
-export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> =
-  /*@__PURE__*/
+export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 4);
 
 /**
@@ -143,8 +142,7 @@ export type GetCurrentUserResponse = Message<"toqui.v1.GetCurrentUserResponse"> 
  * Describes the message toqui.v1.GetCurrentUserResponse.
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
-export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> =
-  /*@__PURE__*/
+export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 5);
 
 /**
@@ -186,7 +184,8 @@ export type User = Message<"toqui.v1.User"> & {
  * Describes the message toqui.v1.User.
  * Use `create(UserSchema)` to create a new message.
  */
-export const UserSchema: GenMessage<User> = /*@__PURE__*/ messageDesc(file_toqui_v1_auth, 6);
+export const UserSchema: GenMessage<User> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 6);
 
 /**
  * Account deletion — GDPR Article 17 (Right to Erasure)
@@ -206,8 +205,7 @@ export type DeleteAccountRequest = Message<"toqui.v1.DeleteAccountRequest"> & {
  * Describes the message toqui.v1.DeleteAccountRequest.
  * Use `create(DeleteAccountRequestSchema)` to create a new message.
  */
-export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> =
-  /*@__PURE__*/
+export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 7);
 
 /**
@@ -231,8 +229,7 @@ export type DeleteAccountResponse = Message<"toqui.v1.DeleteAccountResponse"> & 
  * Describes the message toqui.v1.DeleteAccountResponse.
  * Use `create(DeleteAccountResponseSchema)` to create a new message.
  */
-export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> =
-  /*@__PURE__*/
+export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 8);
 
 /**
@@ -240,14 +237,14 @@ export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> =
  *
  * @generated from message toqui.v1.ExportDataRequest
  */
-export type ExportDataRequest = Message<"toqui.v1.ExportDataRequest"> & {};
+export type ExportDataRequest = Message<"toqui.v1.ExportDataRequest"> & {
+};
 
 /**
  * Describes the message toqui.v1.ExportDataRequest.
  * Use `create(ExportDataRequestSchema)` to create a new message.
  */
-export const ExportDataRequestSchema: GenMessage<ExportDataRequest> =
-  /*@__PURE__*/
+export const ExportDataRequestSchema: GenMessage<ExportDataRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 9);
 
 /**
@@ -271,8 +268,7 @@ export type ExportDataResponse = Message<"toqui.v1.ExportDataResponse"> & {
  * Describes the message toqui.v1.ExportDataResponse.
  * Use `create(ExportDataResponseSchema)` to create a new message.
  */
-export const ExportDataResponseSchema: GenMessage<ExportDataResponse> =
-  /*@__PURE__*/
+export const ExportDataResponseSchema: GenMessage<ExportDataResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 10);
 
 /**
@@ -286,7 +282,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GoogleLoginRequestSchema;
     output: typeof GoogleLoginResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.AuthService.RefreshToken
    */
@@ -294,7 +290,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof RefreshTokenRequestSchema;
     output: typeof RefreshTokenResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.AuthService.GetCurrentUser
    */
@@ -302,7 +298,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetCurrentUserRequestSchema;
     output: typeof GetCurrentUserResponseSchema;
-  };
+  },
   /**
    * Privacy / data lifecycle
    *
@@ -312,7 +308,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof DeleteAccountRequestSchema;
     output: typeof DeleteAccountResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.AuthService.ExportData
    */
@@ -320,5 +316,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof ExportDataRequestSchema;
     output: typeof ExportDataResponseSchema;
-  };
-}> = /*@__PURE__*/ serviceDesc(file_toqui_v1_auth, 0);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_toqui_v1_auth, 0);
+

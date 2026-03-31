@@ -175,10 +175,30 @@ export function useChat(
           if (converted) loaded.push(converted);
         }
         if (loaded.length > 0) {
+          // Deduplicate: the backend tool loop can store intermediate
+          // and final versions of the same assistant message. Keep only
+          // the longest version when two messages share a content prefix.
+          const deduped: ChatMessage[] = [];
+          for (const msg of loaded) {
+            const dupIdx = deduped.findIndex(
+              (m) =>
+                m.role === msg.role &&
+                m.role === "assistant" &&
+                (m.content.startsWith(msg.content) || msg.content.startsWith(m.content)),
+            );
+            if (dupIdx >= 0) {
+              // Keep the longer version
+              if (msg.content.length > deduped[dupIdx].content.length) {
+                deduped[dupIdx] = msg;
+              }
+            } else {
+              deduped.push(msg);
+            }
+          }
           setMessages((prev) => {
-            if (prev.length === 0) return loaded;
+            if (prev.length === 0) return deduped;
             const existingIds = new Set(prev.map((m) => m.id));
-            const newFromHistory = loaded.filter((m) => !existingIds.has(m.id));
+            const newFromHistory = deduped.filter((m) => !existingIds.has(m.id));
             return [...newFromHistory, ...prev];
           });
         }
@@ -231,11 +251,14 @@ export function useChat(
   }, [tripId, transport]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, attachments?: { filename: string; mediaType: string; data: Uint8Array }[]) => {
       if (isSendingRef.current) return;
       isSendingRef.current = true;
 
-      const userMsg: ChatMessage = { id: uuid(), role: "user", content };
+      const displayContent = attachments?.length
+        ? `${content}${content ? "\n" : ""}[${attachments.map((a) => a.filename).join(", ")}]`
+        : content;
+      const userMsg: ChatMessage = { id: uuid(), role: "user", content: displayContent };
       setMessages((prev) => [...prev, userMsg]);
       setIsStreaming(true);
       setStreamingText("");
@@ -246,11 +269,19 @@ export function useChat(
         const client = createClient(ChatService, transport);
         let fullText = "";
 
+        const protoAttachments = (attachments ?? []).map((a) => ({
+          filename: a.filename,
+          mediaType: a.mediaType,
+          data: a.data,
+          sizeBytes: BigInt(a.data.length),
+        }));
+
         for await (const event of client.sendMessage({
           sessionId: sessionIdRef.current,
           tripId: tripId ?? "",
           content,
           mode: modeToProto[mode] ?? ChatMode.SELECTION,
+          attachments: protoAttachments,
         })) {
           const resp = event;
           switch (resp.event.case) {

@@ -112,7 +112,10 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       )}
-      <ChatInput onSend={sendMessage} disabled={isStreaming} />
+      <ChatInput
+        onSend={(text, attachments) => sendMessage(text, attachments)}
+        disabled={isStreaming}
+      />
     </KeyboardAvoidingView>
   );
 }

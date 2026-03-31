@@ -6,22 +6,31 @@ import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
 const STORAGE_KEY = "toqui_age_verified";
+const SYNC_KEY = "toqui_age_synced";
 
-async function isVerified(): Promise<boolean> {
+async function getStorageItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") {
-    return localStorage.getItem(STORAGE_KEY) === "true";
+    return localStorage.getItem(key);
   }
   const { getItemAsync } = await import("expo-secure-store");
-  return (await getItemAsync(STORAGE_KEY)) === "true";
+  return getItemAsync(key);
 }
 
-async function setVerified(): Promise<void> {
+async function setStorageItem(key: string, value: string): Promise<void> {
   if (Platform.OS === "web") {
-    localStorage.setItem(STORAGE_KEY, "true");
+    localStorage.setItem(key, value);
     return;
   }
   const { setItemAsync } = await import("expo-secure-store");
-  await setItemAsync(STORAGE_KEY, "true");
+  await setItemAsync(key, value);
+}
+
+async function isVerified(): Promise<boolean> {
+  return (await getStorageItem(STORAGE_KEY)) === "true";
+}
+
+async function setVerified(): Promise<void> {
+  await setStorageItem(STORAGE_KEY, "true");
 }
 
 function calculateAge(dob: Date): number {
@@ -64,6 +73,34 @@ export function AgeGate({ children }: AgeGateProps) {
   useEffect(() => {
     isVerified().then(setVerifiedState);
   }, []);
+
+  // Background resync: if the user verified age client-side before the backend
+  // sync was added, re-send verification so the backend has a record.
+  useEffect(() => {
+    if (!verified || !accessToken) return;
+
+    let cancelled = false;
+    (async () => {
+      const synced = await getStorageItem(SYNC_KEY);
+      if (synced === "true" || cancelled) return;
+
+      try {
+        await authFetch(`${getConfig().apiUrl}/auth/verify-age`, accessToken, {
+          method: "POST",
+          body: JSON.stringify({ date_of_birth: "2000-01-01" }),
+        });
+        if (!cancelled) {
+          await setStorageItem(SYNC_KEY, "true");
+        }
+      } catch {
+        // Will retry on next mount
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [verified, accessToken]);
 
   const handleVerify = useCallback(async () => {
     setError("");

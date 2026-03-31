@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
+import { DatePicker } from "@/components/DatePicker";
 
 export default function TripSettingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -68,12 +69,20 @@ export default function TripSettingsScreen() {
 
       <View style={styles.dateRow}>
         <View style={styles.dateField}>
-          <Text style={styles.label}>{t("tripSettings.editStartDate")}</Text>
-          <TextInput style={styles.input} value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor="#999" />
+          <DatePicker
+            label={t("tripSettings.editStartDate")}
+            value={startDate}
+            onChange={setStartDate}
+            placeholder="YYYY-MM-DD"
+          />
         </View>
         <View style={styles.dateField}>
-          <Text style={styles.label}>{t("tripSettings.editEndDate")}</Text>
-          <TextInput style={styles.input} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor="#999" />
+          <DatePicker
+            label={t("tripSettings.editEndDate")}
+            value={endDate}
+            onChange={setEndDate}
+            placeholder="YYYY-MM-DD"
+          />
         </View>
       </View>
 

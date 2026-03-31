@@ -14,12 +14,8 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file toqui/v1/trip.proto.
  */
-export const file_toqui_v1_trip: GenFile =
-  /*@__PURE__*/
-  fileDesc(
-    "ChN0b3F1aS92MS90cmlwLnByb3RvEgh0b3F1aS52MSKgAgoEVHJpcBIKCgJpZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEiQKBnN0YXR1cxgFIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSEgoKc3RhcnRfZGF0ZRgGIAEoCRIQCghlbmRfZGF0ZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZ0aGVtZXMYCiADKAkSGwoTZGVzdGluYXRpb25fY291bnRyeRgLIAEoCSJCCglJdGluZXJhcnkSDwoHdHJpcF9pZBgBIAEoCRIkCgRkYXlzGAIgAygLMhYudG9xdWkudjEuSXRpbmVyYXJ5RGF5InUKDEl0aW5lcmFyeURheRIKCgJpZBgBIAEoCRISCgpkYXlfbnVtYmVyGAIgASgFEgwKBGRhdGUYAyABKAkSDwoHc3VtbWFyeRgEIAEoCRImCgVpdGVtcxgFIAMoCzIXLnRvcXVpLnYxLkl0aW5lcmFyeUl0ZW0izwIKDUl0aW5lcmFyeUl0ZW0SCgoCaWQYASABKAkSFAoMb3JkZXJfaW5fZGF5GAIgASgFEgwKBHR5cGUYAyABKAkSDQoFdGl0bGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSIgoIbG9jYXRpb24YBiABKAsyEC50b3F1aS52MS5MYXRMbmcSLgoKc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjcKCG1ldGFkYXRhGAkgAygLMiUudG9xdWkudjEuSXRpbmVyYXJ5SXRlbS5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJzChFDcmVhdGVUcmlwUmVxdWVzdBIZCgV0aXRsZRgBIAEoCUIKukgHcgUQARiABBIdCgtkZXNjcmlwdGlvbhgCIAEoCUIIukgFcgMYiCcSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCSIyChJDcmVhdGVUcmlwUmVzcG9uc2USHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAiJgoOR2V0VHJpcFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIi8KD0dldFRyaXBSZXNwb25zZRIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCJpChBMaXN0VHJpcHNSZXF1ZXN0EiQKBnN0YXR1cxgBIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSLwoKcGFnaW5hdGlvbhgCIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0ImQKEUxpc3RUcmlwc1Jlc3BvbnNlEh0KBXRyaXBzGAEgAygLMg4udG9xdWkudjEuVHJpcBIwCgpwYWdpbmF0aW9uGAIgASgLMhwudG9xdWkudjEuUGFnaW5hdGlvblJlc3BvbnNlIq0BChFVcGRhdGVUcmlwUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoFdGl0bGUYAiABKAlCCLpIBXIDGIAEEh0KC2Rlc2NyaXB0aW9uGAMgASgJQgi6SAVyAxiIJxIkCgZzdGF0dXMYBCABKA4yFC50b3F1aS52MS5UcmlwU3RhdHVzEhIKCnN0YXJ0X2RhdGUYBSABKAkSEAoIZW5kX2RhdGUYBiABKAkiMgoSVXBkYXRlVHJpcFJlc3BvbnNlEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIikKEURlbGV0ZVRyaXBSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIUChJEZWxldGVUcmlwUmVzcG9uc2UiMAoTR2V0SXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABASI+ChRHZXRJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkiYwoWVXBkYXRlSXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIuCglpdGluZXJhcnkYAiABKAsyEy50b3F1aS52MS5JdGluZXJhcnlCBrpIA8gBASJBChdVcGRhdGVJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkqdgoKVHJpcFN0YXR1cxIbChdUUklQX1NUQVRVU19VTlNQRUNJRklFRBAAEhgKFFRSSVBfU1RBVFVTX1BMQU5OSU5HEAESFgoSVFJJUF9TVEFUVVNfQUNUSVZFEAISGQoVVFJJUF9TVEFUVVNfQ09NUExFVEVEEAMylQQKC1RyaXBTZXJ2aWNlEkcKCkNyZWF0ZVRyaXASGy50b3F1aS52MS5DcmVhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLkNyZWF0ZVRyaXBSZXNwb25zZRI+CgdHZXRUcmlwEhgudG9xdWkudjEuR2V0VHJpcFJlcXVlc3QaGS50b3F1aS52MS5HZXRUcmlwUmVzcG9uc2USRAoJTGlzdFRyaXBzEhoudG9xdWkudjEuTGlzdFRyaXBzUmVxdWVzdBobLnRvcXVpLnYxLkxpc3RUcmlwc1Jlc3BvbnNlEkcKClVwZGF0ZVRyaXASGy50b3F1aS52MS5VcGRhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLlVwZGF0ZVRyaXBSZXNwb25zZRJHCgpEZWxldGVUcmlwEhsudG9xdWkudjEuRGVsZXRlVHJpcFJlcXVlc3QaHC50b3F1aS52MS5EZWxldGVUcmlwUmVzcG9uc2USTQoMR2V0SXRpbmVyYXJ5Eh0udG9xdWkudjEuR2V0SXRpbmVyYXJ5UmVxdWVzdBoeLnRvcXVpLnYxLkdldEl0aW5lcmFyeVJlc3BvbnNlElYKD1VwZGF0ZUl0aW5lcmFyeRIgLnRvcXVpLnYxLlVwZGF0ZUl0aW5lcmFyeVJlcXVlc3QaIS50b3F1aS52MS5VcGRhdGVJdGluZXJhcnlSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z",
-    [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common],
-  );
+export const file_toqui_v1_trip: GenFile = /*@__PURE__*/
+  fileDesc("ChN0b3F1aS92MS90cmlwLnByb3RvEgh0b3F1aS52MSK1AgoEVHJpcBIKCgJpZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEiQKBnN0YXR1cxgFIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSEgoKc3RhcnRfZGF0ZRgGIAEoCRIQCghlbmRfZGF0ZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZ0aGVtZXMYCiADKAkSGwoTZGVzdGluYXRpb25fY291bnRyeRgLIAEoCRITCgtpc191bmxvY2tlZBgMIAEoCCJCCglJdGluZXJhcnkSDwoHdHJpcF9pZBgBIAEoCRIkCgRkYXlzGAIgAygLMhYudG9xdWkudjEuSXRpbmVyYXJ5RGF5InUKDEl0aW5lcmFyeURheRIKCgJpZBgBIAEoCRISCgpkYXlfbnVtYmVyGAIgASgFEgwKBGRhdGUYAyABKAkSDwoHc3VtbWFyeRgEIAEoCRImCgVpdGVtcxgFIAMoCzIXLnRvcXVpLnYxLkl0aW5lcmFyeUl0ZW0izwIKDUl0aW5lcmFyeUl0ZW0SCgoCaWQYASABKAkSFAoMb3JkZXJfaW5fZGF5GAIgASgFEgwKBHR5cGUYAyABKAkSDQoFdGl0bGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSIgoIbG9jYXRpb24YBiABKAsyEC50b3F1aS52MS5MYXRMbmcSLgoKc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjcKCG1ldGFkYXRhGAkgAygLMiUudG9xdWkudjEuSXRpbmVyYXJ5SXRlbS5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJzChFDcmVhdGVUcmlwUmVxdWVzdBIZCgV0aXRsZRgBIAEoCUIKukgHcgUQARiABBIdCgtkZXNjcmlwdGlvbhgCIAEoCUIIukgFcgMYiCcSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCSIyChJDcmVhdGVUcmlwUmVzcG9uc2USHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAiJgoOR2V0VHJpcFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIi8KD0dldFRyaXBSZXNwb25zZRIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCJpChBMaXN0VHJpcHNSZXF1ZXN0EiQKBnN0YXR1cxgBIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSLwoKcGFnaW5hdGlvbhgCIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0ImQKEUxpc3RUcmlwc1Jlc3BvbnNlEh0KBXRyaXBzGAEgAygLMg4udG9xdWkudjEuVHJpcBIwCgpwYWdpbmF0aW9uGAIgASgLMhwudG9xdWkudjEuUGFnaW5hdGlvblJlc3BvbnNlIq0BChFVcGRhdGVUcmlwUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoFdGl0bGUYAiABKAlCCLpIBXIDGIAEEh0KC2Rlc2NyaXB0aW9uGAMgASgJQgi6SAVyAxiIJxIkCgZzdGF0dXMYBCABKA4yFC50b3F1aS52MS5UcmlwU3RhdHVzEhIKCnN0YXJ0X2RhdGUYBSABKAkSEAoIZW5kX2RhdGUYBiABKAkiMgoSVXBkYXRlVHJpcFJlc3BvbnNlEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIikKEURlbGV0ZVRyaXBSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIUChJEZWxldGVUcmlwUmVzcG9uc2UiMAoTR2V0SXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABASI+ChRHZXRJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkiYwoWVXBkYXRlSXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIuCglpdGluZXJhcnkYAiABKAsyEy50b3F1aS52MS5JdGluZXJhcnlCBrpIA8gBASJBChdVcGRhdGVJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkqdgoKVHJpcFN0YXR1cxIbChdUUklQX1NUQVRVU19VTlNQRUNJRklFRBAAEhgKFFRSSVBfU1RBVFVTX1BMQU5OSU5HEAESFgoSVFJJUF9TVEFUVVNfQUNUSVZFEAISGQoVVFJJUF9TVEFUVVNfQ09NUExFVEVEEAMylQQKC1RyaXBTZXJ2aWNlEkcKCkNyZWF0ZVRyaXASGy50b3F1aS52MS5DcmVhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLkNyZWF0ZVRyaXBSZXNwb25zZRI+CgdHZXRUcmlwEhgudG9xdWkudjEuR2V0VHJpcFJlcXVlc3QaGS50b3F1aS52MS5HZXRUcmlwUmVzcG9uc2USRAoJTGlzdFRyaXBzEhoudG9xdWkudjEuTGlzdFRyaXBzUmVxdWVzdBobLnRvcXVpLnYxLkxpc3RUcmlwc1Jlc3BvbnNlEkcKClVwZGF0ZVRyaXASGy50b3F1aS52MS5VcGRhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLlVwZGF0ZVRyaXBSZXNwb25zZRJHCgpEZWxldGVUcmlwEhsudG9xdWkudjEuRGVsZXRlVHJpcFJlcXVlc3QaHC50b3F1aS52MS5EZWxldGVUcmlwUmVzcG9uc2USTQoMR2V0SXRpbmVyYXJ5Eh0udG9xdWkudjEuR2V0SXRpbmVyYXJ5UmVxdWVzdBoeLnRvcXVpLnYxLkdldEl0aW5lcmFyeVJlc3BvbnNlElYKD1VwZGF0ZUl0aW5lcmFyeRIgLnRvcXVpLnYxLlVwZGF0ZUl0aW5lcmFyeVJlcXVlc3QaIS50b3F1aS52MS5VcGRhdGVJdGluZXJhcnlSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
 
 /**
  * @generated from message toqui.v1.Trip
@@ -85,8 +81,6 @@ export type Trip = Message<"toqui.v1.Trip"> & {
   destinationCountry: string;
 
   /**
-   * Whether the trip is unlocked (pro feature access)
-   *
    * @generated from field: bool is_unlocked = 12;
    */
   isUnlocked: boolean;
@@ -96,7 +90,8 @@ export type Trip = Message<"toqui.v1.Trip"> & {
  * Describes the message toqui.v1.Trip.
  * Use `create(TripSchema)` to create a new message.
  */
-export const TripSchema: GenMessage<Trip> = /*@__PURE__*/ messageDesc(file_toqui_v1_trip, 0);
+export const TripSchema: GenMessage<Trip> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 0);
 
 /**
  * @generated from message toqui.v1.Itinerary
@@ -117,8 +112,7 @@ export type Itinerary = Message<"toqui.v1.Itinerary"> & {
  * Describes the message toqui.v1.Itinerary.
  * Use `create(ItinerarySchema)` to create a new message.
  */
-export const ItinerarySchema: GenMessage<Itinerary> =
-  /*@__PURE__*/
+export const ItinerarySchema: GenMessage<Itinerary> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 1);
 
 /**
@@ -155,8 +149,7 @@ export type ItineraryDay = Message<"toqui.v1.ItineraryDay"> & {
  * Describes the message toqui.v1.ItineraryDay.
  * Use `create(ItineraryDaySchema)` to create a new message.
  */
-export const ItineraryDaySchema: GenMessage<ItineraryDay> =
-  /*@__PURE__*/
+export const ItineraryDaySchema: GenMessage<ItineraryDay> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 2);
 
 /**
@@ -213,8 +206,7 @@ export type ItineraryItem = Message<"toqui.v1.ItineraryItem"> & {
  * Describes the message toqui.v1.ItineraryItem.
  * Use `create(ItineraryItemSchema)` to create a new message.
  */
-export const ItineraryItemSchema: GenMessage<ItineraryItem> =
-  /*@__PURE__*/
+export const ItineraryItemSchema: GenMessage<ItineraryItem> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 3);
 
 /**
@@ -246,8 +238,7 @@ export type CreateTripRequest = Message<"toqui.v1.CreateTripRequest"> & {
  * Describes the message toqui.v1.CreateTripRequest.
  * Use `create(CreateTripRequestSchema)` to create a new message.
  */
-export const CreateTripRequestSchema: GenMessage<CreateTripRequest> =
-  /*@__PURE__*/
+export const CreateTripRequestSchema: GenMessage<CreateTripRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 4);
 
 /**
@@ -264,8 +255,7 @@ export type CreateTripResponse = Message<"toqui.v1.CreateTripResponse"> & {
  * Describes the message toqui.v1.CreateTripResponse.
  * Use `create(CreateTripResponseSchema)` to create a new message.
  */
-export const CreateTripResponseSchema: GenMessage<CreateTripResponse> =
-  /*@__PURE__*/
+export const CreateTripResponseSchema: GenMessage<CreateTripResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 5);
 
 /**
@@ -282,8 +272,7 @@ export type GetTripRequest = Message<"toqui.v1.GetTripRequest"> & {
  * Describes the message toqui.v1.GetTripRequest.
  * Use `create(GetTripRequestSchema)` to create a new message.
  */
-export const GetTripRequestSchema: GenMessage<GetTripRequest> =
-  /*@__PURE__*/
+export const GetTripRequestSchema: GenMessage<GetTripRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 6);
 
 /**
@@ -300,8 +289,7 @@ export type GetTripResponse = Message<"toqui.v1.GetTripResponse"> & {
  * Describes the message toqui.v1.GetTripResponse.
  * Use `create(GetTripResponseSchema)` to create a new message.
  */
-export const GetTripResponseSchema: GenMessage<GetTripResponse> =
-  /*@__PURE__*/
+export const GetTripResponseSchema: GenMessage<GetTripResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 7);
 
 /**
@@ -323,8 +311,7 @@ export type ListTripsRequest = Message<"toqui.v1.ListTripsRequest"> & {
  * Describes the message toqui.v1.ListTripsRequest.
  * Use `create(ListTripsRequestSchema)` to create a new message.
  */
-export const ListTripsRequestSchema: GenMessage<ListTripsRequest> =
-  /*@__PURE__*/
+export const ListTripsRequestSchema: GenMessage<ListTripsRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 8);
 
 /**
@@ -346,8 +333,7 @@ export type ListTripsResponse = Message<"toqui.v1.ListTripsResponse"> & {
  * Describes the message toqui.v1.ListTripsResponse.
  * Use `create(ListTripsResponseSchema)` to create a new message.
  */
-export const ListTripsResponseSchema: GenMessage<ListTripsResponse> =
-  /*@__PURE__*/
+export const ListTripsResponseSchema: GenMessage<ListTripsResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 9);
 
 /**
@@ -389,8 +375,7 @@ export type UpdateTripRequest = Message<"toqui.v1.UpdateTripRequest"> & {
  * Describes the message toqui.v1.UpdateTripRequest.
  * Use `create(UpdateTripRequestSchema)` to create a new message.
  */
-export const UpdateTripRequestSchema: GenMessage<UpdateTripRequest> =
-  /*@__PURE__*/
+export const UpdateTripRequestSchema: GenMessage<UpdateTripRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 10);
 
 /**
@@ -407,8 +392,7 @@ export type UpdateTripResponse = Message<"toqui.v1.UpdateTripResponse"> & {
  * Describes the message toqui.v1.UpdateTripResponse.
  * Use `create(UpdateTripResponseSchema)` to create a new message.
  */
-export const UpdateTripResponseSchema: GenMessage<UpdateTripResponse> =
-  /*@__PURE__*/
+export const UpdateTripResponseSchema: GenMessage<UpdateTripResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 11);
 
 /**
@@ -425,21 +409,20 @@ export type DeleteTripRequest = Message<"toqui.v1.DeleteTripRequest"> & {
  * Describes the message toqui.v1.DeleteTripRequest.
  * Use `create(DeleteTripRequestSchema)` to create a new message.
  */
-export const DeleteTripRequestSchema: GenMessage<DeleteTripRequest> =
-  /*@__PURE__*/
+export const DeleteTripRequestSchema: GenMessage<DeleteTripRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 12);
 
 /**
  * @generated from message toqui.v1.DeleteTripResponse
  */
-export type DeleteTripResponse = Message<"toqui.v1.DeleteTripResponse"> & {};
+export type DeleteTripResponse = Message<"toqui.v1.DeleteTripResponse"> & {
+};
 
 /**
  * Describes the message toqui.v1.DeleteTripResponse.
  * Use `create(DeleteTripResponseSchema)` to create a new message.
  */
-export const DeleteTripResponseSchema: GenMessage<DeleteTripResponse> =
-  /*@__PURE__*/
+export const DeleteTripResponseSchema: GenMessage<DeleteTripResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 13);
 
 /**
@@ -456,8 +439,7 @@ export type GetItineraryRequest = Message<"toqui.v1.GetItineraryRequest"> & {
  * Describes the message toqui.v1.GetItineraryRequest.
  * Use `create(GetItineraryRequestSchema)` to create a new message.
  */
-export const GetItineraryRequestSchema: GenMessage<GetItineraryRequest> =
-  /*@__PURE__*/
+export const GetItineraryRequestSchema: GenMessage<GetItineraryRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 14);
 
 /**
@@ -474,8 +456,7 @@ export type GetItineraryResponse = Message<"toqui.v1.GetItineraryResponse"> & {
  * Describes the message toqui.v1.GetItineraryResponse.
  * Use `create(GetItineraryResponseSchema)` to create a new message.
  */
-export const GetItineraryResponseSchema: GenMessage<GetItineraryResponse> =
-  /*@__PURE__*/
+export const GetItineraryResponseSchema: GenMessage<GetItineraryResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 15);
 
 /**
@@ -497,8 +478,7 @@ export type UpdateItineraryRequest = Message<"toqui.v1.UpdateItineraryRequest"> 
  * Describes the message toqui.v1.UpdateItineraryRequest.
  * Use `create(UpdateItineraryRequestSchema)` to create a new message.
  */
-export const UpdateItineraryRequestSchema: GenMessage<UpdateItineraryRequest> =
-  /*@__PURE__*/
+export const UpdateItineraryRequestSchema: GenMessage<UpdateItineraryRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 16);
 
 /**
@@ -515,8 +495,7 @@ export type UpdateItineraryResponse = Message<"toqui.v1.UpdateItineraryResponse"
  * Describes the message toqui.v1.UpdateItineraryResponse.
  * Use `create(UpdateItineraryResponseSchema)` to create a new message.
  */
-export const UpdateItineraryResponseSchema: GenMessage<UpdateItineraryResponse> =
-  /*@__PURE__*/
+export const UpdateItineraryResponseSchema: GenMessage<UpdateItineraryResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 17);
 
 /**
@@ -547,7 +526,8 @@ export enum TripStatus {
 /**
  * Describes the enum toqui.v1.TripStatus.
  */
-export const TripStatusSchema: GenEnum<TripStatus> = /*@__PURE__*/ enumDesc(file_toqui_v1_trip, 0);
+export const TripStatusSchema: GenEnum<TripStatus> = /*@__PURE__*/
+  enumDesc(file_toqui_v1_trip, 0);
 
 /**
  * @generated from service toqui.v1.TripService
@@ -560,7 +540,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof CreateTripRequestSchema;
     output: typeof CreateTripResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.GetTrip
    */
@@ -568,7 +548,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof GetTripRequestSchema;
     output: typeof GetTripResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.ListTrips
    */
@@ -576,7 +556,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof ListTripsRequestSchema;
     output: typeof ListTripsResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.UpdateTrip
    */
@@ -584,7 +564,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTripRequestSchema;
     output: typeof UpdateTripResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.DeleteTrip
    */
@@ -592,7 +572,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof DeleteTripRequestSchema;
     output: typeof DeleteTripResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.GetItinerary
    */
@@ -600,7 +580,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof GetItineraryRequestSchema;
     output: typeof GetItineraryResponseSchema;
-  };
+  },
   /**
    * @generated from rpc toqui.v1.TripService.UpdateItinerary
    */
@@ -608,5 +588,7 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof UpdateItineraryRequestSchema;
     output: typeof UpdateItineraryResponseSchema;
-  };
-}> = /*@__PURE__*/ serviceDesc(file_toqui_v1_trip, 0);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_toqui_v1_trip, 0);
+
