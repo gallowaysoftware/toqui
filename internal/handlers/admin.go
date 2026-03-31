@@ -180,11 +180,11 @@ func (h *AdminHandler) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"users": map[string]any{
-			"total":        totalUsers,
-			"active_7d":    active7d,
-			"pro":          proUsers,
+			"total":         totalUsers,
+			"active_7d":     active7d,
+			"pro":           proUsers,
 			"signups_today": signupsToday,
-			"signups_7d":   signups7d,
+			"signups_7d":    signups7d,
 		},
 		"trips": map[string]any{
 			"total":  totalTrips,
