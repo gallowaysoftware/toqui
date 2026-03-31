@@ -109,6 +109,17 @@ type ProInterest struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type Referral struct {
+	ID                    uuid.UUID          `json:"id"`
+	ReferrerID            uuid.UUID          `json:"referrer_id"`
+	RefereeID             pgtype.UUID        `json:"referee_id"`
+	Code                  string             `json:"code"`
+	RedeemedAt            pgtype.Timestamptz `json:"redeemed_at"`
+	ReferrerRewardGranted bool               `json:"referrer_reward_granted"`
+	RefereeRewardGranted  bool               `json:"referee_reward_granted"`
+	CreatedAt             time.Time          `json:"created_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

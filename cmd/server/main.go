@@ -288,6 +288,11 @@ func main() {
 	mux.HandleFunc("/api/guides/", guidesHandler.HandleGetGuide)
 	mux.HandleFunc("/api/guides", guidesHandler.HandleListGuides)
 
+	// Referral system
+	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL)
+	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
+	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
+
 	// Shared trip routes
 	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
