@@ -1,6 +1,7 @@
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
+import { Platform } from "react-native";
 import { useAuth } from "./auth";
 import { getConfig } from "./config";
 
@@ -16,7 +17,11 @@ const discovery: AuthSession.DiscoveryDocument = {
 
 export function useGoogleAuth() {
   const { login } = useAuth();
-  const { googleClientId } = getConfig();
+  const { googleClientId, googleIosClientId } = getConfig();
+  const clientId =
+    Platform.OS === "ios"
+      ? googleIosClientId || googleClientId
+      : googleClientId;
 
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "toqui",
@@ -24,7 +29,7 @@ export function useGoogleAuth() {
 
   const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: googleClientId,
+      clientId,
       scopes: ["openid", "profile", "email"],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
