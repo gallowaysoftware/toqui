@@ -4,12 +4,13 @@ AI-powered travel companion. React Native (Expo) cross-platform app targeting we
 
 ## Project Structure
 
-This is a 4-repo project under `github.com/gallowaysoftware`:
+This is a 5-repo project under `github.com/gallowaysoftware`:
 
 - **toqui** (this repo) — Expo React Native app (web + iOS + Android)
-- **toqui-backend** — Go backend, gRPC API, AI orchestration
-- **toqui-terraform** — Terraform GCP infrastructure (staging + prod)
-- **toqui-site** — Astro static marketing site
+- **toqui-backend** — Go backend, ConnectRPC API, AI orchestration
+- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure
+- **toqui-site** — Astro static marketing site (Cloudflare Pages)
+- **toqui-admin** — Vite React admin panel (Cloudflare Pages)
 
 ### Directory Layout
 
