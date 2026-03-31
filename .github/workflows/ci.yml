@@ -67,9 +67,38 @@ jobs:
           name: web-build
           path: dist/web
 
+  ios-prebuild:
+    name: iOS Prebuild Check
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate iOS project
+        run: npx expo prebuild --platform ios --clean
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+      - name: Build for simulator
+        run: |
+          xcodebuild -workspace ios/toqui.xcworkspace \
+            -scheme toqui \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build/ios \
+            build \
+            CODE_SIGNING_ALLOWED=NO
+
   deploy-staging:
     name: Deploy to Staging
-    needs: [typecheck, test, build]
+    needs: [typecheck, test, build, ios-prebuild]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: self-hosted
     environment: staging
@@ -117,7 +146,7 @@ jobs:
 
   deploy-prod:
     name: Deploy to Production
-    needs: [typecheck, test, build]
+    needs: [typecheck, test, build, ios-prebuild]
     if: github.event_name == 'workflow_dispatch'
     runs-on: self-hosted
     environment: production
