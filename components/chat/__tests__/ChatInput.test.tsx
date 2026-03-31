@@ -2,9 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ChatInput } from "../ChatInput";
 
-// Mock lucide icon to avoid SVG rendering issues in jsdom
+// Mock lucide icons to avoid SVG rendering issues in jsdom
 vi.mock("lucide-react-native", () => ({
   Send: () => <span data-testid="send-icon" />,
+  Paperclip: () => <span data-testid="paperclip-icon" />,
+  X: () => <span data-testid="x-icon" />,
 }));
 
 describe("ChatInput", () => {
@@ -16,11 +18,11 @@ describe("ChatInput", () => {
       const input = screen.getByPlaceholderText("Type a message...");
       fireEvent.change(input, { target: { value: "  Hello world  " } });
 
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button", { name: "Send" });
       fireEvent.click(button);
 
       expect(onSend).toHaveBeenCalledTimes(1);
-      expect(onSend).toHaveBeenCalledWith("Hello world");
+      expect(onSend).toHaveBeenCalledWith("Hello world", undefined);
     });
 
     it("clears input after sending", () => {
@@ -29,7 +31,7 @@ describe("ChatInput", () => {
 
       const input = screen.getByPlaceholderText("Type a message...") as HTMLInputElement;
       fireEvent.change(input, { target: { value: "Hello" } });
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
       expect(input.value).toBe("");
     });
@@ -38,7 +40,7 @@ describe("ChatInput", () => {
       const onSend = vi.fn();
       render(<ChatInput onSend={onSend} />);
 
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
       expect(onSend).not.toHaveBeenCalled();
     });
 
@@ -61,20 +63,20 @@ describe("ChatInput", () => {
 
       const input = screen.getByPlaceholderText("Type a message...");
       fireEvent.change(input, { target: { value: "Hello" } });
-      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
       expect(onSend).not.toHaveBeenCalled();
     });
 
     it("disables the send button when disabled prop is true", () => {
       render(<ChatInput onSend={vi.fn()} disabled />);
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button", { name: "Send" });
       expect(button).toBeDisabled();
     });
 
     it("disables the send button when input is empty", () => {
       render(<ChatInput onSend={vi.fn()} />);
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button", { name: "Send" });
       expect(button).toBeDisabled();
     });
   });
