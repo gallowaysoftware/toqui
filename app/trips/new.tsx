@@ -1,15 +1,16 @@
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
 
 export default function NewTripScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { destination } = useLocalSearchParams<{ destination?: string }>();
   const createTrip = useCreateTrip();
 
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(destination ?? "");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");

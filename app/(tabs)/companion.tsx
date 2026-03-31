@@ -6,7 +6,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { MapPin, Utensils, Compass, Globe } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { useAuth } from "@/lib/auth";
@@ -14,9 +16,18 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
+import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 
+const COMPANION_SUGGESTION_DEFS = [
+  { key: "nearby", icon: MapPin },
+  { key: "eat", icon: Utensils },
+  { key: "navigate", icon: Compass },
+  { key: "translate", icon: Globe },
+] as const;
+
 export default function CompanionScreen() {
+  const { t } = useTranslation();
   const { accessToken } = useAuth();
   const {
     messages,
@@ -27,6 +38,11 @@ export default function CompanionScreen() {
   } = useChat(undefined, "companion");
 
   const flatListRef = useRef<FlatList>(null);
+
+  const suggestions = useMemo(
+    () => COMPANION_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`companion.suggestions.${s.key}`) })),
+    [t],
+  );
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.recommendation) {
@@ -62,6 +78,7 @@ export default function CompanionScreen() {
             <Text style={styles.emptySubtitle}>
               Ask me anything about your surroundings, get directions, find restaurants, or discover hidden gems nearby.
             </Text>
+            <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
           </View>
         }
         ListFooterComponent={
@@ -89,7 +106,7 @@ const styles = StyleSheet.create({
   messageList: { padding: 16, flexGrow: 1 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
+  emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
   streamingBubble: {
     maxWidth: "85%",
     padding: 12,
