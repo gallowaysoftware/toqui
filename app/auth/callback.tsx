@@ -4,6 +4,8 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
+import { getConfig } from "@/lib/config";
 
 // Attempt to complete the auth session via the popup postMessage flow.
 // If window.opener is available (popup not severed by COOP), this resolves
@@ -32,6 +34,15 @@ export default function AuthCallbackScreen() {
 
     login(code, redirectUri)
       .then(() => {
+        const pendingRef = sessionStorage.getItem("toqui_pending_ref");
+        if (pendingRef) {
+          sessionStorage.removeItem("toqui_pending_ref");
+          const at = sessionStorage.getItem("toqui_access_token");
+          authFetch(`${getConfig().apiUrl}/api/referral/redeem`, at, {
+            method: "POST",
+            body: JSON.stringify({ code: pendingRef }),
+          }).catch(() => {});
+        }
         router.replace("/");
       })
       .catch((err) => {
