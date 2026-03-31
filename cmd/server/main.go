@@ -294,6 +294,10 @@ func main() {
 	mux.HandleFunc("/api/guides/", guidesHandler.HandleGetGuide)
 	mux.HandleFunc("/api/guides", guidesHandler.HandleListGuides)
 
+	// User feedback
+	feedbackHandler := handlers.NewFeedbackHandler(authSvc, pool)
+	mux.HandleFunc("/api/feedback", feedbackHandler.HandleSubmitFeedback)
+
 	// Referral system
 	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL)
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
@@ -322,6 +326,7 @@ func main() {
 	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
 	mux.HandleFunc("/admin/grant-pro", adminHandler.HandleGrantPro)
 	mux.HandleFunc("/admin/metrics", adminHandler.HandleMetrics)
+	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)

@@ -110,6 +110,51 @@ func (h *AdminHandler) HandleStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleListFeedback handles GET /admin/feedback — paginated user feedback.
+func (h *AdminHandler) HandleListFeedback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	pageSize, offset := parsePagination(r, 50, 200)
+	feedbackType := r.URL.Query().Get("type")
+
+	ctx := r.Context()
+	var entries any
+	var err error
+
+	if feedbackType != "" {
+		entries, err = h.queries.ListFeedbackByType(ctx, dbgen.ListFeedbackByTypeParams{
+			Type:       feedbackType,
+			PageSize:   int32(pageSize),
+			PageOffset: int32(offset),
+		})
+	} else {
+		entries, err = h.queries.ListFeedback(ctx, dbgen.ListFeedbackParams{
+			PageSize:   int32(pageSize),
+			PageOffset: int32(offset),
+		})
+	}
+	if err != nil {
+		slog.Error("admin list feedback failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	total, _ := h.queries.CountFeedback(ctx)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"feedback": entries,
+		"total":    total,
+	})
+}
+
 // HandleMetrics handles GET /admin/metrics — detailed business KPIs.
 func (h *AdminHandler) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

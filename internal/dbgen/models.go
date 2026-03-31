@@ -60,6 +60,17 @@ type ExportRequest struct {
 	Status      string             `json:"status"`
 }
 
+type Feedback struct {
+	ID        uuid.UUID   `json:"id"`
+	UserID    uuid.UUID   `json:"user_id"`
+	Type      string      `json:"type"`
+	Message   string      `json:"message"`
+	Context   []byte      `json:"context"`
+	Page      pgtype.Text `json:"page"`
+	TripID    pgtype.UUID `json:"trip_id"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
 type HelcimCheckoutSession struct {
 	ID            uuid.UUID          `json:"id"`
 	UserID        uuid.UUID          `json:"user_id"`
