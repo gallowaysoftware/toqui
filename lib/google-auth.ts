@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 import { useAuth } from "./auth";
 import { getConfig } from "./config";
 
-// Complete the auth session on web (needed for redirect-based flows)
+// Complete the auth session for native popup flows.
 WebBrowser.maybeCompleteAuthSession();
 
 // Google's well-known discovery endpoints
@@ -31,12 +31,27 @@ export function useGoogleAuth() {
       scopes: ["openid", "profile", "email"],
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
+      // PKCE is disabled on web since we use full-page redirect and the
+      // backend exchanges the code with its own client_secret. On native
+      // the popup flow keeps the code_verifier in memory so PKCE works.
+      usePKCE: Platform.OS !== "web",
     },
     discovery,
   );
 
   const signIn = useCallback(async () => {
+    if (Platform.OS === "web") {
+      // Full-page redirect instead of popup. Google's COOP headers sever
+      // window.opener in popups, breaking expo-auth-session's postMessage
+      // flow. Redirecting the whole page avoids cross-window communication.
+      // The /auth/callback page handles the code exchange on return.
+      if (request?.url) {
+        window.location.href = request.url;
+      }
+      return;
+    }
+
+    // Native: popup flow works fine
     const result = await promptAsync();
     if (result?.type === "success" && result.params.code) {
       try {
@@ -44,12 +59,8 @@ export function useGoogleAuth() {
       } catch (err) {
         console.error("Google login failed:", err);
       }
-    } else if (result?.type === "dismiss") {
-      // Popup was likely severed by Google's COOP headers.
-      // The auth/callback page handles login directly in this case.
-      console.debug("Auth popup dismissed — callback page will handle login");
     }
-  }, [promptAsync, login, redirectUri]);
+  }, [promptAsync, login, redirectUri, request]);
 
   return {
     signIn,
