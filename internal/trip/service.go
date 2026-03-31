@@ -210,6 +210,45 @@ func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.I
 	return items, nil
 }
 
+// ItineraryItemCoords holds the lat/lng coordinates for a single itinerary item.
+type ItineraryItemCoords struct {
+	ID        uuid.UUID
+	Latitude  float64
+	Longitude float64
+}
+
+// GetItineraryCoords returns lat/lng for all geocoded itinerary items in a trip.
+// Items whose location is NULL (not yet geocoded) are omitted from the result.
+// Uses PostGIS ST_X/ST_Y to extract coordinates from the GEOGRAPHY column.
+func (s *Service) GetItineraryCoords(ctx context.Context, tripID uuid.UUID) ([]ItineraryItemCoords, error) {
+	const q = `
+		SELECT id,
+		       ST_Y(location::geometry) AS latitude,
+		       ST_X(location::geometry) AS longitude
+		  FROM itinerary_items
+		 WHERE trip_id = $1
+		   AND location IS NOT NULL`
+
+	rows, err := s.pool.Query(ctx, q, tripID)
+	if err != nil {
+		return nil, fmt.Errorf("get itinerary coords: %w", err)
+	}
+	defer rows.Close()
+
+	var result []ItineraryItemCoords
+	for rows.Next() {
+		var c ItineraryItemCoords
+		if err := rows.Scan(&c.ID, &c.Latitude, &c.Longitude); err != nil {
+			return nil, fmt.Errorf("scan itinerary coord: %w", err)
+		}
+		result = append(result, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate itinerary coords: %w", err)
+	}
+	return result, nil
+}
+
 func textFromString(s string) pgtype.Text {
 	if s == "" {
 		return pgtype.Text{}

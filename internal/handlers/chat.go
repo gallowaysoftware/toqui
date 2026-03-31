@@ -12,6 +12,7 @@ import (
 	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
@@ -41,10 +42,12 @@ type ChatHandler struct {
 	usageSvc      *usage.Service
 	paymentSvc    *payment.Service
 	queries       *dbgen.Queries
+	pool          *pgxpool.Pool
+	placesAPIKey  string
 	adminEmails   map[string]bool
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, db dbgen.DBTX, adminEmails []string) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
 	emailSet := make(map[string]bool, len(adminEmails))
 	for _, e := range adminEmails {
 		emailSet[strings.ToLower(strings.TrimSpace(e))] = true
@@ -58,9 +61,18 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 		paymentSvc:    paymentSvc,
 		linkBuilder:   linkBuilder,
 		usageSvc:      usageSvc,
-		queries:       dbgen.New(db),
+		queries:       dbgen.New(pool),
+		pool:          pool,
 		adminEmails:   emailSet,
 	}
+}
+
+// WithPlacesAPIKey configures the chat handler to geocode itinerary item
+// locations using the Google Places/Geocoding API. If the key is empty,
+// geocoding is silently skipped.
+func (h *ChatHandler) WithPlacesAPIKey(key string) *ChatHandler {
+	h.placesAPIKey = key
+	return h
 }
 
 func (h *ChatHandler) isAdmin(ctx context.Context, userID uuid.UUID) bool {
@@ -285,7 +297,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				mu.Lock()
 				itineraryItems = append(itineraryItems, items...)
 				mu.Unlock()
-			})
+			}).WithGeocoding(h.pool, h.placesAPIKey)
 			params.ExtraTools = append(params.ExtraTools, itineraryTool)
 		}
 
@@ -432,11 +444,19 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			if len(localItinerary) > 0 {
 				if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 					if allItems, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
+						// Best-effort: fetch coordinates; empty map is fine (map pins
+						// may appear after next itinerary fetch once geocoding completes).
+						coordsMap := make(map[uuid.UUID]trip.ItineraryItemCoords)
+						if coords, err := h.tripSvc.GetItineraryCoords(ctx, tripID); err == nil {
+							for _, c := range coords {
+								coordsMap[c.ID] = c
+							}
+						}
 						if err := stream.Send(&toquiv1.SendMessageResponse{
 							Event: &toquiv1.SendMessageResponse_ItineraryUpdate{
 								ItineraryUpdate: &toquiv1.ItineraryUpdate{
 									TripId:    req.Msg.TripId,
-									Itinerary: itineraryToProto(req.Msg.TripId, allItems),
+									Itinerary: itineraryToProto(req.Msg.TripId, allItems, coordsMap),
 								},
 							},
 						}); err != nil {

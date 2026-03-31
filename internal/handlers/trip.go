@@ -219,8 +219,19 @@ func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toq
 		return nil, internalError(ctx, "trip operation", err)
 	}
 
+	// Best-effort: fetch coordinates for geocoded items. Failure just means the
+	// map shows no pins — it never blocks the itinerary response.
+	coordsMap := make(map[uuid.UUID]trip.ItineraryItemCoords)
+	if coords, err := h.tripSvc.GetItineraryCoords(ctx, tripID); err == nil {
+		for _, c := range coords {
+			coordsMap[c.ID] = c
+		}
+	} else {
+		slog.Warn("get itinerary coords failed, map pins unavailable", "trip_id", tripID, "error", err)
+	}
+
 	return connect.NewResponse(&toquiv1.GetItineraryResponse{
-		Itinerary: itineraryToProto(req.Msg.TripId, items),
+		Itinerary: itineraryToProto(req.Msg.TripId, items, coordsMap),
 	}), nil
 }
 
@@ -285,7 +296,9 @@ func stringToTripStatus(s string) toquiv1.TripStatus {
 	}
 }
 
-func itineraryToProto(tripID string, items []dbgen.ItineraryItem) *toquiv1.Itinerary {
+// itineraryToProto converts DB itinerary items to the proto representation.
+// coordsMap maps item IDs to their geocoded coordinates (may be nil or empty).
+func itineraryToProto(tripID string, items []dbgen.ItineraryItem, coordsMap map[uuid.UUID]trip.ItineraryItemCoords) *toquiv1.Itinerary {
 	dayMap := make(map[int32]*toquiv1.ItineraryDay)
 
 	for _, item := range items {
@@ -323,6 +336,12 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem) *toquiv1.Itine
 		}
 		if item.EndTime.Valid {
 			protoItem.EndTime = timestamppb.New(item.EndTime.Time)
+		}
+		if c, ok := coordsMap[item.ID]; ok && (c.Latitude != 0 || c.Longitude != 0) {
+			protoItem.Location = &toquiv1.LatLng{
+				Latitude:  c.Latitude,
+				Longitude: c.Longitude,
+			}
 		}
 
 		day.Items = append(day.Items, protoItem)
