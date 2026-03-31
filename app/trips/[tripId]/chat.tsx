@@ -8,18 +8,28 @@ import {
   ActivityIndicator,
   Pressable,
 } from "react-native";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { MapPin, Utensils, Compass, Briefcase } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
+import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 
+const CHAT_SUGGESTION_DEFS = [
+  { key: "itinerary", icon: MapPin },
+  { key: "restaurants", icon: Utensils },
+  { key: "hiddenGems", icon: Compass },
+  { key: "packing", icon: Briefcase },
+] as const;
+
 export default function ChatScreen() {
+  const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { t } = useTranslation();
   const router = useRouter();
@@ -36,6 +46,11 @@ export default function ChatScreen() {
   });
 
   const flatListRef = useRef<FlatList>(null);
+
+  const suggestions = useMemo(
+    () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),
+    [t],
+  );
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.recommendation) {
@@ -68,6 +83,7 @@ export default function ChatScreen() {
               <Text style={styles.emptySubtitle}>
                 Ask me anything about your destination, and I'll help you build the perfect itinerary.
               </Text>
+              <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
             </View>
           )
         }
@@ -108,6 +124,7 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
+<<<<<<< HEAD
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
   expertBanner: {
     backgroundColor: "#fff8f0",

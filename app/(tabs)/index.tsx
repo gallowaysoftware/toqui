@@ -1,12 +1,20 @@
-import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown, Plane } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
+
+const DESTINATIONS = [
+  { key: "tokyo", flag: "\u{1F1EF}\u{1F1F5}", title: "Tokyo" },
+  { key: "paris", flag: "\u{1F1EB}\u{1F1F7}", title: "Paris" },
+  { key: "rome", flag: "\u{1F1EE}\u{1F1F9}", title: "Rome" },
+  { key: "bali", flag: "\u{1F1EE}\u{1F1E9}", title: "Bali" },
+  { key: "newYork", flag: "\u{1F1FA}\u{1F1F8}", title: "New York" },
+] as const;
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const { t } = useTranslation();
@@ -86,18 +94,43 @@ export default function TripsScreen() {
 
   if (!trips || trips.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>{t("trips.empty")}</Text>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() => router.push("/trips/new" as never)}
-          >
-            <Plus color="#fff" size={18} />
-            <Text style={styles.buttonText}>{t("trips.newTrip")}</Text>
-          </Pressable>
+      <ScrollView style={styles.container} contentContainerStyle={styles.welcomeContent}>
+        <Plane color="#e8654a" size={40} style={styles.welcomeIcon} />
+        <Text style={styles.welcomeTitle}>{t("home.welcomeTitle")}</Text>
+        <Text style={styles.welcomeSubtitle}>{t("home.welcomeSubtitle")}</Text>
+
+        <View style={styles.destinationList}>
+          {DESTINATIONS.map((dest) => (
+            <Pressable
+              key={dest.key}
+              style={styles.destinationCard}
+              onPress={() =>
+                router.push({
+                  pathname: "/trips/new" as never,
+                  params: { destination: dest.title },
+                })
+              }
+            >
+              <Text style={styles.destinationFlag}>{dest.flag}</Text>
+              <View style={styles.destinationInfo}>
+                <Text style={styles.destinationName}>{dest.title}</Text>
+                <Text style={styles.destinationHook}>
+                  {t(`home.destinations.${dest.key}`)}
+                </Text>
+              </View>
+              <ChevronRight color="#ccc" size={18} />
+            </Pressable>
+          ))}
         </View>
-      </View>
+
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => router.push("/trips/new" as never)}
+        >
+          <Plus color="#fff" size={18} />
+          <Text style={styles.buttonText}>{t("trips.newTrip")}</Text>
+        </Pressable>
+      </ScrollView>
     );
   }
 
@@ -132,7 +165,25 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   title: { fontSize: 32, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
   subtitle: { fontSize: 16, color: "#666", textAlign: "center", marginBottom: 32 },
-  emptyText: { fontSize: 16, color: "#666", marginBottom: 20, textAlign: "center" },
+  welcomeContent: { padding: 24, alignItems: "center" },
+  welcomeIcon: { marginTop: 32, marginBottom: 16 },
+  welcomeTitle: { fontSize: 24, fontWeight: "bold", color: "#333", marginBottom: 6, textAlign: "center" },
+  welcomeSubtitle: { fontSize: 15, color: "#666", textAlign: "center", marginBottom: 28 },
+  destinationList: { width: "100%", marginBottom: 24 },
+  destinationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  destinationFlag: { fontSize: 28, marginRight: 12 },
+  destinationInfo: { flex: 1 },
+  destinationName: { fontSize: 16, fontWeight: "600", color: "#333" },
+  destinationHook: { fontSize: 13, color: "#888", marginTop: 2 },
   primaryButton: {
     backgroundColor: "#e8654a",
     borderRadius: 8,

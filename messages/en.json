@@ -39,6 +39,25 @@
     "ctaTitle": "Ready to plan your next trip?",
     "ctaDesc": "Join thousands of travelers planning smarter trips with Toqui. Free to start, no credit card required."
   },
+  "home": {
+    "welcomeTitle": "Where do you want to go?",
+    "welcomeSubtitle": "Pick a destination or create your own trip",
+    "destinations": {
+      "tokyo": "Street food paradise",
+      "paris": "City of light",
+      "rome": "Ancient wonders",
+      "bali": "Island adventure",
+      "newYork": "The city that never sleeps"
+    }
+  },
+  "companion": {
+    "suggestions": {
+      "nearby": "What's nearby?",
+      "eat": "Where should I eat?",
+      "navigate": "Help me navigate",
+      "translate": "Translate this for me"
+    }
+  },
   "trips": {
     "title": "My Trips",
     "newTrip": "New Trip",
@@ -112,7 +131,13 @@
     "expertLimitReached": "You've used your free expert consultations for this trip.",
     "expertLimitCta": "Unlock unlimited experts for $12 CAD",
     "dailyLimitReached": "You've used your 30 messages for today. Try again tomorrow!",
-    "dailyLimitReset": "Your messages reset at midnight UTC."
+    "dailyLimitReset": "Your messages reset at midnight UTC.",
+    "suggestions": {
+      "itinerary": "Build my day 1 itinerary",
+      "restaurants": "Best restaurants",
+      "hiddenGems": "Hidden gems to explore",
+      "packing": "What should I pack?"
+    }
   },
   "checkout": {
     "title": "Unlock Trip Pro",
