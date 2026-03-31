@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
 interface CheckoutInitResponse {
@@ -17,21 +18,6 @@ interface CheckoutStatusResponse {
   unlocked: boolean;
   priceCents: number;
   currency: string;
-}
-
-async function authFetch(
-  url: string,
-  accessToken: string | null,
-  options: RequestInit = {},
-): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-  return fetch(url, { ...options, headers });
 }
 
 export function useCheckout(tripId: string) {

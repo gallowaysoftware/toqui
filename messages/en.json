@@ -124,6 +124,17 @@
     "webOnly": "Payments are currently available on the web version.",
     "webOnlyLink": "Open in browser to upgrade"
   },
+  "referral": {
+    "title": "Refer a Friend",
+    "description": "Invite friends to Toqui. You both get a free Trip Pro unlock!",
+    "yourCode": "Your referral code",
+    "copyLink": "Copy Link",
+    "share": "Share",
+    "copied": "Copied!",
+    "friendsInvited": "{{count}} friends invited",
+    "rewardsEarned": "{{count}} rewards earned",
+    "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for a free Trip Pro unlock! {{link}}"
+  },
   "waitlist": {
     "title": "We're at capacity!",
     "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",

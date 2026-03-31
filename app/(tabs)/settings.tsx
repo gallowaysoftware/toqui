@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift } from "lucide-react-native";
+import ReferralCard from "@/components/referral/ReferralCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
@@ -102,6 +103,15 @@ export default function SettingsScreen() {
             </Pressable>
           </>
         )}
+      </View>
+
+      {/* Refer a Friend */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Gift color="#e8654a" size={20} />
+          <Text style={styles.sectionTitle}>{t("referral.title")}</Text>
+        </View>
+        <ReferralCard />
       </View>
 
       {/* Data */}
