@@ -15,6 +15,14 @@ export interface Recommendation {
   disclosure?: string;
 }
 
+export interface PersonaIntroData {
+  name: string;
+  specialties: string[];
+  accentColor: string;
+  avatarUrl: string;
+  handoffMessage: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -25,6 +33,7 @@ export interface ChatMessage {
   personaAvatar?: string;
   personaAccentColor?: string;
   recommendation?: Recommendation;
+  personaIntro?: PersonaIntroData;
 }
 
 export interface ToolActivity {
@@ -308,7 +317,24 @@ export function useChat(
                 setActivePersona(newActive);
               }
               if (ps.handoffMessage) {
-                setMessages((prev) => [...prev, { id: uuid(), role: "system", content: ps.handoffMessage }]);
+                const persona = ps.newPersona;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: uuid(),
+                    role: "system",
+                    content: ps.handoffMessage,
+                    personaIntro: persona
+                      ? {
+                          name: persona.name,
+                          specialties: persona.specialties,
+                          accentColor: persona.accentColor,
+                          avatarUrl: persona.avatarUrl,
+                          handoffMessage: ps.handoffMessage,
+                        }
+                      : undefined,
+                  },
+                ]);
               }
               break;
             }

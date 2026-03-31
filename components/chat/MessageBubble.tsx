@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from "react-native";
 import Markdown from "react-native-markdown-display";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+import { PersonaIntroCard } from "./PersonaIntroCard";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -13,6 +14,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isSystem = message.role === "system";
 
   if (isSystem) {
+    if (message.personaIntro) {
+      return <PersonaIntroCard persona={message.personaIntro} />;
+    }
     return (
       <View style={[styles.systemBubble, { backgroundColor: colors.surfaceTertiary }]}>
         <Text style={[styles.systemText, { color: colors.textTertiary }]}>{message.content}</Text>
