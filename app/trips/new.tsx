@@ -15,17 +15,29 @@ export default function NewTripScreen() {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [dateError, setDateError] = useState("");
 
   const handleCreate = async () => {
     if (!title.trim()) return;
-    const trip = await createTrip.mutateAsync({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
-    if (trip) {
-      router.replace(`/trips/${trip.id}/chat` as never);
+
+    if (startDate && endDate && endDate < startDate) {
+      setDateError(t("tripCreate.dateRangeError"));
+      return;
+    }
+    setDateError("");
+
+    try {
+      const trip = await createTrip.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      if (trip) {
+        router.replace(`/trips/${trip.id}` as never);
+      }
+    } catch {
+      // TanStack Query sets createTrip.isError automatically
     }
   };
 
@@ -57,7 +69,7 @@ export default function NewTripScreen() {
           <DatePicker
             label={t("tripCreate.startDate")}
             value={startDate}
-            onChange={setStartDate}
+            onChange={(v) => { setStartDate(v); setDateError(""); }}
             placeholder="YYYY-MM-DD"
           />
         </View>
@@ -65,16 +77,20 @@ export default function NewTripScreen() {
           <DatePicker
             label={t("tripCreate.endDate")}
             value={endDate}
-            onChange={setEndDate}
+            onChange={(v) => { setEndDate(v); setDateError(""); }}
             placeholder="YYYY-MM-DD"
           />
         </View>
       </View>
 
+      {dateError ? (
+        <Text style={styles.errorText}>{dateError}</Text>
+      ) : null}
+
       <Pressable
-        style={[styles.submitButton, (!title.trim() || createTrip.isPending) && styles.disabledButton]}
+        style={[styles.submitButton, (!title.trim() || createTrip.isPending || !!dateError) && styles.disabledButton]}
         onPress={handleCreate}
-        disabled={!title.trim() || createTrip.isPending}
+        disabled={!title.trim() || createTrip.isPending || !!dateError}
       >
         {createTrip.isPending ? (
           <ActivityIndicator color="#fff" size="small" />

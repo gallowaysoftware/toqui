@@ -31,6 +31,11 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     refreshRef.current = refreshTokens;
   }, [refreshTokens]);
 
+  // Deduplication mutex: if a refresh is already in flight, all concurrent
+  // 401 interceptors await the same promise instead of each firing a new
+  // refresh request.
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
+
   const transport = useMemo(
     () =>
       createConnectTransport({
@@ -47,7 +52,13 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 err instanceof ConnectError &&
                 err.code === Code.Unauthenticated
               ) {
-                const newToken = await refreshRef.current();
+                // Ensure only one refresh RPC is in flight at a time.
+                if (!refreshInFlightRef.current) {
+                  refreshInFlightRef.current = refreshRef.current().finally(() => {
+                    refreshInFlightRef.current = null;
+                  });
+                }
+                const newToken = await refreshInFlightRef.current;
                 if (newToken) {
                   req.header.set("Authorization", `Bearer ${newToken}`);
                   return await next(req);

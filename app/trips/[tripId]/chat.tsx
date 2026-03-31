@@ -38,8 +38,10 @@ export default function ChatScreen() {
     streamingText,
     isStreaming,
     isLoadingHistory,
+    historyError,
     toolActivity,
     sendMessage,
+    loadMoreHistory,
   } = useChat(tripId, "planning", {
     onExpertLimitReached: () => setShowExpertBanner(true),
   });
@@ -75,6 +77,14 @@ export default function ChatScreen() {
           isLoadingHistory ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#BF4028" />
+            </View>
+          ) : historyError && !isStreaming ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.errorTitle}>Could not load messages</Text>
+              <Text style={styles.emptySubtitle}>{historyError}</Text>
+              <Pressable style={styles.retryButton} onPress={loadMoreHistory}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
             </View>
           ) : (
             <View style={styles.emptyContainer}>
@@ -127,6 +137,9 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: "center", paddingTop: 100, paddingBottom: 24 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
+  errorTitle: { fontSize: 20, fontWeight: "bold", color: "#c0392b", marginBottom: 8 },
+  retryButton: { backgroundColor: "#BF4028", borderRadius: 16, paddingVertical: 8, paddingHorizontal: 24 },
+  retryButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
   expertBanner: {
     backgroundColor: "#fff8f0",
     borderTopWidth: 1,

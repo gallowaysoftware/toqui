@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown, Plane } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle } from "lucide-react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
@@ -18,12 +19,13 @@ const DESTINATIONS = [
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const { t } = useTranslation();
-  const statusConfig: Record<number, { label: string; color: string }> = {
-    [TripStatus.PLANNING]: { label: "planning", color: "#3b82f6" },
-    [TripStatus.ACTIVE]: { label: "active", color: "#22c55e" },
-    [TripStatus.COMPLETED]: { label: "completed", color: "#9ca3af" },
+  const statusConfig: Record<number, { labelKey: string; color: string }> = {
+    [TripStatus.PLANNING]: { labelKey: "trips.status.planning", color: "#3b82f6" },
+    [TripStatus.ACTIVE]: { labelKey: "trips.status.active", color: "#22c55e" },
+    [TripStatus.COMPLETED]: { labelKey: "trips.status.completed", color: "#9ca3af" },
   };
-  const { label: statusLabel, color: statusColor } = statusConfig[trip.status] ?? { label: "unknown", color: "#9ca3af" };
+  const { labelKey, color: statusColor } = statusConfig[trip.status] ?? { labelKey: "trips.status.planning", color: "#9ca3af" };
+  const statusLabel = t(labelKey);
 
   return (
     <Pressable style={styles.tripCard} onPress={onPress}>
@@ -43,10 +45,12 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
         {trip.description ? (
           <Text style={styles.tripDescription} numberOfLines={2}>{trip.description}</Text>
         ) : null}
-        <View style={styles.tripMeta}>
-          <MapPin color="#999" size={14} />
-          <Text style={styles.tripMetaText}>{trip.destinationCountry || "No destination"}</Text>
-        </View>
+        {trip.destinationCountry ? (
+          <View style={styles.tripMeta}>
+            <MapPin color="#999" size={14} />
+            <Text style={styles.tripMetaText}>{trip.destinationCountry}</Text>
+          </View>
+        ) : null}
       </View>
       <ChevronRight color="#ccc" size={20} />
     </Pressable>
@@ -58,7 +62,8 @@ export default function TripsScreen() {
   const { accessToken, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { signIn, isReady: authReady } = useGoogleAuth();
-  const { trips, isLoading: tripsLoading } = useTrips();
+  const queryClient = useQueryClient();
+  const { trips, isLoading: tripsLoading, isError: tripsError } = useTrips();
 
   if (authLoading) {
     return (
@@ -76,10 +81,10 @@ export default function TripsScreen() {
         <Text style={styles.signInTagline}>{t("common.tagline")}</Text>
 
         <View style={styles.valueProps}>
-          <Text style={styles.valueProp}>800+ expert personas for every destination</Text>
-          <Text style={styles.valueProp}>Day-by-day itineraries built from conversation</Text>
-          <Text style={styles.valueProp}>Export to calendar, share with friends</Text>
-          <Text style={styles.valueProp}>Free to start — your first trip includes a Pro trial</Text>
+          <Text style={styles.valueProp}>{t("home.valueProps.experts")}</Text>
+          <Text style={styles.valueProp}>{t("home.valueProps.itineraries")}</Text>
+          <Text style={styles.valueProp}>{t("home.valueProps.export")}</Text>
+          <Text style={styles.valueProp}>{t("home.valueProps.free")}</Text>
         </View>
 
         <Pressable
@@ -89,7 +94,7 @@ export default function TripsScreen() {
         >
           <Text style={styles.buttonText}>{t("common.getStarted")}</Text>
         </Pressable>
-        <Text style={styles.signInNote}>Sign in with Google to get started. Free, no credit card required.</Text>
+        <Text style={styles.signInNote}>{t("home.signInNote")}</Text>
       </ScrollView>
     );
   }
@@ -98,6 +103,22 @@ export default function TripsScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#BF4028" />
+      </View>
+    );
+  }
+
+  if (tripsError) {
+    return (
+      <View style={styles.center}>
+        <AlertCircle color="#BF4028" size={40} style={styles.errorIcon} />
+        <Text style={styles.errorTitle}>{t("trips.loadError")}</Text>
+        <Text style={styles.errorSubtitle}>{t("trips.loadErrorSubtitle")}</Text>
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => void queryClient.invalidateQueries({ queryKey: ["trips"] })}
+        >
+          <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+        </Pressable>
       </View>
     );
   }
@@ -254,4 +275,14 @@ const styles = StyleSheet.create({
   tripDescription: { fontSize: 14, color: "#666", marginBottom: 8 },
   tripMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
   tripMetaText: { fontSize: 12, color: "#999" },
+  errorIcon: { marginBottom: 16 },
+  errorTitle: { fontSize: 18, fontWeight: "600", color: "#333", marginBottom: 6, textAlign: "center" },
+  errorSubtitle: { fontSize: 14, color: "#888", textAlign: "center", marginBottom: 24 },
+  retryButton: {
+    backgroundColor: "#BF4028",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });

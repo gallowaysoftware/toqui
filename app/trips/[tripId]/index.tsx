@@ -16,6 +16,16 @@ import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
+function formatTripDate(dateStr: string): string {
+  const date = new Date(`${dateStr}T00:00:00Z`);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -76,7 +86,9 @@ export default function TripDetailScreen() {
 
         {(trip.startDate || trip.endDate) && (
           <Text style={styles.dates}>
-            {trip.startDate}{trip.startDate && trip.endDate ? " → " : ""}{trip.endDate}
+            {trip.startDate ? formatTripDate(trip.startDate) : ""}
+            {trip.startDate && trip.endDate ? " → " : ""}
+            {trip.endDate ? formatTripDate(trip.endDate) : ""}
           </Text>
         )}
 

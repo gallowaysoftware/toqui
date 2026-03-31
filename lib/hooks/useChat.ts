@@ -124,6 +124,7 @@ export function useChat(
   const [selectedTrip, setSelectedTrip] = useState<SelectedTrip | null>(null);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const isSendingRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
   const sessionIdRef = useRef("");
@@ -147,6 +148,7 @@ export function useChat(
     setCreatedTrip(null);
     setSelectedTrip(null);
     setHasMoreHistory(false);
+    setHistoryError(null);
     sessionIdRef.current = "";
     activePersonaRef.current = null;
     historyLoadedRef.current = null;
@@ -206,8 +208,10 @@ export function useChat(
         nextPageTokenRef.current = nextToken;
         setHasMoreHistory(nextToken !== "");
         historyLoadedRef.current = tripId;
+        setHistoryError(null);
       } catch (error) {
         console.error("Failed to load chat history:", error);
+        if (!cancelled) setHistoryError("Failed to load chat history. Please try again.");
       } finally {
         if (!cancelled) setIsLoadingHistory(false);
       }
@@ -380,9 +384,20 @@ export function useChat(
               }
               break;
             }
-            case "error":
-              console.error("Stream error:", resp.event.value.message);
+            case "error": {
+              const errMsg = resp.event.case === "error" ? resp.event.value.message : "";
+              console.error("Stream error:", errMsg);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: uuid(),
+                  role: "assistant",
+                  content: errMsg || "Sorry, something went wrong. Please try again.",
+                  isError: true,
+                },
+              ]);
               break;
+            }
           }
         }
 
@@ -440,6 +455,7 @@ export function useChat(
     isStreaming,
     isLoadingHistory,
     isLoadingMore,
+    historyError,
     activePersona,
     toolActivity,
     createdTrip,

@@ -11,7 +11,8 @@
     "save": "Save",
     "delete": "Delete",
     "confirm": "Confirm",
-    "back": "Back"
+    "back": "Back",
+    "retry": "Try Again"
   },
   "home": {
     "title": "Toqui",
@@ -38,11 +39,17 @@
     "step3Title": "Travel with confidence",
     "step3Desc": "Your itinerary and bookings are all in one place. Switch to companion mode for real-time help on the go.",
     "ctaTitle": "Ready to plan your next trip?",
-    "ctaDesc": "Join thousands of travelers planning smarter trips with Toqui. Free to start, no credit card required."
-  },
-  "home": {
+    "ctaDesc": "Join thousands of travelers planning smarter trips with Toqui. Free to start, no credit card required.",
     "welcomeTitle": "Where do you want to go?",
     "welcomeSubtitle": "Pick a destination or create your own trip",
+    "noDestination": "No destination",
+    "signInNote": "Sign in with Google to get started. Free, no credit card required.",
+    "valueProps": {
+      "experts": "800+ expert personas for every destination",
+      "itineraries": "Day-by-day itineraries built from conversation",
+      "export": "Export to calendar, share with friends",
+      "free": "Free to start — your first trip includes a Pro trial"
+    },
     "destinations": {
       "tokyo": "Street food paradise",
       "paris": "City of light",
@@ -66,6 +73,8 @@
     "createFirst": "Create Your First Trip",
     "proBadge": "Pro",
     "trialBadge": "Trial",
+    "loadError": "Couldn't load your trips",
+    "loadErrorSubtitle": "Check your connection and try again.",
     "status": {
       "planning": "Planning",
       "active": "Active",
@@ -81,7 +90,8 @@
     "startDate": "Start date",
     "endDate": "End date",
     "submit": "Start Planning",
-    "submitting": "Creating..."
+    "submitting": "Creating...",
+    "dateRangeError": "End date must be on or after start date"
   },
   "tripSettings": {
     "title": "Trip Settings",

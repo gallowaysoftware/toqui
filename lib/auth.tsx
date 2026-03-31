@@ -142,11 +142,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return res.accessToken;
     } catch (err) {
       console.error("Token refresh failed:", err);
-      // Clear stale tokens
+      // Clear all stale auth state — tokens AND user
       setAccessToken(null);
       setRefreshToken(null);
+      setUser(null);
       await tokenStorage.delete("toqui_access_token");
       await tokenStorage.delete("toqui_refresh_token");
+      await tokenStorage.delete("toqui_user");
       return null;
     }
   }, []);

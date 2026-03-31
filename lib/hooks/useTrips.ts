@@ -10,7 +10,7 @@ export function useTrips() {
   const { accessToken } = useAuth();
   const client = useMemo(() => createClient(TripService, transport), [transport]);
 
-  const { data: trips = [], isLoading } = useQuery({
+  const { data: trips = [], isLoading, error, isError } = useQuery({
     queryKey: ["trips"],
     queryFn: async () => {
       const res = await client.listTrips({ pagination: { pageSize: 50 } });
@@ -19,7 +19,7 @@ export function useTrips() {
     enabled: !!accessToken,
   });
 
-  return { trips, isLoading };
+  return { trips, isLoading, error, isError };
 }
 
 export function useTrip(tripId: string) {
