@@ -14,13 +14,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/payment"
-	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
@@ -129,21 +127,9 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	// Try to match to an existing trip.
 	tripID := h.matchTrip(r, user, subject)
 
-	// Gate: email forwarding requires Trip Pro (Pro tier or trip unlock).
-	userTier := tier.Parse(user.SubscriptionTier)
-	if !userTier.IsPro() && h.paymentSvc != nil {
-		parsedTripID, parseErr := uuid.Parse(tripID)
-		unlocked := parseErr == nil && func() bool { u, _ := h.paymentSvc.IsTripUnlocked(r.Context(), user.ID, parsedTripID); return u }()
-		if !unlocked {
-			slog.Info("email forwarding blocked — Trip Pro required",
-				"user_id", user.ID,
-				"email", maskEmail(user.Email),
-			)
-			// Return 200 so SendGrid does not retry.
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-	}
+	// Email forwarding is available to all users (free and Pro).
+	// This is a key utility feature that creates lock-in — once bookings
+	// are in Toqui, the AI can build context around them.
 
 	// Include subject line as context for AI parsing.
 	fullText := body

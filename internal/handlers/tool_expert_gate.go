@@ -9,11 +9,11 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 )
 
-const maxFreeExpertCalls = 3
+const maxFreeExpertCalls = 5
 
 // expertTeaserGate wraps the suggest_expert tool for free-tier users.
-// It allows 3 expert handoffs per chat session as a teaser, then returns
-// an upgrade prompt instead of resolving the expert.
+// It allows 5 expert handoffs per trip as a generous teaser — enough to
+// experience 2-3 different experts — then returns an upgrade prompt.
 type expertTeaserGate struct {
 	inner tools.Tool
 	calls atomic.Int32

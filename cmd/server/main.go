@@ -208,14 +208,14 @@ func main() {
 	if cfg.TargetEnv != "local" {
 		auth.SetAuthCookieDomain(".toqui.travel")
 	}
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter)
-	// Email sender for transactional emails (verification, invites, etc.)
+	// Email sender for transactional emails (verification, invites, welcome emails)
 	var emailSender *email.Sender
 	if cfg.ResendAPIKey != "" {
 		emailSender = email.NewSender(cfg.ResendAPIKey, cfg.EmailFrom)
 	} else if cfg.TargetEnv != "local" {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender)
 
 	apiBaseURL := "https://api.toqui.travel"
 	if cfg.TargetEnv == "local" {

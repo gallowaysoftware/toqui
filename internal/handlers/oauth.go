@@ -19,6 +19,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/email"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 )
 
@@ -31,13 +32,15 @@ type OAuthHandler struct {
 	allowedDomains []string
 	allowedEmails  []string
 	authLimiter    *ratelimit.AuthLimiter
+	emailSvc       *email.Sender
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
 		frontendURL:    frontendURL,
+		emailSvc:       emailSvc,
 		secureCookies:  secureCookies,
 		maxFreeUsers:   maxFreeUsers,
 		allowedDomains: allowedDomains,
@@ -238,6 +241,19 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=db_error", http.StatusTemporaryRedirect)
 		return
+	}
+
+	// Send welcome email for new users (created within the last minute).
+	if h.emailSvc != nil && time.Since(user.CreatedAt) < time.Minute {
+		name := ""
+		if user.Name.Valid {
+			name = user.Name.String
+		}
+		go func() {
+			if err := h.emailSvc.SendWelcome(user.Email, name, h.frontendURL); err != nil {
+				slog.Error("welcome email failed", "error", err, "user_id", user.ID)
+			}
+		}()
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)

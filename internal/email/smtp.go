@@ -88,6 +88,33 @@ https://toqui.travel`, inviteCode, appURL, inviteCode)
 	return s.Send(to, subject, body)
 }
 
+// SendWelcome sends a welcome email to new users.
+func (s *Sender) SendWelcome(to, name, appURL string) error {
+	greeting := "Hey there"
+	if name != "" {
+		greeting = fmt.Sprintf("Hey %s", name)
+	}
+	subject := "Welcome to Toqui — your AI travel companion"
+	body := fmt.Sprintf(`%s!
+
+Welcome to Toqui. Here's how to plan your first trip:
+
+1. Tell Toqui where you want to go — just start chatting
+2. Meet your expert personas — food guides, history buffs, adventure specialists matched to your destination
+3. Get a day-by-day itinerary and export it to your calendar
+
+Your first trip includes a 3-day Pro trial with unlimited expert access.
+
+Start planning: %s
+
+Happy travels!
+
+— The Toqui Team
+https://toqui.travel`, greeting, appURL)
+
+	return s.Send(to, subject, body)
+}
+
 // SendVerification sends a waitlist verification email.
 func (s *Sender) SendVerification(to, verifyURL string) error {
 	subject := "Verify your Toqui waitlist signup"
