@@ -33,7 +33,7 @@ export default function ReferralCard() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#e8654a" size="small" />
+        <ActivityIndicator color="#BF4028" size="small" />
       </View>
     );
   }
@@ -53,13 +53,13 @@ export default function ReferralCard() {
 
       <View style={styles.buttonRow}>
         <Pressable style={styles.actionButton} onPress={handleCopy}>
-          <Copy color="#e8654a" size={16} />
+          <Copy color="#BF4028" size={16} />
           <Text style={styles.actionButtonText}>
             {copied ? t("referral.copied") : t("referral.copyLink")}
           </Text>
         </Pressable>
         <Pressable style={styles.actionButton} onPress={handleShare}>
-          <Share2 color="#e8654a" size={16} />
+          <Share2 color="#BF4028" size={16} />
           <Text style={styles.actionButtonText}>{t("referral.share")}</Text>
         </Pressable>
       </View>
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   codeValue: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#e8654a",
+    color: "#BF4028",
     letterSpacing: 2,
   },
   buttonRow: {
@@ -123,12 +123,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
     borderRadius: 8,
     padding: 10,
   },
   actionButtonText: {
-    color: "#e8654a",
+    color: "#BF4028",
     fontWeight: "600",
     fontSize: 14,
   },

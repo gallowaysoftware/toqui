@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   joinButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 8,
     padding: 14,
     alignItems: "center",
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   positionLabel: { fontSize: 14, color: "#666", marginBottom: 8 },
-  positionNumber: { fontSize: 48, fontWeight: "bold", color: "#e8654a" },
+  positionNumber: { fontSize: 48, fontWeight: "bold", color: "#BF4028" },
   note: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20 },
 });

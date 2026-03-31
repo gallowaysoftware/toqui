@@ -27,7 +27,7 @@ export default function TripSettingsScreen() {
   }, [trip]);
 
   if (isLoading || !trip) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#e8654a" /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color="#BF4028" /></View>;
   }
 
   const handleSave = async () => {
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: "row", gap: 12 },
   dateField: { flex: 1 },
   saveButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 8,
     padding: 14,
     alignItems: "center",

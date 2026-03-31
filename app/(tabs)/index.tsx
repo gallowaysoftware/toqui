@@ -63,31 +63,41 @@ export default function TripsScreen() {
   if (authLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#e8654a" />
+        <ActivityIndicator size="large" color="#BF4028" />
       </View>
     );
   }
 
   if (!accessToken) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>{t("common.appName")}</Text>
-        <Text style={styles.subtitle}>{t("common.tagline")}</Text>
+      <ScrollView style={styles.container} contentContainerStyle={styles.signInContent}>
+        <Plane color="#BF4028" size={48} style={styles.welcomeIcon} />
+        <Text style={styles.signInTitle}>{t("common.appName")}</Text>
+        <Text style={styles.signInTagline}>{t("common.tagline")}</Text>
+
+        <View style={styles.valueProps}>
+          <Text style={styles.valueProp}>800+ expert personas for every destination</Text>
+          <Text style={styles.valueProp}>Day-by-day itineraries built from conversation</Text>
+          <Text style={styles.valueProp}>Export to calendar, share with friends</Text>
+          <Text style={styles.valueProp}>Free to start — your first trip includes a Pro trial</Text>
+        </View>
+
         <Pressable
           style={[styles.primaryButton, !authReady && styles.disabledButton]}
           onPress={signIn}
           disabled={!authReady}
         >
-          <Text style={styles.buttonText}>{t("common.signIn")}</Text>
+          <Text style={styles.buttonText}>{t("common.getStarted")}</Text>
         </Pressable>
-      </View>
+        <Text style={styles.signInNote}>Sign in with Google to get started. Free, no credit card required.</Text>
+      </ScrollView>
     );
   }
 
   if (tripsLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#e8654a" />
+        <ActivityIndicator size="large" color="#BF4028" />
       </View>
     );
   }
@@ -95,7 +105,7 @@ export default function TripsScreen() {
   if (!trips || trips.length === 0) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.welcomeContent}>
-        <Plane color="#e8654a" size={40} style={styles.welcomeIcon} />
+        <Plane color="#BF4028" size={40} style={styles.welcomeIcon} />
         <Text style={styles.welcomeTitle}>{t("home.welcomeTitle")}</Text>
         <Text style={styles.welcomeSubtitle}>{t("home.welcomeSubtitle")}</Text>
 
@@ -151,7 +161,7 @@ export default function TripsScreen() {
             style={styles.newTripButton}
             onPress={() => router.push("/trips/new" as never)}
           >
-            <Plus color="#e8654a" size={18} />
+            <Plus color="#BF4028" size={18} />
             <Text style={styles.newTripText}>{t("trips.newTrip")}</Text>
           </Pressable>
         }
@@ -163,7 +173,13 @@ export default function TripsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  title: { fontSize: 32, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
+  signInContent: { flexGrow: 1, justifyContent: "center", padding: 24, alignItems: "center" },
+  signInTitle: { fontSize: 36, fontWeight: "bold", color: "#BF4028", marginBottom: 4 },
+  signInTagline: { fontSize: 17, color: "#666", textAlign: "center", marginBottom: 28 },
+  valueProps: { marginBottom: 32, width: "100%" },
+  valueProp: { fontSize: 14, color: "#555", textAlign: "center", lineHeight: 24, marginBottom: 6 },
+  signInNote: { fontSize: 12, color: "#999", textAlign: "center", marginTop: 12 },
+  title: { fontSize: 32, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
   subtitle: { fontSize: 16, color: "#666", textAlign: "center", marginBottom: 32 },
   welcomeContent: { padding: 24, alignItems: "center" },
   welcomeIcon: { marginTop: 32, marginBottom: 16 },
@@ -185,7 +201,7 @@ const styles = StyleSheet.create({
   destinationName: { fontSize: 16, fontWeight: "600", color: "#333" },
   destinationHook: { fontSize: 13, color: "#888", marginTop: 2 },
   primaryButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -205,11 +221,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
     borderStyle: "dashed",
     marginBottom: 12,
   },
-  newTripText: { color: "#e8654a", fontSize: 16, fontWeight: "600" },
+  newTripText: { color: "#BF4028", fontSize: 16, fontWeight: "600" },
   tripCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -229,7 +245,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,

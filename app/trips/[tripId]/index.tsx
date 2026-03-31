@@ -30,7 +30,7 @@ export default function TripDetailScreen() {
   if (isLoading || !trip) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#e8654a" />
+        <ActivityIndicator size="large" color="#BF4028" />
       </View>
     );
   }
@@ -109,7 +109,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/chat` as never)}
           >
-            <MessageCircle color="#e8654a" size={24} />
+            <MessageCircle color="#BF4028" size={24} />
             <Text style={styles.actionText}>Chat</Text>
           </Pressable>
 
@@ -117,7 +117,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/bookings` as never)}
           >
-            <Calendar color="#e8654a" size={24} />
+            <Calendar color="#BF4028" size={24} />
             <Text style={styles.actionText}>Bookings</Text>
           </Pressable>
 
@@ -125,7 +125,7 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/settings` as never)}
           >
-            <Settings color="#e8654a" size={24} />
+            <Settings color="#BF4028" size={24} />
             <Text style={styles.actionText}>Settings</Text>
           </Pressable>
 
@@ -135,9 +135,9 @@ export default function TripDetailScreen() {
             disabled={isSharing}
           >
             {isSharing ? (
-              <ActivityIndicator size="small" color="#e8654a" />
+              <ActivityIndicator size="small" color="#BF4028" />
             ) : (
-              <Share2 color="#e8654a" size={24} />
+              <Share2 color="#BF4028" size={24} />
             )}
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
@@ -150,14 +150,14 @@ export default function TripDetailScreen() {
                 style={styles.exportButton}
                 onPress={() => exportItineraryPDF(trip, itinerary)}
               >
-                <FileText color="#e8654a" size={16} />
+                <FileText color="#BF4028" size={16} />
                 <Text style={styles.exportText}>Export PDF</Text>
               </Pressable>
               <Pressable
                 style={styles.exportButton}
                 onPress={() => exportItineraryICal(trip, itinerary)}
               >
-                <CalendarDays color="#e8654a" size={16} />
+                <CalendarDays color="#BF4028" size={16} />
                 <Text style={styles.exportText}>Export Calendar</Text>
               </Pressable>
             </View>
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  exportText: { fontSize: 13, fontWeight: "500", color: "#e8654a" },
+  exportText: { fontSize: 13, fontWeight: "500", color: "#BF4028" },
   trialBanner: {
     flexDirection: "row",
     alignItems: "center",

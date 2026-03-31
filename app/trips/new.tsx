@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: "row", gap: 12 },
   dateField: { flex: 1 },
   submitButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 8,
     padding: 16,
     alignItems: "center",

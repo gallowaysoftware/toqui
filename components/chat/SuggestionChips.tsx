@@ -25,7 +25,7 @@ export function SuggestionChips({ suggestions, onSelect }: SuggestionChipsProps)
           style={styles.chip}
           onPress={() => onSelect(label)}
         >
-          <Icon color="#e8654a" size={14} />
+          <Icon color="#BF4028" size={14} />
           <Text style={styles.text}>{label}</Text>
         </Pressable>
       ))}
@@ -41,10 +41,10 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  text: { fontSize: 13, color: "#e8654a", fontWeight: "500" },
+  text: { fontSize: 13, color: "#BF4028", fontWeight: "500" },
 });

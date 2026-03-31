@@ -100,7 +100,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   if (checkingStatus) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="small" color="#e8654a" />
+        <ActivityIndicator size="small" color="#BF4028" />
       </View>
     );
   }
@@ -120,7 +120,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Star color="#e8654a" size={22} />
+        <Star color="#BF4028" size={22} />
         <Text style={styles.title}>{t("checkout.title")}</Text>
       </View>
 
@@ -167,7 +167,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
             style={styles.webOnlyLink}
             onPress={() => Linking.openURL("https://toqui.app")}
           >
-            <ExternalLink color="#e8654a" size={14} />
+            <ExternalLink color="#BF4028" size={14} />
             <Text style={styles.webOnlyLinkText}>
               {t("checkout.webOnlyLink")}
             </Text>
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#e8654a",
+    borderColor: "#BF4028",
   },
   header: {
     flexDirection: "row",
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#e8654a",
+    color: "#BF4028",
     marginBottom: 2,
   },
   priceDescription: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   unlockButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   webOnlyLinkText: {
     fontSize: 14,
-    color: "#e8654a",
+    color: "#BF4028",
     fontWeight: "500",
   },
   successContainer: {

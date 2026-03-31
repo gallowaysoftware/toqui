@@ -74,7 +74,7 @@ export default function ChatScreen() {
         ListEmptyComponent={
           isLoadingHistory ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#e8654a" />
+              <ActivityIndicator size="large" color="#BF4028" />
             </View>
           ) : (
             <View style={styles.emptyContainer}>
@@ -122,19 +122,19 @@ const styles = StyleSheet.create({
   messageList: { padding: 16, flexGrow: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
   expertBanner: {
     backgroundColor: "#fff8f0",
     borderTopWidth: 1,
-    borderTopColor: "#e8654a",
+    borderTopColor: "#BF4028",
     paddingVertical: 10,
     paddingHorizontal: 16,
     alignItems: "center",
   },
   expertBannerText: { fontSize: 13, color: "#333", marginBottom: 6, textAlign: "center" },
   expertBannerButton: {
-    backgroundColor: "#e8654a",
+    backgroundColor: "#BF4028",
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -156,5 +156,5 @@ const styles = StyleSheet.create({
 const markdownStyles = StyleSheet.create({
   body: { fontSize: 15, color: "#333", lineHeight: 22 },
   strong: { fontWeight: "700" },
-  link: { color: "#e8654a" },
+  link: { color: "#BF4028" },
 });
