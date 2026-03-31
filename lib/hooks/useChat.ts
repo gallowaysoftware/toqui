@@ -96,6 +96,7 @@ function protoToFrontendMessage(msg: ProtoChatMessage): ChatMessage | null {
 
 interface UseChatOptions {
   onResourceExhausted?: () => void;
+  onExpertLimitReached?: () => void;
 }
 
 export function useChat(
@@ -121,9 +122,11 @@ export function useChat(
   const historyLoadedRef = useRef<string | null>(null);
   const nextPageTokenRef = useRef("");
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
+  const onExpertLimitReachedRef = useRef(options?.onExpertLimitReached);
   useEffect(() => {
     onResourceExhaustedRef.current = options?.onResourceExhausted;
-  }, [options?.onResourceExhausted]);
+    onExpertLimitReachedRef.current = options?.onExpertLimitReached;
+  }, [options?.onResourceExhausted, options?.onExpertLimitReached]);
 
   // Reset state when tripId changes
   useEffect(() => {
@@ -255,6 +258,14 @@ export function useChat(
             case "toolResult": {
               const toolResult = resp.event.value;
               setToolActivity({ toolName: toolResult.toolName, status: "done" });
+              if (toolResult.toolName === "suggest_expert" && toolResult.resultJson) {
+                try {
+                  const parsed = JSON.parse(toolResult.resultJson);
+                  if (parsed.error === "trip_pro_required") {
+                    onExpertLimitReachedRef.current?.();
+                  }
+                } catch { /* ignore malformed JSON */ }
+              }
               if (toolResult.toolName === "recommend_booking" && toolResult.resultJson) {
                 try {
                   const parsed = JSON.parse(toolResult.resultJson);
@@ -337,12 +348,16 @@ export function useChat(
         console.error("Chat error:", error);
         if (error instanceof ConnectError && error.code === Code.ResourceExhausted) {
           onResourceExhaustedRef.current?.();
+          const errMsg = error.message;
+          const isDailyLimit = errMsg.includes("daily message limit");
           setMessages((prev) => [
             ...prev,
             {
               id: uuid(),
               role: "assistant",
-              content: "You\u2019ve reached your daily message limit. Upgrade to Trip Pro for unlimited messages.",
+              content: isDailyLimit
+                ? "You\u2019ve used your 30 messages for today. Try again tomorrow! Your messages reset at midnight UTC."
+                : "Our AI service has reached its daily capacity \u2014 please try again tomorrow.",
               isError: true,
             },
           ]);

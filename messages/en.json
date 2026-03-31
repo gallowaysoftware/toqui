@@ -108,7 +108,11 @@
     "planningPrompt": "Start planning your trip! Tell me where you want to go.",
     "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
     "inputPlaceholder": "Type a message...",
-    "errorMessage": "Sorry, something went wrong. Please try again."
+    "errorMessage": "Sorry, something went wrong. Please try again.",
+    "expertLimitReached": "You've used your free expert consultations for this trip.",
+    "expertLimitCta": "Unlock unlimited experts for $12 CAD",
+    "dailyLimitReached": "You've used your 30 messages for today. Try again tomorrow!",
+    "dailyLimitReset": "Your messages reset at midnight UTC."
   },
   "checkout": {
     "title": "Unlock Trip Pro",

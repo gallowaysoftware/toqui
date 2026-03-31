@@ -6,9 +6,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
-import { useCallback, useRef } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -19,6 +21,9 @@ import type { ChatMessage } from "@/lib/hooks/useChat";
 
 export default function ChatScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [showExpertBanner, setShowExpertBanner] = useState(false);
   const {
     messages,
     streamingText,
@@ -26,7 +31,9 @@ export default function ChatScreen() {
     isLoadingHistory,
     toolActivity,
     sendMessage,
-  } = useChat(tripId, "planning");
+  } = useChat(tripId, "planning", {
+    onExpertLimitReached: () => setShowExpertBanner(true),
+  });
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -79,6 +86,17 @@ export default function ChatScreen() {
           </>
         }
       />
+      {showExpertBanner && tripId && (
+        <View style={styles.expertBanner}>
+          <Text style={styles.expertBannerText}>{t("chat.expertLimitReached")}</Text>
+          <Pressable
+            onPress={() => router.push(`/trips/${tripId}`)}
+            style={styles.expertBannerButton}
+          >
+            <Text style={styles.expertBannerButtonText}>{t("chat.expertLimitCta")}</Text>
+          </Pressable>
+        </View>
+      )}
       <ChatInput onSend={sendMessage} disabled={isStreaming} />
     </KeyboardAvoidingView>
   );
@@ -91,6 +109,22 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#e8654a", marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: "#666", textAlign: "center", paddingHorizontal: 40 },
+  expertBanner: {
+    backgroundColor: "#fff8f0",
+    borderTopWidth: 1,
+    borderTopColor: "#e8654a",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  expertBannerText: { fontSize: 13, color: "#333", marginBottom: 6, textAlign: "center" },
+  expertBannerButton: {
+    backgroundColor: "#e8654a",
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   streamingBubble: {
     maxWidth: "85%",
     padding: 12,
