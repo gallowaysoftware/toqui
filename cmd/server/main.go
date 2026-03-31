@@ -90,6 +90,15 @@ func main() {
 		cfg.JWTSecret,
 	)
 
+	// Allow frontend origins to use their own /auth/callback as redirect URI.
+	// This is needed because the SPA sends the auth code to GoogleLogin with
+	// the frontend callback URL, not the backend's server-side redirect URI.
+	for _, origin := range append(cfg.CORSAllowedOrigins, cfg.FrontendURL) {
+		if origin != "" {
+			auth.AllowedRedirectURIs[origin+"/auth/callback"] = true
+		}
+	}
+
 	// AI Provider — Claude primary, Gemini (Vertex AI) fallback
 	var aiProvider ai.Provider
 	if cfg.AnthropicAPIKey != "" {
