@@ -9,6 +9,7 @@ import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useTheme } from "@/lib/theme";
+import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
 
@@ -298,6 +299,10 @@ export default function TripsScreen() {
           <Plus color="#fff" size={18} />
           <Text style={styles.buttonText}>{t("trips.quickStart.customTrip")}</Text>
         </Pressable>
+
+        <View style={{ marginTop: 32, width: "100%" }}>
+          <TemplateBrowser />
+        </View>
       </ScrollView>
     );
   }
@@ -325,6 +330,11 @@ export default function TripsScreen() {
             <Plus color={colors.accent} size={18} />
             <Text style={styles.newTripText}>{t("trips.newTrip")}</Text>
           </Pressable>
+        }
+        ListFooterComponent={
+          <View style={{ marginTop: 20, paddingBottom: 16 }}>
+            <TemplateBrowser compact />
+          </View>
         }
       />
     </View>

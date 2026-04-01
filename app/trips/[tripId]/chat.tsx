@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from "react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
@@ -46,7 +46,10 @@ const CHAT_SUGGESTION_DEFS = [
 
 export default function ChatScreen() {
   const { t } = useTranslation();
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, suggestedPrompt } = useLocalSearchParams<{
+    tripId: string;
+    suggestedPrompt?: string;
+  }>();
   const router = useRouter();
   const { colors } = useTheme();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
@@ -74,6 +77,14 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  const suggestedPromptSentRef = useRef(false);
+  useEffect(() => {
+    if (suggestedPrompt && !suggestedPromptSentRef.current && !isLoadingHistory && messages.length === 0) {
+      suggestedPromptSentRef.current = true;
+      sendMessage(suggestedPrompt);
+    }
+  }, [suggestedPrompt, isLoadingHistory, messages.length, sendMessage]);
 
   const suggestions = useMemo(
     () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),
