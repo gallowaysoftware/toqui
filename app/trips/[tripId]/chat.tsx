@@ -12,7 +12,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Briefcase } from "lucide-react-native";
-import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -37,7 +36,6 @@ export default function ChatScreen() {
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const {
     messages,
-    streamingText,
     isStreaming,
     isLoadingHistory,
     historyError,
@@ -45,6 +43,7 @@ export default function ChatScreen() {
     sendMessage,
     abortStream,
     loadMoreHistory,
+    retryHistory,
     lastFailedMessage,
     clearLastFailedMessage,
   } = useChat(tripId, "planning", {
@@ -120,24 +119,7 @@ export default function ChatScreen() {
     retryBannerRetryButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
     retryDismiss: { padding: 4 },
     retryDismissText: { fontSize: 16, color: colors.error },
-    streamingBubble: {
-      maxWidth: "85%",
-      padding: 12,
-      borderRadius: 16,
-      borderBottomLeftRadius: 4,
-      backgroundColor: colors.assistantBubble,
-      borderWidth: 1,
-      borderColor: colors.assistantBubbleBorder,
-      alignSelf: "flex-start",
-      marginBottom: 8,
-    },
   });
-
-  const markdownStyles = {
-    body: { fontSize: 15, color: colors.textPrimary, lineHeight: 22 },
-    strong: { fontWeight: "700" as const },
-    link: { color: colors.accent },
-  };
 
   return (
     <KeyboardAvoidingView
@@ -161,7 +143,7 @@ export default function ChatScreen() {
             <View style={styles.emptyContainer}>
               <Text style={styles.errorTitle}>Could not load messages</Text>
               <Text style={styles.emptySubtitle}>{historyError}</Text>
-              <Pressable style={styles.retryButton} onPress={loadMoreHistory}>
+              <Pressable style={styles.retryButton} onPress={retryHistory}>
                 <Text style={styles.retryButtonText}>Retry</Text>
               </Pressable>
             </View>
@@ -180,11 +162,7 @@ export default function ChatScreen() {
             {toolActivity && (
               <TypingIndicator toolName={toolActivity.toolName} />
             )}
-            {streamingText ? (
-              <View style={styles.streamingBubble}>
-                <Markdown style={markdownStyles}>{streamingText}</Markdown>
-              </View>
-            ) : isStreaming && !toolActivity ? (
+            {isStreaming && !toolActivity ? (
               <TypingIndicator />
             ) : null}
             {isStreaming && (

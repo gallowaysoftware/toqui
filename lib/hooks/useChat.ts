@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/lib/transport";
 import { ChatService, ChatMode } from "@gen/toqui/v1/chat_pb";
@@ -108,6 +110,22 @@ export interface FailedMessage {
   attachments?: { filename: string; mediaType: string; data: Uint8Array }[];
 }
 
+// Persist session IDs across remounts so navigating away and back resumes the same session.
+async function getPersistedSessionId(tripId?: string): Promise<string> {
+  const key = `toqui_session_${tripId ?? "companion"}`;
+  if (Platform.OS === "web") return sessionStorage.getItem(key) ?? "";
+  return (await AsyncStorage.getItem(key)) ?? "";
+}
+
+async function persistSessionId(tripId: string | undefined, id: string): Promise<void> {
+  const key = `toqui_session_${tripId ?? "companion"}`;
+  if (Platform.OS === "web") {
+    sessionStorage.setItem(key, id);
+    return;
+  }
+  await AsyncStorage.setItem(key, id);
+}
+
 interface UseChatOptions {
   onResourceExhausted?: () => void;
   onExpertLimitReached?: () => void;
@@ -131,13 +149,19 @@ export function useChat(
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<FailedMessage | null>(null);
+  // Incremented by retryHistory() to force a fresh initial load.
+  const [historyKey, setHistoryKey] = useState(0);
   const isSendingRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef("");
   const activePersonaRef = useRef<ActivePersona | null>(null);
   const historyLoadedRef = useRef<string | null>(null);
+  // Last historyKey value for which we started a load — prevents double-loads on re-renders.
+  const historyKeyLoadedRef = useRef(-1);
   const nextPageTokenRef = useRef("");
+  // Stable ID of the assistant message being built by textDelta events.
+  const streamingMessageIdRef = useRef<string | null>(null);
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
   const onExpertLimitReachedRef = useRef(options?.onExpertLimitReached);
   useEffect(() => {
@@ -160,14 +184,27 @@ export function useChat(
     sessionIdRef.current = "";
     activePersonaRef.current = null;
     historyLoadedRef.current = null;
+    historyKeyLoadedRef.current = -1;
     nextPageTokenRef.current = "";
+    streamingMessageIdRef.current = null;
     isSendingRef.current = false;
+  }, [tripId]);
+
+  // Hydrate sessionIdRef from persistent storage so remounts resume the same session.
+  useEffect(() => {
+    let cancelled = false;
+    void getPersistedSessionId(tripId).then((id) => {
+      if (!cancelled) sessionIdRef.current = id;
+    });
+    return () => { cancelled = true; };
   }, [tripId]);
 
   // Load chat history
   useEffect(() => {
     if (!tripId) return;
-    if (historyLoadedRef.current === tripId) return;
+    // Skip if we already fired a load for this exact (tripId, historyKey) combination.
+    if (historyKeyLoadedRef.current === historyKey && historyLoadedRef.current === tripId) return;
+    historyKeyLoadedRef.current = historyKey;
     let cancelled = false;
     const loadHistory = async () => {
       setIsLoadingHistory(true);
@@ -226,7 +263,7 @@ export function useChat(
     };
     void loadHistory();
     return () => { cancelled = true; };
-  }, [tripId, transport]);
+  }, [tripId, transport, historyKey]);
 
   const loadMoreHistory = useCallback(async () => {
     if (!tripId || !nextPageTokenRef.current || isLoadingMoreRef.current) return;
@@ -262,6 +299,16 @@ export function useChat(
     }
   }, [tripId, transport]);
 
+  // Reset history state and re-trigger the initial load (used by the retry button).
+  const retryHistory = useCallback(() => {
+    historyLoadedRef.current = null;
+    historyKeyLoadedRef.current = -1;
+    nextPageTokenRef.current = "";
+    setMessages([]);
+    setHistoryError(null);
+    setHistoryKey((k) => k + 1);
+  }, []);
+
   const sendMessage = useCallback(
     async (content: string, attachments?: { filename: string; mediaType: string; data: Uint8Array }[]) => {
       if (isSendingRef.current) return;
@@ -281,6 +328,7 @@ export function useChat(
       setStreamingText("");
       setCreatedTrip(null);
       setSelectedTrip(null);
+      streamingMessageIdRef.current = null;
 
       try {
         const client = createClient(ChatService, transport);
@@ -302,19 +350,47 @@ export function useChat(
         }, { signal: controller.signal })) {
           const resp = event;
           switch (resp.event.case) {
-            case "textDelta":
+            case "textDelta": {
               fullText += resp.event.value.text;
-              setStreamingText(fullText);
+              // First delta: push a placeholder message and record its ID.
+              // Subsequent deltas: update it in-place. Content lives in messages[], not streamingText.
+              if (!streamingMessageIdRef.current) {
+                const newId = uuid();
+                streamingMessageIdRef.current = newId;
+                const persona = activePersonaRef.current;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: newId,
+                    role: "assistant",
+                    content: fullText,
+                    personaId: persona?.id,
+                    personaName: persona?.name,
+                    personaAvatar: persona?.avatarUrl,
+                    personaAccentColor: persona?.accentColor,
+                  },
+                ]);
+              } else {
+                const id = streamingMessageIdRef.current;
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === id ? { ...m, content: fullText } : m)),
+                );
+              }
               break;
+            }
             case "sessionCreated":
               sessionIdRef.current = resp.event.value.sessionId;
+              // Persist so remounts resume this session rather than starting a new one.
+              void persistSessionId(tripId, resp.event.value.sessionId);
               break;
             case "toolCall":
               setToolActivity({ toolName: resp.event.value.toolName, status: "calling" });
               break;
             case "toolResult": {
               const toolResult = resp.event.value;
+              // Brief "done" state lets the UI animate out before the indicator disappears.
               setToolActivity({ toolName: toolResult.toolName, status: "done" });
+              setTimeout(() => setToolActivity(null), 300);
               if (toolResult.toolName === "suggest_expert" && toolResult.resultJson) {
                 try {
                   const parsed = JSON.parse(toolResult.resultJson);
@@ -364,10 +440,46 @@ export function useChat(
               }
               break;
             }
-            case "messageComplete":
+            case "messageComplete": {
+              // Update the in-progress message rather than appending a duplicate.
               if (resp.event.value.fullContent) fullText = resp.event.value.fullContent;
               setToolActivity(null);
+              if (streamingMessageIdRef.current) {
+                const id = streamingMessageIdRef.current;
+                const persona = activePersonaRef.current;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === id
+                      ? {
+                          ...m,
+                          content: fullText,
+                          personaId: persona?.id,
+                          personaName: persona?.name,
+                          personaAvatar: persona?.avatarUrl,
+                          personaAccentColor: persona?.accentColor,
+                        }
+                      : m,
+                  ),
+                );
+                streamingMessageIdRef.current = null;
+              } else if (fullText) {
+                // Cached / no-delta path: messageComplete arrived with no prior textDelta
+                const persona = activePersonaRef.current;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: uuid(),
+                    role: "assistant",
+                    content: fullText,
+                    personaId: persona?.id,
+                    personaName: persona?.name,
+                    personaAvatar: persona?.avatarUrl,
+                    personaAccentColor: persona?.accentColor,
+                  },
+                ]);
+              }
               break;
+            }
             case "personaSwitch": {
               const ps = resp.event.value;
               if (ps.newPersona) {
@@ -414,22 +526,34 @@ export function useChat(
           }
         }
 
-        if (fullText) {
+        // Stream ended without messageComplete (no error): finalize the in-progress message.
+        if (streamingMessageIdRef.current && fullText) {
+          const id = streamingMessageIdRef.current;
           const persona = activePersonaRef.current;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uuid(),
-              role: "assistant",
-              content: fullText,
-              personaId: persona?.id,
-              personaName: persona?.name,
-              personaAvatar: persona?.avatarUrl,
-              personaAccentColor: persona?.accentColor,
-            },
-          ]);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === id
+                ? {
+                    ...m,
+                    content: fullText,
+                    personaId: persona?.id,
+                    personaName: persona?.name,
+                    personaAvatar: persona?.avatarUrl,
+                    personaAccentColor: persona?.accentColor,
+                  }
+                : m,
+            ),
+          );
+          streamingMessageIdRef.current = null;
         }
       } catch (error) {
+        // Remove the partial streaming message so only the error message is shown.
+        if (streamingMessageIdRef.current) {
+          const id = streamingMessageIdRef.current;
+          setMessages((prev) => prev.filter((m) => m.id !== id));
+          streamingMessageIdRef.current = null;
+        }
+
         console.error("Chat error:", error);
         const isAbort =
           (error instanceof DOMException && error.name === "AbortError") ||
@@ -467,6 +591,7 @@ export function useChat(
         setStreamingText("");
         setIsStreaming(false);
         setToolActivity(null);
+        streamingMessageIdRef.current = null;
         isSendingRef.current = false;
       }
     },
@@ -496,6 +621,7 @@ export function useChat(
     abortStream,
     hasMoreHistory,
     loadMoreHistory,
+    retryHistory,
     lastFailedMessage,
     clearLastFailedMessage,
   };

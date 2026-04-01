@@ -9,7 +9,6 @@ import {
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Globe } from "lucide-react-native";
-import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -33,7 +32,6 @@ export default function CompanionScreen() {
   const { colors } = useTheme();
   const {
     messages,
-    streamingText,
     isStreaming,
     toolActivity,
     sendMessage,
@@ -61,24 +59,7 @@ export default function CompanionScreen() {
     emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
     emptyTitle: { fontSize: 20, fontWeight: "bold", color: colors.accent, marginBottom: 8 },
     emptySubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
-    streamingBubble: {
-      maxWidth: "85%",
-      padding: 12,
-      borderRadius: 16,
-      borderBottomLeftRadius: 4,
-      backgroundColor: colors.assistantBubble,
-      borderWidth: 1,
-      borderColor: colors.assistantBubbleBorder,
-      alignSelf: "flex-start",
-      marginBottom: 8,
-    },
   });
-
-  const markdownStyles = {
-    body: { fontSize: 15, color: colors.assistantBubbleText, lineHeight: 22 },
-    strong: { fontWeight: "700" as const },
-    link: { color: colors.accent },
-  };
 
   if (!accessToken) {
     return (
@@ -113,13 +94,7 @@ export default function CompanionScreen() {
         ListFooterComponent={
           <>
             {toolActivity && <TypingIndicator toolName={toolActivity.toolName} />}
-            {streamingText ? (
-              <View style={styles.streamingBubble}>
-                <Markdown style={markdownStyles}>{streamingText}</Markdown>
-              </View>
-            ) : isStreaming && !toolActivity ? (
-              <TypingIndicator />
-            ) : null}
+            {isStreaming && !toolActivity ? <TypingIndicator /> : null}
           </>
         }
       />
