@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizontal, AlertCircle, RefreshCw, ClipboardList } from "lucide-react-native";
 import { useBookings, useIngestBooking, useDeleteBooking } from "@/lib/hooks/useBookings";
 import { BookingType } from "@gen/toqui/v1/booking_pb";
+import ForwardingCard from "@/components/bookings/ForwardingCard";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
 import { useTheme } from "@/lib/theme";
 
@@ -215,7 +216,9 @@ export default function BookingsScreen() {
           </View>
         }
         ListHeaderComponent={
-          showAdd ? (
+          <>
+          <ForwardingCard tripId={tripId!} />
+          {showAdd ? (
             <View style={styles.addForm}>
               <TextInput
                 style={styles.textArea}
@@ -249,7 +252,8 @@ export default function BookingsScreen() {
               <Plus color={colors.accent} size={18} />
               <Text style={styles.addButtonText}>{t("bookings.addBooking")}</Text>
             </Pressable>
-          )
+          )}
+          </>
         }
       />
     </View>
