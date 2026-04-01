@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import type { PersonaIntroData } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
 
@@ -9,86 +9,123 @@ interface PersonaIntroCardProps {
 export function PersonaIntroCard({ persona }: PersonaIntroCardProps) {
   const { colors } = useTheme();
   const accentColor = persona.accentColor || colors.accent;
-  const initial = persona.name.charAt(0).toUpperCase();
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: accentColor,
-          shadowColor: accentColor,
-        },
-      ]}
-    >
-      <View style={styles.header}>
-        <View style={[styles.avatar, { backgroundColor: accentColor }]}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
-        <View style={styles.nameBlock}>
-          <Text style={[styles.name, { color: colors.textPrimary }]}>
-            {persona.name}
-          </Text>
-          {persona.specialties.length > 0 && (
-            <Text style={[styles.specialties, { color: colors.textSecondary }]}>
-              {persona.specialties.join(" \u00B7 ")}
+    <View style={styles.wrapper}>
+      <View style={[styles.rule, { backgroundColor: accentColor }]} />
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surface,
+            borderColor: accentColor,
+            shadowColor: accentColor,
+          },
+        ]}
+      >
+        <View style={styles.header}>
+          <View style={[styles.avatarContainer, { borderColor: accentColor }]}>
+            {persona.avatarUrl ? (
+              <Image source={{ uri: persona.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarFallback, { backgroundColor: accentColor }]}>
+                <Text style={styles.avatarText}>{persona.name.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.nameBlock}>
+            <Text style={[styles.meetLabel, { color: colors.textSecondary }]}>
+              Meet your expert
             </Text>
-          )}
+            <Text style={[styles.name, { color: colors.textPrimary }]}>
+              {persona.name}
+            </Text>
+            {persona.specialties.length > 0 && (
+              <Text style={[styles.specialties, { color: accentColor }]}>
+                {persona.specialties.join(" \u00B7 ")}
+              </Text>
+            )}
+          </View>
         </View>
+        <Text style={[styles.handoff, { color: colors.textSecondary }]}>
+          {persona.handoffMessage}
+        </Text>
       </View>
-      <Text style={[styles.handoff, { color: colors.textTertiary }]}>
-        {persona.handoffMessage}
-      </Text>
+      <View style={[styles.rule, { backgroundColor: accentColor }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginVertical: 12,
+  },
+  rule: {
+    height: 1,
+    opacity: 0.25,
+    marginHorizontal: 16,
+  },
   card: {
-    alignSelf: "center",
-    maxWidth: "90%",
+    marginHorizontal: 8,
+    marginVertical: 10,
     borderRadius: 16,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     padding: 16,
-    marginBottom: 8,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 10,
+    gap: 14,
+    marginBottom: 12,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
     color: "#ffffff",
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "700",
   },
   nameBlock: {
     flex: 1,
   },
+  meetLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
   name: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
+    marginBottom: 2,
   },
   specialties: {
     fontSize: 13,
-    marginTop: 2,
+    fontWeight: "500",
   },
   handoff: {
     fontSize: 14,
     fontStyle: "italic",
-    lineHeight: 20,
+    lineHeight: 21,
   },
 });
