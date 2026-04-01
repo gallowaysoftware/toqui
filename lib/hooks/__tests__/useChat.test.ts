@@ -32,6 +32,17 @@ vi.mock("@/lib/transport", () => ({
   useTransport: vi.fn(() => ({})), // returns a dummy transport
 }));
 
+vi.mock("react-native", () => ({
+  Platform: { OS: "web" },
+}));
+
+vi.mock("@react-native-async-storage/async-storage", () => ({
+  default: {
+    getItem: vi.fn().mockResolvedValue(null),
+    setItem: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -90,6 +101,8 @@ beforeEach(() => {
   mockSendMessage.mockClear();
   mockGetChatHistory.mockClear();
   mockGetChatHistory.mockResolvedValue(emptyHistoryResponse());
+  // Clear sessionStorage so session IDs don't leak between tests
+  sessionStorage.clear();
 });
 
 // ---------------------------------------------------------------------------
@@ -1251,6 +1264,117 @@ describe("useChat", () => {
 
       // Should not have made additional calls after rerender
       expect(mockGetChatHistory.mock.calls.length).toBe(initialCallCount);
+    });
+  });
+
+  // =========================================================================
+  // retryHistory
+  // =========================================================================
+
+  describe("retryHistory", () => {
+    it("is exposed in the hook return value", () => {
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+      expect(typeof result.current.retryHistory).toBe("function");
+    });
+
+    it("re-triggers a getChatHistory load", async () => {
+      mockGetChatHistory.mockResolvedValue(
+        historyResponse([{ id: "h1", role: "user", content: "initial" }]),
+      );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await vi.waitFor(() => expect(mockGetChatHistory).toHaveBeenCalled());
+        await new Promise((r) => setTimeout(r, 20));
+      });
+
+      const callsAfterInitialLoad = mockGetChatHistory.mock.calls.length;
+      expect(callsAfterInitialLoad).toBeGreaterThan(0);
+
+      // retryHistory should trigger another getChatHistory call.
+      // Call retryHistory and allow React to flush effects.
+      act(() => { result.current.retryHistory(); });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      // After retry, a new load should have been made
+      expect(mockGetChatHistory.mock.calls.length).toBeGreaterThan(callsAfterInitialLoad);
+      expect(result.current.messages).toHaveLength(1);
+    });
+  });
+
+  // =========================================================================
+  // Bug 1: No message duplication on messageComplete
+  // =========================================================================
+
+  describe("no message duplication (Bug 1)", () => {
+    it("does not duplicate assistant message when messageComplete follows textDeltas", async () => {
+      mockSendMessage.mockReturnValue(
+        streamEvents([
+          evt("textDelta", { text: "Hello " }),
+          evt("textDelta", { text: "world" }),
+          evt("messageComplete", { fullContent: "Hello world", messageId: "m1", sessionId: "s1" }),
+        ]),
+      );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("Hi");
+      });
+
+      // Must be exactly 2: user + assistant — never 3
+      expect(result.current.messages).toHaveLength(2);
+      const assistantMsgs = result.current.messages.filter((m) => m.role === "assistant");
+      expect(assistantMsgs).toHaveLength(1);
+      expect(assistantMsgs[0].content).toBe("Hello world");
+    });
+  });
+
+  // =========================================================================
+  // Bug 2: Session ID persistence via sessionStorage
+  // =========================================================================
+
+  describe("session persistence (Bug 2)", () => {
+    it("persists sessionId to sessionStorage on sessionCreated", async () => {
+      mockSendMessage.mockReturnValue(
+        streamEvents([
+          evt("sessionCreated", { sessionId: "persistent-session-id" }),
+          evt("textDelta", { text: "hi" }),
+          evt("messageComplete", { fullContent: "hi", messageId: "m1", sessionId: "persistent-session-id" }),
+        ]),
+      );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("hello");
+      });
+
+      expect(sessionStorage.getItem("toqui_session_trip-1")).toBe("persistent-session-id");
+    });
+
+    it("reads persisted sessionId from sessionStorage on second send after simulated remount", async () => {
+      // Pre-populate sessionStorage as if a previous session had persisted it
+      sessionStorage.setItem("toqui_session_trip-1", "pre-persisted-session");
+
+      mockSendMessage.mockReturnValue(streamEvents([]));
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      // Wait for the hydration useEffect to run
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+
+      await act(async () => {
+        await result.current.sendMessage("test");
+      });
+
+      expect(mockSendMessage.mock.calls[0][0].sessionId).toBe("pre-persisted-session");
     });
   });
 
