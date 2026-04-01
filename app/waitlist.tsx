@@ -1,6 +1,7 @@
 import { View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AlertCircle } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useJoinWaitlist, useWaitlistStatus } from "@/lib/hooks/useWaitlist";
 
@@ -14,8 +15,12 @@ export default function WaitlistScreen() {
 
   const handleJoin = async () => {
     if (!email.trim()) return;
-    await joinWaitlist.mutateAsync({ email: email.trim() });
-    setJoinedEmail(email.trim());
+    try {
+      await joinWaitlist.mutateAsync({ email: email.trim() });
+      setJoinedEmail(email.trim());
+    } catch {
+      // TanStack Query sets joinWaitlist.isError automatically
+    }
   };
 
   const styles = StyleSheet.create({
@@ -39,7 +44,16 @@ export default function WaitlistScreen() {
     },
     disabledButton: { opacity: 0.5 },
     joinText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-    errorText: { color: colors.error, fontSize: 14, textAlign: "center", marginTop: 12 },
+    errorCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.errorBg,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 12,
+    },
+    errorText: { color: colors.error, fontSize: 14, flex: 1 },
     positionCard: {
       backgroundColor: colors.surfaceSecondary,
       borderRadius: 12,
@@ -95,9 +109,12 @@ export default function WaitlistScreen() {
       </Pressable>
 
       {joinWaitlist.isError && (
-        <Text style={styles.errorText}>
-          {joinWaitlist.error.message || "Failed to join waitlist"}
-        </Text>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={16} />
+          <Text style={styles.errorText}>
+            {joinWaitlist.error.message || t("common.error")}
+          </Text>
+        </View>
       )}
     </View>
   );

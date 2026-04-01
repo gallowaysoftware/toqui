@@ -75,6 +75,8 @@
     "trialBadge": "Trial",
     "loadError": "Couldn't load your trips",
     "loadErrorSubtitle": "Check your connection and try again.",
+    "emptyTitle": "Where do you want to go?",
+    "emptySubtitle": "Pick a destination or create your own trip",
     "status": {
       "planning": "Planning",
       "active": "Active",
@@ -91,7 +93,8 @@
     "endDate": "End date (optional)",
     "submit": "Start Planning",
     "submitting": "Creating...",
-    "dateRangeError": "End date must be on or after start date"
+    "dateRangeError": "End date must be on or after start date",
+    "createError": "Failed to create trip. Please try again."
   },
   "tripSettings": {
     "title": "Trip Settings",
@@ -101,6 +104,11 @@
     "editEndDate": "End date",
     "save": "Save Changes",
     "saving": "Saving...",
+    "saved": "Changes saved",
+    "saveError": "Failed to save changes. Please try again.",
+    "deleteError": "Failed to delete trip. Please try again.",
+    "loadError": "Couldn't load trip settings",
+    "loadErrorSubtitle": "Check your connection and try again.",
     "deleteTrip": "Delete Trip",
     "deleteConfirm": "Yes, Delete Trip",
     "deleteWarning": "Are you sure you want to delete this trip? This action cannot be undone.",
@@ -126,6 +134,16 @@
       "proDescription": "Full access to expert personas and unbiased recommendations",
       "learnMore": "Learn More"
     }
+  },
+  "bookings": {
+    "emptyTitle": "No bookings yet",
+    "emptySubtitle": "Paste a confirmation email to add one",
+    "loadError": "Couldn't load bookings",
+    "loadErrorSubtitle": "Check your connection and try again."
+  },
+  "tripDetail": {
+    "loadError": "Couldn't load this trip",
+    "loadErrorSubtitle": "Check your connection and try again."
   },
   "trial": {
     "active": "Pro Trial Active",

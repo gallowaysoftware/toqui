@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
+import { useQueryClient } from "@tanstack/react-query";
 
 function formatTripDate(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00Z`);
@@ -38,7 +39,8 @@ function countDays(startDate: string, endDate: string): number {
 export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { trip, isLoading } = useTrip(tripId!);
+  const { trip, isLoading, error: tripError } = useTrip(tripId!);
+  const queryClient = useQueryClient();
   const { itinerary, coveredDays, isLoading: isItineraryLoading } = useItinerary(tripId!);
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
@@ -110,16 +112,44 @@ export default function TripDetailScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: "#eff6ff",
+      backgroundColor: colors.infoBg,
       borderWidth: 1,
-      borderColor: "#bfdbfe",
+      borderColor: colors.infoBorder,
       borderRadius: 10,
       padding: 12,
       marginBottom: 16,
     },
-    trialBannerText: { fontSize: 14, color: "#1e40af", fontWeight: "500", flex: 1 },
-    trialBannerExpired: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
-    trialBannerExpiredText: { fontSize: 14, color: "#92400e", fontWeight: "500", flex: 1 },
+    trialBannerText: { fontSize: 14, color: colors.info, fontWeight: "500", flex: 1 },
+    trialBannerExpired: { backgroundColor: colors.warningBg, borderColor: colors.warningBorder },
+    trialBannerExpiredText: { fontSize: 14, color: colors.warning, fontWeight: "500", flex: 1 },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    errorCard: {
+      backgroundColor: colors.errorBg,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: "center",
+      maxWidth: 320,
+      width: "100%",
+    },
+    errorIcon: { marginBottom: 12 },
+    errorTitle: { fontSize: 18, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    errorSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 20 },
+    retryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
     continuationBanner: {
       backgroundColor: colors.accentSoft,
       borderLeftWidth: 3,
@@ -148,10 +178,29 @@ export default function TripDetailScreen() {
     guideSection: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6 },
   });
 
-  if (isLoading || !trip) {
+  if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (tripError || !trip) {
+    return (
+      <View style={styles.errorContainer}>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <Text style={styles.errorTitle}>{t("tripDetail.loadError")}</Text>
+          <Text style={styles.errorSubtitle}>{t("tripDetail.loadErrorSubtitle")}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void queryClient.invalidateQueries({ queryKey: ["trip", tripId] })}
+          >
+            <RefreshCw color="#fff" size={16} />
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -214,7 +263,7 @@ export default function TripDetailScreen() {
 
         {isTrialActive && (
           <View style={styles.trialBanner}>
-            <Clock color="#2563eb" size={16} />
+            <Clock color={colors.info} size={16} />
             <Text style={styles.trialBannerText}>
               {t("trial.active")}
               {" — "}
@@ -227,7 +276,7 @@ export default function TripDetailScreen() {
 
         {isTrialExpired && (
           <View style={[styles.trialBanner, styles.trialBannerExpired]}>
-            <AlertTriangle color="#b45309" size={16} />
+            <AlertTriangle color={colors.warning} size={16} />
             <Text style={styles.trialBannerExpiredText}>
               {t("trial.expired")} — {t("trial.upgradePrompt")}
             </Text>

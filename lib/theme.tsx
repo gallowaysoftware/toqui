@@ -22,6 +22,12 @@ export interface ThemeColors {
   assistantBubble: string;
   assistantBubbleText: string;
   assistantBubbleBorder: string;
+  info: string;
+  infoBg: string;
+  infoBorder: string;
+  warning: string;
+  warningBg: string;
+  warningBorder: string;
   inputBg: string;
   inputBorder: string;
 }
@@ -47,6 +53,12 @@ const lightColors: ThemeColors = {
   assistantBubble: "#ffffff",
   assistantBubbleText: "#1f2937",
   assistantBubbleBorder: "#e5e7eb",
+  info: "#1e40af",
+  infoBg: "#eff6ff",
+  infoBorder: "#bfdbfe",
+  warning: "#92400e",
+  warningBg: "#fffbeb",
+  warningBorder: "#fde68a",
   inputBg: "#ffffff",
   inputBorder: "#d1d5db",
 };
@@ -72,6 +84,12 @@ const darkColors: ThemeColors = {
   assistantBubble: "#222240",
   assistantBubbleText: "#e8e8f0",
   assistantBubbleBorder: "#2d2d50",
+  info: "#93c5fd",
+  infoBg: "#1e2a4a",
+  infoBorder: "#2d4a7a",
+  warning: "#fbbf24",
+  warningBg: "#2a2310",
+  warningBorder: "#4a3d1a",
   inputBg: "#222240",
   inputBorder: "#3d3d66",
 };

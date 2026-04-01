@@ -1,7 +1,9 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput, Alert } from "react-native";
 import { useState, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizontal } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizontal, AlertCircle, RefreshCw, ClipboardList } from "lucide-react-native";
 import { useBookings, useIngestBooking, useDeleteBooking } from "@/lib/hooks/useBookings";
 import { BookingType } from "@gen/toqui/v1/booking_pb";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
@@ -68,7 +70,9 @@ function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => 
 
 export default function BookingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { bookings, isLoading } = useBookings(tripId!);
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { bookings, isLoading, error: bookingsError } = useBookings(tripId!);
   const ingestBooking = useIngestBooking();
   const deleteBooking = useDeleteBooking();
   const { colors } = useTheme();
@@ -97,9 +101,38 @@ export default function BookingsScreen() {
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     list: { padding: 16 },
-    empty: { alignItems: "center", paddingTop: 40 },
-    emptyText: { fontSize: 16, fontWeight: "600", color: colors.textSecondary },
-    emptySubtext: { fontSize: 14, color: colors.textTertiary, marginTop: 4 },
+    empty: { alignItems: "center", paddingTop: 48, paddingBottom: 24 },
+    emptyIcon: { marginBottom: 16 },
+    emptyText: { fontSize: 18, fontWeight: "600", color: colors.textPrimary, marginBottom: 6 },
+    emptySubtext: { fontSize: 14, color: colors.textSecondary },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    errorCard: {
+      backgroundColor: colors.errorBg,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: "center",
+      maxWidth: 320,
+      width: "100%",
+    },
+    errorIcon: { marginBottom: 12 },
+    errorTitle: { fontSize: 18, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    errorSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 20 },
+    retryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
     addButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -145,6 +178,25 @@ export default function BookingsScreen() {
     return <View style={styles.center}><ActivityIndicator size="large" color={colors.accent} /></View>;
   }
 
+  if (bookingsError) {
+    return (
+      <View style={styles.errorContainer}>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <Text style={styles.errorTitle}>{t("bookings.loadError")}</Text>
+          <Text style={styles.errorSubtitle}>{t("bookings.loadErrorSubtitle")}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void queryClient.invalidateQueries({ queryKey: ["bookings", tripId] })}
+          >
+            <RefreshCw color="#fff" size={16} />
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -156,8 +208,9 @@ export default function BookingsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No bookings yet</Text>
-            <Text style={styles.emptySubtext}>Paste a confirmation email to add one</Text>
+            <ClipboardList color={colors.textTertiary} size={48} style={styles.emptyIcon as object} />
+            <Text style={styles.emptyText}>{t("bookings.emptyTitle")}</Text>
+            <Text style={styles.emptySubtext}>{t("bookings.emptySubtitle")}</Text>
           </View>
         }
         ListHeaderComponent={

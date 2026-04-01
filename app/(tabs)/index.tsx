@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
+import { useTheme } from "@/lib/theme";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
 
@@ -19,45 +20,55 @@ const DESTINATIONS = [
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const statusConfig: Record<number, { labelKey: string; color: string }> = {
-    [TripStatus.PLANNING]: { labelKey: "trips.status.planning", color: "#1d4ed8" },
-    [TripStatus.ACTIVE]: { labelKey: "trips.status.active", color: "#16a34a" },
-    [TripStatus.COMPLETED]: { labelKey: "trips.status.completed", color: "#6b7280" },
+    [TripStatus.PLANNING]: { labelKey: "trips.status.planning", color: colors.info },
+    [TripStatus.ACTIVE]: { labelKey: "trips.status.active", color: colors.success },
+    [TripStatus.COMPLETED]: { labelKey: "trips.status.completed", color: colors.textTertiary },
   };
-  const { labelKey, color: statusColor } = statusConfig[trip.status] ?? { labelKey: "trips.status.planning", color: "#6b7280" };
+  const { labelKey, color: statusColor } = statusConfig[trip.status] ?? { labelKey: "trips.status.planning", color: colors.textTertiary };
   const statusLabel = t(labelKey);
 
   return (
     <Pressable
-      style={styles.tripCard}
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
       onPress={onPress}
       accessibilityLabel={`Open trip: ${trip.title}`}
       accessibilityRole="button"
     >
-      <View style={styles.tripCardContent}>
-        <View style={styles.tripCardHeader}>
-          <Text style={styles.tripTitle} numberOfLines={1}>{trip.title}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>{statusLabel}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: colors.textPrimary, flex: 1 }} numberOfLines={1}>{trip.title}</Text>
+          <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: statusColor }}>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: "#fff", textTransform: "capitalize" }}>{statusLabel}</Text>
           </View>
           {trip.isUnlocked && (
-            <View style={styles.proBadge}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
               <Crown color="#fff" size={10} />
-              <Text style={styles.proBadgeText}>{t("trips.proBadge")}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{t("trips.proBadge")}</Text>
             </View>
           )}
         </View>
         {trip.description ? (
-          <Text style={styles.tripDescription} numberOfLines={2}>{trip.description}</Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }} numberOfLines={2}>{trip.description}</Text>
         ) : null}
         {trip.destinationCountry ? (
-          <View style={styles.tripMeta}>
-            <MapPin color="#999" size={14} />
-            <Text style={styles.tripMetaText}>{trip.destinationCountry}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <MapPin color={colors.textTertiary} size={14} />
+            <Text style={{ fontSize: 12, color: colors.textTertiary }}>{trip.destinationCountry}</Text>
           </View>
         ) : null}
       </View>
-      <ChevronRight color="#ccc" size={20} />
+      <ChevronRight color={colors.border} size={20} />
     </Pressable>
   );
 }
@@ -69,11 +80,89 @@ export default function TripsScreen() {
   const { signIn, isReady: authReady } = useGoogleAuth();
   const queryClient = useQueryClient();
   const { trips, isLoading: tripsLoading, isError: tripsError } = useTrips();
+  const { colors } = useTheme();
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+    signInContent: { flexGrow: 1, justifyContent: "center", padding: 24, alignItems: "center" },
+    signInTitle: { fontSize: 36, fontWeight: "bold", color: colors.accent, marginBottom: 4 },
+    signInTagline: { fontSize: 17, color: colors.textSecondary, textAlign: "center", marginBottom: 28 },
+    valueProps: { marginBottom: 32, width: "100%" },
+    valueProp: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 24, marginBottom: 6 },
+    signInNote: { fontSize: 12, color: colors.textTertiary, textAlign: "center", marginTop: 12 },
+    welcomeContent: { padding: 24, alignItems: "center" },
+    welcomeIcon: { marginTop: 32, marginBottom: 16 },
+    welcomeTitle: { fontSize: 24, fontWeight: "bold", color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    welcomeSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: "center", marginBottom: 28 },
+    destinationList: { width: "100%", marginBottom: 24 },
+    destinationCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    destinationFlag: { fontSize: 28, marginRight: 12 },
+    destinationInfo: { flex: 1 },
+    destinationName: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    destinationHook: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
+    primaryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    disabledButton: { opacity: 0.5 },
+    buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+    listContent: { padding: 16 },
+    newTripButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 14,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
+      marginBottom: 12,
+    },
+    newTripText: { color: colors.accent, fontSize: 16, fontWeight: "600" },
+    errorCard: {
+      backgroundColor: colors.errorBg,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: "center",
+      maxWidth: 320,
+      width: "100%",
+    },
+    errorIcon: { marginBottom: 12 },
+    errorTitle: { fontSize: 18, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    errorSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 20 },
+    retryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  });
 
   if (authLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#BF4028" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -81,7 +170,7 @@ export default function TripsScreen() {
   if (!accessToken) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.signInContent}>
-        <Plane color="#BF4028" size={48} style={styles.welcomeIcon} />
+        <Plane color={colors.accent} size={48} style={styles.welcomeIcon} />
         <Text style={styles.signInTitle}>{t("common.appName")}</Text>
         <Text style={styles.signInTagline}>{t("common.tagline")}</Text>
 
@@ -107,7 +196,7 @@ export default function TripsScreen() {
   if (tripsLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#BF4028" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -115,15 +204,18 @@ export default function TripsScreen() {
   if (tripsError) {
     return (
       <View style={styles.center}>
-        <AlertCircle color="#BF4028" size={40} style={styles.errorIcon} />
-        <Text style={styles.errorTitle} accessibilityLiveRegion="assertive">{t("trips.loadError")}</Text>
-        <Text style={styles.errorSubtitle}>{t("trips.loadErrorSubtitle")}</Text>
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => void queryClient.invalidateQueries({ queryKey: ["trips"] })}
-        >
-          <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
-        </Pressable>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <Text style={styles.errorTitle} accessibilityLiveRegion="assertive">{t("trips.loadError")}</Text>
+          <Text style={styles.errorSubtitle}>{t("trips.loadErrorSubtitle")}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void queryClient.invalidateQueries({ queryKey: ["trips"] })}
+          >
+            <RefreshCw color="#fff" size={16} />
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -131,7 +223,7 @@ export default function TripsScreen() {
   if (!trips || trips.length === 0) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.welcomeContent}>
-        <Plane color="#BF4028" size={40} style={styles.welcomeIcon} />
+        <Plane color={colors.accent} size={40} style={styles.welcomeIcon} />
         <Text style={styles.welcomeTitle}>{t("home.welcomeTitle")}</Text>
         <Text style={styles.welcomeSubtitle}>{t("home.welcomeSubtitle")}</Text>
 
@@ -156,7 +248,7 @@ export default function TripsScreen() {
                   {t(`home.destinations.${dest.key}`)}
                 </Text>
               </View>
-              <ChevronRight color="#ccc" size={18} />
+              <ChevronRight color={colors.border} size={18} />
             </Pressable>
           ))}
         </View>
@@ -193,7 +285,7 @@ export default function TripsScreen() {
             accessibilityLabel="New Trip"
             accessibilityRole="button"
           >
-            <Plus color="#BF4028" size={18} />
+            <Plus color={colors.accent} size={18} />
             <Text style={styles.newTripText}>{t("trips.newTrip")}</Text>
           </Pressable>
         }
@@ -201,104 +293,3 @@ export default function TripsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  signInContent: { flexGrow: 1, justifyContent: "center", padding: 24, alignItems: "center" },
-  signInTitle: { fontSize: 36, fontWeight: "bold", color: "#BF4028", marginBottom: 4 },
-  signInTagline: { fontSize: 17, color: "#666", textAlign: "center", marginBottom: 28 },
-  valueProps: { marginBottom: 32, width: "100%" },
-  valueProp: { fontSize: 14, color: "#555", textAlign: "center", lineHeight: 24, marginBottom: 6 },
-  signInNote: { fontSize: 12, color: "#6b6b6b", textAlign: "center", marginTop: 12 },
-  title: { fontSize: 32, fontWeight: "bold", color: "#BF4028", marginBottom: 8 },
-  subtitle: { fontSize: 16, color: "#666", textAlign: "center", marginBottom: 32 },
-  welcomeContent: { padding: 24, alignItems: "center" },
-  welcomeIcon: { marginTop: 32, marginBottom: 16 },
-  welcomeTitle: { fontSize: 24, fontWeight: "bold", color: "#333", marginBottom: 6, textAlign: "center" },
-  welcomeSubtitle: { fontSize: 15, color: "#666", textAlign: "center", marginBottom: 28 },
-  destinationList: { width: "100%", marginBottom: 24 },
-  destinationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  destinationFlag: { fontSize: 28, marginRight: 12 },
-  destinationInfo: { flex: 1 },
-  destinationName: { fontSize: 16, fontWeight: "600", color: "#333" },
-  destinationHook: { fontSize: 13, color: "#767676", marginTop: 2 },
-  primaryButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  disabledButton: { opacity: 0.5 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  listContent: { padding: 16 },
-  newTripButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BF4028",
-    borderStyle: "dashed",
-    marginBottom: 12,
-  },
-  newTripText: { color: "#BF4028", fontSize: 16, fontWeight: "600" },
-  tripCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  tripCardContent: { flex: 1 },
-  tripCardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  tripTitle: { fontSize: 16, fontWeight: "600", color: "#333", flex: 1 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  statusText: { fontSize: 11, fontWeight: "600", color: "#fff", textTransform: "capitalize" },
-  proBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#BF4028",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  proBadgeText: { fontSize: 11, fontWeight: "700", color: "#fff" },
-  tripDescription: { fontSize: 14, color: "#666", marginBottom: 8 },
-  tripMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  tripMetaText: { fontSize: 12, color: "#767676" },
-  errorIcon: { marginBottom: 16 },
-  errorTitle: { fontSize: 18, fontWeight: "600", color: "#333", marginBottom: 6, textAlign: "center" },
-  errorSubtitle: { fontSize: 14, color: "#888", textAlign: "center", marginBottom: 24 },
-  retryButton: {
-    backgroundColor: "#BF4028",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-  },
-  retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  focusedCard: {
-    outlineWidth: 2,
-    outlineColor: "#BF4028",
-    outlineStyle: "solid",
-  },
-});

@@ -2,6 +2,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndic
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { AlertCircle } from "lucide-react-native";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
@@ -68,7 +69,16 @@ export default function NewTripScreen() {
     },
     disabledButton: { opacity: 0.5 },
     submitText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-    errorText: { color: colors.error, fontSize: 14, textAlign: "center", marginTop: 12 },
+    errorCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.errorBg,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 12,
+    },
+    errorText: { color: colors.error, fontSize: 14, flex: 1 },
   });
 
   return (
@@ -116,7 +126,10 @@ export default function NewTripScreen() {
       </View>
 
       {dateError ? (
-        <Text style={styles.errorText}>{dateError}</Text>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={16} />
+          <Text style={styles.errorText}>{dateError}</Text>
+        </View>
       ) : null}
 
       <Pressable
@@ -132,9 +145,12 @@ export default function NewTripScreen() {
       </Pressable>
 
       {createTrip.isError && (
-        <Text style={styles.errorText}>
-          {createTrip.error instanceof Error ? createTrip.error.message : "Failed to create trip"}
-        </Text>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={16} />
+          <Text style={styles.errorText}>
+            {createTrip.error instanceof Error ? createTrip.error.message : t("tripCreate.createError")}
+          </Text>
+        </View>
       )}
     </ScrollView>
   );
