@@ -85,6 +85,7 @@
     "empty": "No trips yet. Start planning your next adventure!",
     "createFirst": "Create Your First Trip",
     "proBadge": "Pro",
+    "sharedBadge": "Shared",
     "trialBadge": "Trial",
     "loadError": "Couldn't load your trips",
     "loadErrorSubtitle": "Check your connection and try again.",
@@ -255,6 +256,36 @@
     "friendsInvited": "{{count}} friends invited",
     "rewardsEarned": "{{count}} rewards earned",
     "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for a free Trip Pro unlock! {{link}}"
+  },
+  "collaborators": {
+    "title": "Team",
+    "role": {
+      "owner": "Owner",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    },
+    "pending": "Pending",
+    "invite": "Invite",
+    "emailPlaceholder": "Email address",
+    "inviteSent": "Invite sent!",
+    "inviteError": "Failed to send invite. Please try again.",
+    "removeTitle": "Remove Collaborator",
+    "removeConfirm": "Remove {{email}} from this trip?",
+    "maxReached": "Maximum of 10 collaborators reached."
+  },
+  "invite": {
+    "title": "You're Invited!",
+    "subtitle": "Someone invited you to collaborate on their trip.",
+    "acceptButton": "Accept Invite",
+    "successTitle": "You're In!",
+    "successSubtitle": "You've joined \"{{tripTitle}}\". Let's start planning!",
+    "viewTrip": "View Trip",
+    "goHome": "Go to My Trips",
+    "invalidTitle": "Invalid Invite",
+    "invalidSubtitle": "This invite link is missing a token. Please check the link and try again.",
+    "errorExpired": "This invite has expired. Ask the trip owner for a new one.",
+    "errorAlreadyAccepted": "You've already accepted this invite.",
+    "errorGeneric": "Something went wrong. Please try again."
   },
   "feedback": {
     "title": "Send Feedback",

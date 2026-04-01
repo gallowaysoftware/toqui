@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw, Users } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
@@ -18,7 +18,7 @@ const DESTINATIONS = [
   { key: "newYork", flag: "\u{1F1FA}\u{1F1F8}", title: "New York" },
 ] as const;
 
-function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+function TripCard({ trip, onPress, isShared }: { trip: Trip; onPress: () => void; isShared?: boolean }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const statusConfig: Record<number, { labelKey: string; color: string }> = {
@@ -57,6 +57,12 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
               <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{t("trips.proBadge")}</Text>
             </View>
           )}
+          {isShared && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.info, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
+              <Users color="#fff" size={10} />
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#fff" }}>{t("trips.sharedBadge")}</Text>
+            </View>
+          )}
         </View>
         {trip.description ? (
           <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }} numberOfLines={2}>{trip.description}</Text>
@@ -80,6 +86,7 @@ export default function TripsScreen() {
   const { signIn, isReady: authReady } = useGoogleAuth();
   const queryClient = useQueryClient();
   const { trips, isLoading: tripsLoading, isError: tripsError } = useTrips();
+  const { user } = useAuth();
   const { colors } = useTheme();
 
   const styles = StyleSheet.create({
@@ -274,6 +281,7 @@ export default function TripsScreen() {
         renderItem={({ item }) => (
           <TripCard
             trip={item}
+            isShared={!!user && item.userId !== user.id}
             onPress={() => router.push(`/trips/${item.id}` as never)}
           />
         )}

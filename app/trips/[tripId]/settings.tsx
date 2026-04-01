@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, RefreshCw, CheckCircle } from "lucide-react-native";
+import { AlertCircle, RefreshCw, CheckCircle, Clock, X, Users, Send } from "lucide-react-native";
 import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
+import { useCollaborators, useInviteCollaborator, useRemoveCollaborator } from "@/lib/hooks/useCollaborators";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
 
@@ -18,12 +19,25 @@ export default function TripSettingsScreen() {
   const updateTrip = useUpdateTrip();
   const deleteTrip = useDeleteTrip();
 
+  const { collaborators, isLoading: collabLoading } = useCollaborators(tripId!);
+  const inviteCollaborator = useInviteCollaborator();
+  const removeCollaborator = useRemoveCollaborator();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  const MAX_COLLABORATORS = 10;
+  const isOwner = trip?.userId != null; // Owner sees the settings page for their own trip
+  const canInvite = collaborators.length < MAX_COLLABORATORS;
 
   useEffect(() => {
     if (trip) {
@@ -119,6 +133,71 @@ export default function TripSettingsScreen() {
       gap: 8,
     },
     retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+    teamSection: {
+      marginTop: 32,
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    teamHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+    teamTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+    teamCount: { fontSize: 13, color: colors.textSecondary },
+    collaboratorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    collaboratorInfo: { flex: 1 },
+    collaboratorEmail: { fontSize: 14, color: colors.textPrimary },
+    collaboratorMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+    roleBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 6,
+      backgroundColor: colors.surfaceTertiary,
+    },
+    roleBadgeOwner: { backgroundColor: colors.accentSoft },
+    roleBadgeText: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, textTransform: "capitalize" },
+    roleBadgeOwnerText: { color: colors.accent },
+    pendingBadge: { flexDirection: "row", alignItems: "center", gap: 3 },
+    pendingText: { fontSize: 11, color: colors.textTertiary },
+    removeButton: { padding: 6 },
+    inviteForm: { marginTop: 16, gap: 8 },
+    inviteRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
+    inviteEmailInput: {
+      flex: 1,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 10,
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    roleSelector: { flexDirection: "row", gap: 4, marginBottom: 8 },
+    roleOption: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    roleOptionActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+    roleOptionText: { fontSize: 13, color: colors.textSecondary },
+    roleOptionActiveText: { color: "#fff", fontWeight: "600" },
+    inviteSendButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      padding: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    inviteDisabled: { opacity: 0.5 },
+    maxCollabNote: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
   });
 
   if (isLoading) {
@@ -234,6 +313,140 @@ export default function TripSettingsScreen() {
           <Text style={[styles.feedbackText, styles.errorText]}>{saveError}</Text>
         </View>
       )}
+
+      {/* Team / Collaborators Section */}
+      <View style={styles.teamSection}>
+        <View style={styles.teamHeader}>
+          <Users color={colors.textPrimary} size={18} />
+          <Text style={styles.teamTitle}>{t("collaborators.title")}</Text>
+          <Text style={styles.teamCount}>({collaborators.length}/{MAX_COLLABORATORS})</Text>
+        </View>
+
+        {collabLoading ? (
+          <ActivityIndicator size="small" color={colors.accent} />
+        ) : (
+          <>
+            {collaborators.map((collab) => (
+              <View key={collab.id} style={styles.collaboratorRow}>
+                <View style={styles.collaboratorInfo}>
+                  <Text style={styles.collaboratorEmail}>{collab.email}</Text>
+                  <View style={styles.collaboratorMeta}>
+                    <View style={[styles.roleBadge, collab.role === "owner" && styles.roleBadgeOwner]}>
+                      <Text style={[styles.roleBadgeText, collab.role === "owner" && styles.roleBadgeOwnerText]}>
+                        {t(`collaborators.role.${collab.role}`)}
+                      </Text>
+                    </View>
+                    {!collab.acceptedAt && (
+                      <View style={styles.pendingBadge}>
+                        <Clock color={colors.textTertiary} size={10} />
+                        <Text style={styles.pendingText}>{t("collaborators.pending")}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                {isOwner && collab.role !== "owner" && (
+                  <Pressable
+                    style={styles.removeButton}
+                    onPress={() => {
+                      Alert.alert(
+                        t("collaborators.removeTitle"),
+                        t("collaborators.removeConfirm", { email: collab.email }),
+                        [
+                          { text: t("common.cancel"), style: "cancel" },
+                          {
+                            text: t("common.delete"),
+                            style: "destructive",
+                            onPress: () => {
+                              void removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                    accessibilityLabel={`Remove ${collab.email}`}
+                    accessibilityRole="button"
+                  >
+                    <X color={colors.textTertiary} size={16} />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+
+            {isOwner && canInvite && (
+              <View style={styles.inviteForm}>
+                <View style={styles.roleSelector}>
+                  {(["editor", "viewer"] as const).map((role) => (
+                    <Pressable
+                      key={role}
+                      style={[styles.roleOption, inviteRole === role && styles.roleOptionActive]}
+                      onPress={() => setInviteRole(role)}
+                      accessibilityLabel={`Select role ${role}`}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.roleOptionText, inviteRole === role && styles.roleOptionActiveText]}>
+                        {t(`collaborators.role.${role}`)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <View style={styles.inviteRow}>
+                  <TextInput
+                    style={styles.inviteEmailInput}
+                    value={inviteEmail}
+                    onChangeText={setInviteEmail}
+                    placeholder={t("collaborators.emailPlaceholder")}
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    accessibilityLabel="Collaborator email"
+                  />
+                  <Pressable
+                    style={[styles.inviteSendButton, (inviteCollaborator.isPending || !inviteEmail.trim()) && styles.inviteDisabled]}
+                    onPress={async () => {
+                      setInviteError(null);
+                      setInviteSuccess(false);
+                      try {
+                        await inviteCollaborator.mutateAsync({
+                          tripId: tripId!,
+                          email: inviteEmail.trim(),
+                          role: inviteRole,
+                        });
+                        setInviteEmail("");
+                        setInviteSuccess(true);
+                        setTimeout(() => setInviteSuccess(false), 3000);
+                      } catch (err) {
+                        setInviteError(err instanceof Error ? err.message : t("collaborators.inviteError"));
+                      }
+                    }}
+                    disabled={inviteCollaborator.isPending || !inviteEmail.trim()}
+                    accessibilityLabel={t("collaborators.invite")}
+                    accessibilityRole="button"
+                  >
+                    <Send color="#fff" size={16} />
+                  </Pressable>
+                </View>
+                {inviteSuccess && (
+                  <View style={[styles.feedbackBanner, styles.successBanner]}>
+                    <CheckCircle color={colors.success} size={14} />
+                    <Text style={[styles.feedbackText, styles.successText]}>{t("collaborators.inviteSent")}</Text>
+                  </View>
+                )}
+                {inviteError && (
+                  <View style={[styles.feedbackBanner, styles.errorBanner]}>
+                    <AlertCircle color={colors.error} size={14} />
+                    <Text style={[styles.feedbackText, styles.errorText]}>{inviteError}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {isOwner && !canInvite && (
+              <Text style={styles.maxCollabNote}>{t("collaborators.maxReached")}</Text>
+            )}
+          </>
+        )}
+      </View>
 
       <View style={styles.dangerZone}>
         <Text style={styles.dangerTitle}>{t("tripSettings.deleteTrip")}</Text>
