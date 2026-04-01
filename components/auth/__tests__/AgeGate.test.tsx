@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { createElement } from "react";
+import en from "@/messages/en.json";
 
 // Mock react-native with web platform
 vi.mock("react-native", async () => {
@@ -15,6 +16,28 @@ vi.mock("react-native", async () => {
 // Mock auth so AgeGate doesn't require AuthProvider in tests
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ accessToken: null }),
+}));
+
+// Mock react-i18next to use actual English translations
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, params?: Record<string, unknown>) => {
+      const parts = key.split(".");
+      let val: unknown = en;
+      for (const p of parts) {
+        val = (val as Record<string, unknown>)?.[p];
+      }
+      if (typeof val !== "string") return key;
+      if (params) {
+        return Object.entries(params).reduce(
+          (s, [k, v]) => s.replace(`{{${k}}}`, String(v)),
+          val,
+        );
+      }
+      return val;
+    },
+    i18n: { language: "en" },
+  }),
 }));
 
 import { AgeGate } from "@/components/auth/AgeGate";

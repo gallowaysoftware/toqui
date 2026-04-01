@@ -1,5 +1,6 @@
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
@@ -61,6 +62,7 @@ interface AgeGateProps {
 }
 
 export function AgeGate({ children }: AgeGateProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { accessToken } = useAuth();
   const [verified, setVerifiedState] = useState<boolean | null>(null);
@@ -106,7 +108,7 @@ export function AgeGate({ children }: AgeGateProps) {
     setError("");
     const dob = parseDate(year, month, day);
     if (!dob) {
-      setError("Please enter a valid date of birth.");
+      setError(t("ageGate.invalidDate"));
       return;
     }
     const age = calculateAge(dob);
@@ -131,7 +133,7 @@ export function AgeGate({ children }: AgeGateProps) {
 
     void setVerified();
     setVerifiedState(true);
-  }, [year, month, day, accessToken]);
+  }, [year, month, day, accessToken, t]);
 
   if (verified === null) return null; // loading
   if (verified) return <>{children}</>;
@@ -139,9 +141,9 @@ export function AgeGate({ children }: AgeGateProps) {
   if (denied) {
     return (
       <View style={[styles.container, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.title, { color: colors.error }]}>Access Denied</Text>
+        <Text style={[styles.title, { color: colors.error }]}>{t("ageGate.deniedTitle")}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          You must be at least 18 years old to use Toqui. Please come back when you're old enough.
+          {t("ageGate.deniedSubtitle")}
         </Text>
       </View>
     );
@@ -149,14 +151,14 @@ export function AgeGate({ children }: AgeGateProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <Text style={[styles.title, { color: colors.accent }]}>Age Verification</Text>
+      <Text style={[styles.title, { color: colors.accent }]}>{t("ageGate.title")}</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        You must be at least 18 years old to use Toqui. Please enter your date of birth.
+        {t("ageGate.subtitle")}
       </Text>
 
       <View style={styles.dateRow}>
         <View style={styles.dateField}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Month</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t("ageGate.month")}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
             placeholder="MM"
@@ -168,7 +170,7 @@ export function AgeGate({ children }: AgeGateProps) {
           />
         </View>
         <View style={styles.dateField}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Day</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t("ageGate.day")}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
             placeholder="DD"
@@ -180,7 +182,7 @@ export function AgeGate({ children }: AgeGateProps) {
           />
         </View>
         <View style={[styles.dateField, { flex: 1.5 }]}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Year</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t("ageGate.year")}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
             placeholder="YYYY"
@@ -196,7 +198,7 @@ export function AgeGate({ children }: AgeGateProps) {
       {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
 
       <Pressable style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleVerify}>
-        <Text style={[styles.buttonText, { color: colors.userBubbleText }]}>Verify Age</Text>
+        <Text style={[styles.buttonText, { color: colors.userBubbleText }]}>{t("ageGate.verifyAge")}</Text>
       </Pressable>
     </View>
   );

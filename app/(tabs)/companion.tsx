@@ -91,13 +91,13 @@ export default function CompanionScreen() {
     return (
       <>
         <View style={styles.center}>
-          <Text style={styles.emptyText}>Sign in to use companion mode</Text>
+          <Text style={styles.emptyText}>{t("companion.signInRequired")}</Text>
           <Pressable
             onPress={() => setFeedbackOpen(true)}
             style={styles.feedbackLink}
             accessibilityRole="button"
           >
-            <Text style={styles.feedbackLinkText}>Having issues? Let us know</Text>
+            <Text style={styles.feedbackLinkText}>{t("companion.feedbackLink")}</Text>
           </Pressable>
         </View>
         <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
@@ -121,9 +121,9 @@ export default function CompanionScreen() {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>Travel Companion</Text>
+            <Text style={styles.emptyTitle}>{t("companion.title")}</Text>
             <Text style={styles.emptySubtitle}>
-              Ask me anything about your surroundings, get directions, find restaurants, or discover hidden gems nearby.
+              {t("companion.subtitle")}
             </Text>
             <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
             <Pressable
@@ -131,7 +131,7 @@ export default function CompanionScreen() {
               style={styles.feedbackLink}
               accessibilityRole="button"
             >
-              <Text style={styles.feedbackLinkText}>Having issues? Let us know</Text>
+              <Text style={styles.feedbackLinkText}>{t("companion.feedbackLink")}</Text>
             </Pressable>
           </View>
         }
@@ -143,16 +143,16 @@ export default function CompanionScreen() {
               <Pressable
                 style={styles.stopButton}
                 onPress={abortStream}
-                accessibilityLabel="Stop generating"
+                accessibilityLabel={t("companion.stopGenerating")}
                 accessibilityRole="button"
               >
-                <Text style={styles.stopButtonText}>Stop generating</Text>
+                <Text style={styles.stopButtonText}>{t("companion.stopGenerating")}</Text>
               </Pressable>
             )}
           </>
         }
       />
-      <ChatInput onSend={sendMessage} disabled={isStreaming} placeholder="Ask your companion..." />
+      <ChatInput onSend={sendMessage} disabled={isStreaming} placeholder={t("companion.placeholder")} />
     </KeyboardAvoidingView>
     <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
