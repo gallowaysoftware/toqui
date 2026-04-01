@@ -27,7 +27,7 @@ function ThemedStack() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.accent },
-          headerTintColor: colors.userBubbleText,
+          headerTintColor: "#fff",
           headerTitleStyle: { fontWeight: "bold" },
           contentStyle: { backgroundColor: colors.surfaceSecondary },
         }}
