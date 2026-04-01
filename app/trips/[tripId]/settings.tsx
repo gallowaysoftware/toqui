@@ -2,6 +2,8 @@ import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert, Activi
 import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, RefreshCw, CheckCircle } from "lucide-react-native";
 import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
@@ -11,7 +13,8 @@ export default function TripSettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
-  const { trip, isLoading } = useTrip(tripId!);
+  const queryClient = useQueryClient();
+  const { trip, isLoading, error: tripError } = useTrip(tripId!);
   const updateTrip = useUpdateTrip();
   const deleteTrip = useDeleteTrip();
 
@@ -19,6 +22,8 @@ export default function TripSettingsScreen() {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (trip) {
@@ -73,20 +78,88 @@ export default function TripSettingsScreen() {
       alignItems: "center",
     },
     deleteText: { color: colors.error, fontWeight: "600" },
+    feedbackBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 12,
+    },
+    successBanner: { backgroundColor: colors.successBg },
+    errorBanner: { backgroundColor: colors.errorBg },
+    feedbackText: { fontSize: 14, fontWeight: "500", flex: 1 },
+    successText: { color: colors.success },
+    errorText: { color: colors.error },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    errorCard: {
+      backgroundColor: colors.errorBg,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: "center",
+      maxWidth: 320,
+      width: "100%",
+    },
+    errorIcon: { marginBottom: 12 },
+    errorTitle: { fontSize: 18, fontWeight: "600", color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    errorSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 20 },
+    retryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    retryButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   });
 
-  if (isLoading || !trip) {
+  if (isLoading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={colors.accent} /></View>;
   }
 
+  if (tripError || !trip) {
+    return (
+      <View style={styles.errorContainer}>
+        <View style={styles.errorCard}>
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <Text style={styles.errorTitle}>{t("tripSettings.loadError")}</Text>
+          <Text style={styles.errorSubtitle}>{t("tripSettings.loadErrorSubtitle")}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void queryClient.invalidateQueries({ queryKey: ["trip", tripId] })}
+          >
+            <RefreshCw color="#fff" size={16} />
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   const handleSave = async () => {
-    await updateTrip.mutateAsync({
-      id: tripId!,
-      title: title.trim(),
-      description: description.trim(),
-      startDate,
-      endDate,
-    });
+    setSaveSuccess(false);
+    setSaveError(null);
+    try {
+      await updateTrip.mutateAsync({
+        id: tripId!,
+        title: title.trim(),
+        description: description.trim(),
+        startDate,
+        endDate,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch {
+      setSaveError(t("tripSettings.saveError"));
+    }
   };
 
   const handleDelete = () => {
@@ -99,8 +172,12 @@ export default function TripSettingsScreen() {
           text: t("tripSettings.deleteConfirm"),
           style: "destructive",
           onPress: async () => {
-            await deleteTrip.mutateAsync(tripId!);
-            router.replace("/(tabs)" as never);
+            try {
+              await deleteTrip.mutateAsync(tripId!);
+              router.replace("/(tabs)" as never);
+            } catch {
+              Alert.alert(t("common.error"), t("tripSettings.deleteError"));
+            }
           },
         },
       ],
@@ -143,6 +220,20 @@ export default function TripSettingsScreen() {
           {updateTrip.isPending ? t("tripSettings.saving") : t("tripSettings.save")}
         </Text>
       </Pressable>
+
+      {saveSuccess && (
+        <View style={[styles.feedbackBanner, styles.successBanner]}>
+          <CheckCircle color={colors.success} size={16} />
+          <Text style={[styles.feedbackText, styles.successText]}>{t("tripSettings.saved")}</Text>
+        </View>
+      )}
+
+      {saveError && (
+        <View style={[styles.feedbackBanner, styles.errorBanner]}>
+          <AlertCircle color={colors.error} size={16} />
+          <Text style={[styles.feedbackText, styles.errorText]}>{saveError}</Text>
+        </View>
+      )}
 
       <View style={styles.dangerZone}>
         <Text style={styles.dangerTitle}>{t("tripSettings.deleteTrip")}</Text>

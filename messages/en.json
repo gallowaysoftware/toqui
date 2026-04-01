@@ -81,6 +81,8 @@
     "trialBadge": "Trial",
     "loadError": "Couldn't load your trips",
     "loadErrorSubtitle": "Check your connection and try again.",
+    "emptyTitle": "Where do you want to go?",
+    "emptySubtitle": "Pick a destination or create your own trip",
     "status": {
       "planning": "Planning",
       "active": "Active",
@@ -97,12 +99,17 @@
     "endDate": "End date (optional)",
     "submit": "Start Planning",
     "submitting": "Creating...",
-    "dateRangeError": "End date must be on or after start date"
+    "dateRangeError": "End date must be on or after start date",
+    "createError": "Failed to create trip. Please try again."
   },
   "bookings": {
     "untitled": "Untitled booking",
     "empty": "No bookings yet",
     "emptySubtext": "Paste a confirmation email to add one",
+    "emptyTitle": "No bookings yet",
+    "emptySubtitle": "Paste a confirmation email to add one",
+    "loadError": "Couldn't load bookings",
+    "loadErrorSubtitle": "Check your connection and try again.",
     "addBooking": "Add Booking",
     "pastePlaceholder": "Paste booking confirmation text or email...",
     "deleteTitle": "Delete Booking",
@@ -128,7 +135,9 @@
     "exportCalendar": "Export Calendar",
     "travelGuide": "{{destination}} Travel Guide",
     "guideAuthor": "By {{name}} \u2014 {{specialty}}",
-    "failedToCreate": "Failed to create trip"
+    "failedToCreate": "Failed to create trip",
+    "loadError": "Couldn't load this trip",
+    "loadErrorSubtitle": "Check your connection and try again."
   },
   "tripSettings": {
     "title": "Trip Settings",
@@ -138,6 +147,11 @@
     "editEndDate": "End date",
     "save": "Save Changes",
     "saving": "Saving...",
+    "saved": "Changes saved",
+    "saveError": "Failed to save changes. Please try again.",
+    "deleteError": "Failed to delete trip. Please try again.",
+    "loadError": "Couldn't load trip settings",
+    "loadErrorSubtitle": "Check your connection and try again.",
     "deleteTrip": "Delete Trip",
     "deleteConfirm": "Yes, Delete Trip",
     "deleteWarning": "Are you sure you want to delete this trip? This action cannot be undone.",
