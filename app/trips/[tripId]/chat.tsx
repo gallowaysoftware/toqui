@@ -19,6 +19,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
@@ -78,6 +79,21 @@ export default function ChatScreen() {
     () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),
     [t],
   );
+
+  const lastAssistantMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant" && !messages[i].recommendation && !messages[i].isError) {
+        return messages[i].content;
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const showFollowUps =
+    !isStreaming &&
+    messages.length >= 2 &&
+    lastAssistantMessage !== null &&
+    messages[messages.length - 1]?.role === "assistant";
 
   const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
     const prev = index > 0 ? messagesRef.current[index - 1] : null;
@@ -298,6 +314,12 @@ export default function ChatScreen() {
               >
                 <Text style={styles.stopButtonText}>{t("chat.stopGenerating")}</Text>
               </Pressable>
+            )}
+            {showFollowUps && lastAssistantMessage && (
+              <FollowUpSuggestions
+                lastAssistantMessage={lastAssistantMessage}
+                onSelect={(text) => sendMessage(text)}
+              />
             )}
           </>
         }
