@@ -70,7 +70,14 @@
       "eat": "Where should I eat?",
       "navigate": "Help me navigate",
       "translate": "Translate this for me"
-    }
+    },
+    "locationSuggestions": {
+      "whatsNearby": "What's nearby?",
+      "findRestaurants": "Find restaurants",
+      "navigateNext": "Navigate to next activity"
+    },
+    "locationActive": "Location active",
+    "locationDenied": "Enable location for nearby recommendations"
   },
   "trips": {
     "title": "My Trips",

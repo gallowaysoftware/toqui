@@ -8,17 +8,19 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapPin, Utensils, Compass, Globe } from "lucide-react-native";
+import { MapPin, Utensils, Compass, Globe, Navigation } from "lucide-react-native";
 import { useChat } from "@/lib/hooks/useChat";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { useLocation } from "@/lib/hooks/useLocation";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { LocationPermission } from "@/components/LocationPermission";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 
@@ -27,6 +29,12 @@ const COMPANION_SUGGESTION_DEFS = [
   { key: "eat", icon: Utensils },
   { key: "navigate", icon: Compass },
   { key: "translate", icon: Globe },
+] as const;
+
+const LOCATION_SUGGESTION_DEFS = [
+  { key: "whatsNearby", icon: MapPin },
+  { key: "findRestaurants", icon: Utensils },
+  { key: "navigateNext", icon: Navigation },
 ] as const;
 
 export default function CompanionScreen() {
@@ -42,12 +50,48 @@ export default function CompanionScreen() {
     abortStream,
   } = useChat(undefined, "companion");
 
+  const {
+    location,
+    isTracking,
+    permissionState,
+    startTracking,
+    stopTracking,
+  } = useLocation();
+
   const flatListRef = useRef<FlatList>(null);
 
-  const suggestions = useMemo(
-    () => COMPANION_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`companion.suggestions.${s.key}`) })),
-    [t],
+  // Stop tracking when the user navigates away from this screen
+  useEffect(() => {
+    return () => {
+      stopTracking();
+    };
+  }, [stopTracking]);
+
+  // Wrap sendMessage to prepend location context when available
+  const sendWithLocation = useCallback(
+    (content: string, attachments?: { filename: string; mediaType: string; data: Uint8Array }[]) => {
+      if (location) {
+        const locationPrefix = `[User location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}]\n`;
+        sendMessage(locationPrefix + content, attachments);
+      } else {
+        sendMessage(content, attachments);
+      }
+    },
+    [location, sendMessage],
   );
+
+  const suggestions = useMemo(() => {
+    if (location) {
+      return LOCATION_SUGGESTION_DEFS.map((s) => ({
+        ...s,
+        label: t(`companion.locationSuggestions.${s.key}`),
+      }));
+    }
+    return COMPANION_SUGGESTION_DEFS.map((s) => ({
+      ...s,
+      label: t(`companion.suggestions.${s.key}`),
+    }));
+  }, [t, location]);
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.recommendation) {
@@ -55,6 +99,12 @@ export default function CompanionScreen() {
     }
     return <MessageBubble message={item} />;
   }, []);
+
+  const showPermissionBanner =
+    permissionState === "prompt" && !isTracking && accessToken;
+
+  const showDeniedBanner =
+    permissionState === "denied" && !isTracking && accessToken;
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },
@@ -77,6 +127,40 @@ export default function CompanionScreen() {
       borderColor: colors.accent,
     },
     stopButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
+    locationIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      alignSelf: "center",
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      marginTop: 8,
+      borderRadius: 12,
+      backgroundColor: colors.successBg,
+    },
+    locationIndicatorText: {
+      fontSize: 11,
+      color: colors.success,
+      fontWeight: "500",
+    },
+    deniedBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      marginHorizontal: 16,
+      marginTop: 8,
+      borderRadius: 10,
+      backgroundColor: colors.warningBg,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+    },
+    deniedBannerText: {
+      fontSize: 12,
+      color: colors.warning,
+      flex: 1,
+    },
   });
 
   if (authLoading) {
@@ -112,6 +196,36 @@ export default function CompanionScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={90}
     >
+      {/* Location active indicator */}
+      {isTracking && location && (
+        <Pressable
+          style={styles.locationIndicator}
+          onPress={stopTracking}
+          accessibilityRole="button"
+          accessibilityLabel={t("companion.locationActive")}
+        >
+          <MapPin color={colors.success} size={12} />
+          <Text style={styles.locationIndicatorText}>
+            {t("companion.locationActive")}
+          </Text>
+        </Pressable>
+      )}
+
+      {/* Permission prompt banner */}
+      {showPermissionBanner && (
+        <LocationPermission onEnable={startTracking} />
+      )}
+
+      {/* Denied banner */}
+      {showDeniedBanner && (
+        <View style={styles.deniedBanner}>
+          <MapPin color={colors.warning} size={14} />
+          <Text style={styles.deniedBannerText}>
+            {t("companion.locationDenied")}
+          </Text>
+        </View>
+      )}
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -125,7 +239,7 @@ export default function CompanionScreen() {
             <Text style={styles.emptySubtitle}>
               {t("companion.subtitle")}
             </Text>
-            <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
+            <SuggestionChips suggestions={suggestions} onSelect={sendWithLocation} />
             <Pressable
               onPress={() => setFeedbackOpen(true)}
               style={styles.feedbackLink}
@@ -152,7 +266,7 @@ export default function CompanionScreen() {
           </>
         }
       />
-      <ChatInput onSend={sendMessage} disabled={isStreaming} placeholder={t("companion.placeholder")} />
+      <ChatInput onSend={sendWithLocation} disabled={isStreaming} placeholder={t("companion.placeholder")} />
     </KeyboardAvoidingView>
     <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
