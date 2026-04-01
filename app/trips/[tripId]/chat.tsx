@@ -45,6 +45,8 @@ export default function ChatScreen() {
     sendMessage,
     abortStream,
     loadMoreHistory,
+    lastFailedMessage,
+    clearLastFailedMessage,
   } = useChat(tripId, "planning", {
     onExpertLimitReached: () => setShowExpertBanner(true),
   });
@@ -100,6 +102,24 @@ export default function ChatScreen() {
       borderColor: colors.accent,
     },
     stopButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
+    retryBanner: {
+      backgroundColor: colors.errorBg,
+      borderTopWidth: 1,
+      borderTopColor: colors.error,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    retryBannerLeft: { flex: 1, marginRight: 8 },
+    retryBannerTitle: { fontSize: 13, color: colors.error, fontWeight: "600", marginBottom: 2 },
+    retryBannerPreview: { fontSize: 12, color: colors.error, opacity: 0.8 },
+    retryBannerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+    retryBannerRetryButton: { backgroundColor: colors.error, borderRadius: 12, paddingVertical: 5, paddingHorizontal: 12 },
+    retryBannerRetryButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+    retryDismiss: { padding: 4 },
+    retryDismissText: { fontSize: 16, color: colors.error },
     streamingBubble: {
       maxWidth: "85%",
       padding: 12,
@@ -189,6 +209,38 @@ export default function ChatScreen() {
           >
             <Text style={styles.expertBannerButtonText}>{t("chat.expertLimitCta")}</Text>
           </Pressable>
+        </View>
+      )}
+      {lastFailedMessage && !isStreaming && (
+        <View style={styles.retryBanner}>
+          <View style={styles.retryBannerLeft}>
+            <Text style={styles.retryBannerTitle}>Message failed to send</Text>
+            <Text style={styles.retryBannerPreview} numberOfLines={1}>
+              {lastFailedMessage.content.length > 60
+                ? `${lastFailedMessage.content.slice(0, 60)}...`
+                : lastFailedMessage.content}
+            </Text>
+          </View>
+          <View style={styles.retryBannerActions}>
+            <Pressable
+              style={styles.retryBannerRetryButton}
+              onPress={() => {
+                void sendMessage(lastFailedMessage.content, lastFailedMessage.attachments);
+              }}
+              accessibilityLabel="Retry sending message"
+              accessibilityRole="button"
+            >
+              <Text style={styles.retryBannerRetryButtonText}>Retry</Text>
+            </Pressable>
+            <Pressable
+              style={styles.retryDismiss}
+              onPress={clearLastFailedMessage}
+              accessibilityLabel="Dismiss retry"
+              accessibilityRole="button"
+            >
+              <Text style={styles.retryDismissText}>×</Text>
+            </Pressable>
+          </View>
         </View>
       )}
       <ChatInput

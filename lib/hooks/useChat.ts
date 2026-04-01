@@ -103,6 +103,11 @@ function protoToFrontendMessage(msg: ProtoChatMessage): ChatMessage | null {
   };
 }
 
+export interface FailedMessage {
+  content: string;
+  attachments?: { filename: string; mediaType: string; data: Uint8Array }[];
+}
+
 interface UseChatOptions {
   onResourceExhausted?: () => void;
   onExpertLimitReached?: () => void;
@@ -125,6 +130,7 @@ export function useChat(
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<FailedMessage | null>(null);
   const isSendingRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -150,6 +156,7 @@ export function useChat(
     setSelectedTrip(null);
     setHasMoreHistory(false);
     setHistoryError(null);
+    setLastFailedMessage(null);
     sessionIdRef.current = "";
     activePersonaRef.current = null;
     historyLoadedRef.current = null;
@@ -264,6 +271,7 @@ export function useChat(
       abortControllerRef.current = controller;
       const timeout = setTimeout(() => controller.abort(), 60_000);
 
+      setLastFailedMessage(null);
       const displayContent = attachments?.length
         ? `${content}${content ? "\n" : ""}[${attachments.map((a) => a.filename).join(", ")}]`
         : content;
@@ -447,6 +455,7 @@ export function useChat(
             },
           ]);
         } else {
+          setLastFailedMessage({ content, attachments });
           setMessages((prev) => [
             ...prev,
             { id: uuid(), role: "assistant", content: "Sorry, something went wrong. Please try again.", isError: true },
@@ -468,6 +477,10 @@ export function useChat(
     abortControllerRef.current?.abort();
   }, []);
 
+  const clearLastFailedMessage = useCallback(() => {
+    setLastFailedMessage(null);
+  }, []);
+
   return {
     messages,
     streamingText,
@@ -483,5 +496,7 @@ export function useChat(
     abortStream,
     hasMoreHistory,
     loadMoreHistory,
+    lastFailedMessage,
+    clearLastFailedMessage,
   };
 }
