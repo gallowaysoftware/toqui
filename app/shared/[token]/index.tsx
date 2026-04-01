@@ -22,6 +22,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import Head from "expo-router/head";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin,
@@ -657,8 +658,29 @@ export default function SharedTripScreen() {
     .slice()
     .sort((a, b) => a.day_number - b.day_number);
 
+  const ogTitle = trip.title
+    ? `${trip.title} — Toqui`
+    : "Check out this trip on Toqui";
+  const ogDescription = trip.destination_country
+    ? `AI-powered travel itinerary for ${trip.destination_country} with expert recommendations`
+    : "AI-powered travel itinerary with expert recommendations";
+  const ogUrl = `https://app.toqui.travel/shared/${token}`;
+  const ogImage = "https://toqui.travel/og-share-image.png";
+
   return (
     <View style={styles.root}>
+      <Head>
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={ogUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Toqui" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
+      </Head>
       <ScrollView
         style={styles.container}
         contentContainerStyle={[
