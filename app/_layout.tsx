@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { TransportProvider } from "@/lib/transport";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig } from "@/lib/config";
 
 const queryClient = new QueryClient({
@@ -70,7 +71,10 @@ export default function RootLayout() {
           <AuthProvider>
             <TransportProvider>
               <AgeGate>
-                <ThemedStack />
+                <View style={layoutStyles.root}>
+                  <OfflineBanner />
+                  <ThemedStack />
+                </View>
               </AgeGate>
             </TransportProvider>
           </AuthProvider>
@@ -79,3 +83,9 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
