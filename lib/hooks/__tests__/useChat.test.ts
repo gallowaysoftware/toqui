@@ -1253,4 +1253,123 @@ describe("useChat", () => {
       expect(mockGetChatHistory.mock.calls.length).toBe(initialCallCount);
     });
   });
+
+  // =========================================================================
+  // lastFailedMessage retry tracking
+  // =========================================================================
+
+  describe("lastFailedMessage", () => {
+    it("starts as null", () => {
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+
+    it("sets lastFailedMessage on a generic network error", async () => {
+      mockSendMessage.mockImplementation(() => {
+        throw new Error("network failure");
+      });
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("hello world");
+      });
+
+      expect(result.current.lastFailedMessage).not.toBeNull();
+      expect(result.current.lastFailedMessage!.content).toBe("hello world");
+    });
+
+    it("does NOT set lastFailedMessage for ResourceExhausted errors", async () => {
+      mockSendMessage.mockImplementation(() => {
+        throw new ConnectError("rate limit", Code.ResourceExhausted);
+      });
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("test");
+      });
+
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+
+    it("does NOT set lastFailedMessage for AbortError (intentional stop)", async () => {
+      mockSendMessage.mockImplementation(() => {
+        const err = new DOMException("aborted", "AbortError");
+        throw err;
+      });
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("test");
+      });
+
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+
+    it("clears lastFailedMessage at the start of the next sendMessage", async () => {
+      mockSendMessage
+        .mockImplementationOnce(() => {
+          throw new Error("first fails");
+        })
+        .mockReturnValueOnce(
+          streamEvents([
+            evt("textDelta", { text: "ok" }),
+            evt("messageComplete", { fullContent: "ok", messageId: "m1", sessionId: "s1" }),
+          ]),
+        );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("failed message");
+      });
+      expect(result.current.lastFailedMessage).not.toBeNull();
+
+      await act(async () => {
+        await result.current.sendMessage("second message");
+      });
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+
+    it("clearLastFailedMessage sets it back to null", async () => {
+      mockSendMessage.mockImplementation(() => {
+        throw new Error("fail");
+      });
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("test message");
+      });
+      expect(result.current.lastFailedMessage).not.toBeNull();
+
+      act(() => {
+        result.current.clearLastFailedMessage();
+      });
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+
+    it("resets lastFailedMessage when tripId changes", async () => {
+      mockSendMessage.mockImplementation(() => {
+        throw new Error("fail");
+      });
+
+      const { result, rerender } = renderHook(
+        ({ tripId }: { tripId: string }) => useChat(tripId, "planning"),
+        { initialProps: { tripId: "trip-1" } },
+      );
+
+      await act(async () => {
+        await result.current.sendMessage("test");
+      });
+      expect(result.current.lastFailedMessage).not.toBeNull();
+
+      mockGetChatHistory.mockResolvedValue(emptyHistoryResponse());
+      rerender({ tripId: "trip-2" });
+
+      expect(result.current.lastFailedMessage).toBeNull();
+    });
+  });
 });
