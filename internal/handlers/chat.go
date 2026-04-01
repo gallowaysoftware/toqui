@@ -712,8 +712,35 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 		}
 	}
 
-	sb.WriteString("\nYou have full context about this trip including existing plans and bookings. Reference them naturally — don't ask the user to repeat information you already have.")
-	sb.WriteString("\nDo NOT ask the user where they are going or when they are traveling — you already know from the trip details above.")
+	// Smart planning advice based on trip context
+	if startDate != "" && endDate != "" {
+		start, errS := time.Parse("January 2, 2006", startDate)
+		end, errE := time.Parse("January 2, 2006", endDate)
+		if errS == nil && errE == nil {
+			tripDays := int(end.Sub(start).Hours()/24) + 1
+			if tripDays > 7 {
+				fmt.Fprintf(&sb, "\nThis is a longer trip (%d days). Build in rest/flex days every 3-4 days of activities — travelers burn out on packed schedules. Don't over-schedule every day.\n", tripDays)
+			}
+		}
+	}
+
+	if collaboratorCount > 0 {
+		sb.WriteString("\nThis is a group trip. Suggest activities that work for groups and include some free time for individual exploration. Note group-friendly logistics (e.g., shared transport, group discounts, restaurants that take large parties).\n")
+	}
+
+	// Booking-aware planning: if there are accommodation bookings, suggest nearby activities
+	hasAccommodation := false
+	for _, b := range bookings {
+		if strings.EqualFold(b.Type, "accommodation") || strings.EqualFold(b.Type, "hotel") || strings.EqualFold(b.Type, "lodging") {
+			hasAccommodation = true
+			break
+		}
+	}
+	if hasAccommodation {
+		sb.WriteString("\nThe traveler has accommodation bookings listed above. When planning daily activities, consider proximity to their hotel/accommodation and suggest activities in nearby neighborhoods first.\n")
+	}
+
+	sb.WriteString("\nDo NOT ask the user for information you already have. You know their destination, travel dates, trip duration, existing itinerary, existing bookings, and whether they are traveling solo or in a group. Proactively use this information to give specific, actionable advice. Reference their existing plans naturally — don't ask them to repeat anything.")
 	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))

@@ -63,13 +63,13 @@ func (t *CreateItineraryTool) WithGeocoding(pool *pgxpool.Pool, placesAPIKey str
 func (t *CreateItineraryTool) Definition() ai.ToolDefinition {
 	return ai.ToolDefinition{
 		Name:        "create_itinerary_items",
-		Description: "Add structured itinerary items to the current trip. Call this when you have specific activities, meals, or experiences to suggest for the trip. You can add multiple items at once across multiple days.",
+		Description: "Add structured itinerary items to the current trip. Call this when you have specific activities, meals, or experiences to suggest. You can add multiple items at once across multiple days. Group items by neighborhood to minimize transit. Use order_in_day to reflect the natural flow of a day (morning sightseeing, lunch, afternoon activities, dinner, evening). Each item's description should include: estimated duration, a practical tip, and transit notes to the next stop when locations are far apart.",
 		Parameters: json.RawMessage(`{
 			"type": "object",
 			"properties": {
 				"items": {
 					"type": "array",
-					"description": "List of itinerary items to add",
+					"description": "List of itinerary items to add. Order items logically within each day: morning first, evening last. Group nearby locations together.",
 					"items": {
 						"type": "object",
 						"properties": {
@@ -79,7 +79,7 @@ func (t *CreateItineraryTool) Definition() ai.ToolDefinition {
 							},
 							"order_in_day": {
 								"type": "integer",
-								"description": "Order within the day (1-indexed)"
+								"description": "Order within the day (1-indexed). Use this to sequence items chronologically: 1 for first morning activity, 2 for mid-morning, etc."
 							},
 							"type": {
 								"type": "string",
@@ -88,15 +88,15 @@ func (t *CreateItineraryTool) Definition() ai.ToolDefinition {
 							},
 							"title": {
 								"type": "string",
-								"description": "Short title, e.g. 'Visit Fushimi Inari Shrine'"
+								"description": "Short title, e.g. 'Visit Fushimi Inari Shrine' or 'Lunch at Nishiki Market'"
 							},
 							"description": {
 								"type": "string",
-								"description": "Details, tips, or notes about this item"
+								"description": "Include: (1) estimated duration (e.g., 'Allow 2-3 hours'), (2) a practical tip (e.g., 'Go early to avoid crowds', 'Book 2 weeks ahead'), (3) transit note to next stop if far (e.g., '15 min walk to next stop' or 'Take metro Line 2, 20 min'). Example: 'Allow 2-3 hours. The shrine is stunning at sunrise with fewer crowds. 10 min taxi to Gion district afterward.'"
 							},
 							"location_name": {
 								"type": "string",
-								"description": "Specific place name to show on the map, e.g. 'Fushimi Inari Shrine, Kyoto' or 'Eiffel Tower, Paris'. Include the city/region for accurate geocoding."
+								"description": "Specific, geocodable place name including city/region, e.g. 'Fushimi Inari Shrine, Kyoto, Japan' or 'Eiffel Tower, Paris, France'. Be precise enough to place on a map."
 							}
 						},
 						"required": ["day_number", "title", "type"]
