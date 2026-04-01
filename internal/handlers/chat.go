@@ -12,6 +12,7 @@ import (
 	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -156,20 +157,51 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var destinationCountry string
 	var tripThemes []string
 	var tripTitle, tripDescription string
+	var tripStartDate, tripEndDate string
+	var tripStatus string
+	var existingItinerary []dbgen.ItineraryItem
+	var existingBookings []dbgen.Booking
+	var collaboratorCount int64
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 			if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
 				tripTitle = t.Title
+				tripStatus = t.Status
 				if t.Description.Valid {
 					tripDescription = t.Description.String
 				}
 				if t.DestinationCountry.Valid {
 					destinationCountry = t.DestinationCountry.String
 				}
+				if t.StartDate.Valid {
+					tripStartDate = t.StartDate.Time.Format("January 2, 2006")
+				}
+				if t.EndDate.Valid {
+					tripEndDate = t.EndDate.Time.Format("January 2, 2006")
+				}
 			}
 			if h.themeSvc != nil {
 				if themes, err := h.themeSvc.GetTripThemes(ctx, tripID); err == nil {
 					tripThemes = themes
+				}
+			}
+			// Load existing itinerary items for AI context
+			if items, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
+				existingItinerary = items
+			}
+			// Load existing bookings for AI context
+			if h.queries != nil {
+				if bk, err := h.queries.ListBookingsByTrip(ctx, dbgen.ListBookingsByTripParams{
+					TripID: pgtype.UUID{Bytes: tripID, Valid: true},
+					UserID: userID,
+				}); err == nil {
+					existingBookings = bk
+				}
+			}
+			// Load collaborator count for AI context
+			if h.queries != nil {
+				if count, err := h.queries.CountCollaboratorsByTrip(ctx, tripID); err == nil {
+					collaboratorCount = count
 				}
 			}
 		}
@@ -285,7 +317,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripThemes, userTier)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier)
 		params.ExtraTools = append(params.ExtraTools, expertTool)
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
@@ -577,7 +609,7 @@ func sanitizeForPrompt(s string, maxLen int) string {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry string, themes []string, userTier tier.UserTier) string {
+func buildTripContext(title, description, destinationCountry, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier) string {
 	if title == "" && description == "" && destinationCountry == "" {
 		return ""
 	}
@@ -585,13 +617,24 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 	var sb strings.Builder
 	sb.WriteString("CURRENT TRIP CONTEXT:\n")
 	if title != "" {
-		fmt.Fprintf(&sb, "- Title: %s\n", sanitizeForPrompt(title, 200))
+		statusLabel := status
+		if statusLabel == "" {
+			statusLabel = "planning"
+		}
+		fmt.Fprintf(&sb, "- Trip: %s (%s)\n", sanitizeForPrompt(title, 200), statusLabel)
 	}
 	if description != "" {
 		fmt.Fprintf(&sb, "- Description: %s\n", sanitizeForPrompt(description, 500))
 	}
 	if destinationCountry != "" {
-		fmt.Fprintf(&sb, "- Destination country: %s\n", sanitizeForPrompt(destinationCountry, 100))
+		fmt.Fprintf(&sb, "- Destination: %s\n", sanitizeForPrompt(destinationCountry, 100))
+	}
+	if startDate != "" && endDate != "" {
+		fmt.Fprintf(&sb, "- Travel dates: %s to %s\n", startDate, endDate)
+	} else if startDate != "" {
+		fmt.Fprintf(&sb, "- Start date: %s\n", startDate)
+	} else if endDate != "" {
+		fmt.Fprintf(&sb, "- End date: %s\n", endDate)
 	}
 	if len(themes) > 0 {
 		sanitized := make([]string, len(themes))
@@ -600,7 +643,77 @@ func buildTripContext(title, description, destinationCountry string, themes []st
 		}
 		fmt.Fprintf(&sb, "- Trip themes: %s\n", strings.Join(sanitized, ", "))
 	}
-	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
+	if collaboratorCount > 0 {
+		fmt.Fprintf(&sb, "- Collaborators: %d people on this trip\n", collaboratorCount+1) // +1 for the owner
+	}
+
+	// Itinerary summary (capped at 20 items)
+	if len(itineraryItems) > 0 {
+		sb.WriteString("\nExisting itinerary")
+		// Group items by day number
+		dayItems := make(map[int32][]dbgen.ItineraryItem)
+		var dayNums []int32
+		for _, item := range itineraryItems {
+			day := int32(0)
+			if item.DayNumber.Valid {
+				day = item.DayNumber.Int32
+			}
+			if _, exists := dayItems[day]; !exists {
+				dayNums = append(dayNums, day)
+			}
+			dayItems[day] = append(dayItems[day], item)
+		}
+		fmt.Fprintf(&sb, " (%d items):\n", len(itineraryItems))
+		itemCount := 0
+		for _, day := range dayNums {
+			items := dayItems[day]
+			if day > 0 {
+				fmt.Fprintf(&sb, "  Day %d:", day)
+			} else {
+				sb.WriteString("  Unscheduled:")
+			}
+			titles := make([]string, 0, len(items))
+			for _, item := range items {
+				if itemCount >= 20 {
+					break
+				}
+				if item.Title.Valid && item.Title.String != "" {
+					titles = append(titles, sanitizeForPrompt(item.Title.String, 100))
+				}
+				itemCount++
+			}
+			fmt.Fprintf(&sb, " %s\n", strings.Join(titles, ", "))
+			if itemCount >= 20 {
+				sb.WriteString("  ... (more items not shown)\n")
+				break
+			}
+		}
+	}
+
+	// Bookings summary
+	if len(bookings) > 0 {
+		sb.WriteString("\nExisting bookings:\n")
+		for i, b := range bookings {
+			if i >= 20 {
+				sb.WriteString("  ... (more bookings not shown)\n")
+				break
+			}
+			bookingType := sanitizeForPrompt(b.Type, 50)
+			bookingTitle := sanitizeForPrompt(b.Title, 150)
+			fmt.Fprintf(&sb, "  - %s: %s", bookingType, bookingTitle)
+			if b.StartTime.Valid {
+				fmt.Fprintf(&sb, " (%s", b.StartTime.Time.Format("Jan 2"))
+				if b.EndTime.Valid {
+					fmt.Fprintf(&sb, " to %s", b.EndTime.Time.Format("Jan 2"))
+				}
+				sb.WriteString(")")
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	sb.WriteString("\nYou have full context about this trip including existing plans and bookings. Reference them naturally — don't ask the user to repeat information you already have.")
+	sb.WriteString("\nDo NOT ask the user where they are going or when they are traveling — you already know from the trip details above.")
 	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))

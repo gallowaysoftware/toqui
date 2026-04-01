@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
@@ -18,6 +17,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
+	"github.com/google/uuid"
 )
 
 // ─── Scenario & Step Types ──────────────────────────────────────────────────
@@ -185,18 +185,24 @@ func (a *SendMessageAction) Execute(ctx context.Context, env *TestEnv, state *Sc
 		if tripID != "" {
 			if tid, err := uuid.Parse(tripID); err == nil {
 				if t, err := env.TripSvc.GetByID(ctx, state.UserID, tid); err == nil {
-					var country, desc string
+					var country, desc, startDate, endDate string
 					if t.DestinationCountry.Valid {
 						country = t.DestinationCountry.String
 					}
 					if t.Description.Valid {
 						desc = t.Description.String
 					}
+					if t.StartDate.Valid {
+						startDate = t.StartDate.Time.Format("January 2, 2006")
+					}
+					if t.EndDate.Valid {
+						endDate = t.EndDate.Time.Format("January 2, 2006")
+					}
 					var themes []string
 					if env.ThemeSvc != nil {
 						themes, _ = env.ThemeSvc.GetTripThemes(ctx, tid)
 					}
-					params.ExtraSystemContext = BuildTripContext(t.Title, desc, country, themes)
+					params.ExtraSystemContext = BuildTripContext(t.Title, desc, country, startDate, endDate, themes)
 					params.DestinationCountry = country
 					params.TripThemes = themes
 					destinationCountry = country

@@ -43,10 +43,10 @@ type TestEnv struct {
 	ChatStore    *chatstore.Store
 
 	// AI providers
-	Provider      ai.Provider // System-under-test AND judge (same provider)
-	ProviderName  string      // "claude" or "gemini"
-	ToolRegistry  *tools.Registry
-	PersonaReg    *persona.Registry
+	Provider     ai.Provider // System-under-test AND judge (same provider)
+	ProviderName string      // "claude" or "gemini"
+	ToolRegistry *tools.Registry
+	PersonaReg   *persona.Registry
 }
 
 // NewTestEnv constructs the full service graph for AI tests.
@@ -234,7 +234,7 @@ The user's existing trips:
 
 // BuildTripContext replicates handlers.buildTripContext for planning/companion modes.
 // AI tests always use the free tier (no Pro infrastructure in test env).
-func BuildTripContext(title, description, destinationCountry string, themes []string) string {
+func BuildTripContext(title, description, destinationCountry, startDate, endDate string, themes []string) string {
 	if title == "" && description == "" && destinationCountry == "" {
 		return ""
 	}
@@ -250,10 +250,17 @@ func BuildTripContext(title, description, destinationCountry string, themes []st
 	if destinationCountry != "" {
 		sb.WriteString(fmt.Sprintf("- Destination country: %s\n", destinationCountry))
 	}
+	if startDate != "" && endDate != "" {
+		sb.WriteString(fmt.Sprintf("- Travel dates: %s to %s\n", startDate, endDate))
+	} else if startDate != "" {
+		sb.WriteString(fmt.Sprintf("- Start date: %s\n", startDate))
+	} else if endDate != "" {
+		sb.WriteString(fmt.Sprintf("- End date: %s\n", endDate))
+	}
 	if len(themes) > 0 {
 		sb.WriteString(fmt.Sprintf("- Trip themes: %s\n", strings.Join(themes, ", ")))
 	}
-	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going — you already know from the trip details above.")
+	sb.WriteString("\nUse this context to give specific, relevant advice. Do NOT ask the user where they are going or when they are traveling — you already know from the trip details above.")
 	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
 	sb.WriteString("\n\nBOOKING RECOMMENDATIONS: When the user asks about flights, hotels, or activities to book, use the recommend_booking tool. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement.")
 	return sb.String()
