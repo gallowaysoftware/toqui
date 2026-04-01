@@ -121,7 +121,16 @@
     "typeActivity": "Activity",
     "typeRestaurant": "Restaurant",
     "typeTour": "Tour",
-    "typeOther": "Other"
+    "typeOther": "Other",
+    "forwarding": {
+      "title": "Forward Bookings",
+      "description": "Forward your booking confirmation emails to this address and they'll appear here automatically.",
+      "copy": "Copy",
+      "howItWorks": "How it works",
+      "step1": "Forward your flight, hotel, or activity confirmation email to the address above.",
+      "step2": "Toqui automatically extracts the booking details using AI.",
+      "step3": "Your booking appears in the list below within seconds."
+    }
   },
   "tripDetail": {
     "chat": "Chat",
