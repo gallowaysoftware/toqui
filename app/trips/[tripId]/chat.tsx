@@ -9,9 +9,9 @@ import {
   Pressable,
 } from "react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MapPin, Utensils, Compass, Briefcase } from "lucide-react-native";
+import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import { useChat } from "@/lib/hooks/useChat";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -19,8 +19,22 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+
+const errorReportStyles = StyleSheet.create({
+  link: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  linkText: {
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+});
 
 const CHAT_SUGGESTION_DEFS = [
   { key: "itinerary", icon: MapPin },
@@ -35,11 +49,14 @@ export default function ChatScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
     messages,
     streamingText,
     isStreaming,
     isLoadingHistory,
+    isLoadingMore,
+    hasMoreHistory,
     historyError,
     toolActivity,
     sendMessage,
@@ -52,18 +69,45 @@ export default function ChatScreen() {
   });
 
   const flatListRef = useRef<FlatList>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const suggestions = useMemo(
     () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),
     [t],
   );
 
-  const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
+  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+    const prev = index > 0 ? messagesRef.current[index - 1] : null;
+    const sameSpeaker =
+      prev !== null &&
+      prev.role === item.role &&
+      prev.personaName === item.personaName &&
+      !item.recommendation &&
+      !prev.recommendation;
+    const showAvatar = !sameSpeaker;
+
     if (item.recommendation) {
       return <RecommendationCard recommendation={item.recommendation} />;
     }
-    return <MessageBubble message={item} />;
-  }, []);
+    if (item.isError) {
+      return (
+        <View>
+          <MessageBubble message={item} showAvatar={showAvatar} />
+          <Pressable
+            onPress={() => setFeedbackOpen(true)}
+            style={errorReportStyles.link}
+            accessibilityRole="button"
+          >
+            <Text style={[errorReportStyles.linkText, { color: colors.textTertiary }]}>
+              Report issue
+            </Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return <MessageBubble message={item} showAvatar={showAvatar} />;
+  }, [colors.textTertiary]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },
@@ -91,6 +135,12 @@ export default function ChatScreen() {
       paddingHorizontal: 16,
     },
     expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+    loadMoreButton: {
+      alignSelf: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    loadMoreText: { fontSize: 13, color: colors.textTertiary, textAlign: "center" },
     stopButton: {
       alignSelf: "center",
       marginTop: 4,
@@ -140,6 +190,21 @@ export default function ChatScreen() {
   };
 
   return (
+    <>
+    <Stack.Screen
+      options={{
+        headerRight: () => (
+          <Pressable
+            onPress={() => setFeedbackOpen(true)}
+            style={{ paddingHorizontal: 12 }}
+            accessibilityLabel="Report issue"
+            accessibilityRole="button"
+          >
+            <Flag size={20} color={colors.textSecondary} />
+          </Pressable>
+        ),
+      }}
+    />
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -152,6 +217,22 @@ export default function ChatScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        ListHeaderComponent={
+          hasMoreHistory ? (
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color={colors.accent} style={styles.loadMoreButton} />
+            ) : (
+              <Pressable
+                onPress={loadMoreHistory}
+                style={styles.loadMoreButton}
+                accessibilityRole="button"
+                accessibilityLabel="Load earlier messages"
+              >
+                <Text style={styles.loadMoreText}>Load earlier messages</Text>
+              </Pressable>
+            )
+          ) : null
+        }
         ListEmptyComponent={
           isLoadingHistory ? (
             <View style={styles.loadingContainer}>
@@ -248,5 +329,7 @@ export default function ChatScreen() {
         disabled={isStreaming}
       />
     </KeyboardAvoidingView>
+    <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
   );
 }

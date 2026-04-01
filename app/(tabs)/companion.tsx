@@ -5,8 +5,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ActivityIndicator,
 } from "react-native";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Globe } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
@@ -18,6 +20,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 
 const COMPANION_SUGGESTION_DEFS = [
@@ -29,14 +32,16 @@ const COMPANION_SUGGESTION_DEFS = [
 
 export default function CompanionScreen() {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
+  const { accessToken, isLoading: authLoading } = useAuth();
   const { colors } = useTheme();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
     messages,
     streamingText,
     isStreaming,
     toolActivity,
     sendMessage,
+    abortStream,
   } = useChat(undefined, "companion");
 
   const flatListRef = useRef<FlatList>(null);
@@ -61,6 +66,8 @@ export default function CompanionScreen() {
     emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
     emptyTitle: { fontSize: 20, fontWeight: "bold", color: colors.accent, marginBottom: 8 },
     emptySubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 40, marginBottom: 20 },
+    feedbackLink: { marginTop: 8, paddingVertical: 4, paddingHorizontal: 8 },
+    feedbackLinkText: { fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" },
     streamingBubble: {
       maxWidth: "85%",
       padding: 12,
@@ -72,6 +79,17 @@ export default function CompanionScreen() {
       alignSelf: "flex-start",
       marginBottom: 8,
     },
+    stopButton: {
+      alignSelf: "center",
+      marginTop: 4,
+      marginBottom: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    stopButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
   });
 
   const markdownStyles = {
@@ -80,15 +98,34 @@ export default function CompanionScreen() {
     link: { color: colors.accent },
   };
 
-  if (!accessToken) {
+  if (authLoading) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>Sign in to use companion mode</Text>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
+  if (!accessToken) {
+    return (
+      <>
+        <View style={styles.center}>
+          <Text style={styles.emptyText}>Sign in to use companion mode</Text>
+          <Pressable
+            onPress={() => setFeedbackOpen(true)}
+            style={styles.feedbackLink}
+            accessibilityRole="button"
+          >
+            <Text style={styles.feedbackLinkText}>Having issues? Let us know</Text>
+          </Pressable>
+        </View>
+        <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      </>
+    );
+  }
+
   return (
+    <>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -108,6 +145,13 @@ export default function CompanionScreen() {
               Ask me anything about your surroundings, get directions, find restaurants, or discover hidden gems nearby.
             </Text>
             <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
+            <Pressable
+              onPress={() => setFeedbackOpen(true)}
+              style={styles.feedbackLink}
+              accessibilityRole="button"
+            >
+              <Text style={styles.feedbackLinkText}>Having issues? Let us know</Text>
+            </Pressable>
           </View>
         }
         ListFooterComponent={
@@ -120,10 +164,22 @@ export default function CompanionScreen() {
             ) : isStreaming && !toolActivity ? (
               <TypingIndicator />
             ) : null}
+            {isStreaming && (
+              <Pressable
+                style={styles.stopButton}
+                onPress={abortStream}
+                accessibilityLabel="Stop generating"
+                accessibilityRole="button"
+              >
+                <Text style={styles.stopButtonText}>Stop generating</Text>
+              </Pressable>
+            )}
           </>
         }
       />
       <ChatInput onSend={sendMessage} disabled={isStreaming} placeholder="Ask your companion..." />
     </KeyboardAvoidingView>
+    <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
   );
 }
