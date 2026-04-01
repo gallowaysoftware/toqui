@@ -40,6 +40,7 @@ function ThemedStack() {
         <Stack.Screen name="privacy" options={{ title: "Privacy Policy" }} />
         <Stack.Screen name="terms" options={{ title: "Terms of Service" }} />
         <Stack.Screen name="waitlist" options={{ title: "Waitlist" }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       </Stack>
     </>
   );

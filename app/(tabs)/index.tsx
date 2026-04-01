@@ -1,11 +1,13 @@
+import { useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw, Users } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw, Users, Calendar, Globe, MapPinned } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
+import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useTheme } from "@/lib/theme";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
@@ -79,6 +81,12 @@ function TripCard({ trip, onPress, isShared }: { trip: Trip; onPress: () => void
   );
 }
 
+const QUICK_START_CARDS = [
+  { key: "weekend", duration: 3, Icon: Calendar },
+  { key: "week", duration: 7, Icon: Globe },
+  { key: "multiCity", duration: 14, Icon: MapPinned },
+] as const;
+
 export default function TripsScreen() {
   const { t } = useTranslation();
   const { accessToken, isLoading: authLoading } = useAuth();
@@ -88,6 +96,14 @@ export default function TripsScreen() {
   const { trips, isLoading: tripsLoading, isError: tripsError } = useTrips();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
+
+  // Redirect to onboarding if user is authenticated but hasn't completed it
+  useEffect(() => {
+    if (accessToken && !authLoading && !onboardingLoading && isOnboardingComplete === false) {
+      router.replace("/onboarding" as never);
+    }
+  }, [accessToken, authLoading, onboardingLoading, isOnboardingComplete, router]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },
@@ -235,24 +251,37 @@ export default function TripsScreen() {
         <Text style={styles.welcomeSubtitle}>{t("home.welcomeSubtitle")}</Text>
 
         <View style={styles.destinationList}>
-          {DESTINATIONS.map((dest) => (
+          {QUICK_START_CARDS.map((card) => (
             <Pressable
-              key={dest.key}
+              key={card.key}
               style={styles.destinationCard}
               onPress={() =>
                 router.push({
                   pathname: "/trips/new" as never,
-                  params: { destination: dest.title },
+                  params: { duration: String(card.duration) },
                 })
               }
-              accessibilityLabel={`Start a trip to ${dest.title}`}
+              accessibilityLabel={t(`trips.quickStart.${card.key}.title`)}
               accessibilityRole="button"
+              testID={`quick-start-${card.key}`}
             >
-              <Text style={styles.destinationFlag}>{dest.flag}</Text>
+              <View style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: colors.accentSoft,
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 12,
+              }}>
+                <card.Icon color={colors.accent} size={22} />
+              </View>
               <View style={styles.destinationInfo}>
-                <Text style={styles.destinationName}>{dest.title}</Text>
+                <Text style={styles.destinationName}>
+                  {t(`trips.quickStart.${card.key}.title`)}
+                </Text>
                 <Text style={styles.destinationHook}>
-                  {t(`home.destinations.${dest.key}`)}
+                  {t(`trips.quickStart.${card.key}.description`)}
                 </Text>
               </View>
               <ChevronRight color={colors.border} size={18} />
@@ -263,11 +292,11 @@ export default function TripsScreen() {
         <Pressable
           style={styles.primaryButton}
           onPress={() => router.push("/trips/new" as never)}
-          accessibilityLabel="New Trip"
+          accessibilityLabel={t("trips.quickStart.customTrip")}
           accessibilityRole="button"
         >
           <Plus color="#fff" size={18} />
-          <Text style={styles.buttonText}>{t("trips.newTrip")}</Text>
+          <Text style={styles.buttonText}>{t("trips.quickStart.customTrip")}</Text>
         </Pressable>
       </ScrollView>
     );

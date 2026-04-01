@@ -95,6 +95,22 @@
       "planning": "Planning",
       "active": "Active",
       "completed": "Completed"
+    },
+    "quickStart": {
+      "title": "Quick start",
+      "weekend": {
+        "title": "Weekend Getaway",
+        "description": "A quick 3-day escape to recharge"
+      },
+      "week": {
+        "title": "Week-long Adventure",
+        "description": "Seven days to explore at your own pace"
+      },
+      "multiCity": {
+        "title": "Multi-city Explorer",
+        "description": "Two weeks across multiple destinations"
+      },
+      "customTrip": "Or create a custom trip"
     }
   },
   "tripCreate": {
@@ -332,6 +348,22 @@
   "weather": {
     "title": "Weather forecast",
     "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary."
+  },
+  "onboarding": {
+    "planSmarter": {
+      "headline": "AI-powered trip planning",
+      "subtext": "Chat with expert personas who know your destination inside and out"
+    },
+    "travelConfidently": {
+      "headline": "Everything in one place",
+      "subtext": "Itineraries, bookings, maps, and a real-time companion — all in your pocket"
+    },
+    "getStarted": {
+      "headline": "Your first trip awaits",
+      "subtext": "Create a trip and let Toqui build your perfect itinerary",
+      "startPlanning": "Start Planning",
+      "exploreFirst": "Explore First"
+    }
   },
   "waitlist": {
     "title": "We're at capacity!",
