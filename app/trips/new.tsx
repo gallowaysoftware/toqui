@@ -133,7 +133,7 @@ export default function NewTripScreen() {
 
       {createTrip.isError && (
         <Text style={styles.errorText}>
-          {createTrip.error instanceof Error ? createTrip.error.message : "Failed to create trip"}
+          {createTrip.error instanceof Error ? createTrip.error.message : t("tripDetail.failedToCreate")}
         </Text>
       )}
     </ScrollView>

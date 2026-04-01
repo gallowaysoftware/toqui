@@ -102,7 +102,7 @@ export default function ChatScreen() {
             accessibilityRole="button"
           >
             <Text style={[errorReportStyles.linkText, { color: colors.textTertiary }]}>
-              Report issue
+              {t("chat.reportIssue")}
             </Text>
           </Pressable>
         </View>
@@ -197,10 +197,10 @@ export default function ChatScreen() {
       ? colors.textSecondary
       : colors.textTertiary;
   const usageLabel = usageAtLimit
-    ? `Daily limit reached. Resets ${formatTimeUntilReset(resetsAt)}`
+    ? t("chat.dailyLimitReached", { time: formatTimeUntilReset(resetsAt) })
     : usageNearLimit
-      ? `Almost at daily limit — ${limit - used} left`
-      : `${used}/${limit} messages today`;
+      ? t("chat.almostAtDailyLimit", { remaining: limit - used })
+      : t("chat.messagesUsage", { used, limit });
 
   return (
     <>
@@ -210,10 +210,10 @@ export default function ChatScreen() {
           ? () => (
               <View style={styles.headerTitle}>
                 <Text style={[styles.headerTitleText, { color: colors.textPrimary }]}>
-                  Plan your trip
+                  {t("chat.planYourTrip")}
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: activePersona.accentColor || colors.textSecondary }]}>
-                  with {activePersona.name}
+                  {t("chat.withPersona", { name: activePersona.name })}
                 </Text>
               </View>
             )
@@ -222,7 +222,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => setFeedbackOpen(true)}
             style={{ paddingHorizontal: 12 }}
-            accessibilityLabel="Report issue"
+            accessibilityLabel={t("chat.reportIssue")}
             accessibilityRole="button"
           >
             <Flag size={20} color={colors.textSecondary} />
@@ -251,9 +251,9 @@ export default function ChatScreen() {
                 onPress={loadMoreHistory}
                 style={styles.loadMoreButton}
                 accessibilityRole="button"
-                accessibilityLabel="Load earlier messages"
+                accessibilityLabel={t("chat.loadEarlierMessages")}
               >
-                <Text style={styles.loadMoreText}>Load earlier messages</Text>
+                <Text style={styles.loadMoreText}>{t("chat.loadEarlierMessages")}</Text>
               </Pressable>
             )
           ) : null
@@ -265,17 +265,17 @@ export default function ChatScreen() {
             </View>
           ) : historyError && !isStreaming ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.errorTitle}>Could not load messages</Text>
+              <Text style={styles.errorTitle}>{t("chat.couldNotLoadMessages")}</Text>
               <Text style={styles.emptySubtitle}>{historyError}</Text>
               <Pressable style={styles.retryButton} onPress={retryHistory}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>{t("chat.retry")}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>Plan your trip</Text>
+              <Text style={styles.emptyTitle}>{t("chat.planYourTrip")}</Text>
               <Text style={styles.emptySubtitle}>
-                Ask me anything about your destination, and I'll help you build the perfect itinerary.
+                {t("chat.planYourTripSubtitle")}
               </Text>
               <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
             </View>
@@ -293,10 +293,10 @@ export default function ChatScreen() {
               <Pressable
                 style={styles.stopButton}
                 onPress={abortStream}
-                accessibilityLabel="Stop generating"
+                accessibilityLabel={t("chat.stopGenerating")}
                 accessibilityRole="button"
               >
-                <Text style={styles.stopButtonText}>Stop generating</Text>
+                <Text style={styles.stopButtonText}>{t("chat.stopGenerating")}</Text>
               </Pressable>
             )}
           </>
@@ -316,7 +316,7 @@ export default function ChatScreen() {
       {lastFailedMessage && !isStreaming && (
         <View style={styles.retryBanner}>
           <View style={styles.retryBannerLeft}>
-            <Text style={styles.retryBannerTitle}>Message failed to send</Text>
+            <Text style={styles.retryBannerTitle}>{t("chat.messageFailed")}</Text>
             <Text style={styles.retryBannerPreview} numberOfLines={1}>
               {lastFailedMessage.content.length > 60
                 ? `${lastFailedMessage.content.slice(0, 60)}...`
@@ -332,7 +332,7 @@ export default function ChatScreen() {
               accessibilityLabel="Retry sending message"
               accessibilityRole="button"
             >
-              <Text style={styles.retryBannerRetryButtonText}>Retry</Text>
+              <Text style={styles.retryBannerRetryButtonText}>{t("chat.retry")}</Text>
             </Pressable>
             <Pressable
               style={styles.retryDismiss}
@@ -350,7 +350,7 @@ export default function ChatScreen() {
           <Text style={[styles.usageText, { color: usageTextColor }]}>{usageLabel}</Text>
           {usageAtLimit && tripId && (
             <Pressable onPress={() => router.push(`/trips/${tripId}`)}>
-              <Text style={styles.upgradeLink}>Upgrade</Text>
+              <Text style={styles.upgradeLink}>{t("chat.upgrade")}</Text>
             </Pressable>
           )}
         </View>

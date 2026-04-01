@@ -59,6 +59,12 @@
     }
   },
   "companion": {
+    "title": "Travel Companion",
+    "subtitle": "Ask me anything about your surroundings, get directions, find restaurants, or discover hidden gems nearby.",
+    "signInRequired": "Sign in to use companion mode",
+    "feedbackLink": "Having issues? Let us know",
+    "stopGenerating": "Stop generating",
+    "placeholder": "Ask your companion...",
     "suggestions": {
       "nearby": "What's nearby?",
       "eat": "Where should I eat?",
@@ -92,6 +98,37 @@
     "submit": "Start Planning",
     "submitting": "Creating...",
     "dateRangeError": "End date must be on or after start date"
+  },
+  "bookings": {
+    "untitled": "Untitled booking",
+    "empty": "No bookings yet",
+    "emptySubtext": "Paste a confirmation email to add one",
+    "addBooking": "Add Booking",
+    "pastePlaceholder": "Paste booking confirmation text or email...",
+    "deleteTitle": "Delete Booking",
+    "deleteConfirm": "Are you sure?",
+    "typeFlight": "Flight",
+    "typeHotel": "Hotel",
+    "typeCarRental": "Car Rental",
+    "typeTrain": "Train",
+    "typeActivity": "Activity",
+    "typeRestaurant": "Restaurant",
+    "typeTour": "Tour",
+    "typeOther": "Other"
+  },
+  "tripDetail": {
+    "chat": "Chat",
+    "bookings": "Bookings",
+    "settings": "Settings",
+    "planningBanner": "Only {{covered}} of {{total}} days planned",
+    "continuePlanning": "Continue planning \u2192",
+    "startTrip": "Start Trip",
+    "completeTrip": "Complete Trip",
+    "exportPdf": "Export PDF",
+    "exportCalendar": "Export Calendar",
+    "travelGuide": "{{destination}} Travel Guide",
+    "guideAuthor": "By {{name}} \u2014 {{specialty}}",
+    "failedToCreate": "Failed to create trip"
   },
   "tripSettings": {
     "title": "Trip Settings",
@@ -135,13 +172,25 @@
     "upgradePrompt": "Upgrade to keep Pro features"
   },
   "chat": {
+    "planYourTrip": "Plan your trip",
+    "planYourTripSubtitle": "Ask me anything about your destination, and I'll help you build the perfect itinerary.",
+    "withPersona": "with {{name}}",
+    "loadEarlierMessages": "Load earlier messages",
+    "couldNotLoadMessages": "Could not load messages",
+    "stopGenerating": "Stop generating",
+    "messageFailed": "Message failed to send",
+    "reportIssue": "Report issue",
+    "retry": "Retry",
+    "upgrade": "Upgrade",
+    "dailyLimitReached": "Daily limit reached. Resets {{time}}",
+    "almostAtDailyLimit": "Almost at daily limit — {{remaining}} left",
+    "messagesUsage": "{{used}}/{{limit}} messages today",
     "planningPrompt": "Start planning your trip! Tell me where you want to go.",
     "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again.",
     "expertLimitReached": "You've used your free expert consultations for this trip.",
     "expertLimitCta": "Unlock unlimited experts for $12 CAD",
-    "dailyLimitReached": "You've used your 30 messages for today. Try again tomorrow!",
     "dailyLimitReset": "Your messages reset at midnight UTC.",
     "suggestions": {
       "itinerary": "Build my day 1 itinerary",
@@ -188,6 +237,17 @@
     "success": "Thanks for your feedback!",
     "successDetail": "We read every submission and use it to improve Toqui.",
     "error": "Failed to send feedback. Please try again."
+  },
+  "ageGate": {
+    "title": "Age Verification",
+    "subtitle": "You must be at least 18 years old to use Toqui. Please enter your date of birth.",
+    "deniedTitle": "Access Denied",
+    "deniedSubtitle": "You must be at least 18 years old to use Toqui. Please come back when you're old enough.",
+    "invalidDate": "Please enter a valid date of birth.",
+    "month": "Month",
+    "day": "Day",
+    "year": "Year",
+    "verifyAge": "Verify Age"
   },
   "waitlist": {
     "title": "We're at capacity!",

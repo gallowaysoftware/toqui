@@ -240,7 +240,7 @@ export default function TripDetailScreen() {
             onPress={() => router.push(`/trips/${tripId}/chat` as never)}
           >
             <MessageCircle color={colors.accent} size={24} />
-            <Text style={styles.actionText}>Chat</Text>
+            <Text style={styles.actionText}>{t("tripDetail.chat")}</Text>
           </Pressable>
 
           <Pressable
@@ -248,7 +248,7 @@ export default function TripDetailScreen() {
             onPress={() => router.push(`/trips/${tripId}/bookings` as never)}
           >
             <Calendar color={colors.accent} size={24} />
-            <Text style={styles.actionText}>Bookings</Text>
+            <Text style={styles.actionText}>{t("tripDetail.bookings")}</Text>
           </Pressable>
 
           <Pressable
@@ -256,7 +256,7 @@ export default function TripDetailScreen() {
             onPress={() => router.push(`/trips/${tripId}/settings` as never)}
           >
             <Settings color={colors.accent} size={24} />
-            <Text style={styles.actionText}>Settings</Text>
+            <Text style={styles.actionText}>{t("tripDetail.settings")}</Text>
           </Pressable>
 
           <Pressable
@@ -276,14 +276,14 @@ export default function TripDetailScreen() {
         {guide && (
           <View style={styles.guideCard}>
             <Text style={styles.guideHeader}>
-              {`${guide.destination} Travel Guide`}
+              {t("tripDetail.travelGuide", { destination: guide.destination })}
             </Text>
             <Text style={styles.guideExcerpt} numberOfLines={3}>
               {guide.excerpt}
             </Text>
             {guide.persona_name ? (
               <Text style={styles.guideSection}>
-                {`By ${guide.persona_name} — ${guide.persona_specialty}`}
+                {t("tripDetail.guideAuthor", { name: guide.persona_name, specialty: guide.persona_specialty })}
               </Text>
             ) : null}
           </View>
@@ -293,10 +293,10 @@ export default function TripDetailScreen() {
           <View style={styles.continuationBanner}>
             <View style={styles.continuationBannerContent}>
               <Text style={styles.continuationBannerText}>
-                {`Only ${coveredDays} of ${totalDays} days planned`}
+                {t("tripDetail.planningBanner", { covered: coveredDays, total: totalDays })}
               </Text>
               <Pressable onPress={() => router.push(`/trips/${tripId}/chat` as never)}>
-                <Text style={styles.continuationBannerCta}>Continue planning →</Text>
+                <Text style={styles.continuationBannerCta}>{t("tripDetail.continuePlanning")}</Text>
               </Pressable>
             </View>
             <Pressable style={styles.continuationBannerDismiss} onPress={handleDismissBanner}>
@@ -313,14 +313,14 @@ export default function TripDetailScreen() {
                 onPress={() => exportItineraryPDF(trip, itinerary)}
               >
                 <FileText color={colors.accent} size={16} />
-                <Text style={styles.exportText}>Export PDF</Text>
+                <Text style={styles.exportText}>{t("tripDetail.exportPdf")}</Text>
               </Pressable>
               <Pressable
                 style={styles.exportButton}
                 onPress={() => exportItineraryICal(trip, itinerary)}
               >
                 <CalendarDays color={colors.accent} size={16} />
-                <Text style={styles.exportText}>Export Calendar</Text>
+                <Text style={styles.exportText}>{t("tripDetail.exportCalendar")}</Text>
               </Pressable>
             </View>
             <ItineraryMap itinerary={itinerary} />
@@ -337,7 +337,7 @@ export default function TripDetailScreen() {
             disabled={updateTrip.isPending}
           >
             <Play color="#22c55e" size={18} />
-            <Text style={styles.statusButtonText}>Start Trip</Text>
+            <Text style={styles.statusButtonText}>{t("tripDetail.startTrip")}</Text>
           </Pressable>
         )}
 
@@ -348,7 +348,7 @@ export default function TripDetailScreen() {
             disabled={updateTrip.isPending}
           >
             <CheckCircle color="#3b82f6" size={18} />
-            <Text style={styles.statusButtonText}>Complete Trip</Text>
+            <Text style={styles.statusButtonText}>{t("tripDetail.completeTrip")}</Text>
           </Pressable>
         )}
       </ScrollView>

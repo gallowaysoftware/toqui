@@ -1,24 +1,26 @@
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput, Alert } from "react-native";
 import { useState, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizontal } from "lucide-react-native";
 import { useBookings, useIngestBooking, useDeleteBooking } from "@/lib/hooks/useBookings";
 import { BookingType } from "@gen/toqui/v1/booking_pb";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
 import { useTheme } from "@/lib/theme";
 
-const typeConfig: Record<number, { label: string; color: string; Icon: typeof Plane }> = {
-  [BookingType.FLIGHT]: { label: "Flight", color: "#3b82f6", Icon: Plane },
-  [BookingType.HOTEL]: { label: "Hotel", color: "#8b5cf6", Icon: Hotel },
-  [BookingType.CAR_RENTAL]: { label: "Car Rental", color: "#f59e0b", Icon: Car },
-  [BookingType.TRAIN]: { label: "Train", color: "#10b981", Icon: Train },
-  [BookingType.ACTIVITY]: { label: "Activity", color: "#ec4899", Icon: Ticket },
-  [BookingType.RESTAURANT]: { label: "Restaurant", color: "#ef4444", Icon: Utensils },
-  [BookingType.TOUR]: { label: "Tour", color: "#06b6d4", Icon: Ticket },
-  [BookingType.OTHER]: { label: "Other", color: "#6b7280", Icon: MoreHorizontal },
+const typeConfig: Record<number, { i18nKey: string; color: string; Icon: typeof Plane }> = {
+  [BookingType.FLIGHT]: { i18nKey: "bookings.typeFlight", color: "#3b82f6", Icon: Plane },
+  [BookingType.HOTEL]: { i18nKey: "bookings.typeHotel", color: "#8b5cf6", Icon: Hotel },
+  [BookingType.CAR_RENTAL]: { i18nKey: "bookings.typeCarRental", color: "#f59e0b", Icon: Car },
+  [BookingType.TRAIN]: { i18nKey: "bookings.typeTrain", color: "#10b981", Icon: Train },
+  [BookingType.ACTIVITY]: { i18nKey: "bookings.typeActivity", color: "#ec4899", Icon: Ticket },
+  [BookingType.RESTAURANT]: { i18nKey: "bookings.typeRestaurant", color: "#ef4444", Icon: Utensils },
+  [BookingType.TOUR]: { i18nKey: "bookings.typeTour", color: "#06b6d4", Icon: Ticket },
+  [BookingType.OTHER]: { i18nKey: "bookings.typeOther", color: "#6b7280", Icon: MoreHorizontal },
 };
 
 function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => void }) {
+  const { t } = useTranslation();
   const config = typeConfig[booking.type] ?? typeConfig[BookingType.OTHER]!;
   const { Icon } = config;
   const { colors } = useTheme();
@@ -54,8 +56,8 @@ function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => 
         <Icon color="#fff" size={16} />
       </View>
       <View style={cardStyles.cardContent}>
-        <Text style={cardStyles.cardTitle} numberOfLines={1}>{booking.title || "Untitled booking"}</Text>
-        <Text style={cardStyles.cardType}>{config.label}</Text>
+        <Text style={cardStyles.cardTitle} numberOfLines={1}>{booking.title || t("bookings.untitled")}</Text>
+        <Text style={cardStyles.cardType}>{t(config.i18nKey)}</Text>
         {booking.provider ? <Text style={cardStyles.cardMeta}>{booking.provider}</Text> : null}
         {booking.confirmationCode ? <Text style={cardStyles.cardMeta}>#{booking.confirmationCode}</Text> : null}
       </View>
@@ -67,6 +69,7 @@ function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => 
 }
 
 export default function BookingsScreen() {
+  const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { bookings, isLoading } = useBookings(tripId!);
   const ingestBooking = useIngestBooking();
@@ -87,9 +90,9 @@ export default function BookingsScreen() {
   }, [rawText, tripId, ingestBooking]);
 
   const handleDelete = useCallback((id: string) => {
-    Alert.alert("Delete Booking", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteBooking.mutate({ id, tripId: tripId! }) },
+    Alert.alert(t("bookings.deleteTitle"), t("bookings.deleteConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => deleteBooking.mutate({ id, tripId: tripId! }) },
     ]);
   }, [tripId, deleteBooking]);
 
@@ -156,8 +159,8 @@ export default function BookingsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No bookings yet</Text>
-            <Text style={styles.emptySubtext}>Paste a confirmation email to add one</Text>
+            <Text style={styles.emptyText}>{t("bookings.empty")}</Text>
+            <Text style={styles.emptySubtext}>{t("bookings.emptySubtext")}</Text>
           </View>
         }
         ListHeaderComponent={
@@ -165,7 +168,7 @@ export default function BookingsScreen() {
             <View style={styles.addForm}>
               <TextInput
                 style={styles.textArea}
-                placeholder="Paste booking confirmation text or email..."
+                placeholder={t("bookings.pastePlaceholder")}
                 placeholderTextColor={colors.textTertiary}
                 value={rawText}
                 onChangeText={setRawText}
@@ -175,7 +178,7 @@ export default function BookingsScreen() {
               />
               <View style={styles.addActions}>
                 <Pressable style={styles.cancelButton} onPress={() => { setShowAdd(false); setRawText(""); }}>
-                  <Text style={styles.cancelText}>Cancel</Text>
+                  <Text style={styles.cancelText}>{t("common.cancel")}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.submitButton, (!rawText.trim() || ingestBooking.isPending) && styles.disabledButton]}
@@ -185,7 +188,7 @@ export default function BookingsScreen() {
                   {ingestBooking.isPending ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.submitText}>Add Booking</Text>
+                    <Text style={styles.submitText}>{t("bookings.addBooking")}</Text>
                   )}
                 </Pressable>
               </View>
@@ -193,7 +196,7 @@ export default function BookingsScreen() {
           ) : (
             <Pressable style={styles.addButton} onPress={() => setShowAdd(true)}>
               <Plus color={colors.accent} size={18} />
-              <Text style={styles.addButtonText}>Add Booking</Text>
+              <Text style={styles.addButtonText}>{t("bookings.addBooking")}</Text>
             </Pressable>
           )
         }
