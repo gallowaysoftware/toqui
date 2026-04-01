@@ -29,6 +29,9 @@ const (
 	EventAdminGrantPro       = "admin.grant_pro"
 	EventAdminDeleteUser     = "admin.delete_user"
 	EventReferralRedeem      = "referral.redeem"
+	EventTripInvite          = "trip.invite"
+	EventTripInviteAccept    = "trip.invite_accept"
+	EventTripCollabRemove    = "trip.collaborator_remove"
 )
 
 // Log records a structured audit event. All audit events include the event

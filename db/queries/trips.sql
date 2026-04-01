@@ -6,6 +6,14 @@ RETURNING *;
 -- name: GetTripByID :one
 SELECT * FROM trips WHERE id = $1 AND user_id = $2;
 
+-- name: GetTripByIDOrCollaborator :one
+SELECT t.* FROM trips t
+WHERE t.id = $1
+  AND (t.user_id = $2 OR EXISTS (
+    SELECT 1 FROM trip_collaborators tc
+    WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL
+  ));
+
 -- name: ListTripsByUser :many
 SELECT * FROM trips
 WHERE user_id = $1

@@ -58,6 +58,27 @@ func (s *Service) GetByID(ctx context.Context, userID, tripID uuid.UUID) (*dbgen
 	return &trip, nil
 }
 
+// GetByIDOrCollaborator returns a trip if the user owns it or is an accepted collaborator.
+func (s *Service) GetByIDOrCollaborator(ctx context.Context, userID, tripID uuid.UUID) (*dbgen.Trip, error) {
+	trip, err := s.queries.GetTripByIDOrCollaborator(ctx, dbgen.GetTripByIDOrCollaboratorParams{
+		ID:     tripID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get trip: %w", err)
+	}
+	return &trip, nil
+}
+
+// ListSharedTrips returns trips shared with the user as a collaborator.
+func (s *Service) ListSharedTrips(ctx context.Context, userID uuid.UUID) ([]dbgen.Trip, error) {
+	trips, err := s.queries.ListSharedTrips(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("list shared trips: %w", err)
+	}
+	return trips, nil
+}
+
 func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID, status string, limit, offset int32) ([]dbgen.Trip, int64, error) {
 	var trips []dbgen.Trip
 	var count int64

@@ -213,6 +213,44 @@ func (q *Queries) GetTripByID(ctx context.Context, arg GetTripByIDParams) (Trip,
 	return i, err
 }
 
+const getTripByIDOrCollaborator = `-- name: GetTripByIDOrCollaborator :one
+SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at FROM trips t
+WHERE t.id = $1
+  AND (t.user_id = $2 OR EXISTS (
+    SELECT 1 FROM trip_collaborators tc
+    WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL
+  ))
+`
+
+type GetTripByIDOrCollaboratorParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetTripByIDOrCollaborator(ctx context.Context, arg GetTripByIDOrCollaboratorParams) (Trip, error) {
+	row := q.db.QueryRow(ctx, getTripByIDOrCollaborator, arg.ID, arg.UserID)
+	var i Trip
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.StartDate,
+		&i.EndDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DestinationCountry,
+		&i.CompletedAt,
+		&i.ArchiveAfter,
+		&i.ArchivedAt,
+		&i.ShareToken,
+		&i.TrialStartedAt,
+		&i.TrialEndsAt,
+	)
+	return i, err
+}
+
 const getTripByShareToken = `-- name: GetTripByShareToken :one
 SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at FROM trips WHERE share_token = $1
 `

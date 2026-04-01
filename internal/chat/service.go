@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ledongthuc/pdf"
@@ -264,8 +265,15 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	return outCh, sessionID, nil
 }
 
-// maxToolLoopIterations prevents infinite tool call loops.
-const maxToolLoopIterations = 5
+const (
+	// maxToolLoopIterations prevents infinite tool call loops.
+	maxToolLoopIterations = 5
+
+	// turnTimeout is the per-turn deadline for the AI provider channel. If the
+	// provider goroutine stalls or panics without closing the channel,
+	// processOneTurn returns an error after this duration rather than hanging.
+	turnTimeout = 90 * time.Second
+)
 
 // processEventsWithToolLoop handles the AI stream and implements the tool call
 // continuation loop. When the AI stops for tool use, tool results are sent back
@@ -381,9 +389,23 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		return responseText
 	}
 
-	// Hit iteration limit — store what we have
-	slog.Warn("tool loop: hit max iterations", "max", maxToolLoopIterations)
+	// Hit iteration limit — log, optionally append a brief note, then store what we have.
+	slog.Warn("tool loop: hit max iterations",
+		"session_id", sessionID,
+		"iterations", maxToolLoopIterations,
+	)
+
+	const iterLimitNote = "\n\n*(Some details may be incomplete due to tool execution constraints.)*"
 	responseText := fullResponse.String()
+	if responseText != "" {
+		// Emit a subtle note so the user knows the response may be partial.
+		select {
+		case outCh <- StreamEvent{Type: "text_delta", Text: iterLimitNote}:
+		case <-ctx.Done():
+		}
+		responseText += iterLimitNote
+	}
+
 	assistantMsg := &chatstore.ChatMessage{
 		Role:    "assistant",
 		Content: responseText,
@@ -448,98 +470,107 @@ func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
 // Returns the text produced, tool calls made, tool results, stop reason, usage, and any error.
 func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, outCh chan<- StreamEvent, extraTools map[string]tools.Tool) (text string, toolCalls []ai.ToolCall, toolResults []ai.ToolResult, stopReason string, usage *ai.Usage, err error) {
 	var turnText strings.Builder
-
 	var turnUsage *ai.Usage
 
-	for event := range eventCh {
-		// Stop processing if the client disconnected.
-		if ctx.Err() != nil {
-			return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
-		}
+	turnCtx, turnCancel := context.WithTimeout(ctx, turnTimeout)
+	defer turnCancel()
 
-		switch event.Type {
-		case ai.EventTextDelta:
-			turnText.WriteString(event.Text)
-			select {
-			case outCh <- StreamEvent{Type: "text_delta", Text: event.Text}:
-			case <-ctx.Done():
+	for {
+		select {
+		case <-turnCtx.Done():
+			if ctx.Err() != nil {
+				// Parent context cancelled (client disconnected).
 				return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
 			}
+			// Per-turn timeout expired.
+			return turnText.String(), toolCalls, toolResults, "", turnUsage,
+				fmt.Errorf("turn timeout: AI provider did not respond within %s", turnTimeout)
 
-		case ai.EventToolCall:
-			if event.Tool != nil {
-				select {
-				case outCh <- StreamEvent{
-					Type:      "tool_call",
-					ToolName:  event.Tool.Name,
-					ToolInput: event.Tool.Arguments,
-				}:
-				case <-ctx.Done():
-					return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
+		case event, ok := <-eventCh:
+			if !ok {
+				// Channel closed without an EventDone — log and return what we have.
+				if stopReason == "" {
+					slog.Warn("ai stream closed without EventDone",
+						"text_len", turnText.Len(),
+						"tool_calls", len(toolCalls),
+					)
 				}
-
-				// Track this tool call for the continuation message
-				toolCalls = append(toolCalls, *event.Tool)
-
-				// Execute tool — check extra tools first, then global registry
-				var result json.RawMessage
-				var execErr error
-				if extra, ok := extraTools[event.Tool.Name]; ok {
-					result, execErr = extra.Execute(ctx, json.RawMessage(event.Tool.Arguments))
-				} else {
-					result, execErr = s.tools.Execute(ctx, event.Tool.Name, []byte(event.Tool.Arguments))
-				}
-
-				var resultStr string
-				if execErr != nil {
-					resultStr = fmt.Sprintf(`{"error": %q}`, execErr.Error())
-				} else {
-					resultStr = string(result)
-				}
-
-				select {
-				case outCh <- StreamEvent{
-					Type:       "tool_result",
-					ToolName:   event.Tool.Name,
-					ToolResult: resultStr,
-				}:
-				case <-ctx.Done():
-					return turnText.String(), toolCalls, toolResults, "", turnUsage, ctx.Err()
-				}
-
-				// Collect tool result for the continuation message
-				toolResults = append(toolResults, ai.ToolResult{
-					ToolCallID: event.Tool.ID,
-					Name:       event.Tool.Name,
-					Content:    resultStr,
-				})
+				return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 			}
 
-		case ai.EventDone:
-			stopReason = event.StopReason
-			turnUsage = event.Usage
-			return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
+			switch event.Type {
+			case ai.EventTextDelta:
+				turnText.WriteString(event.Text)
+				select {
+				case outCh <- StreamEvent{Type: "text_delta", Text: event.Text}:
+				case <-turnCtx.Done():
+				}
 
-		case ai.EventError:
-			select {
-			case outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}:
-			case <-ctx.Done():
+			case ai.EventToolCall:
+				if event.Tool != nil {
+					select {
+					case outCh <- StreamEvent{
+						Type:      "tool_call",
+						ToolName:  event.Tool.Name,
+						ToolInput: event.Tool.Arguments,
+					}:
+					case <-turnCtx.Done():
+					}
+
+					// Track this tool call for the continuation message
+					toolCalls = append(toolCalls, *event.Tool)
+
+					// Execute tool — check extra tools first, then global registry
+					var result json.RawMessage
+					var execErr error
+					if extra, ok := extraTools[event.Tool.Name]; ok {
+						result, execErr = extra.Execute(ctx, json.RawMessage(event.Tool.Arguments))
+					} else {
+						result, execErr = s.tools.Execute(ctx, event.Tool.Name, []byte(event.Tool.Arguments))
+					}
+
+					var resultStr string
+					if execErr != nil {
+						slog.Error("tool execution failed",
+							"tool", event.Tool.Name,
+							"error", execErr.Error(),
+						)
+						resultStr = fmt.Sprintf(`{"error": %q}`, execErr.Error())
+					} else {
+						resultStr = string(result)
+					}
+
+					select {
+					case outCh <- StreamEvent{
+						Type:       "tool_result",
+						ToolName:   event.Tool.Name,
+						ToolResult: resultStr,
+					}:
+					case <-turnCtx.Done():
+					}
+
+					// Collect tool result for the continuation message
+					toolResults = append(toolResults, ai.ToolResult{
+						ToolCallID: event.Tool.ID,
+						Name:       event.Tool.Name,
+						Content:    resultStr,
+					})
+				}
+
+			case ai.EventDone:
+				stopReason = event.StopReason
+				turnUsage = event.Usage
+				return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
+
+			case ai.EventError:
+				select {
+				case outCh <- StreamEvent{Type: "error", Error: event.Error.Error()}:
+				case <-turnCtx.Done():
+				}
+				return turnText.String(), toolCalls, toolResults, "", turnUsage, event.Error
 			}
-			return turnText.String(), toolCalls, toolResults, "", turnUsage, event.Error
 		}
 	}
-
-	// If we get here, the event channel closed without an EventDone. This can
-	// happen if the AI provider stream terminates unexpectedly. Log a warning
-	// so we can investigate, and return what we have.
-	if stopReason == "" {
-		slog.Warn("ai stream closed without EventDone",
-			"text_len", turnText.Len(),
-			"tool_calls", len(toolCalls),
-		)
-	}
-
-	return turnText.String(), toolCalls, toolResults, stopReason, turnUsage, nil
 }
 
 // syntheticCacheResponse creates a channel that emits a cached response as if it

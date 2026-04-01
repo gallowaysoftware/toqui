@@ -168,6 +168,18 @@ type Trip struct {
 	TrialEndsAt        pgtype.Timestamptz `json:"trial_ends_at"`
 }
 
+type TripCollaborator struct {
+	ID          uuid.UUID          `json:"id"`
+	TripID      uuid.UUID          `json:"trip_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	Email       string             `json:"email"`
+	Role        string             `json:"role"`
+	InviteToken pgtype.Text        `json:"invite_token"`
+	InvitedBy   uuid.UUID          `json:"invited_by"`
+	InvitedAt   time.Time          `json:"invited_at"`
+	AcceptedAt  pgtype.Timestamptz `json:"accepted_at"`
+}
+
 type TripTheme struct {
 	TripID     uuid.UUID `json:"trip_id"`
 	ThemeSlug  string    `json:"theme_slug"`

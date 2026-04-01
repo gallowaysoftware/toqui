@@ -313,6 +313,26 @@ func main() {
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
 	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
 
+	// Trip collaboration routes (authenticated)
+	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
+	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)
+	// Pattern-based routes for trip-specific collaboration endpoints.
+	// Go 1.22+ ServeMux doesn't support path params, so we use prefix matching
+	// and parse the trip ID in the handler.
+	mux.HandleFunc("/api/trips/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		switch {
+		case strings.HasSuffix(path, "/invite") && r.Method == http.MethodPost:
+			collabHandler.HandleInvite(w, r)
+		case strings.HasSuffix(path, "/collaborators") && r.Method == http.MethodGet:
+			collabHandler.HandleListCollaborators(w, r)
+		case strings.Contains(path, "/collaborators/") && r.Method == http.MethodDelete:
+			collabHandler.HandleRemoveCollaborator(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+
 	// Shared trip routes
 	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)

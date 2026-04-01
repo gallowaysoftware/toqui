@@ -115,6 +115,27 @@ https://toqui.travel`, greeting, appURL)
 	return s.Send(to, subject, body)
 }
 
+// SendCollabInvite sends a trip collaboration invite email.
+func (s *Sender) SendCollabInvite(to, inviterName, tripTitle, acceptURL string) error {
+	subject := fmt.Sprintf("%s invited you to collaborate on a trip", inviterName)
+	body := fmt.Sprintf(`Hey there!
+
+%s has invited you to collaborate on their trip "%s" on Toqui.
+
+Click the link below to accept the invite:
+
+%s
+
+If you don't have a Toqui account yet, you'll be prompted to sign up first.
+
+Happy travels!
+
+— The Toqui Team
+https://toqui.travel`, inviterName, tripTitle, acceptURL)
+
+	return s.Send(to, subject, body)
+}
+
 // SendVerification sends a waitlist verification email.
 func (s *Sender) SendVerification(to, verifyURL string) error {
 	subject := "Verify your Toqui waitlist signup"

@@ -90,7 +90,8 @@ func (h *TripHandler) GetTrip(ctx context.Context, req *connect.Request[toquiv1.
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	t, err := h.tripSvc.GetByID(ctx, userID, tripID)
+	// Try owner access first, then collaborator access.
+	t, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
@@ -127,6 +128,28 @@ func (h *TripHandler) ListTrips(ctx context.Context, req *connect.Request[toquiv
 	protoTrips := make([]*toquiv1.Trip, len(trips))
 	for i, t := range trips {
 		protoTrips[i] = tripToProto(&t)
+	}
+
+	// Also include trips shared with this user (collaborator trips).
+	// Only include when not filtering by status (to keep the filtered view clean).
+	if status == "" {
+		sharedTrips, err := h.tripSvc.ListSharedTrips(ctx, userID)
+		if err != nil {
+			slog.Warn("list shared trips failed", "error", err, "user_id", userID)
+		} else {
+			// Deduplicate: shared trips should not overlap with owned trips,
+			// but guard against it anyway.
+			seen := make(map[string]bool, len(protoTrips))
+			for _, pt := range protoTrips {
+				seen[pt.Id] = true
+			}
+			for _, st := range sharedTrips {
+				if !seen[st.ID.String()] {
+					protoTrips = append(protoTrips, tripToProto(&st))
+					count++
+				}
+			}
+		}
 	}
 
 	return connect.NewResponse(&toquiv1.ListTripsResponse{
@@ -209,8 +232,8 @@ func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toq
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Verify trip ownership before returning itinerary.
-	if _, err := h.tripSvc.GetByID(ctx, userID, tripID); err != nil {
+	// Verify trip ownership or collaborator access before returning itinerary.
+	if _, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID); err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
