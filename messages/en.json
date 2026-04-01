@@ -365,6 +365,74 @@
       "exploreFirst": "Explore First"
     }
   },
+  "templates": {
+    "title": "Popular Trips",
+    "searchPlaceholder": "Search by destination...",
+    "noResults": "No templates found. Try a different search.",
+    "duration": "{{count}} day",
+    "duration_plural": "{{count}} days",
+    "fromTemplate": "Customized from template",
+    "categories": {
+      "weekend": "Weekend",
+      "week": "Week",
+      "adventure": "Adventure",
+      "family": "Family",
+      "romantic": "Romantic",
+      "cultural": "Cultural"
+    },
+    "items": {
+      "parisWeekend": {
+        "title": "Weekend in Paris",
+        "description": "A romantic getaway through the City of Light. Stroll along the Seine, explore charming neighborhoods, and savor world-class cuisine.",
+        "suggestedPrompt": "Plan a romantic weekend in Paris. I'd love to visit iconic landmarks, find cozy cafes, and experience the best of Parisian culture. Include restaurant recommendations and evening activities."
+      },
+      "tokyoExplorer": {
+        "title": "Tokyo Explorer",
+        "description": "Dive into Tokyo's incredible mix of ancient tradition and cutting-edge modernity. From temples to street food to neon-lit districts.",
+        "suggestedPrompt": "Plan a week exploring Tokyo. I want to experience both traditional culture (temples, gardens) and modern Tokyo (Shibuya, Akihabara). Include the best street food spots and day trip options."
+      },
+      "baliBeach": {
+        "title": "Bali Beach & Temples",
+        "description": "Discover Bali's stunning beaches, ancient temples, and lush rice terraces. Perfect for adventure seekers and culture lovers alike.",
+        "suggestedPrompt": "Plan a 10-day Bali trip mixing beach relaxation with temple visits and rice terrace treks. Include Ubud, Seminyak, and Uluwatu. Suggest the best surf spots and local warungs."
+      },
+      "nycCity": {
+        "title": "New York City",
+        "description": "Experience the energy of the Big Apple. World-class museums, Broadway shows, iconic neighborhoods, and incredible food from every corner of the globe.",
+        "suggestedPrompt": "Plan a 4-day NYC trip covering Manhattan highlights, Brooklyn exploration, and the best food scenes. Include must-see museums, shows, and neighborhood walks."
+      },
+      "italianRoadTrip": {
+        "title": "Italian Road Trip",
+        "description": "Drive through Italy's stunning landscapes from the Amalfi Coast to Tuscany's rolling hills. Discover hidden villages, vineyards, and centuries of history.",
+        "suggestedPrompt": "Plan a 2-week road trip through Italy starting from Rome. Cover the Amalfi Coast, Tuscany, Florence, Venice, and the Italian Lakes. Include driving tips, scenic routes, and local trattorias."
+      },
+      "barcelonaCostaBrava": {
+        "title": "Barcelona & Costa Brava",
+        "description": "Explore Barcelona's architectural wonders and then escape to the Costa Brava's hidden coves and medieval villages.",
+        "suggestedPrompt": "Plan a 5-day trip starting in Barcelona with Gaudi landmarks, tapas bars, and the Gothic Quarter, then head to Costa Brava for beach days and coastal villages."
+      },
+      "thailandBackpacking": {
+        "title": "Thailand Backpacking",
+        "description": "Backpack through Thailand from bustling Bangkok to northern mountains and southern islands. Adventure, culture, and incredible food on a budget.",
+        "suggestedPrompt": "Plan a 2-week backpacking trip through Thailand covering Bangkok, Chiang Mai, and the southern islands. I'm on a budget and want a mix of culture, adventure, and beach time. Include transport tips between cities."
+      },
+      "londonFamily": {
+        "title": "London Family Holiday",
+        "description": "A family-friendly week in London packed with museums, parks, and unforgettable experiences that kids and adults will both love.",
+        "suggestedPrompt": "Plan a week-long family trip to London with 2 kids (ages 8 and 12). Include kid-friendly museums, parks, Harry Potter experiences, and restaurants that are great for families. Mix in some classic sightseeing."
+      },
+      "greekIslands": {
+        "title": "Greek Islands",
+        "description": "Island-hop through the Aegean Sea. Whitewashed villages, crystal-clear waters, ancient ruins, and legendary sunsets await.",
+        "suggestedPrompt": "Plan a 10-day Greek island-hopping trip. Include Santorini, Mykonos, and one less-touristy island. I want romantic sunsets, great seafood, beautiful beaches, and some ancient history."
+      },
+      "moroccoDiscovery": {
+        "title": "Morocco Discovery",
+        "description": "Journey through Morocco's vibrant medinas, vast Sahara dunes, and Atlas Mountain villages. A feast for all the senses.",
+        "suggestedPrompt": "Plan a week-long trip through Morocco covering Marrakech, Fes, the Sahara Desert, and the Atlas Mountains. Include riad recommendations, food tours, and cultural experiences."
+      }
+    }
+  },
   "waitlist": {
     "title": "We're at capacity!",
     "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",

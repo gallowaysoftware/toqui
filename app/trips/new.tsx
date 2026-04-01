@@ -1,23 +1,49 @@
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { AlertCircle } from "lucide-react-native";
+import { AlertCircle, Sparkles } from "lucide-react-native";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
+import { getTemplateById } from "@/lib/data/tripTemplates";
+
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export default function NewTripScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
-  const { destination } = useLocalSearchParams<{ destination?: string }>();
+  const { destination, template: templateId } = useLocalSearchParams<{
+    destination?: string;
+    template?: string;
+  }>();
   const createTrip = useCreateTrip();
 
-  const [title, setTitle] = useState(destination ?? "");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const template = useMemo(
+    () => (templateId ? getTemplateById(templateId) : undefined),
+    [templateId],
+  );
+
+  const initialTitle = template ? t(template.titleKey) : (destination ?? "");
+  const initialDescription = template ? t(template.descriptionKey) : "";
+  const initialStartDate = template ? formatDate(new Date()) : "";
+  const initialEndDate = useMemo(() => {
+    if (!template) return "";
+    const end = new Date();
+    end.setDate(end.getDate() + template.duration - 1);
+    return formatDate(end);
+  }, [template]);
+
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [startDate, setStartDate] = useState(initialStartDate);
+  const [endDate, setEndDate] = useState(initialEndDate);
   const [dateError, setDateError] = useState("");
 
   const handleCreate = async () => {
@@ -37,7 +63,14 @@ export default function NewTripScreen() {
         endDate: endDate || undefined,
       });
       if (trip) {
-        router.replace(`/trips/${trip.id}` as never);
+        if (template) {
+          router.replace({
+            pathname: `/trips/${trip.id}/chat` as never,
+            params: { suggestedPrompt: t(template.suggestedPromptKey) },
+          });
+        } else {
+          router.replace(`/trips/${trip.id}` as never);
+        }
       }
     } catch {
       // TanStack Query sets createTrip.isError automatically
@@ -79,10 +112,26 @@ export default function NewTripScreen() {
       marginTop: 12,
     },
     errorText: { color: colors.error, fontSize: 14, flex: 1 },
+    templateBadge: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 6,
+      backgroundColor: colors.accentSoft,
+      borderRadius: 8,
+      padding: 10,
+      marginBottom: 8,
+    },
+    templateBadgeText: { color: colors.accent, fontSize: 13, fontWeight: "600" as const },
   });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {template && (
+        <View style={styles.templateBadge}>
+          <Sparkles color={colors.accent} size={14} />
+          <Text style={styles.templateBadgeText}>{t("templates.fromTemplate")}</Text>
+        </View>
+      )}
       <Text style={styles.label}>{t("tripCreate.whereLabel")}</Text>
       <TextInput
         style={styles.input}
