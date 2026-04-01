@@ -8,6 +8,7 @@ import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
 import { useTrialStatus } from "@/lib/hooks/useTrialStatus";
+import { useDestinationGuide } from "@/lib/hooks/useDestinationGuide";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { ItineraryMap } from "@/components/map/ItineraryMap";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
@@ -41,6 +42,7 @@ export default function TripDetailScreen() {
   const { itinerary, coveredDays, isLoading: isItineraryLoading } = useItinerary(tripId!);
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
+  const { guide } = useDestinationGuide(trip?.destinationCountry || undefined);
   const router = useRouter();
   const { accessToken } = useAuth();
   const { colors } = useTheme();
@@ -133,6 +135,17 @@ export default function TripDetailScreen() {
     continuationBannerText: { fontSize: 14, color: colors.textPrimary, fontWeight: "500", marginBottom: 6 },
     continuationBannerCta: { fontSize: 14, color: colors.accent, fontWeight: "600" },
     continuationBannerDismiss: { padding: 4 },
+    guideCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      marginBottom: 16,
+    },
+    guideHeader: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginBottom: 10 },
+    guideExcerpt: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 12 },
+    guideSection: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6 },
   });
 
   if (isLoading || !trip) {
@@ -259,6 +272,22 @@ export default function TripDetailScreen() {
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
+
+        {guide && (
+          <View style={styles.guideCard}>
+            <Text style={styles.guideHeader}>
+              {`${guide.destination} Travel Guide`}
+            </Text>
+            <Text style={styles.guideExcerpt} numberOfLines={3}>
+              {guide.excerpt}
+            </Text>
+            {guide.persona_name ? (
+              <Text style={styles.guideSection}>
+                {`By ${guide.persona_name} — ${guide.persona_specialty}`}
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {showContinuationBanner && (
           <View style={styles.continuationBanner}>
