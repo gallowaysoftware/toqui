@@ -8,7 +8,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Globe, Navigation } from "lucide-react-native";
 import { useChat } from "@/lib/hooks/useChat";
@@ -20,6 +20,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { LocationPermission } from "@/components/LocationPermission";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
@@ -92,6 +93,21 @@ export default function CompanionScreen() {
       label: t(`companion.suggestions.${s.key}`),
     }));
   }, [t, location]);
+
+  const lastAssistantMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant" && !messages[i].recommendation && !messages[i].isError) {
+        return messages[i].content;
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const showFollowUps =
+    !isStreaming &&
+    messages.length >= 2 &&
+    lastAssistantMessage !== null &&
+    messages[messages.length - 1]?.role === "assistant";
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.recommendation) {
@@ -262,6 +278,14 @@ export default function CompanionScreen() {
               >
                 <Text style={styles.stopButtonText}>{t("companion.stopGenerating")}</Text>
               </Pressable>
+            )}
+            {showFollowUps && lastAssistantMessage && (
+              <FollowUpSuggestions
+                lastAssistantMessage={lastAssistantMessage}
+                onSelect={(text) => sendWithLocation(text)}
+                mode="companion"
+                hasLocation={!!location}
+              />
             )}
           </>
         }

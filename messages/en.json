@@ -228,6 +228,25 @@
       "restaurants": "Best restaurants",
       "hiddenGems": "Hidden gems to explore",
       "packing": "What should I pack?"
+    },
+    "followUp": {
+      "localDishes": "Best local dishes to try",
+      "reservationTips": "Restaurant reservation tips",
+      "howLongToSpend": "How long should I spend there?",
+      "whatsNearby": "What's nearby?",
+      "addMoreActivities": "Add more activities",
+      "adjustPace": "Adjust the pace",
+      "alternativeOptions": "Alternative options",
+      "findFlights": "Help me find flights",
+      "recommendHotels": "Recommend hotels",
+      "createDayByDay": "Create a day-by-day plan",
+      "mustSees": "What are the must-sees?",
+      "whatElse": "What else should I know?",
+      "localTips": "Local tips",
+      "packingSuggestions": "Packing suggestions",
+      "findCoffeeShop": "Find a coffee shop",
+      "navigateHotel": "Navigate to my hotel",
+      "translateSomething": "Translate something for me"
     }
   },
   "checkout": {
