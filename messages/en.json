@@ -310,6 +310,10 @@
     "year": "Year",
     "verifyAge": "Verify Age"
   },
+  "weather": {
+    "title": "Weather forecast",
+    "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary."
+  },
   "waitlist": {
     "title": "We're at capacity!",
     "description": "Toqui is in limited beta and we've reached our current user limit. Join the waitlist and we'll let you know as soon as a spot opens up.",

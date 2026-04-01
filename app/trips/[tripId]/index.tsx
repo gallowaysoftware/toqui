@@ -6,9 +6,11 @@ import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
+import { useWeather } from "@/lib/hooks/useWeather";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
 import { useTrialStatus } from "@/lib/hooks/useTrialStatus";
 import { useDestinationGuide } from "@/lib/hooks/useDestinationGuide";
+import { WeatherCard } from "@/components/weather/WeatherCard";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
 import { ItineraryMap } from "@/components/map/ItineraryMap";
 import { exportItineraryPDF } from "@/lib/export/pdf-export";
@@ -50,6 +52,17 @@ export default function TripDetailScreen() {
   const { colors } = useTheme();
   const [isSharing, setIsSharing] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  // Extract first available coordinates from itinerary for weather lookup
+  const firstLocation = itinerary?.days
+    ?.flatMap((d) => d.items)
+    .find((item) => item.location)?.location ?? null;
+  const { weather, isClimate } = useWeather(
+    firstLocation?.latitude ?? null,
+    firstLocation?.longitude ?? null,
+    trip?.startDate || null,
+    trip?.endDate || null,
+  );
 
   const dismissalKey = `toqui_planning_dismissed_${tripId}`;
 
@@ -321,6 +334,10 @@ export default function TripDetailScreen() {
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
+
+        {weather && weather.length > 0 && (
+          <WeatherCard weather={weather} isClimate={isClimate} />
+        )}
 
         {guide && (
           <View style={styles.guideCard}>
