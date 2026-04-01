@@ -7,6 +7,7 @@ vi.mock("lucide-react-native", () => ({
   Send: () => <span data-testid="send-icon" />,
   Paperclip: () => <span data-testid="paperclip-icon" />,
   X: () => <span data-testid="x-icon" />,
+  Flag: () => null,
 }));
 
 vi.mock("@/lib/theme", () => ({

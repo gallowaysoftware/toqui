@@ -245,7 +245,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           <Paperclip color={disabled ? colors.border : colors.textTertiary} size={20} />
         </Pressable>
         <TextInput
-          style={styles.input}
+          style={[styles.input, disabled && { backgroundColor: colors.surfaceSecondary }]}
           value={text}
           onChangeText={setText}
           placeholder={isDragging ? "Drop files here..." : placeholder}

@@ -47,6 +47,19 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ colors: mockColors, mode: "light", isDark: false, setMode: () => {} }),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({
+    user: { id: "u1", email: "test@example.com", name: "Test User", tier: "free" },
+    accessToken: null,
+    refreshToken: null,
+    isLoading: false,
+    login: () => Promise.resolve(),
+    logout: () => Promise.resolve(),
+    refreshTokens: () => Promise.resolve(null),
+    setTokensManually: () => Promise.resolve(),
+  }),
+}));
+
 // Mock react-native-markdown-display to render children as plain HTML
 vi.mock("react-native-markdown-display", () => ({
   __esModule: true,
@@ -74,12 +87,23 @@ describe("MessageBubble", () => {
     });
 
     it("applies user bubble background color", () => {
-      const { container } = render(
-        <MessageBubble message={makeMessage({ role: "user", content: "test" })} />,
-      );
-      // The outermost View should have the userBubble background
-      const bubble = container.firstChild as HTMLElement;
+      render(<MessageBubble message={makeMessage({ role: "user", content: "test" })} />);
+      // Find the text node and walk up to the bubble (the element with userBubble bg)
+      const textEl = screen.getByText("test");
+      const bubble = textEl.parentElement as HTMLElement;
       expectBgColor(bubble, mockColors.userBubble);
+    });
+
+    it("renders user avatar with initials when showAvatar is true", () => {
+      render(<MessageBubble message={makeMessage({ role: "user", content: "hi" })} showAvatar />);
+      // "Test User" -> initial "T"
+      expect(screen.getByText("T")).toBeInTheDocument();
+    });
+
+    it("does not render avatar initial when showAvatar is false", () => {
+      render(<MessageBubble message={makeMessage({ role: "user", content: "hi" })} showAvatar={false} />);
+      // No "T" initial should appear
+      expect(screen.queryByText("T")).toBeNull();
     });
   });
 
@@ -94,10 +118,10 @@ describe("MessageBubble", () => {
     });
 
     it("applies assistant bubble background and border", () => {
-      const { container } = render(
-        <MessageBubble message={makeMessage({ role: "assistant", content: "hi" })} />,
-      );
-      const bubble = container.firstChild as HTMLElement;
+      render(<MessageBubble message={makeMessage({ role: "assistant", content: "hi" })} />);
+      // Find markdown container and walk up to the bubble (the View with assistant bg)
+      const md = screen.getByTestId("markdown-content");
+      const bubble = md.parentElement as HTMLElement;
       expectBgColor(bubble, mockColors.assistantBubble);
       // RN web may split borderColor into individual sides
       const hasBorder =
@@ -162,17 +186,17 @@ describe("MessageBubble", () => {
       expect(screen.queryByText("Chef Marco")).toBeNull();
     });
 
-    it("does not show persona header when personaName is absent", () => {
-      const { container } = render(
+    it("does not show persona name when personaName is absent", () => {
+      render(
         <MessageBubble message={makeMessage({ role: "assistant", content: "hi" })} />,
       );
-      // No persona dot should exist
-      const allText = container.textContent;
-      expect(allText).toBe("hi");
+      // Default label is "Toqui", no extra persona name text
+      expect(screen.queryByText("Chef Marco")).toBeNull();
+      expect(screen.queryByText("Guide")).toBeNull();
     });
 
-    it("uses accent color as fallback when personaAccentColor is undefined", () => {
-      const { container } = render(
+    it("uses colorFromString fallback when personaAccentColor is undefined", () => {
+      render(
         <MessageBubble
           message={makeMessage({
             role: "assistant",
@@ -182,16 +206,14 @@ describe("MessageBubble", () => {
           })}
         />,
       );
-      // The persona dot should fall back to the theme accent color
-      // Find the dot element (small 8x8 circle before the name)
-      const nameEl = screen.getByText("Guide");
-      const header = nameEl.parentElement!;
-      const dot = header.firstChild as HTMLElement;
-      expectBgColor(dot, mockColors.accent);
+      // Avatar initial "G" should be present
+      expect(screen.getByText("G")).toBeInTheDocument();
+      // Speaker label shows persona name
+      expect(screen.getByText("Guide")).toBeInTheDocument();
     });
 
     it("uses personaAccentColor when provided", () => {
-      const { container } = render(
+      render(
         <MessageBubble
           message={makeMessage({
             role: "assistant",
@@ -201,16 +223,18 @@ describe("MessageBubble", () => {
           })}
         />,
       );
-      const nameEl = screen.getByText("Guide");
-      const header = nameEl.parentElement!;
-      const dot = header.firstChild as HTMLElement;
-      expectBgColor(dot, "#00ff00");
+      // Avatar initial "G" and speaker label both present
+      expect(screen.getByText("G")).toBeInTheDocument();
+      expect(screen.getByText("Guide")).toBeInTheDocument();
+      // The avatar element has the specified accent color
+      const avatarEl = screen.getByText("G").parentElement as HTMLElement;
+      expectBgColor(avatarEl, "#00ff00");
     });
   });
 
   describe("error styling", () => {
     it("applies error background and border when isError is true", () => {
-      const { container } = render(
+      render(
         <MessageBubble
           message={makeMessage({
             role: "assistant",
@@ -219,7 +243,8 @@ describe("MessageBubble", () => {
           })}
         />,
       );
-      const bubble = container.firstChild as HTMLElement;
+      const md = screen.getByTestId("markdown-content");
+      const bubble = md.parentElement as HTMLElement;
       expectBgColor(bubble, mockColors.errorBg);
       // RN web may split borderColor into individual sides
       const hasBorder =
@@ -230,13 +255,14 @@ describe("MessageBubble", () => {
     });
 
     it("does not apply error styles when isError is false/undefined", () => {
-      const { container } = render(
+      render(
         <MessageBubble message={makeMessage({ role: "assistant", content: "ok" })} />,
       );
-      const bubble = container.firstChild as HTMLElement;
+      const md = screen.getByTestId("markdown-content");
+      const bubble = md.parentElement as HTMLElement;
       // Should NOT have error background
-const bgColor = bubble.style.backgroundColor;
-expect(bgColor !== mockColors.errorBg && bgColor !== hexToRgb(mockColors.errorBg)).toBe(true);
+      const bgColor = bubble.style.backgroundColor;
+      expect(bgColor !== mockColors.errorBg && bgColor !== hexToRgb(mockColors.errorBg)).toBe(true);
     });
   });
 });

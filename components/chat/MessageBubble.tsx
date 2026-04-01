@@ -1,15 +1,60 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import Markdown from "react-native-markdown-display";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
 import { PersonaIntroCard } from "./PersonaIntroCard";
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  showAvatar?: boolean;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+const AVATAR_SIZE = 28;
+const AVATAR_GAP = 6;
+const AVATAR_SLOT = AVATAR_SIZE + AVATAR_GAP;
+
+function colorFromString(str: string): string {
+  const palette = ["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2","#be185d"];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function SpeakerAvatar({ initial, color, imageUri, size = 28 }: {
+  initial: string;
+  color: string;
+  imageUri?: string;
+  size?: number;
+}) {
+  const avatarStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    backgroundColor: color,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    overflow: "hidden" as const,
+  };
+  if (imageUri) {
+    return <Image source={{ uri: imageUri }} style={avatarStyle} />;
+  }
+  return (
+    <View style={avatarStyle}>
+      <Text style={{ color: "#fff", fontSize: size * 0.4, fontWeight: "700" }}>{initial}</Text>
+    </View>
+  );
+}
+
+function getUserInitial(user: { name?: string | null; email?: string | null } | null): string {
+  if (user?.name) return user.name.trim()[0].toUpperCase();
+  if (user?.email) return user.email[0].toUpperCase();
+  return "U";
+}
+
+export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
@@ -40,33 +85,97 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     blockquote: { borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: 12, marginVertical: 8 },
   };
 
-  return (
-    <View style={[
-      styles.bubble,
-      isUser
-        ? [styles.userBubble, { backgroundColor: colors.userBubble }]
-        : [styles.assistantBubble, { backgroundColor: colors.assistantBubble, borderColor: colors.assistantBubbleBorder }],
-      message.isError && { backgroundColor: colors.errorBg, borderColor: colors.error },
-    ]}>
-      {message.personaName && !isUser ? (
-        <View style={styles.personaHeader}>
-          <View style={[styles.personaDot, { backgroundColor: message.personaAccentColor ?? colors.accent }]} />
-          <Text style={[styles.personaName, { color: colors.textSecondary }]}>{message.personaName}</Text>
+  if (isUser) {
+    const userInitial = getUserInitial(user);
+    return (
+      <View style={styles.rowUser}>
+        <View style={[
+          styles.bubble,
+          styles.userBubble,
+          { backgroundColor: colors.userBubble, marginRight: AVATAR_GAP },
+        ]}>
+          <Text style={[styles.userText, { color: colors.userBubbleText }]}>{message.content}</Text>
         </View>
-      ) : null}
-      {isUser ? (
-        <Text style={[styles.userText, { color: colors.userBubbleText }]}>{message.content}</Text>
-      ) : (
-        <Markdown style={mdStyles}>{message.content}</Markdown>
-      )}
+        {showAvatar ? (
+          <SpeakerAvatar initial={userInitial} color={colors.accent} size={AVATAR_SIZE} />
+        ) : (
+          <View style={styles.avatarSpacer} />
+        )}
+      </View>
+    );
+  }
+
+  const personaName = message.personaName;
+  const personaAvatar = message.personaAvatar;
+  const avatarColor = message.personaAccentColor
+    ?? (personaName ? colorFromString(personaName) : colors.accent);
+  const avatarInitial = personaName ? personaName[0].toUpperCase() : "T";
+  const speakerLabel = personaName ?? "Toqui";
+
+  return (
+    <View style={styles.rowAssistant}>
+      <View style={styles.avatarSlot}>
+        {showAvatar ? (
+          <SpeakerAvatar
+            initial={avatarInitial}
+            color={avatarColor}
+            imageUri={personaAvatar || undefined}
+            size={AVATAR_SIZE}
+          />
+        ) : (
+          <View style={styles.avatarSpacer} />
+        )}
+      </View>
+      <View style={styles.assistantContent}>
+        {showAvatar ? (
+          <Text style={[styles.speakerLabel, { color: colors.textSecondary }]}>{speakerLabel}</Text>
+        ) : null}
+        <View style={[
+          styles.bubble,
+          styles.assistantBubble,
+          { backgroundColor: colors.assistantBubble, borderColor: colors.assistantBubbleBorder },
+          message.isError && { backgroundColor: colors.errorBg, borderColor: colors.error },
+        ]}>
+          <Markdown style={mdStyles}>{message.content}</Markdown>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bubble: { maxWidth: "85%", padding: 12, borderRadius: 16, marginBottom: 8 },
-  userBubble: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
-  assistantBubble: { alignSelf: "flex-start", borderBottomLeftRadius: 4, borderWidth: 1 },
+  rowUser: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "flex-end",
+    marginBottom: 8,
+  },
+  rowAssistant: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  avatarSlot: {
+    width: AVATAR_SLOT,
+    alignItems: "flex-start",
+    paddingTop: 2,
+  },
+  avatarSpacer: {
+    width: AVATAR_SIZE,
+  },
+  assistantContent: {
+    flex: 1,
+    maxWidth: "85%",
+  },
+  speakerLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 3,
+  },
+  bubble: { padding: 12, borderRadius: 16 },
+  userBubble: { borderBottomRightRadius: 4, maxWidth: "85%" },
+  assistantBubble: { borderBottomLeftRadius: 4, borderWidth: 1 },
   systemBubble: {
     alignSelf: "center",
     borderRadius: 12,
@@ -77,7 +186,4 @@ const styles = StyleSheet.create({
   },
   systemText: { fontSize: 13, fontStyle: "italic", textAlign: "center" },
   userText: { fontSize: 15, lineHeight: 22 },
-  personaHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  personaDot: { width: 8, height: 8, borderRadius: 4 },
-  personaName: { fontSize: 12, fontWeight: "600" },
 });
