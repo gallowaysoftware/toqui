@@ -4,13 +4,16 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare, BarChart2 } from "lucide-react-native";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import ReferralCard from "@/components/referral/ReferralCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
+import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
+
+const COLOR_WARNING = "#f59e0b";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -22,6 +25,7 @@ export default function SettingsScreen() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const isPro = user?.tier === "pro";
+  const { used, limit, resetsAt } = useUsage();
 
   const exportData = useMutation({
     mutationFn: async () => {
@@ -146,6 +150,12 @@ export default function SettingsScreen() {
       paddingVertical: 4,
     },
     learnMoreText: { fontSize: 14, fontWeight: "500", color: colors.accent },
+    usageRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+    usageLabel: { fontSize: 14, color: colors.textSecondary },
+    usageCount: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
+    progressTrack: { height: 4, borderRadius: 2, backgroundColor: colors.surfaceTertiary, marginBottom: 6 },
+    progressFill: { height: 4, borderRadius: 2 },
+    usageResetText: { fontSize: 12, color: colors.textTertiary },
   });
 
   if (!accessToken) {
@@ -202,6 +212,39 @@ export default function SettingsScreen() {
           </>
         )}
       </View>
+
+      {/* Usage */}
+      {limit > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <BarChart2 color={colors.textSecondary} size={20} />
+            <Text style={styles.sectionTitle}>Usage</Text>
+          </View>
+          <View style={styles.usageRow}>
+            <Text style={styles.usageLabel}>Messages today</Text>
+            <Text style={styles.usageCount}>{used} / {limit}</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.min(100, (used / limit) * 100)}%` as `${number}%`,
+                  backgroundColor:
+                    used / limit >= 0.9
+                      ? colors.error
+                      : used / limit >= 0.75
+                        ? COLOR_WARNING
+                        : colors.success,
+                },
+              ]}
+            />
+          </View>
+          {resetsAt && (
+            <Text style={styles.usageResetText}>Resets {formatTimeUntilReset(resetsAt)}</Text>
+          )}
+        </View>
+      )}
 
       {/* Refer a Friend */}
       <View style={styles.section}>

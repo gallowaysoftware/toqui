@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
 import { useChat } from "@/lib/hooks/useChat";
+import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -49,6 +50,7 @@ export default function ChatScreen() {
   const { colors } = useTheme();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const { used, limit, resetsAt } = useUsage();
   const {
     messages,
     isStreaming,
@@ -173,7 +175,32 @@ export default function ChatScreen() {
     headerTitle: { alignItems: "center" },
     headerTitleText: { fontSize: 16, fontWeight: "600" },
     headerSubtitle: { fontSize: 12 },
+    usageBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    usageText: { fontSize: 12 },
+    upgradeLink: { fontSize: 12, fontWeight: "600", color: colors.accent },
   });
+
+  const usageVisible = limit > 0 && used >= limit * 0.75;
+  const usageAtLimit = limit > 0 && used >= limit;
+  const usageNearLimit = limit > 0 && used >= limit - 1 && !usageAtLimit;
+  const usageTextColor = usageAtLimit
+    ? colors.error
+    : usageNearLimit
+      ? colors.textSecondary
+      : colors.textTertiary;
+  const usageLabel = usageAtLimit
+    ? `Daily limit reached. Resets ${formatTimeUntilReset(resetsAt)}`
+    : usageNearLimit
+      ? `Almost at daily limit — ${limit - used} left`
+      : `${used}/${limit} messages today`;
 
   return (
     <>
@@ -316,6 +343,16 @@ export default function ChatScreen() {
               <Text style={styles.retryDismissText}>×</Text>
             </Pressable>
           </View>
+        </View>
+      )}
+      {usageVisible && (
+        <View style={styles.usageBar}>
+          <Text style={[styles.usageText, { color: usageTextColor }]}>{usageLabel}</Text>
+          {usageAtLimit && tripId && (
+            <Pressable onPress={() => router.push(`/trips/${tripId}`)}>
+              <Text style={styles.upgradeLink}>Upgrade</Text>
+            </Pressable>
+          )}
         </View>
       )}
       <ChatInput
