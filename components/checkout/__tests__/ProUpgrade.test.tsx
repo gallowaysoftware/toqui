@@ -1,0 +1,133 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ProUpgrade } from "../ProUpgrade";
+
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
+
+vi.mock("lucide-react-native", () => ({
+  CheckCircle: () => <span data-testid="check-circle-icon" />,
+  Star: () => <span data-testid="star-icon" />,
+  Mail: () => <span data-testid="mail-icon" />,
+  BookOpen: () => <span data-testid="book-open-icon" />,
+  ExternalLink: () => <span data-testid="external-link-icon" />,
+}));
+
+vi.mock("@/lib/theme", () => ({
+  useTheme: () => ({
+    colors: {
+      surface: "#ffffff",
+      border: "#e5e7eb",
+      textPrimary: "#111827",
+      textSecondary: "#4b5563",
+      textTertiary: "#5f6673",
+      accent: "#e8654a",
+      error: "#dc2626",
+      success: "#16a34a",
+      successBg: "#f0fdf4",
+    },
+  }),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
+const mockInitCheckout = vi.fn();
+const mockValidatePayment = vi.fn();
+const mockCheckStatus = vi.fn();
+const mockCheckout = {
+  initCheckout: mockInitCheckout,
+  validatePayment: mockValidatePayment,
+  checkStatus: mockCheckStatus,
+  isLoading: false,
+  error: null as string | null,
+};
+
+vi.mock("@/lib/hooks/useCheckout", () => ({
+  useCheckout: () => mockCheckout,
+}));
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("ProUpgrade", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCheckout.isLoading = false;
+    mockCheckout.error = null;
+    // Default: status check resolves to not unlocked
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+  });
+
+  it("shows loading indicator while checking status", () => {
+    // Make checkStatus never resolve to keep it in checking state
+    mockCheckStatus.mockReturnValue(new Promise(() => {}));
+    const { container } = render(<ProUpgrade tripId="t1" />);
+    expect(container.querySelector('[role="progressbar"]')).not.toBeNull();
+  });
+
+  it("renders upgrade UI when not unlocked", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.title")).toBeInTheDocument();
+    });
+    expect(screen.getByText("checkout.price")).toBeInTheDocument();
+    expect(screen.getByText("checkout.priceDescription")).toBeInTheDocument();
+  });
+
+  it("renders benefit list", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.benefits.experts")).toBeInTheDocument();
+    });
+    expect(screen.getByText("checkout.benefits.bookings")).toBeInTheDocument();
+    expect(screen.getByText("checkout.benefits.email")).toBeInTheDocument();
+  });
+
+  it("shows success view when already unlocked", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: true });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.success")).toBeInTheDocument();
+    });
+    expect(screen.getByText("checkout.successDescription")).toBeInTheDocument();
+  });
+
+  it("shows error message when error is set", async () => {
+    mockCheckout.error = "Payment failed";
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.error")).toBeInTheDocument();
+    });
+  });
+
+  it("shows unlock button on web platform", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.unlockButton")).toBeInTheDocument();
+    });
+  });
+
+  it("renders not-unlocked state when status check fails", async () => {
+    mockCheckStatus.mockRejectedValue(new Error("Network error"));
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.title")).toBeInTheDocument();
+    });
+  });
+});
