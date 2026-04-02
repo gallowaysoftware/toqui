@@ -67,15 +67,6 @@ const KEYS_USED_IN_APP: string[] = [
   "tripSettings.deleteConfirm",
   "tripSettings.deleting",
 
-  // app/waitlist.tsx
-  "waitlist.title",
-  "waitlist.description",
-  "waitlist.emailPlaceholder",
-  "waitlist.joinButton",
-  "waitlist.joinedTitle",
-  "waitlist.joinedDescription",
-  "waitlist.positionLabel",
-  "waitlist.notifyMessage",
 ];
 
 describe("i18n - translation key integrity", () => {

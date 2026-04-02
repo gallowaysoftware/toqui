@@ -59,6 +59,15 @@ export default function OnboardingScreen() {
     [screenWidth],
   );
 
+  const handleNext = useCallback(() => {
+    const nextIndex = Math.min(activeIndex + 1, SCREEN_COUNT - 1);
+    scrollRef.current?.scrollTo({ x: screenWidth * nextIndex, animated: true });
+  }, [activeIndex, screenWidth]);
+
+  const handleSkip = useCallback(() => {
+    scrollRef.current?.scrollTo({ x: screenWidth * (SCREEN_COUNT - 1), animated: true });
+  }, [screenWidth]);
+
   const handleStartPlanning = useCallback(async () => {
     await completeOnboarding();
     router.replace("/trips/new" as never);
@@ -154,6 +163,32 @@ export default function OnboardingScreen() {
       fontSize: 15,
       fontWeight: "500",
     },
+    navRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      width: "100%",
+      maxWidth: 320,
+      height: 80,
+    },
+    skipButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    skipButtonText: {
+      color: colors.textTertiary,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    nextButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    nextButtonText: {
+      color: colors.accent,
+      fontSize: 15,
+      fontWeight: "600",
+    },
   });
 
   return (
@@ -215,7 +250,26 @@ export default function OnboardingScreen() {
             </Pressable>
           </>
         ) : (
-          <View style={{ height: 80 }} />
+          <View style={styles.navRow}>
+            <Pressable
+              style={styles.skipButton}
+              onPress={handleSkip}
+              accessibilityRole="button"
+              accessibilityLabel={t("onboarding.skip")}
+              testID="onboarding-skip"
+            >
+              <Text style={styles.skipButtonText}>{t("onboarding.skip")}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.nextButton}
+              onPress={handleNext}
+              accessibilityRole="button"
+              accessibilityLabel={t("onboarding.next")}
+              testID="onboarding-next"
+            >
+              <Text style={styles.nextButtonText}>{t("onboarding.next")}</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </View>
