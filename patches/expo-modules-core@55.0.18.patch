@@ -1,0 +1,13 @@
+diff --git a/ExpoModulesCore.podspec b/ExpoModulesCore.podspec
+index cfd417be44f4db2226635fa889f65fc89c82f1d8..a0922d66c7770edf23350c6e9f07fdb9833f6ee0 100644
+--- a/ExpoModulesCore.podspec
++++ b/ExpoModulesCore.podspec
+@@ -83,7 +83,7 @@ Pod::Spec.new do |s|
+     :osx => '11.0',
+     :tvos => '15.1'
+   }
+-  s.swift_version  = '6.0'
++  s.swift_version  = '5.0'
+   s.source         = { git: 'https://github.com/expo/expo.git' }
+   s.static_framework = true
+   s.header_dir     = 'ExpoModulesCore'

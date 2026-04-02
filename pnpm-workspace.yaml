@@ -1,3 +1,7 @@
 packages: []
+
 onlyBuiltDependencies:
-  - "@bufbuild/buf"
+  - '@bufbuild/buf'
+
+patchedDependencies:
+  expo-modules-core@55.0.18: patches/expo-modules-core@55.0.18.patch
