@@ -1,0 +1,56 @@
+default_platform(:ios)
+
+# Fastlane config lives at repo root; Xcode project is in ios/
+# Run: npx expo prebuild --platform ios && cd ios && pod install
+# Then: fastlane ios beta
+
+platform :ios do
+  desc "Build the app for the simulator (debug, no signing)"
+  lane :build_sim do
+    build_ios_app(
+      workspace: "ios/Toqui.xcworkspace",
+      scheme: "Toqui",
+      configuration: "Debug",
+      destination: "generic/platform=iOS Simulator",
+      derived_data_path: "ios/build",
+      build_path: "ios/build",
+      skip_archive: true,
+      skip_codesigning: true,
+    )
+  end
+
+  desc "Build and archive for TestFlight"
+  lane :beta do
+    increment_build_number(
+      xcodeproj: "ios/Toqui.xcodeproj",
+    )
+    build_ios_app(
+      workspace: "ios/Toqui.xcworkspace",
+      scheme: "Toqui",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "ios/build",
+      output_name: "Toqui.ipa",
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+    )
+  end
+
+  desc "Submit to App Store for review"
+  lane :release do
+    build_ios_app(
+      workspace: "ios/Toqui.xcworkspace",
+      scheme: "Toqui",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "ios/build",
+      output_name: "Toqui.ipa",
+    )
+    upload_to_app_store(
+      skip_metadata: false,
+      skip_screenshots: true,
+      force: true,
+    )
+  end
+end
