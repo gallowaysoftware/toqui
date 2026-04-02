@@ -28,21 +28,19 @@ type OAuthHandler struct {
 	queries        *dbgen.Queries
 	frontendURL    string
 	secureCookies  bool
-	maxFreeUsers   int
 	allowedDomains []string
 	allowedEmails  []string
 	authLimiter    *ratelimit.AuthLimiter
 	emailSvc       *email.Sender
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, maxFreeUsers int, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
 		queries:        dbgen.New(pool),
 		frontendURL:    frontendURL,
 		emailSvc:       emailSvc,
 		secureCookies:  secureCookies,
-		maxFreeUsers:   maxFreeUsers,
 		allowedDomains: allowedDomains,
 		allowedEmails:  allowedEmails,
 		authLimiter:    authLimiter,
@@ -185,45 +183,8 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Domain allowlist: reject signups from unauthorized email domains.
 	if !isEmailDomainAllowed(info.Email, h.allowedDomains) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
-		http.Redirect(w, r, h.frontendURL+"/waitlist?reason=domain_not_allowed", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, h.frontendURL+"/?error=domain_not_allowed", http.StatusTemporaryRedirect)
 		return
-	}
-
-	// Capacity check: if user doesn't already exist and we're at capacity,
-	// check for a valid invite code before allowing registration.
-	// Allow-listed emails bypass this entirely (team + friends/family).
-	if !isEmailAllowListed(info.Email, h.allowedEmails) && h.maxFreeUsers > 0 {
-		_, existErr := h.queries.GetUserByGoogleID(r.Context(), info.ID)
-		if errors.Is(existErr, pgx.ErrNoRows) {
-			// New user — check capacity
-			userCount, countErr := h.queries.CountUsers(r.Context())
-			if countErr != nil {
-				slog.Error("count users for capacity check failed", "error", countErr)
-				http.Redirect(w, r, h.frontendURL+"/?error=db_error", http.StatusTemporaryRedirect)
-				return
-			}
-			if int(userCount) >= h.maxFreeUsers {
-				// At capacity — check if user has a valid invite
-				waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(r.Context(), info.Email)
-				if wlErr != nil || !waitlistEntry.InviteCode.Valid {
-					audit.Log(audit.EventLoginDeniedCapacity,
-						"email", maskEmail(info.Email),
-						"user_count", userCount,
-						"max_free_users", h.maxFreeUsers,
-					)
-					http.Redirect(w, r, h.frontendURL+"/waitlist?reason=at_capacity", http.StatusTemporaryRedirect)
-					return
-				}
-				// Has valid invite — allow through, mark accepted
-				if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil {
-					slog.Error("mark waitlist accepted failed", "email", maskEmail(info.Email), "error", markErr)
-				}
-				audit.Log(audit.EventLoginAdmittedInvite,
-					"email", maskEmail(info.Email),
-					"invite_code", waitlistEntry.InviteCode.String,
-				)
-			}
-		}
 	}
 
 	// Always mark waitlist as accepted when the user successfully signs up,

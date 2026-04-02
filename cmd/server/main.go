@@ -207,7 +207,7 @@ func main() {
 
 	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
 
-	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, cfg.AllowedEmails, cfg.MaxFreeUsers, authLimiter)
+	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey)
@@ -225,13 +225,8 @@ func main() {
 	} else if cfg.TargetEnv != "local" {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.MaxFreeUsers, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender)
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender)
 
-	apiBaseURL := "https://api.toqui.travel"
-	if cfg.TargetEnv == "local" {
-		apiBaseURL = "http://localhost:" + cfg.Port
-	}
-	waitlistHandler := handlers.NewWaitlistHandler(pool, emailSender, apiBaseURL)
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
 	// Shared trip handler (public + authenticated routes)
@@ -284,11 +279,6 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(pool, startTime)
 	mux.HandleFunc("/health", healthHandler.HandleHealth)
 	mux.HandleFunc("/ready", healthHandler.HandleReadiness)
-
-	// Waitlist routes (public, no auth)
-	mux.HandleFunc("/waitlist", waitlistHandler.HandleJoin)
-	mux.HandleFunc("/waitlist/verify", waitlistHandler.HandleVerify)
-	mux.HandleFunc("/waitlist/status", waitlistHandler.HandleStatus)
 
 	// Usage route (authenticated via Bearer token)
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
