@@ -1,0 +1,41 @@
+diff --git a/ios/ExpoImage.podspec b/ios/ExpoImage.podspec
+index 4f2f3cf84cdc6cb2b47a16602a87cad3ca34a55d..ebc6c1a4273abec8f44a12fd237840c77fdf45d0 100644
+--- a/ios/ExpoImage.podspec
++++ b/ios/ExpoImage.podspec
+@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
+     :ios => '15.1',
+     :tvos => '15.1'
+   }
+-  s.swift_version  = '6.0'
++  s.swift_version  = '5.0'
+   s.source         = { git: 'https://github.com/expo/expo.git' }
+   s.static_framework = true
+ 
+diff --git a/ios/ImageView.swift b/ios/ImageView.swift
+index adcf377af3e7d02cac515400e0f514b4b3cddca5..40f95306d56190087f8e1b6adfb8db358260ca73 100644
+--- a/ios/ImageView.swift
++++ b/ios/ImageView.swift
+@@ -656,12 +656,15 @@ public final class ImageView: ExpoView {
+       case .none: sdImageView.addSymbolEffect(.breathe, options: options)
+       }
+     default:
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, *) {
+         applySymbolEffectiOS26(effect: effect, scope: scope, options: options)
+       }
++#endif
+     }
+   }
+ 
++#if compiler(>=6.2)
+   @available(iOS 26.0, tvOS 26.0, *)
+   private func applySymbolEffectiOS26(effect: SFSymbolEffectType, scope: SFSymbolEffectScope?, options: SymbolEffectOptions) {
+     switch effect {
+@@ -681,6 +684,7 @@ public final class ImageView: ExpoView {
+       break
+     }
+   }
++#endif
+ 
+   func startSymbolAnimation() {
+     if #available(iOS 17.0, tvOS 17.0, *) {

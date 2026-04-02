@@ -11,3 +11,44 @@ index cfd417be44f4db2226635fa889f65fc89c82f1d8..a0922d66c7770edf23350c6e9f07fdb9
    s.source         = { git: 'https://github.com/expo/expo.git' }
    s.static_framework = true
    s.header_dir     = 'ExpoModulesCore'
+diff --git a/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift b/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
+index d4ff7a98b2a805190025fe5aff2f4b77a78f2cc2..09fa7bea6be389570202b3fdc091837e1c85a9be 100644
+--- a/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
++++ b/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
+@@ -42,7 +42,7 @@ extension ExpoSwiftUI {
+   /**
+    A hosting view that renders a SwiftUI view inside the UIKit view hierarchy.
+    */
+-  public final class HostingView<Props: ViewProps, ContentView: View<Props>>: ExpoView, @MainActor AnyExpoSwiftUIHostingView {
++  public final class HostingView<Props: ViewProps, ContentView: View<Props>>: ExpoView, AnyExpoSwiftUIHostingView {
+     /**
+      Props object that stores all the props for this particular view.
+      It's an environment object that is observed by the content view.
+diff --git a/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift b/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+index 6d653237f0d58fddd6d9828ca5e0791514c3d4a4..1ffdb0d4d09ea891d440ff268f55291200ac4eb5 100644
+--- a/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
++++ b/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+@@ -193,7 +193,8 @@ extension ExpoSwiftUI {
+ 
+ // MARK: - ViewWrapper
+ 
+-extension ExpoSwiftUI.SwiftUIVirtualView: @MainActor ExpoSwiftUI.ViewWrapper {
++@MainActor
++extension ExpoSwiftUI.SwiftUIVirtualView: ExpoSwiftUI.ViewWrapper {
+   func getWrappedView() -> Any {
+     if let wrapper = contentView as? ExpoSwiftUI.ViewWrapper {
+       return wrapper.getWrappedView()
+diff --git a/ios/Core/Views/ViewDefinition.swift b/ios/Core/Views/ViewDefinition.swift
+index 5dc73e34a3c1c3687f2103ad9481ae5a0b9cae2c..67b7b8eaf9a345612b8d8bd28a999f5955077165 100644
+--- a/ios/Core/Views/ViewDefinition.swift
++++ b/ios/Core/Views/ViewDefinition.swift
+@@ -118,7 +118,8 @@ extension ConcurrentFunctionDefinition: ViewDefinitionFunctionElement {
+   public typealias ViewType = FirstArgType
+ }
+ 
+-extension UIView: @MainActor AnyArgument {
++@MainActor
++extension UIView: AnyArgument {
+   public static func getDynamicType() -> AnyDynamicType {
+     return DynamicViewType(innerType: Self.self)
+   }

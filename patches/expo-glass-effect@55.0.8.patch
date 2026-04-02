@@ -1,0 +1,155 @@
+diff --git a/ios/GlassContainer.swift b/ios/GlassContainer.swift
+index 61fb67cdfa2022f57524ddde05096067055e9ee6..d763aea0d8405472c50b29c98e68f3224c9725ba 100644
+--- a/ios/GlassContainer.swift
++++ b/ios/GlassContainer.swift
+@@ -20,9 +20,11 @@ public final class GlassContainer: ExpoView {
+   // https://github.com/expo/expo/issues/40911
+   private func isGlassContainerEffectAvailable() -> Bool {
+     #if compiler(>=6.2)
++#if compiler(>=6.2)
+     if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+       return NSClassFromString("UIGlassContainerEffect") != nil
+     }
++#endif
+     #endif
+     return false
+   }
+@@ -33,6 +35,7 @@ public final class GlassContainer: ExpoView {
+       guard isGlassContainerEffectAvailable() else {
+         return
+       }
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+         #if compiler(>=6.2) // Xcode 26
+         let effect = UIGlassContainerEffect()
+@@ -43,6 +46,7 @@ public final class GlassContainer: ExpoView {
+         containerEffect = effect
+         #endif
+       }
++#endif
+     }
+   }
+ 
+diff --git a/ios/GlassEffectModule.swift b/ios/GlassEffectModule.swift
+index e03630267f58ecb46a20b3095320db2faaad5b60..f778cb92e77a47cdf8a2b285042891e2ada77fd5 100644
+--- a/ios/GlassEffectModule.swift
++++ b/ios/GlassEffectModule.swift
+@@ -8,6 +8,7 @@ public final class GlassEffectModule: Module {
+ 
+     Constant("isLiquidGlassAvailable") {
+       #if compiler(>=6.2)  // Xcode 26
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {  // iOS 26
+         if let infoPlist = Bundle.main.infoDictionary,
+           let requiresCompatibility = infoPlist["UIDesignRequiresCompatibility"] as? Bool {
+@@ -16,12 +17,14 @@ public final class GlassEffectModule: Module {
+         }
+         return true
+       }
++#endif
+       #endif
+       return false
+     }
+ 
+     Constant("isGlassEffectAPIAvailable") {
+       #if compiler(>=6.2)
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+         guard let glassEffectClass = NSClassFromString("UIGlassEffect") as? NSObject.Type else {
+           return false
+@@ -29,6 +32,7 @@ public final class GlassEffectModule: Module {
+         let respondsToSelector = glassEffectClass.responds(to: Selector(("effectWithStyle:")))
+         return respondsToSelector
+       }
++#endif
+       #endif
+       return false
+     }
+diff --git a/ios/GlassStyle.swift b/ios/GlassStyle.swift
+index bfd913cc6ad22d7ec15948901bd15ce377395470..284ae7533d9960bb3213abb3defb334ea9660133 100644
+--- a/ios/GlassStyle.swift
++++ b/ios/GlassStyle.swift
+@@ -7,6 +7,7 @@ public enum GlassStyle: String, Enumerable {
+   case none
+ 
+   #if compiler(>=6.2) // Xcode 26
++#if compiler(>=6.2)
+   @available(iOS 26.0, tvOS 26.0, macOS 26.0, *)
+   func toUIGlassEffectStyle() -> UIGlassEffect.Style? {
+     switch self {
+@@ -18,6 +19,7 @@ public enum GlassStyle: String, Enumerable {
+       return nil
+     }
+   }
++#endif
+   #endif
+ }
+ 
+diff --git a/ios/GlassView.swift b/ios/GlassView.swift
+index 35cd8f320009a9e28fdbb2f55cc409734ba98f40..dadca2ce62b85a4753348600d31169d89026f9ea 100644
+--- a/ios/GlassView.swift
++++ b/ios/GlassView.swift
+@@ -39,6 +39,7 @@ public final class GlassView: ExpoView {
+   // https://github.com/expo/expo/issues/40911
+   private func isGlassEffectAvailable() -> Bool {
+     #if compiler(>=6.2)
++#if compiler(>=6.2)
+     if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+       guard let glassEffectClass = NSClassFromString("UIGlassEffect") as? NSObject.Type else {
+         return false
+@@ -46,6 +47,7 @@ public final class GlassView: ExpoView {
+       let respondsToSelector = glassEffectClass.responds(to: Selector(("effectWithStyle:")))
+       return respondsToSelector
+     }
++#endif
+     #endif
+     return false
+   }
+@@ -66,6 +68,7 @@ public final class GlassView: ExpoView {
+     guard isGlassEffectAvailable() else {
+       return
+     }
++#if compiler(>=6.2)
+     if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+       #if compiler(>=6.2) // Xcode 26
+       let isRTL = RCTI18nUtil.sharedInstance()?.isRTL() ?? false
+@@ -100,6 +103,7 @@ public final class GlassView: ExpoView {
+       )
+       #endif
+     }
++#endif
+   }
+ 
+   func setGlassStyle(_ config: GlassEffectStyleConfig) {
+@@ -116,6 +120,7 @@ public final class GlassView: ExpoView {
+       guard isGlassEffectAvailable() else {
+         return
+       }
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+         #if compiler(>=6.2) // Xcode 26
+         let applyEffect = {
+@@ -141,6 +146,7 @@ public final class GlassView: ExpoView {
+         }
+         #endif
+       }
++#endif
+     }
+   }
+ 
+@@ -255,6 +261,7 @@ public final class GlassView: ExpoView {
+     guard isGlassEffectAvailable() else {
+       return
+     }
++#if compiler(>=6.2)
+     if #available(iOS 26.0, tvOS 26.0, macOS 26.0, *) {
+       #if compiler(>=6.2) // Xcode 26
+       if let effect = glassEffect as? UIGlassEffect {
+@@ -270,6 +277,7 @@ public final class GlassView: ExpoView {
+       }
+       #endif
+     }
++#endif
+   }
+   public override func mountChildComponentView(_ childComponentView: UIView, index: Int) {
+     glassEffectView.contentView.insertSubview(childComponentView, at: index)
