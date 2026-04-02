@@ -1,3 +1,10 @@
 packages: []
+
 onlyBuiltDependencies:
-  - "@bufbuild/buf"
+  - '@bufbuild/buf'
+patchedDependencies:
+  expo-glass-effect@55.0.8: patches/expo-glass-effect@55.0.8.patch
+  expo-image@55.0.6: patches/expo-image@55.0.6.patch
+  expo-modules-core@55.0.18: patches/expo-modules-core@55.0.18.patch
+  expo-router@55.0.8: patches/expo-router@55.0.8.patch
+  react-native-screens@4.23.0: patches/react-native-screens@4.23.0.patch

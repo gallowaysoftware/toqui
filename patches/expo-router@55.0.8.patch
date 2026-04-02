@@ -1,0 +1,91 @@
+diff --git a/ios/Toolbar/RouterToolbarHostView.swift b/ios/Toolbar/RouterToolbarHostView.swift
+index 3b2a9ad76dc98966a508553a36606477c99a9bd8..980dda73ab2cad1b971c7f3f1d3b9e2b6ca0e3ad 100644
+--- a/ios/Toolbar/RouterToolbarHostView.swift
++++ b/ios/Toolbar/RouterToolbarHostView.swift
+@@ -80,6 +80,7 @@ class RouterToolbarHostView: RouterViewWithLogger, LinkPreviewMenuUpdatable {
+             )
+             // Otherwise, the menu items will be reversed in the toolbar
+             item.preferredMenuElementOrder = .fixed
++            #if compiler(>=6.2)
+             if #available(iOS 26.0, *) {
+               if let hidesSharedBackground = menu.hidesSharedBackground {
+                 item.hidesSharedBackground = hidesSharedBackground
+@@ -88,6 +89,7 @@ class RouterToolbarHostView: RouterViewWithLogger, LinkPreviewMenuUpdatable {
+                 item.sharesBackground = sharesBackground
+               }
+             }
++            #endif
+             if let titleStyle = menu.titleStyle {
+               RouterFontUtils.setTitleStyle(fromConfig: titleStyle, for: item)
+             }
+diff --git a/ios/Toolbar/RouterToolbarItemView.swift b/ios/Toolbar/RouterToolbarItemView.swift
+index 47936de3f227a6a71972e557c93b036b0d876c0b..11ff681f4008ea845298a14e9d2da116e6c1c6ff 100644
+--- a/ios/Toolbar/RouterToolbarItemView.swift
++++ b/ios/Toolbar/RouterToolbarItemView.swift
+@@ -93,6 +93,7 @@ class RouterToolbarItemView: RouterViewWithLogger {
+     } else if type == .fixedSpacer {
+       item = UIBarButtonItem(barButtonSystemItem: .fixedSpace, target: nil, action: nil)
+     } else if type == .searchBar {
++      #if compiler(>=6.2)
+       guard #available(iOS 26.0, *), let controller = self.host?.findViewController() else {
+         // Check for iOS 26, should already be guarded by the JS side, so this warning will only fire if controller is nil
+         logger?.warn(
+@@ -114,6 +115,10 @@ class RouterToolbarItemView: RouterViewWithLogger {
+       }
+ 
+       item = controller.navigationItem.searchBarPlacementBarButtonItem
++      #else
++      currentBarButtonItem = nil
++      return
++      #endif
+     } else {
+       // Normal button - apply content properties during initial creation
+       applyContentProperties(to: item)
+@@ -160,16 +165,19 @@ class RouterToolbarItemView: RouterViewWithLogger {
+   }
+ 
+   private func applyCommonProperties(to item: UIBarButtonItem) {
++    #if compiler(>=6.2)
+     if #available(iOS 26.0, *) {
+       item.hidesSharedBackground = hidesSharedBackground
+       item.sharesBackground = sharesBackground
+     }
++    #endif
+     item.style = barButtonItemStyle ?? .plain
+     item.width = width.map { CGFloat($0) } ?? 0
+     item.isSelected = selected
+     item.accessibilityLabel = routerAccessibilityLabel
+     item.accessibilityHint = routerAccessibilityHint
+     item.isEnabled = !disabled
++    #if compiler(>=6.2)
+     if #available(iOS 26.0, *) {
+       if let badgeConfig = badgeConfiguration {
+         var badge = UIBarButtonItem.Badge.indicator()
+@@ -197,6 +205,7 @@ class RouterToolbarItemView: RouterViewWithLogger {
+         item.badge = nil
+       }
+     }
++    #endif
+   }
+ 
+   required init(appContext: AppContext? = nil) {
+diff --git a/ios/Toolbar/RouterToolbarModule.swift b/ios/Toolbar/RouterToolbarModule.swift
+index 1bee03ce614c6169c56ff74cdf89128923c500f5..30d97c90fbb32780e8143b6ab3b5ae8040f28112 100644
+--- a/ios/Toolbar/RouterToolbarModule.swift
++++ b/ios/Toolbar/RouterToolbarModule.swift
+@@ -94,11 +94,15 @@ enum BarItemStyle: String, Enumerable {
+     case .plain:
+       return .plain
+     case .prominent:
++      #if compiler(>=6.2)
+       if #available(iOS 26.0, *) {
+         return .prominent
+       } else {
+         return .done
+       }
++      #else
++      return .done
++      #endif
+     }
+   }
+ }

@@ -43,7 +43,8 @@
       "expo-secure-store",
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker",
-      "expo-document-picker"
+      "expo-document-picker",
+      "./plugins/xcode16-compat"
     ]
   }
 }

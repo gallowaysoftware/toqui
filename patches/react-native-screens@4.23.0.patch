@@ -1,0 +1,94 @@
+diff --git a/ios/gamma/split-view/RNSSplitViewAppearanceApplicator.swift b/ios/gamma/split-view/RNSSplitViewAppearanceApplicator.swift
+index bc8ed1759c5acfc13abb6521bc387ba2d77b3d78..f29466aad0fdededbde3b8c011339d9685d21dd7 100644
+--- a/ios/gamma/split-view/RNSSplitViewAppearanceApplicator.swift
++++ b/ios/gamma/split-view/RNSSplitViewAppearanceApplicator.swift
+@@ -82,11 +82,13 @@ class RNSSplitViewAppearanceApplicator {
+       maxWidth: splitView.maximumSupplementaryColumnWidth)
+ 
+     #if compiler(>=6.2) && !os(tvOS)
++#if compiler(>=6.2)
+       if #available(iOS 26.0, *) {
+         validateColumnConstraints(
+           minWidth: splitView.minimumInspectorColumnWidth,
+           maxWidth: splitView.maximumInspectorColumnWidth)
+       }
++#endif
+     #endif
+ 
+     // Step 2.2 - applying updates to columns
+@@ -129,6 +131,7 @@ class RNSSplitViewAppearanceApplicator {
+     }
+ 
+     #if compiler(>=6.2) && !os(tvOS)
++#if compiler(>=6.2)
+       if #available(iOS 26.0, *) {
+         if splitView.minimumSecondaryColumnWidth >= 0 {
+           splitViewController.minimumSecondaryColumnWidth = splitView.minimumSecondaryColumnWidth
+@@ -162,6 +165,7 @@ class RNSSplitViewAppearanceApplicator {
+             splitView.preferredInspectorColumnWidthOrFraction
+         }
+       }
++#endif
+     #endif
+ 
+     // Step 2.3 - manipulating with inspector column
+diff --git a/ios/gamma/split-view/RNSSplitViewHostController.swift b/ios/gamma/split-view/RNSSplitViewHostController.swift
+index a37ac1f8d3df5d7815efd2da8ad0b628931f78e8..f9efb185a056867a98371a9425a1114af9c0cca2 100644
+--- a/ios/gamma/split-view/RNSSplitViewHostController.swift
++++ b/ios/gamma/split-view/RNSSplitViewHostController.swift
+@@ -400,6 +400,7 @@ extension RNSSplitViewHostController: RNSSplitViewNavigationControllerViewFrameO
+     ///
+     func maybeSetupInspector(_ inspectors: [RNSSplitViewScreenComponentView]) {
+       #if !os(tvOS)
++#if compiler(>=6.2)
+         if #available(iOS 26.0, *) {
+           let inspector = inspectors.first
+           if inspector != nil {
+@@ -408,6 +409,7 @@ extension RNSSplitViewHostController: RNSSplitViewNavigationControllerViewFrameO
+             setViewController(inspectorViewController, for: .inspector)
+           }
+         }
++#endif
+       #endif
+     }
+ 
+@@ -419,9 +421,11 @@ extension RNSSplitViewHostController: RNSSplitViewNavigationControllerViewFrameO
+     ///
+     func maybeShowInspector() {
+       #if !os(tvOS)
++#if compiler(>=6.2)
+         if #available(iOS 26.0, *) {
+           show(.inspector)
+         }
++#endif
+       #endif
+     }
+ 
+@@ -433,9 +437,11 @@ extension RNSSplitViewHostController: RNSSplitViewNavigationControllerViewFrameO
+     ///
+     func maybeHideInspector() {
+       #if !os(tvOS)
++#if compiler(>=6.2)
+         if #available(iOS 26.0, *) {
+           hide(.inspector)
+         }
++#endif
+       #endif
+     }
+   }
+@@ -475,6 +481,7 @@ extension RNSSplitViewHostController: UISplitViewControllerDelegate {
+       _ svc: UISplitViewController, didHide column: UISplitViewController.Column
+     ) {
+       #if !os(tvOS)
++#if compiler(>=6.2)
+         if #available(iOS 26.0, *) {
+           // TODO: we may consider removing this logic, because it could be handled by onViewDidDisappear on the column level
+           // On the other hand, maybe dedicated event related to the inspector would be a better approach.
+@@ -494,6 +501,7 @@ extension RNSSplitViewHostController: UISplitViewControllerDelegate {
+           }
+ 
+         }
++#endif
+       #endif
+     }
+   #endif
