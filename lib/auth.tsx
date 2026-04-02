@@ -13,22 +13,23 @@ import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 import { getConfig } from "./config";
 
-// Token storage: SecureStore on native (Keychain/Keystore), sessionStorage on web.
-// sessionStorage is used instead of localStorage so tokens don't persist across
-// browser sessions, reducing the window for XSS token theft.
-// TODO: For web, consider keeping the HttpOnly cookie flow from the backend
-// and only using Bearer tokens on native platforms.
+// Token storage: SecureStore on native (Keychain/Keystore), localStorage on web.
+// localStorage persists across browser sessions so users stay logged in between
+// visits. The refresh token has a 30-day server-side expiry which bounds the
+// persistence window. This is an acceptable tradeoff for a single-origin app
+// with no third-party scripts — the XSS surface is minimal and the UX gain
+// (not forcing re-login on every tab close) is significant.
 const tokenStorage = {
   async get(key: string): Promise<string | null> {
     if (Platform.OS === "web") {
-      return sessionStorage.getItem(key);
+      return localStorage.getItem(key);
     }
     const { getItemAsync } = await import("expo-secure-store");
     return getItemAsync(key);
   },
   async set(key: string, value: string): Promise<void> {
     if (Platform.OS === "web") {
-      sessionStorage.setItem(key, value);
+      localStorage.setItem(key, value);
       return;
     }
     const { setItemAsync } = await import("expo-secure-store");
@@ -36,7 +37,7 @@ const tokenStorage = {
   },
   async delete(key: string): Promise<void> {
     if (Platform.OS === "web") {
-      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
       return;
     }
     const { deleteItemAsync } = await import("expo-secure-store");

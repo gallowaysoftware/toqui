@@ -26,7 +26,7 @@ vi.mock("@gen/toqui/v1/auth_pb", () => ({
   AuthService: "MockAuthService",
 }));
 
-// We run in jsdom so Platform.OS === "web" and sessionStorage is used.
+// We run in jsdom so Platform.OS === "web" and localStorage is used.
 // No need to mock expo-secure-store for web path, but mock the module
 // in case the import is resolved statically.
 vi.mock("expo-secure-store", () => ({
@@ -52,12 +52,12 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe("AuthProvider", () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
   });
 
   // ── useAuth outside provider ──────────────────────────────────────────
@@ -86,13 +86,13 @@ describe("AuthProvider", () => {
     expect(result.current.user).toBeNull();
   });
 
-  // ── Hydration from sessionStorage ─────────────────────────────────────
+  // ── Hydration from localStorage ─────────────────────────────────────
 
-  it("restores tokens and user from sessionStorage on mount", async () => {
+  it("restores tokens and user from localStorage on mount", async () => {
     const user = { id: "u1", email: "a@b.com", name: "Alice" };
-    sessionStorage.setItem("toqui_access_token", "at-123");
-    sessionStorage.setItem("toqui_refresh_token", "rt-456");
-    sessionStorage.setItem("toqui_user", JSON.stringify(user));
+    localStorage.setItem("toqui_access_token", "at-123");
+    localStorage.setItem("toqui_refresh_token", "rt-456");
+    localStorage.setItem("toqui_user", JSON.stringify(user));
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -104,9 +104,9 @@ describe("AuthProvider", () => {
   });
 
   it("handles corrupt user JSON gracefully on hydration", async () => {
-    sessionStorage.setItem("toqui_access_token", "at-123");
-    sessionStorage.setItem("toqui_refresh_token", "rt-456");
-    sessionStorage.setItem("toqui_user", "NOT-JSON{{{");
+    localStorage.setItem("toqui_access_token", "at-123");
+    localStorage.setItem("toqui_refresh_token", "rt-456");
+    localStorage.setItem("toqui_user", "NOT-JSON{{{");
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -119,7 +119,7 @@ describe("AuthProvider", () => {
 
   // ── Login flow ────────────────────────────────────────────────────────
 
-  it("login stores tokens and user in state and sessionStorage", async () => {
+  it("login stores tokens and user in state and localStorage", async () => {
     mockGoogleLogin.mockResolvedValueOnce({
       accessToken: "new-at",
       refreshToken: "new-rt",
@@ -143,9 +143,9 @@ describe("AuthProvider", () => {
     });
 
     // Verify persistence
-    expect(sessionStorage.getItem("toqui_access_token")).toBe("new-at");
-    expect(sessionStorage.getItem("toqui_refresh_token")).toBe("new-rt");
-    expect(JSON.parse(sessionStorage.getItem("toqui_user")!)).toEqual({
+    expect(localStorage.getItem("toqui_access_token")).toBe("new-at");
+    expect(localStorage.getItem("toqui_refresh_token")).toBe("new-rt");
+    expect(JSON.parse(localStorage.getItem("toqui_user")!)).toEqual({
       id: "u2",
       email: "b@c.com",
       name: "Bob",
@@ -170,7 +170,7 @@ describe("AuthProvider", () => {
     expect(result.current.accessToken).toBe("at-no-user");
     expect(result.current.user).toBeNull();
     // user key should NOT have been written
-    expect(sessionStorage.getItem("toqui_user")).toBeNull();
+    expect(localStorage.getItem("toqui_user")).toBeNull();
   });
 
   it("login passes redirectUri to googleLogin RPC", async () => {
@@ -213,10 +213,10 @@ describe("AuthProvider", () => {
 
   // ── Logout flow ───────────────────────────────────────────────────────
 
-  it("logout clears state and all sessionStorage keys", async () => {
-    sessionStorage.setItem("toqui_access_token", "at");
-    sessionStorage.setItem("toqui_refresh_token", "rt");
-    sessionStorage.setItem("toqui_user", '{"id":"1","email":"a@b","name":"A"}');
+  it("logout clears state and all localStorage keys", async () => {
+    localStorage.setItem("toqui_access_token", "at");
+    localStorage.setItem("toqui_refresh_token", "rt");
+    localStorage.setItem("toqui_user", '{"id":"1","email":"a@b","name":"A"}');
 
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -232,15 +232,15 @@ describe("AuthProvider", () => {
     expect(result.current.refreshToken).toBeNull();
     expect(result.current.user).toBeNull();
 
-    expect(sessionStorage.getItem("toqui_access_token")).toBeNull();
-    expect(sessionStorage.getItem("toqui_refresh_token")).toBeNull();
-    expect(sessionStorage.getItem("toqui_user")).toBeNull();
+    expect(localStorage.getItem("toqui_access_token")).toBeNull();
+    expect(localStorage.getItem("toqui_refresh_token")).toBeNull();
+    expect(localStorage.getItem("toqui_user")).toBeNull();
   });
 
   // ── Token refresh ─────────────────────────────────────────────────────
 
   it("refreshTokens exchanges refresh token and updates both state and storage", async () => {
-    sessionStorage.setItem("toqui_refresh_token", "old-rt");
+    localStorage.setItem("toqui_refresh_token", "old-rt");
 
     mockRefreshToken.mockResolvedValueOnce({
       accessToken: "fresh-at",
@@ -260,8 +260,8 @@ describe("AuthProvider", () => {
     expect(result.current.refreshToken).toBe("fresh-rt");
 
     // Storage is also updated
-    expect(sessionStorage.getItem("toqui_access_token")).toBe("fresh-at");
-    expect(sessionStorage.getItem("toqui_refresh_token")).toBe("fresh-rt");
+    expect(localStorage.getItem("toqui_access_token")).toBe("fresh-at");
+    expect(localStorage.getItem("toqui_refresh_token")).toBe("fresh-rt");
   });
 
   it("refreshTokens reads refresh token from storage, not from state", async () => {
@@ -269,7 +269,7 @@ describe("AuthProvider", () => {
     // from the React state `refreshToken`. This means even if React state
     // is stale (e.g., due to a concurrent update), the storage value is
     // the source of truth.
-    sessionStorage.setItem("toqui_refresh_token", "storage-rt");
+    localStorage.setItem("toqui_refresh_token", "storage-rt");
 
     mockRefreshToken.mockResolvedValueOnce({
       accessToken: "at",
@@ -304,8 +304,8 @@ describe("AuthProvider", () => {
   });
 
   it("refreshTokens clears all tokens on RPC failure", async () => {
-    sessionStorage.setItem("toqui_access_token", "stale-at");
-    sessionStorage.setItem("toqui_refresh_token", "bad-rt");
+    localStorage.setItem("toqui_access_token", "stale-at");
+    localStorage.setItem("toqui_refresh_token", "bad-rt");
 
     mockRefreshToken.mockRejectedValueOnce(new Error("token revoked"));
 
@@ -322,8 +322,8 @@ describe("AuthProvider", () => {
     expect(newToken).toBeNull();
     expect(result.current.accessToken).toBeNull();
     expect(result.current.refreshToken).toBeNull();
-    expect(sessionStorage.getItem("toqui_access_token")).toBeNull();
-    expect(sessionStorage.getItem("toqui_refresh_token")).toBeNull();
+    expect(localStorage.getItem("toqui_access_token")).toBeNull();
+    expect(localStorage.getItem("toqui_refresh_token")).toBeNull();
 
     spy.mockRestore();
   });
@@ -340,8 +340,8 @@ describe("AuthProvider", () => {
 
     expect(result.current.accessToken).toBe("manual-at");
     expect(result.current.refreshToken).toBe("manual-rt");
-    expect(sessionStorage.getItem("toqui_access_token")).toBe("manual-at");
-    expect(sessionStorage.getItem("toqui_refresh_token")).toBe("manual-rt");
+    expect(localStorage.getItem("toqui_access_token")).toBe("manual-at");
+    expect(localStorage.getItem("toqui_refresh_token")).toBe("manual-rt");
   });
 
   // ── Context memoization ───────────────────────────────────────────────
@@ -376,6 +376,6 @@ describe("AuthProvider", () => {
 
     // State should remain clean — no partial writes
     expect(result.current.accessToken).toBeNull();
-    expect(sessionStorage.getItem("toqui_access_token")).toBeNull();
+    expect(localStorage.getItem("toqui_access_token")).toBeNull();
   });
 });

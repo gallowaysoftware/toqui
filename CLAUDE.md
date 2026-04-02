@@ -61,7 +61,7 @@ components/               Shared UI components
   referral/
     ReferralCard.tsx      Referral code sharing with stats
 lib/
-  auth.tsx                Auth provider (SecureStore/sessionStorage + Bearer tokens)
+  auth.tsx                Auth provider (SecureStore/localStorage + Bearer tokens)
   transport.tsx           ConnectRPC transport with Bearer auth interceptor
   i18n.tsx                i18next configuration
   theme.tsx               Light/dark/system theme with ThemeColors interface
@@ -138,7 +138,7 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 | Framework | Expo SDK 55, Expo Router v55 (file-based routing) |
 | Language | TypeScript, React 19, React Native 0.83 |
 | API | ConnectRPC (`@connectrpc/connect-web`) with Bearer token auth |
-| Auth | `expo-secure-store` (native) / `sessionStorage` (web) for JWT tokens |
+| Auth | `expo-secure-store` (native) / `localStorage` (web) for JWT tokens |
 | State | React Context (auth, transport), TanStack Query |
 | i18n | `i18next` + `react-i18next` |
 | Icons | `lucide-react-native` |
@@ -149,7 +149,7 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 1. User authenticates via Google OAuth (`expo-auth-session`)
 2. App sends auth code to backend's `AuthService.GoogleLogin` RPC
 3. Backend returns `{ access_token, refresh_token, user }` in response body
-4. Tokens stored in `expo-secure-store` (native) or `sessionStorage` (web)
+4. Tokens stored in `expo-secure-store` (native) or `localStorage` (web)
 5. `TransportProvider` interceptor attaches `Authorization: Bearer <token>` to every ConnectRPC request
 6. On 401, interceptor calls `AuthService.RefreshToken` RPC, stores new tokens, retries
 7. Logout clears stored tokens
@@ -201,7 +201,7 @@ ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → Tran
 - **ThemeProvider** — Light/dark/system theme management with persistence (`lib/theme.tsx`). Provides `ThemeColors` interface to all components.
 - **I18nProvider** — i18next initialization with English translations
 - **QueryClientProvider** — TanStack Query client for server state caching and mutations
-- **AuthProvider** — JWT token management, SecureStore/sessionStorage persistence
+- **AuthProvider** — JWT token management, SecureStore/localStorage persistence
 - **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401
 - **AgeGate** — Wraps the app to enforce age verification (18+). Users who haven't verified age are redirected to the age gate screen.
 
@@ -225,7 +225,7 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 ### Auth Token Storage
 
 - **Native (iOS/Android):** Tokens in `expo-secure-store` (Keychain/Keystore)
-- **Web:** Tokens in `sessionStorage` (same as before migration — HttpOnly cookies were web-only)
+- **Web:** Tokens in `localStorage` (persists across sessions; refresh token has 30-day server-side expiry)
 - No tokens in URL params or query strings
 - Auto-refresh before expiry via `AuthService.RefreshToken` RPC
 
