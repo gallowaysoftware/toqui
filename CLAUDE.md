@@ -33,7 +33,6 @@ app/                          Expo Router pages (file-based routing)
   shared/[token]/index.tsx    Public shared trip view
   privacy.tsx                 Privacy policy
   terms.tsx                   Terms of service
-  waitlist.tsx                Waitlist page
   _layout.tsx                 Root layout (providers)
 lib/                          Shared utilities
   auth.tsx                    Auth provider (SecureStore + Bearer tokens)
@@ -66,14 +65,13 @@ lib/
   i18n.tsx                i18next configuration
   theme.tsx               Light/dark/system theme with ThemeColors interface
   google-auth.ts          useGoogleAuth() hook — expo-auth-session PKCE wrapper
-  authFetch.ts            Bearer-auth fetch wrapper for REST endpoints (checkout, referral, waitlist)
+  authFetch.ts            Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
   config.ts               Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
     useTrips.ts           Trip CRUD via ConnectRPC TripService
     useChat.ts            SSE streaming chat — tool activity, personas, recommendations
     useBookings.ts        Booking CRUD via ConnectRPC BookingService
     useItinerary.ts       Itinerary fetch via ConnectRPC TripService
-    useWaitlist.ts        Join waitlist + poll status via REST
     useCheckout.ts        Helcim checkout init/validate/status via REST
     useTrialStatus.ts     Trial expiration tracking via REST
     useReferral.ts        Referral code, stats, redemption via REST
@@ -168,15 +166,7 @@ Trip Pro ($12/trip) is purchased via Helcim (web-only payment UI, native shows r
 
 Unlocked trips get: unlimited messages, all 800+ expert personas, email forwarding, export, unbiased recommendations.
 
-## Waitlist & Referral
-
-### Waitlist
-The `waitlist.tsx` screen and `useWaitlist` hook manage the waitlist flow:
-- `POST /waitlist` — submit email, triggers verification email
-- `GET /waitlist/status?email=` — poll every 30 seconds for acceptance status
-- Accepted users receive an invite code for sign-up
-
-### Referral
+## Referral
 `ReferralCard.tsx` and `useReferral` hook:
 - `GET /api/referral` — fetch user's referral code and referred-user count
 - `POST /api/referral/redeem` — redeem another user's referral code
@@ -215,7 +205,6 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useChat` | ConnectRPC (SSE) | Streaming chat — handles tool events, persona switches, recommendations |
 | `useBookings` | ConnectRPC | Booking CRUD (list, create, update, delete) via BookingService |
 | `useItinerary` | ConnectRPC | Fetch trip itinerary via TripService |
-| `useWaitlist` | REST | Join waitlist (`POST /waitlist`), poll acceptance status (30s interval) |
 | `useCheckout` | REST | Init checkout (`POST /api/checkout`), validate payment, poll unlock status |
 | `useTrialStatus` | REST | Poll trial expiration via checkout status endpoint |
 | `useReferral` | REST | Get referral code/stats, redeem codes (`POST /api/referral/redeem`) |

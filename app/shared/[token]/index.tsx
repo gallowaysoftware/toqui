@@ -21,7 +21,7 @@ import {
   Platform,
   useWindowDimensions,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import Head from "expo-router/head";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -669,6 +669,7 @@ export default function SharedTripScreen() {
 
   return (
     <View style={styles.root}>
+      <Stack.Screen options={{ title: trip.title || "Shared Trip" }} />
       <Head>
         <meta property="og:title" content={ogTitle} />
         <meta property="og:description" content={ogDescription} />
