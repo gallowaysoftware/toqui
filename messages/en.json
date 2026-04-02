@@ -320,7 +320,9 @@
     "invalidSubtitle": "This invite link is missing a token. Please check the link and try again.",
     "errorExpired": "This invite has expired. Ask the trip owner for a new one.",
     "errorAlreadyAccepted": "You've already accepted this invite.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "signInToAccept": "Sign in to accept this invite and join the trip.",
+    "signIn": "Sign In"
   },
   "feedback": {
     "title": "Send Feedback",

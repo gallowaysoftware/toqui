@@ -8,12 +8,14 @@ import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
 import { useCollaborators, useInviteCollaborator, useRemoveCollaborator } from "@/lib/hooks/useCollaborators";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
 
 export default function TripSettingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { trip, isLoading, error: tripError } = useTrip(tripId!);
   const updateTrip = useUpdateTrip();
@@ -36,7 +38,7 @@ export default function TripSettingsScreen() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const MAX_COLLABORATORS = 10;
-  const isOwner = trip?.userId != null; // Owner sees the settings page for their own trip
+  const isOwner = user != null && trip?.userId === user.id;
   const canInvite = collaborators.length < MAX_COLLABORATORS;
 
   useEffect(() => {

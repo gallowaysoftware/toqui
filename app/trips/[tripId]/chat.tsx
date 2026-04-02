@@ -80,11 +80,11 @@ export default function ChatScreen() {
 
   const suggestedPromptSentRef = useRef(false);
   useEffect(() => {
-    if (suggestedPrompt && !suggestedPromptSentRef.current && !isLoadingHistory && messages.length === 0) {
+    if (suggestedPrompt && !suggestedPromptSentRef.current && !isLoadingHistory && !historyError && messages.length === 0) {
       suggestedPromptSentRef.current = true;
       sendMessage(suggestedPrompt);
     }
-  }, [suggestedPrompt, isLoadingHistory, messages.length, sendMessage]);
+  }, [suggestedPrompt, isLoadingHistory, historyError, messages.length, sendMessage]);
 
   const suggestions = useMemo(
     () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),

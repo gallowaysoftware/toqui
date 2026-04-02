@@ -142,7 +142,7 @@ export function useWeather(
   const isClimate = enabled ? shouldUseClimateApi(startDate!) : false;
 
   const { data: weather, isLoading, error } = useQuery<WeatherDay[]>({
-    queryKey: ["weather", latitude, longitude, startDate, endDate],
+    queryKey: ["weather", latitude, longitude, startDate, endDate, isClimate],
     queryFn: async () => {
       const url = buildWeatherUrl(latitude!, longitude!, startDate!, endDate!);
       const res = await fetch(url);

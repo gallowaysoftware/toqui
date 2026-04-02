@@ -54,23 +54,35 @@ export function useLocation(): UseLocationReturn {
     }
 
     if (Platform.OS === "web" && navigator.permissions) {
+      let permStatus: PermissionStatus | null = null;
+      const handleChange = () => {
+        if (permStatus) {
+          setPermissionState(
+            permStatus.state === "granted"
+              ? "granted"
+              : permStatus.state === "denied"
+                ? "denied"
+                : "prompt",
+          );
+        }
+      };
+
       navigator.permissions
         .query({ name: "geolocation" })
         .then((result) => {
+          permStatus = result;
           setPermissionState(result.state === "granted" ? "granted" : result.state === "denied" ? "denied" : "prompt");
-          result.addEventListener("change", () => {
-            setPermissionState(
-              result.state === "granted"
-                ? "granted"
-                : result.state === "denied"
-                  ? "denied"
-                  : "prompt",
-            );
-          });
+          result.addEventListener("change", handleChange);
         })
         .catch(() => {
           // Permissions API not supported — stay at "prompt"
         });
+
+      return () => {
+        if (permStatus) {
+          permStatus.removeEventListener("change", handleChange);
+        }
+      };
     }
   }, [isAvailable]);
 
