@@ -164,6 +164,8 @@ export function useChat(
   const nextPageTokenRef = useRef("");
   // Stable ID of the assistant message being built by textDelta events.
   const streamingMessageIdRef = useRef<string | null>(null);
+  // Track delayed geocode re-fetch timers so they can be cleaned up on unmount.
+  const geocodeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
   const onExpertLimitReachedRef = useRef(options?.onExpertLimitReached);
   useEffect(() => {
@@ -190,6 +192,9 @@ export function useChat(
     nextPageTokenRef.current = "";
     streamingMessageIdRef.current = null;
     isSendingRef.current = false;
+    // Clear any pending geocode re-fetch timers from previous trip.
+    for (const t of geocodeTimersRef.current) clearTimeout(t);
+    geocodeTimersRef.current = [];
   }, [tripId]);
 
   // Hydrate sessionIdRef from persistent storage so remounts resume the same session.
@@ -397,6 +402,21 @@ export function useChat(
               if (toolResult.toolName === "create_itinerary_items" && tripId) {
                 void queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
                 void queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+                // Geocoding runs as a fire-and-forget goroutine on the backend.
+                // The initial fetch above will have items but likely no coordinates
+                // yet. Schedule delayed re-fetches so the map picks up geocoded
+                // lat/lng once the backend goroutine finishes (typically 1-10s).
+                for (const t of geocodeTimersRef.current) clearTimeout(t);
+                const timers: ReturnType<typeof setTimeout>[] = [];
+                const tid = tripId; // capture for closure
+                for (const delay of [3000, 8000]) {
+                  timers.push(
+                    setTimeout(() => {
+                      void queryClient.invalidateQueries({ queryKey: ["itinerary", tid] });
+                    }, delay),
+                  );
+                }
+                geocodeTimersRef.current = timers;
               }
               if (toolResult.toolName === "suggest_expert" && toolResult.resultJson) {
                 try {
