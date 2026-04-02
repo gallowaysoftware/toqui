@@ -84,7 +84,7 @@ function getInterceptor() {
 // Combined provider wrapper for transport tests
 function makeWrapper(overrides?: { accessToken?: string | null }) {
   // We render AuthProvider + TransportProvider in the correct nesting.
-  // To control the accessToken we prime sessionStorage before render.
+  // To control the accessToken we prime localStorage before render.
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(
       AuthProvider,
@@ -100,7 +100,7 @@ function makeWrapper(overrides?: { accessToken?: string | null }) {
 
 describe("TransportProvider", () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
     capturedInterceptors = [];
     vi.clearAllMocks();
   });
@@ -137,7 +137,7 @@ describe("TransportProvider", () => {
 
 describe("Transport interceptor", () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
     capturedInterceptors = [];
     vi.clearAllMocks();
   });
@@ -166,7 +166,7 @@ describe("Transport interceptor", () => {
   });
 
   it("sets Bearer token from tokenRef when token exists", async () => {
-    sessionStorage.setItem("toqui_access_token", "my-token");
+    localStorage.setItem("toqui_access_token", "my-token");
 
     // Render so AuthProvider hydrates the token and the ref is updated
     const { result } = renderHook(() => useAuth(), {
@@ -189,8 +189,8 @@ describe("Transport interceptor", () => {
   // ── 401 auto-refresh retry ────────────────────────────────────────────
 
   it("retries with new token after 401 Unauthenticated + successful refresh", async () => {
-    sessionStorage.setItem("toqui_access_token", "expired-token");
-    sessionStorage.setItem("toqui_refresh_token", "valid-rt");
+    localStorage.setItem("toqui_access_token", "expired-token");
+    localStorage.setItem("toqui_refresh_token", "valid-rt");
 
     // Mock the ConnectRPC client that AuthProvider.refreshTokens uses internally
     const { createClient } = await import("@connectrpc/connect");
@@ -245,7 +245,7 @@ describe("Transport interceptor", () => {
   });
 
   it("re-throws non-Unauthenticated ConnectErrors without attempting refresh", async () => {
-    sessionStorage.setItem("toqui_refresh_token", "rt");
+    localStorage.setItem("toqui_refresh_token", "rt");
 
     const { result } = renderHook(() => useAuth(), {
       wrapper: makeWrapper(),

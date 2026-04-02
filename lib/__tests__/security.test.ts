@@ -282,25 +282,25 @@ describe("foldLine — ICS line folding safety", () => {
 });
 
 // ===========================================================================
-// 4. TOKEN STORAGE — sessionStorage on web, never localStorage
+// 4. TOKEN STORAGE — localStorage on web for session persistence
 // ===========================================================================
-describe("Token storage — web platform isolation", () => {
-  let sessionStorageSpy: { getItem: ReturnType<typeof vi.fn>; setItem: ReturnType<typeof vi.fn>; removeItem: ReturnType<typeof vi.fn> };
+describe("Token storage — web platform uses localStorage", () => {
   let localStorageSpy: { getItem: ReturnType<typeof vi.fn>; setItem: ReturnType<typeof vi.fn>; removeItem: ReturnType<typeof vi.fn> };
+  let sessionStorageSpy: { getItem: ReturnType<typeof vi.fn>; setItem: ReturnType<typeof vi.fn>; removeItem: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    sessionStorageSpy = {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    };
     localStorageSpy = {
       getItem: vi.fn(() => null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
     };
-    Object.defineProperty(globalThis, "sessionStorage", { value: sessionStorageSpy, writable: true, configurable: true });
+    sessionStorageSpy = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
     Object.defineProperty(globalThis, "localStorage", { value: localStorageSpy, writable: true, configurable: true });
+    Object.defineProperty(globalThis, "sessionStorage", { value: sessionStorageSpy, writable: true, configurable: true });
   });
 
   afterEach(() => {
@@ -310,41 +310,41 @@ describe("Token storage — web platform isolation", () => {
   // We replicate the tokenStorage logic from auth.tsx for web platform
   const webTokenStorage = {
     get(key: string): string | null {
-      return sessionStorage.getItem(key);
+      return localStorage.getItem(key);
     },
     set(key: string, value: string): void {
-      sessionStorage.setItem(key, value);
+      localStorage.setItem(key, value);
     },
     delete(key: string): void {
-      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
     },
   };
 
-  it("stores tokens in sessionStorage, not localStorage", () => {
+  it("stores tokens in localStorage for cross-session persistence", () => {
     webTokenStorage.set("toqui_access_token", "test-token");
-    expect(sessionStorageSpy.setItem).toHaveBeenCalledWith("toqui_access_token", "test-token");
-    expect(localStorageSpy.setItem).not.toHaveBeenCalled();
+    expect(localStorageSpy.setItem).toHaveBeenCalledWith("toqui_access_token", "test-token");
+    expect(sessionStorageSpy.setItem).not.toHaveBeenCalled();
   });
 
-  it("reads tokens from sessionStorage, not localStorage", () => {
+  it("reads tokens from localStorage, not sessionStorage", () => {
     webTokenStorage.get("toqui_access_token");
-    expect(sessionStorageSpy.getItem).toHaveBeenCalledWith("toqui_access_token");
-    expect(localStorageSpy.getItem).not.toHaveBeenCalled();
+    expect(localStorageSpy.getItem).toHaveBeenCalledWith("toqui_access_token");
+    expect(sessionStorageSpy.getItem).not.toHaveBeenCalled();
   });
 
-  it("deletes tokens from sessionStorage on logout", () => {
+  it("deletes tokens from localStorage on logout", () => {
     webTokenStorage.delete("toqui_access_token");
     webTokenStorage.delete("toqui_refresh_token");
-    expect(sessionStorageSpy.removeItem).toHaveBeenCalledWith("toqui_access_token");
-    expect(sessionStorageSpy.removeItem).toHaveBeenCalledWith("toqui_refresh_token");
-    expect(localStorageSpy.removeItem).not.toHaveBeenCalled();
+    expect(localStorageSpy.removeItem).toHaveBeenCalledWith("toqui_access_token");
+    expect(localStorageSpy.removeItem).toHaveBeenCalledWith("toqui_refresh_token");
+    expect(sessionStorageSpy.removeItem).not.toHaveBeenCalled();
   });
 
   it("stores user info separately from tokens (user info is non-sensitive)", () => {
-    // Per auth.tsx, user info is also stored in sessionStorage under toqui_user
+    // Per auth.tsx, user info is also stored in localStorage under toqui_user
     // This is acceptable because it contains only {id, email, name}
     webTokenStorage.set("toqui_user", JSON.stringify({ id: "1", email: "a@b.com", name: "Test" }));
-    const stored = sessionStorageSpy.setItem.mock.calls.find(
+    const stored = localStorageSpy.setItem.mock.calls.find(
       (c) => c[0] === "toqui_user"
     );
     expect(stored).toBeDefined();
