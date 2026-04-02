@@ -58,6 +58,7 @@ interface AuthState {
   refreshToken: string | null;
   isLoading: boolean;
   login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
+  facebookLogin: (accessToken: string) => Promise<void>;
   user: AuthUser | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
@@ -128,6 +129,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStorage.set("toqui_refresh_token", res.refreshToken);
   }, []);
 
+  const facebookLogin = useCallback(async (fbAccessToken: string) => {
+    const { apiUrl } = getConfig();
+    const res = await fetch(`${apiUrl}/auth/facebook/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: fbAccessToken }),
+    });
+    if (!res.ok) {
+      throw new Error(`Facebook login failed: ${res.status}`);
+    }
+    const data = await res.json() as {
+      access_token: string;
+      refresh_token: string;
+      user?: { id: string; email: string; name: string; subscription_tier?: string };
+    };
+    setAccessToken(data.access_token);
+    setRefreshToken(data.refresh_token);
+    if (data.user) {
+      const tier = data.user.subscription_tier === "pro" ? "pro" : "free" as const;
+      const u: AuthUser = { id: data.user.id, email: data.user.email, name: data.user.name, tier };
+      setUser(u);
+      await tokenStorage.set("toqui_user", JSON.stringify(u));
+    }
+    await tokenStorage.set("toqui_access_token", data.access_token);
+    await tokenStorage.set("toqui_refresh_token", data.refresh_token);
+  }, []);
+
   const refreshTokens = useCallback(async (): Promise<string | null> => {
     const rt = await tokenStorage.get("toqui_refresh_token");
     if (!rt) return null;
@@ -165,8 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually }),
-    [accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually],
+    () => ({ accessToken, refreshToken, user, isLoading, login, facebookLogin, logout, refreshTokens, setTokensManually }),
+    [accessToken, refreshToken, user, isLoading, login, facebookLogin, logout, refreshTokens, setTokensManually],
   );
 
   return (

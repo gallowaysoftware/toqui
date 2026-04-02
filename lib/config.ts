@@ -3,12 +3,14 @@ import { Platform } from "react-native";
 interface AppConfig {
   apiUrl: string;
   googleClientId: string;
+  facebookClientId: string;
 }
 
 // Default config from build-time env vars (used in dev / native builds)
 const defaults: AppConfig = {
   apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090",
   googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "",
+  facebookClientId: process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_ID ?? "",
 };
 
 let runtimeConfig: AppConfig | null = null;
@@ -32,6 +34,7 @@ export async function loadConfig(): Promise<AppConfig> {
         runtimeConfig = {
           apiUrl: json.apiUrl || defaults.apiUrl,
           googleClientId: json.googleClientId || defaults.googleClientId,
+          facebookClientId: json.facebookClientId || defaults.facebookClientId,
         };
         return runtimeConfig;
       }

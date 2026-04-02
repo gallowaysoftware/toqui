@@ -13,7 +13,7 @@ import { getConfig } from "@/lib/config";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthCallbackScreen() {
-  const { login } = useAuth();
+  const { login, setTokensManually } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +26,32 @@ export default function AuthCallbackScreen() {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const provider = params.get("provider");
+    const at = params.get("access_token");
+    const rt = params.get("refresh_token");
+
+    // Facebook backend redirect: tokens arrive as query params
+    if (provider === "facebook" && at && rt) {
+      setTokensManually(at, rt)
+        .then(() => {
+          const pendingRef = sessionStorage.getItem("toqui_pending_ref");
+          if (pendingRef) {
+            sessionStorage.removeItem("toqui_pending_ref");
+            authFetch(`${getConfig().apiUrl}/api/referral/redeem`, at, {
+              method: "POST",
+              body: JSON.stringify({ code: pendingRef }),
+            }).catch(() => {});
+          }
+          router.replace("/");
+        })
+        .catch((err) => {
+          console.error("Facebook callback login failed:", err);
+          setError("Sign-in failed. Please try again.");
+        });
+      return;
+    }
+
+    // Google OAuth: exchange auth code for tokens
     if (!code) return;
 
     // If maybeCompleteAuthSession() already handled it (popup closed), this
@@ -37,8 +63,8 @@ export default function AuthCallbackScreen() {
         const pendingRef = sessionStorage.getItem("toqui_pending_ref");
         if (pendingRef) {
           sessionStorage.removeItem("toqui_pending_ref");
-          const at = sessionStorage.getItem("toqui_access_token");
-          authFetch(`${getConfig().apiUrl}/api/referral/redeem`, at, {
+          const storedAt = sessionStorage.getItem("toqui_access_token");
+          authFetch(`${getConfig().apiUrl}/api/referral/redeem`, storedAt, {
             method: "POST",
             body: JSON.stringify({ code: pendingRef }),
           }).catch(() => {});
@@ -49,7 +75,7 @@ export default function AuthCallbackScreen() {
         console.error("OAuth callback login failed:", err);
         setError("Sign-in failed. Please try again.");
       });
-  }, [login, router]);
+  }, [login, setTokensManually, router]);
 
   if (error) {
     return (

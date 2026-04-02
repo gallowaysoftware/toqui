@@ -6,6 +6,7 @@ import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw, Users
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
+import { useFacebookAuth } from "@/lib/facebook-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useTheme } from "@/lib/theme";
@@ -93,6 +94,7 @@ export default function TripsScreen() {
   const { accessToken, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { signIn, isReady: authReady } = useGoogleAuth();
+  const { signIn: facebookSignIn, isReady: facebookReady } = useFacebookAuth();
   const queryClient = useQueryClient();
   const { trips, isLoading: tripsLoading, isError: tripsError } = useTrips();
   const { user } = useAuth();
@@ -143,6 +145,18 @@ export default function TripsScreen() {
       alignItems: "center",
       gap: 8,
     },
+    facebookButton: {
+      backgroundColor: "#1877F2",
+      borderRadius: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 12,
+    },
+    facebookButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
     disabledButton: { opacity: 0.5 },
     buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
     listContent: { padding: 16 },
@@ -211,6 +225,13 @@ export default function TripsScreen() {
           disabled={!authReady}
         >
           <Text style={styles.buttonText}>{t("common.getStarted")}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.facebookButton, !facebookReady && styles.disabledButton]}
+          onPress={facebookSignIn}
+          disabled={!facebookReady}
+        >
+          <Text style={styles.facebookButtonText}>{t("home.continueWithFacebook")}</Text>
         </Pressable>
         <Text style={styles.signInNote}>{t("home.signInNote")}</Text>
       </ScrollView>

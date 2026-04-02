@@ -360,6 +360,61 @@ describe("AuthProvider", () => {
     expect(first.refreshTokens).toBe(second.refreshTokens);
   });
 
+  // ── Facebook login flow ────────────────────────────────────────────────
+
+  it("facebookLogin stores tokens from REST endpoint", async () => {
+    const mockResponse = {
+      access_token: "fb-at",
+      refresh_token: "fb-rt",
+      user: { id: "fb-u1", email: "fb@example.com", name: "FB User", subscription_tier: "free" },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    } as Response);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.facebookLogin("fb-access-token-123");
+    });
+
+    expect(result.current.accessToken).toBe("fb-at");
+    expect(result.current.refreshToken).toBe("fb-rt");
+    expect(result.current.user).toEqual({
+      id: "fb-u1",
+      email: "fb@example.com",
+      name: "FB User",
+      tier: "free",
+    });
+
+    expect(sessionStorage.getItem("toqui_access_token")).toBe("fb-at");
+    expect(sessionStorage.getItem("toqui_refresh_token")).toBe("fb-rt");
+
+    vi.restoreAllMocks();
+  });
+
+  it("facebookLogin throws on HTTP error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(
+      act(async () => {
+        await result.current.facebookLogin("bad-token");
+      }),
+    ).rejects.toThrow("Facebook login failed: 401");
+
+    expect(result.current.accessToken).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
   // ── Login propagation error ───────────────────────────────────────────
 
   it("login propagates RPC errors to the caller", async () => {

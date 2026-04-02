@@ -43,7 +43,8 @@
     "welcomeTitle": "Where do you want to go?",
     "welcomeSubtitle": "Pick a destination or create your own trip",
     "noDestination": "No destination",
-    "signInNote": "Sign in with Google to get started. Free, no credit card required.",
+    "continueWithFacebook": "Continue with Facebook",
+    "signInNote": "Sign in with Google or Facebook to get started. Free, no credit card required.",
     "valueProps": {
       "experts": "800+ expert personas for every destination",
       "itineraries": "Day-by-day itineraries built from conversation",
