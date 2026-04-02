@@ -1,0 +1,11 @@
+# App identifier (bundle ID)
+app_identifier("travel.toqui.app")
+
+# Your Apple Developer account email
+# apple_id("your@email.com")
+
+# Your Apple Developer Team ID
+# team_id("XXXXXXXXXX")
+
+# App Store Connect Team ID (if different from Developer Team ID)
+# itc_team_id("XXXXXXXXXX")
