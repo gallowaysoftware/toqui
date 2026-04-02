@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useQueryClient } from "@tanstack/react-query";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/lib/transport";
 import { ChatService, ChatMode } from "@gen/toqui/v1/chat_pb";
@@ -137,6 +138,7 @@ export function useChat(
   options?: UseChatOptions,
 ) {
   const transport = useTransport();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -391,6 +393,11 @@ export function useChat(
               // Brief "done" state lets the UI animate out before the indicator disappears.
               setToolActivity({ toolName: toolResult.toolName, status: "done" });
               setTimeout(() => setToolActivity(null), 300);
+              // Invalidate itinerary and trip caches so navigating back shows fresh data.
+              if (toolResult.toolName === "create_itinerary_items" && tripId) {
+                void queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+                void queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+              }
               if (toolResult.toolName === "suggest_expert" && toolResult.resultJson) {
                 try {
                   const parsed = JSON.parse(toolResult.resultJson);
@@ -595,7 +602,7 @@ export function useChat(
         isSendingRef.current = false;
       }
     },
-    [tripId, mode, transport],
+    [tripId, mode, transport, queryClient],
   );
 
   const abortStream = useCallback(() => {

@@ -43,6 +43,14 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
   },
 }));
 
+const mockInvalidateQueries = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: mockInvalidateQueries,
+  })),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -100,6 +108,7 @@ import { useChat } from "@/lib/hooks/useChat";
 beforeEach(() => {
   mockSendMessage.mockClear();
   mockGetChatHistory.mockClear();
+  mockInvalidateQueries.mockClear();
   mockGetChatHistory.mockResolvedValue(emptyHistoryResponse());
   // Clear sessionStorage so session IDs don't leak between tests
   sessionStorage.clear();
@@ -450,6 +459,50 @@ describe("useChat", () => {
 
       // No extra recommendation message
       expect(result.current.messages).toHaveLength(2);
+    });
+
+    it("invalidates itinerary and trip cache on create_itinerary_items toolResult", async () => {
+      mockSendMessage.mockReturnValue(
+        streamEvents([
+          evt("toolCall", { toolName: "create_itinerary_items", inputJson: "{}" }),
+          evt("toolResult", {
+            toolName: "create_itinerary_items",
+            resultJson: JSON.stringify({ success: true }),
+          }),
+          evt("textDelta", { text: "Itinerary created!" }),
+          evt("messageComplete", { fullContent: "Itinerary created!", messageId: "m1", sessionId: "s1" }),
+        ]),
+      );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("plan my itinerary");
+      });
+
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["itinerary", "trip-1"] });
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["trip", "trip-1"] });
+    });
+
+    it("does not invalidate cache for non-itinerary tool results", async () => {
+      mockSendMessage.mockReturnValue(
+        streamEvents([
+          evt("toolResult", {
+            toolName: "search_flights",
+            resultJson: JSON.stringify({ flights: [] }),
+          }),
+          evt("textDelta", { text: "results" }),
+          evt("messageComplete", { fullContent: "results", messageId: "m1", sessionId: "s1" }),
+        ]),
+      );
+
+      const { result } = renderHook(() => useChat("trip-1", "planning"));
+
+      await act(async () => {
+        await result.current.sendMessage("test");
+      });
+
+      expect(mockInvalidateQueries).not.toHaveBeenCalled();
     });
   });
 
