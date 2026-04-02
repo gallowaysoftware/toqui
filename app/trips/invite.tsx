@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MapPin, AlertCircle, CheckCircle, Users } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
 import { useAcceptInvite } from "@/lib/hooks/useCollaborators";
 import type { AcceptInviteResult } from "@/lib/hooks/useCollaborators";
 
@@ -14,6 +15,7 @@ export default function AcceptInviteScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
+  const { accessToken } = useAuth();
   const { acceptInvite } = useAcceptInvite();
 
   const [state, setState] = useState<InviteState>("idle");
@@ -73,6 +75,21 @@ export default function AcceptInviteScreen() {
           <Text style={styles.subtitle}>{t("invite.invalidSubtitle")}</Text>
           <Pressable style={styles.secondaryButton} onPress={() => router.replace("/(tabs)" as never)}>
             <Text style={styles.secondaryButtonText}>{t("invite.goHome")}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!accessToken) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Users color={colors.accent} size={40} style={styles.icon as object} />
+          <Text style={styles.title}>{t("invite.title")}</Text>
+          <Text style={styles.subtitle}>{t("invite.signInToAccept")}</Text>
+          <Pressable style={styles.acceptButton} onPress={() => router.replace("/(tabs)" as never)}>
+            <Text style={styles.acceptButtonText}>{t("invite.signIn")}</Text>
           </Pressable>
         </View>
       </View>

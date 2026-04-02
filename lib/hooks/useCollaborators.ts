@@ -27,7 +27,7 @@ export function useCollaborators(tripId: string) {
   const { accessToken } = useAuth();
 
   const { data: collaborators = [], isLoading, error, isError, refetch } = useQuery<Collaborator[]>({
-    queryKey: ["collaborators", tripId],
+    queryKey: ["collaborators", tripId, accessToken],
     queryFn: async () => {
       const res = await authFetch(
         `${getConfig().apiUrl}/api/trips/${tripId}/collaborators`,

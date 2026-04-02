@@ -27,7 +27,7 @@ export function useUsage(): UsageData {
   const { accessToken } = useAuth();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["usage"],
+    queryKey: ["usage", accessToken],
     queryFn: async (): Promise<UsageResponse> => {
       const res = await authFetch(
         `${getConfig().apiUrl}/api/usage`,

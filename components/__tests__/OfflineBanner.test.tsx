@@ -66,9 +66,16 @@ afterEach(() => {
 });
 
 describe("OfflineBanner", () => {
-  it("renders the banner element", async () => {
+  it("renders the banner element when offline", async () => {
+    mockIsConnected = false;
     await renderBanner();
     expect(screen.getByTestId("offline-banner")).toBeInTheDocument();
+  });
+
+  it("does not render when connected", async () => {
+    mockIsConnected = true;
+    await renderBanner();
+    expect(screen.queryByTestId("offline-banner")).not.toBeInTheDocument();
   });
 
   it("contains the offline message text when disconnected", async () => {
@@ -84,6 +91,7 @@ describe("OfflineBanner", () => {
   });
 
   it("has accessibility role alert", async () => {
+    mockIsConnected = false;
     await renderBanner();
     const banner = screen.getByTestId("offline-banner");
     expect(banner).toHaveAttribute("role", "alert");
@@ -102,7 +110,7 @@ describe("OfflineBanner", () => {
     expect(dismiss).toHaveAttribute("aria-label", "Dismiss offline banner");
   });
 
-  it("banner is present in DOM regardless of connection state", async () => {
+  it("banner is present in DOM when offline", async () => {
     mockIsConnected = false;
     await renderBanner();
     expect(screen.getByTestId("offline-banner")).toBeInTheDocument();

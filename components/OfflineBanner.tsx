@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, Pressable } from "react-native";
 import { WifiOff, X } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
@@ -9,37 +9,46 @@ const BANNER_HEIGHT = 44;
 export function OfflineBanner() {
   const { isConnected } = useNetworkStatus();
   const { isDark } = useTheme();
-  const translateY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
-  const visible = useRef(false);
+  const heightAnim = useRef(new Animated.Value(0)).current;
+  const [showBanner, setShowBanner] = useState(false);
+  const dismissed = useRef(false);
 
   useEffect(() => {
-    const shouldShow = !isConnected;
+    const shouldShow = !isConnected && !dismissed.current;
 
-    if (shouldShow && !visible.current) {
-      visible.current = true;
-      Animated.timing(translateY, {
+    if (shouldShow && !showBanner) {
+      setShowBanner(true);
+      Animated.timing(heightAnim, {
+        toValue: BANNER_HEIGHT,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else if (!shouldShow && showBanner) {
+      Animated.timing(heightAnim, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else if (!shouldShow && visible.current) {
-      visible.current = false;
-      Animated.timing(translateY, {
-        toValue: -BANNER_HEIGHT,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+        useNativeDriver: false,
+      }).start(() => setShowBanner(false));
     }
-  }, [isConnected, translateY]);
+  }, [isConnected, showBanner, heightAnim]);
+
+  // Reset dismissed state when connectivity is restored
+  useEffect(() => {
+    if (isConnected) {
+      dismissed.current = false;
+    }
+  }, [isConnected]);
 
   const handleDismiss = () => {
-    visible.current = false;
-    Animated.timing(translateY, {
-      toValue: -BANNER_HEIGHT,
+    dismissed.current = true;
+    Animated.timing(heightAnim, {
+      toValue: 0,
       duration: 200,
-      useNativeDriver: true,
-    }).start();
+      useNativeDriver: false,
+    }).start(() => setShowBanner(false));
   };
+
+  if (!showBanner) return null;
 
   const bgColor = isDark ? "#78350f" : "#fbbf24";
   const textColor = isDark ? "#fef3c7" : "#78350f";
@@ -49,7 +58,7 @@ export function OfflineBanner() {
     <Animated.View
       style={[
         styles.container,
-        { backgroundColor: bgColor, transform: [{ translateY }] },
+        { backgroundColor: bgColor, height: heightAnim },
       ]}
       accessibilityRole="alert"
       accessibilityLabel="You are offline. Some features may not work."
@@ -75,16 +84,11 @@ export function OfflineBanner() {
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: BANNER_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    zIndex: 1000,
+    overflow: "hidden",
   },
   content: {
     flexDirection: "row",
