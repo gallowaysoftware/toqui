@@ -306,6 +306,17 @@
     "rewardsEarned": "{{count}} rewards earned",
     "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for a free Trip Pro unlock! {{link}}"
   },
+  "share": {
+    "promptTitle": "Your itinerary is ready!",
+    "promptSubtitle": "Share it with your travel companions",
+    "nudgeBanner": "Share this trip with friends \u2192",
+    "nudgeDismissed": "Dismissed",
+    "viewCount": "Viewed by {{count}} people",
+    "viewCountOne": "Viewed by 1 person",
+    "signInToSave": "Sign in to plan a trip like this",
+    "signInWithGoogle": "Continue with Google",
+    "orContinue": "or"
+  },
   "collaborators": {
     "title": "Team",
     "role": {

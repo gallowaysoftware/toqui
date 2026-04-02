@@ -46,7 +46,14 @@ export default function AuthCallbackScreen() {
             body: JSON.stringify({ code: pendingRef }),
           }).catch(() => {});
         }
-        router.replace("/");
+        // Check for post-login redirect (e.g., back to shared trip page)
+        const postLoginRedirect = sessionStorage.getItem("toqui_post_login_redirect");
+        if (postLoginRedirect) {
+          sessionStorage.removeItem("toqui_post_login_redirect");
+          router.replace(postLoginRedirect as never);
+        } else {
+          router.replace("/");
+        }
       })
       .catch((err) => {
         console.error("OAuth callback login failed:", err);
