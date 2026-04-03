@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "@/lib/auth";
+import { useAnalytics } from "@/lib/analytics";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
@@ -15,6 +16,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function AuthCallbackScreen() {
   const { login } = useAuth();
   const router = useRouter();
+  const { track, identify } = useAnalytics();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function AuthCallbackScreen() {
 
     login(code, redirectUri)
       .then(() => {
+        track("signup_completed", { method: "google" });
         const pendingRef = sessionStorage.getItem("toqui_pending_ref");
         if (pendingRef) {
           sessionStorage.removeItem("toqui_pending_ref");
@@ -49,7 +52,7 @@ export default function AuthCallbackScreen() {
         console.error("OAuth callback login failed:", err);
         setError("Sign-in failed. Please try again.");
       });
-  }, [login, router]);
+  }, [login, router, track]);
 
   if (error) {
     return (

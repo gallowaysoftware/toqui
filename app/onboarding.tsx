@@ -15,6 +15,7 @@ import { Plane } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
+import { useAnalytics } from "@/lib/analytics";
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -29,12 +30,14 @@ export default function OnboardingScreen() {
   const { colors } = useTheme();
   const { completeOnboarding } = useOnboarding();
   const createTrip = useCreateTrip();
+  const { track } = useAnalytics();
   const [destination, setDestination] = useState("");
 
   const handleStartPlanning = useCallback(async () => {
     if (!destination.trim()) return;
 
     await completeOnboarding();
+    track("onboarding_completed", { cta: "start_planning" });
 
     try {
       const startDate = new Date();
@@ -58,12 +61,13 @@ export default function OnboardingScreen() {
         params: { destination: destination.trim() },
       });
     }
-  }, [completeOnboarding, createTrip, destination, router]);
+  }, [completeOnboarding, createTrip, destination, router, track]);
 
   const handleBrowseIdeas = useCallback(async () => {
     await completeOnboarding();
+    track("onboarding_completed", { cta: "explore_first" });
     router.replace("/(tabs)" as never);
-  }, [completeOnboarding, router]);
+  }, [completeOnboarding, router, track]);
 
   const styles = StyleSheet.create({
     container: {

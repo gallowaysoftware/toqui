@@ -7,6 +7,7 @@ import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
 import { getTemplateById } from "@/lib/data/tripTemplates";
+import { useAnalytics } from "@/lib/analytics";
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -24,6 +25,7 @@ export default function NewTripScreen() {
     template?: string;
   }>();
   const createTrip = useCreateTrip();
+  const { track } = useAnalytics();
 
   const template = useMemo(
     () => (templateId ? getTemplateById(templateId) : undefined),
@@ -110,7 +112,18 @@ export default function NewTripScreen() {
         endDate: endDate || undefined,
       });
       if (trip) {
-        router.replace(`/trips/${trip.id}/chat` as never);
+        track("trip_created", {
+          has_dates: !!(startDate && endDate),
+          from_template: !!template,
+        });
+        if (template) {
+          router.replace({
+            pathname: `/trips/${trip.id}/chat` as never,
+            params: { suggestedPrompt: t(template.suggestedPromptKey) },
+          });
+        } else {
+          router.replace(`/trips/${trip.id}/chat` as never);
+        }
       }
     } catch {
       // TanStack Query sets createTrip.isError automatically

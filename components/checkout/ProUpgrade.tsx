@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle, Star, Mail, BookOpen, ExternalLink } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
 import { useTheme } from "@/lib/theme";
+import { useAnalytics } from "@/lib/analytics";
 
 interface ProUpgradeProps {
   tripId: string;
@@ -44,6 +45,7 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
+  const { track } = useAnalytics();
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
@@ -66,6 +68,13 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
       cancelled = true;
     };
   }, [checkStatus]);
+
+  // Track when the upgrade UI is viewed (not already unlocked)
+  useEffect(() => {
+    if (!checkingStatus && unlocked === false) {
+      track("upgrade_viewed");
+    }
+  }, [checkingStatus, unlocked, track]);
 
   const handleCheckout = useCallback(async () => {
     if (Platform.OS !== "web") return;
