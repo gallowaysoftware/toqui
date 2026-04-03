@@ -12,6 +12,8 @@ vi.mock("lucide-react-native", () => ({
   Mail: () => <span data-testid="mail-icon" />,
   BookOpen: () => <span data-testid="book-open-icon" />,
   ExternalLink: () => <span data-testid="external-link-icon" />,
+  ChevronRight: () => <span data-testid="chevron-right-icon" />,
+  X: () => <span data-testid="x-icon" />,
 }));
 
 vi.mock("@/lib/theme", () => ({
@@ -129,5 +131,32 @@ describe("ProUpgrade", () => {
     await waitFor(() => {
       expect(screen.getByText("checkout.title")).toBeInTheDocument();
     });
+  });
+
+  it("renders compact inline banner when compact prop is set", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    const onDismiss = vi.fn();
+    render(<ProUpgrade tripId="t1" compact onDismiss={onDismiss} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.unlockInline")).toBeInTheDocument();
+    });
+    // Should not render the full card elements
+    expect(screen.queryByText("checkout.title")).toBeNull();
+    expect(screen.queryByText("checkout.price")).toBeNull();
+  });
+
+  it("calls onDismiss when compact banner dismiss is clicked", async () => {
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    const onDismiss = vi.fn();
+    render(<ProUpgrade tripId="t1" compact onDismiss={onDismiss} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("checkout.unlockInline")).toBeInTheDocument();
+    });
+
+    const dismissButton = screen.getByLabelText("common.dismiss");
+    fireEvent.click(dismissButton);
+    expect(onDismiss).toHaveBeenCalledOnce();
   });
 });

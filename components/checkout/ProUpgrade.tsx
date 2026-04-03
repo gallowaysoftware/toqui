@@ -9,7 +9,7 @@ import {
   Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Star, Mail, BookOpen, ExternalLink } from "lucide-react-native";
+import { CheckCircle, Star, Mail, BookOpen, ExternalLink, ChevronRight, X } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
 import { useTheme } from "@/lib/theme";
 import { useAnalytics } from "@/lib/analytics";
@@ -17,6 +17,10 @@ import { useAnalytics } from "@/lib/analytics";
 interface ProUpgradeProps {
   tripId: string;
   onUnlocked?: () => void;
+  /** Render as a single-line inline banner instead of the full card */
+  compact?: boolean;
+  /** Called when the user dismisses the compact banner */
+  onDismiss?: () => void;
 }
 
 declare global {
@@ -41,7 +45,7 @@ function loadHelcimJS(): Promise<void> {
   });
 }
 
-export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
+export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgradeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
@@ -212,6 +216,25 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
       color: colors.textSecondary,
       textAlign: "center",
     },
+    compactContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.accentSoft,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 16,
+      gap: 8,
+    },
+    compactText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.accent,
+      fontWeight: "600",
+    },
+    compactDismiss: {
+      padding: 4,
+    },
   });
 
   if (checkingStatus) {
@@ -230,6 +253,39 @@ export function ProUpgrade({ tripId, onUnlocked }: ProUpgradeProps) {
         <Text style={styles.successDescription}>
           {t("checkout.successDescription")}
         </Text>
+      </View>
+    );
+  }
+
+  if (compact) {
+    return (
+      <View style={styles.compactContainer as object}>
+        <Star color={colors.accent} size={16} />
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={() => {
+            // In compact mode, trigger full checkout flow on web
+            if (Platform.OS === "web") {
+              void handleCheckout();
+            }
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={styles.compactText}>
+            {t("checkout.unlockInline")}
+          </Text>
+        </Pressable>
+        <ChevronRight color={colors.accent} size={16} />
+        {onDismiss && (
+          <Pressable
+            style={styles.compactDismiss}
+            onPress={onDismiss}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.dismiss")}
+          >
+            <X color={colors.textTertiary} size={14} />
+          </Pressable>
+        )}
       </View>
     );
   }
