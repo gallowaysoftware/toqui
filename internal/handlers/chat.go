@@ -19,6 +19,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -46,6 +47,7 @@ type ChatHandler struct {
 	pool          *pgxpool.Pool
 	placesAPIKey  string
 	adminEmails   map[string]bool
+	analytics     *analytics.Client
 }
 
 func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
@@ -73,6 +75,12 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 // geocoding is silently skipped.
 func (h *ChatHandler) WithPlacesAPIKey(key string) *ChatHandler {
 	h.placesAPIKey = key
+	return h
+}
+
+// WithAnalytics configures the chat handler to send events to PostHog.
+func (h *ChatHandler) WithAnalytics(client *analytics.Client) *ChatHandler {
+	h.analytics = client
 	return h
 }
 
@@ -151,6 +159,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		mode = "selection"
 	case req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_COMPANION:
 		mode = "companion"
+	}
+
+	// Track chat message (async, non-blocking, privacy-safe — no message content)
+	if h.analytics != nil {
+		h.analytics.Track(userID.String(), "chat_message_sent", map[string]any{
+			"mode": mode,
+		})
 	}
 
 	// Look up trip context for persona resolution and system prompt injection
@@ -329,7 +344,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				mu.Lock()
 				itineraryItems = append(itineraryItems, items...)
 				mu.Unlock()
-			}).WithGeocoding(h.pool, h.placesAPIKey)
+			}).WithGeocoding(h.pool, h.placesAPIKey).
+				WithAnalytics(h.analytics, userID.String())
 			params.ExtraTools = append(params.ExtraTools, itineraryTool)
 		}
 

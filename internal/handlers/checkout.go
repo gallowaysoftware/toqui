@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/payment"
@@ -23,6 +24,7 @@ type CheckoutHandler struct {
 	authSvc         *auth.Service
 	queries         *dbgen.Queries
 	checkoutLimiter *ratelimit.RESTLimiter
+	analyticsClient *analytics.Client
 }
 
 // NewCheckoutHandler creates a new CheckoutHandler.
@@ -33,6 +35,12 @@ func NewCheckoutHandler(paymentSvc *payment.Service, authSvc *auth.Service, pool
 		queries:         dbgen.New(pool),
 		checkoutLimiter: ratelimit.NewRESTLimiter(3, 1*time.Hour), // 3 checkout initiations per hour
 	}
+}
+
+// WithAnalytics configures the checkout handler to send events to PostHog.
+func (h *CheckoutHandler) WithAnalytics(client *analytics.Client) *CheckoutHandler {
+	h.analyticsClient = client
+	return h
 }
 
 // HandleCreateCheckout handles POST /api/checkout.
@@ -139,6 +147,13 @@ func (h *CheckoutHandler) HandleValidatePayment(w http.ResponseWriter, r *http.R
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
 		return
+	}
+
+	// Track successful checkout (async, non-blocking)
+	if h.analyticsClient != nil {
+		h.analyticsClient.Track(userID.String(), "checkout_completed", map[string]any{
+			"amount_cents": h.paymentSvc.PriceCents(),
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

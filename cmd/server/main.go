@@ -22,6 +22,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
@@ -64,6 +65,12 @@ func main() {
 		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		})))
+	}
+
+	// Analytics (PostHog) — no-op client when API key is empty
+	posthogClient := analytics.NewClient(cfg.PostHogAPIKey)
+	if posthogClient.Enabled() {
+		slog.Info("PostHog analytics enabled", "endpoint", "eu.i.posthog.com")
 	}
 
 	// Database
@@ -212,7 +219,8 @@ func main() {
 		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
-		WithPlacesAPIKey(cfg.GooglePlacesAPIKey)
+		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
+		WithAnalytics(posthogClient)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
@@ -229,12 +237,14 @@ func main() {
 	}
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender).
 		WithMaxFreeUsers(cfg.MaxFreeUsers).
-		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI)
+		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
+		WithAnalytics(posthogClient)
 
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
 	// Shared trip handler (public + authenticated routes)
-	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL)
+	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).
+		WithAnalytics(posthogClient)
 
 	// Liveness probe (no auth, no external checks).
 	// Used by Cloud Run to verify the process is alive — never killed due to transient DB issues.
@@ -290,7 +300,8 @@ func main() {
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 
 	// Payment routes (authenticated)
-	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc, pool)
+	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc, pool).
+		WithAnalytics(posthogClient)
 	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
 	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
 	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)

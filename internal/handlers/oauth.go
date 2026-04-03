@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -41,6 +42,8 @@ type OAuthHandler struct {
 	facebookClientID     string
 	facebookClientSecret string
 	facebookRedirectURI  string
+
+	analyticsClient *analytics.Client
 }
 
 func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
@@ -59,6 +62,12 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 // WithMaxFreeUsers configures the capacity cap for Facebook OAuth new user registration.
 func (h *OAuthHandler) WithMaxFreeUsers(maxFreeUsers int) *OAuthHandler {
 	h.maxFreeUsers = maxFreeUsers
+	return h
+}
+
+// WithAnalytics configures the OAuth handler to send events to PostHog.
+func (h *OAuthHandler) WithAnalytics(client *analytics.Client) *OAuthHandler {
+	h.analyticsClient = client
 	return h
 }
 
@@ -227,8 +236,11 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send welcome email for new users (created within the last minute).
-	if h.emailSvc != nil && time.Since(user.CreatedAt) < time.Minute {
+	// New user detection: created within the last minute means this is a signup, not a returning login.
+	isNewUser := time.Since(user.CreatedAt) < time.Minute
+
+	// Send welcome email for new users.
+	if h.emailSvc != nil && isNewUser {
 		name := ""
 		if user.Name.Valid {
 			name = user.Name.String
@@ -238,6 +250,13 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				slog.Error("welcome email failed", "error", err, "user_id", user.ID)
 			}
 		}()
+	}
+
+	// Track new signup (async, non-blocking, no PII)
+	if h.analyticsClient != nil && isNewUser {
+		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
+			"auth_provider": "google",
+		})
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
@@ -652,8 +671,11 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Send welcome email for new users (created within the last minute).
-	if h.emailSvc != nil && time.Since(user.CreatedAt) < time.Minute {
+	// New user detection: created within the last minute means this is a signup, not a returning login.
+	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
+
+	// Send welcome email for new users.
+	if h.emailSvc != nil && fbIsNewUser {
 		name := ""
 		if user.Name.Valid {
 			name = user.Name.String
@@ -663,6 +685,13 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 				slog.Error("welcome email failed", "error", err, "user_id", user.ID)
 			}
 		}()
+	}
+
+	// Track new signup (async, non-blocking, no PII)
+	if h.analyticsClient != nil && fbIsNewUser {
+		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
+			"auth_provider": "facebook",
+		})
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)

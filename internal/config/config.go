@@ -88,6 +88,9 @@ type Config struct {
 	ResendAPIKey string
 	EmailFrom    string
 
+	// Analytics (PostHog)
+	PostHogAPIKey string // Empty = analytics disabled
+
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
 	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
@@ -138,6 +141,7 @@ func Load() (*Config, error) {
 		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
+		PostHogAPIKey:            os.Getenv("POSTHOG_API_KEY"),
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		AllowedEmails:            parseCSVEnv("ALLOWED_EMAILS"),
 		AdminEmails:              parseCSVEnv("ADMIN_EMAILS"),
