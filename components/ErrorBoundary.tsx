@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import type { ReactNode, ErrorInfo } from "react";
+import * as Sentry from "@sentry/react-native";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
     this.props.onError?.(error, errorInfo);
   }
 
@@ -37,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <View style={styles.container}>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
-            {this.state.error?.message ?? "An unexpected error occurred."}
+            An unexpected error occurred. Please try again.
           </Text>
           <Pressable style={styles.button} onPress={this.handleRetry}>
             <Text style={styles.buttonText}>Try Again</Text>

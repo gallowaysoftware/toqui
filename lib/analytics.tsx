@@ -2,12 +2,13 @@
  * Privacy-first analytics wrapper around PostHog.
  *
  * Design decisions:
- * - User IDs are pseudonymised (hashed) before being sent to PostHog.
+ * - User IDs are pseudonymised (SHA-256 hashed) before being sent to PostHog.
  * - No PII ($set with email/name) is ever attached to identify calls.
  * - EU hosting endpoint (eu.i.posthog.com) for data residency.
  * - Session replay masks all text inputs.
  * - Cookie-less mode (persistence set to "memory").
  * - Gracefully no-ops when EXPO_PUBLIC_POSTHOG_KEY is empty (dev/test).
+ * - Allowlist-based property filter: only known-safe keys are forwarded.
  */
 
 import {
@@ -25,27 +26,31 @@ import type { PostHog } from "posthog-js";
 import { getConfig } from "./config";
 
 // ---------------------------------------------------------------------------
-// Sensitive property keys that must never leave the device
+// Allowlist of safe analytics property keys.
+// Any property NOT in this set is stripped before sending to PostHog.
 // ---------------------------------------------------------------------------
-const SENSITIVE_KEYS = new Set([
-  "destination",
-  "destination_name",
-  "chat_content",
-  "message",
-  "message_content",
-  "travel_dates",
-  "start_date",
-  "end_date",
-  "booking_details",
-  "email",
-  "name",
-  "user_name",
-  "user_email",
-  "phone",
+const SAFE_PROPERTIES = new Set([
+  "source",
+  "mode",
+  "action",
+  "platform",
+  "auth_provider",
+  "has_dates",
+  "from_template",
+  "template_id",
+  "method",
+  "item_count",
+  "day_count",
+  "amount",
+  "screen",
+  "error_type",
+  "$lib",
+  "$lib_version",
 ]);
 
 /**
- * Strip any accidentally-included sensitive properties from an event payload.
+ * Keep only known-safe properties from an event payload.
+ * Any property not in the SAFE_PROPERTIES allowlist is stripped.
  */
 export function stripSensitiveProps(
   props: Record<string, unknown> | undefined,
@@ -53,7 +58,7 @@ export function stripSensitiveProps(
   if (!props) return props;
   const clean: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(props)) {
-    if (!SENSITIVE_KEYS.has(key)) {
+    if (SAFE_PROPERTIES.has(key)) {
       clean[key] = value;
     }
   }
@@ -61,22 +66,28 @@ export function stripSensitiveProps(
 }
 
 // ---------------------------------------------------------------------------
-// User-ID pseudonymisation
+// User-ID pseudonymisation (SHA-256)
 // ---------------------------------------------------------------------------
 
 /**
- * Deterministic hash for pseudonymising user IDs before sending to PostHog.
- * This is NOT cryptographic — it's a simple string-hash to decouple the
- * analytics identity from the real database UUID.
+ * Deterministic SHA-256 hash for pseudonymising user IDs before sending to
+ * PostHog. Falls back to a simple hash when crypto.subtle is unavailable.
  */
-export function hashUserId(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    const char = userId.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32-bit integer
+export async function hashUserId(userId: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const data = new TextEncoder().encode(userId);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    const hex = Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return `u_${hex.slice(0, 16)}`; // 64 bits = no birthday problem under billions
   }
-  return `u_${Math.abs(hash).toString(36)}`;
+  // Fallback for environments without crypto.subtle
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) {
+    h = (Math.imul(31, h) + userId.charCodeAt(i)) | 0;
+  }
+  return `u_${Math.abs(h).toString(16).padStart(8, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,9 +165,11 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   );
 
   const identify = useCallback((userId: string) => {
-    const hashed = hashUserId(userId);
-    // Identify WITHOUT any $set properties — no PII
-    clientRef.current?.identify(hashed);
+    // hashUserId is async — fire and forget (identify is not a hot path)
+    void hashUserId(userId).then((hashed) => {
+      // Identify WITHOUT any $set properties — no PII
+      clientRef.current?.identify(hashed);
+    });
   }, []);
 
   const reset = useCallback(() => {

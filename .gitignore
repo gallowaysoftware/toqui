@@ -26,3 +26,5 @@ Thumbs.db
 
 # misc
 *.tsbuildinfo
+
+.env.local
