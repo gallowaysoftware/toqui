@@ -26,6 +26,11 @@ type Config struct {
 	GoogleClientSecret string
 	GoogleRedirectURI  string
 
+	// Facebook/Meta OAuth (covers Facebook + Instagram login)
+	FacebookClientID     string
+	FacebookClientSecret string
+	FacebookRedirectURI  string
+
 	// JWT
 	JWTSecret string
 
@@ -107,6 +112,9 @@ func Load() (*Config, error) {
 		GoogleClientID:           os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret:       os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURI:        getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
+		FacebookClientID:         os.Getenv("FACEBOOK_CLIENT_ID"),
+		FacebookClientSecret:     os.Getenv("FACEBOOK_CLIENT_SECRET"),
+		FacebookRedirectURI:      getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
 		JWTSecret:                getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		AnthropicAPIKey:          os.Getenv("ANTHROPIC_API_KEY"),
 		VertexAIProjectID:        os.Getenv("VERTEX_AI_PROJECT_ID"),

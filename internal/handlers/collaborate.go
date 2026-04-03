@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,6 +19,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/email"
+	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 )
 
 // maxInvitesPerTrip is the maximum number of collaborators allowed per trip.
@@ -25,19 +27,21 @@ const maxInvitesPerTrip = 10
 
 // CollaborateHandler handles trip collaboration endpoints.
 type CollaborateHandler struct {
-	authSvc  *auth.Service
-	queries  *dbgen.Queries
-	emailSvc *email.Sender
-	appURL   string
+	authSvc       *auth.Service
+	queries       *dbgen.Queries
+	emailSvc      *email.Sender
+	appURL        string
+	inviteLimiter *ratelimit.RESTLimiter
 }
 
 // NewCollaborateHandler creates a new CollaborateHandler.
 func NewCollaborateHandler(authSvc *auth.Service, pool *pgxpool.Pool, emailSvc *email.Sender, appURL string) *CollaborateHandler {
 	return &CollaborateHandler{
-		authSvc:  authSvc,
-		queries:  dbgen.New(pool),
-		emailSvc: emailSvc,
-		appURL:   appURL,
+		authSvc:       authSvc,
+		queries:       dbgen.New(pool),
+		emailSvc:      emailSvc,
+		appURL:        appURL,
+		inviteLimiter: ratelimit.NewRESTLimiter(5, 10*time.Minute), // 5 invites per trip per 10 minutes
 	}
 }
 
@@ -88,6 +92,13 @@ func (h *CollaborateHandler) HandleInvite(w http.ResponseWriter, r *http.Request
 	}
 	if ownerID != userID {
 		http.Error(w, "only the trip owner can invite collaborators", http.StatusForbidden)
+		return
+	}
+
+	// Per-user rate limit: 5 invites per trip per 10 minutes
+	rateLimitKey := fmt.Sprintf("invite:%s:%s", userID.String(), tripID.String())
+	if !h.inviteLimiter.Allow(rateLimitKey) {
+		ratelimit.Reject(w, "too many invites for this trip, please try again later")
 		return
 	}
 
@@ -205,6 +216,18 @@ func (h *CollaborateHandler) HandleAcceptInvite(w http.ResponseWriter, r *http.R
 	// Check if already accepted
 	if collab.AcceptedAt.Valid {
 		http.Error(w, "this invite has already been accepted", http.StatusConflict)
+		return
+	}
+
+	// Verify the accepting user's email matches the invited email
+	acceptingUser, err := h.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		slog.Error("get user for invite verification failed", "error", err, "user_id", userID)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if !strings.EqualFold(acceptingUser.Email, collab.Email) {
+		http.Error(w, "this invite was sent to a different email address", http.StatusForbidden)
 		return
 	}
 

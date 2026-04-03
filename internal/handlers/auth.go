@@ -24,7 +24,13 @@ type AuthHandler struct {
 	queries        *dbgen.Queries
 	lifecycleSvc   *lifecycle.Service
 	allowedDomains []string
+	allowedEmails  []string
+	maxFreeUsers   int
 	authLimiter    *ratelimit.AuthLimiter
+
+	// Facebook/Meta OAuth config
+	facebookClientID     string
+	facebookClientSecret string
 }
 
 func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
@@ -35,6 +41,20 @@ func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lif
 		allowedDomains: allowedDomains,
 		authLimiter:    authLimiter,
 	}
+}
+
+// WithCapacityCap configures capacity cap settings for Facebook OAuth (native app flow).
+func (h *AuthHandler) WithCapacityCap(allowedEmails []string, maxFreeUsers int) *AuthHandler {
+	h.allowedEmails = allowedEmails
+	h.maxFreeUsers = maxFreeUsers
+	return h
+}
+
+// WithFacebookCredentials configures Facebook/Meta OAuth credentials for native app login.
+func (h *AuthHandler) WithFacebookCredentials(clientID, clientSecret string) *AuthHandler {
+	h.facebookClientID = clientID
+	h.facebookClientSecret = clientSecret
+	return h
 }
 
 func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toquiv1.GoogleLoginRequest]) (*connect.Response[toquiv1.GoogleLoginResponse], error) {
@@ -91,6 +111,74 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 		AccessToken:  accessToken,
 		RefreshToken: refreshResult.Token,
 		User:         userToProto(&user, tier),
+	}), nil
+}
+
+func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[toquiv1.FacebookLoginRequest]) (*connect.Response[toquiv1.FacebookLoginResponse], error) {
+	if h.facebookClientID == "" || h.facebookClientSecret == "" {
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("facebook login not configured"))
+	}
+
+	// Validate the Facebook access token and fetch user profile.
+	fbUser, err := validateFacebookAccessToken(ctx, req.Msg.AccessToken, h.facebookClientID, h.facebookClientSecret)
+	if err != nil {
+		slog.Error("facebook token validation failed", "error", err)
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid Facebook access token"))
+	}
+
+	if fbUser.Email == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("email permission is required for Facebook login"))
+	}
+
+	// Domain allowlist
+	if !isEmailDomainAllowed(fbUser.Email, h.allowedDomains) {
+		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(fbUser.Email))
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
+	}
+
+	// Use the shared findOrCreateFacebookUser logic via an inline OAuthHandler.
+	// This avoids duplicating the user creation/linking logic.
+	oauthH := &OAuthHandler{
+		queries:       h.queries,
+		allowedEmails: h.allowedEmails,
+		maxFreeUsers:  h.maxFreeUsers,
+	}
+	user, err := oauthH.findOrCreateFacebookUser(ctx, fbUser)
+	if err != nil {
+		if err.Error() == "at capacity" {
+			audit.Log(audit.EventLoginDeniedCapacity, "email", maskEmail(fbUser.Email))
+			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("service at capacity"))
+		}
+		return nil, internalError(ctx, "facebook user upsert", err)
+	}
+
+	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
+	if err != nil {
+		return nil, internalError(ctx, "generate access token", err)
+	}
+
+	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, uuid.Nil)
+	if err != nil {
+		return nil, internalError(ctx, "generate refresh token", err)
+	}
+
+	if _, err := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Jti:       refreshResult.JTI,
+		Family:    refreshResult.Family,
+		ExpiresAt: refreshResult.ExpiresAt,
+	}); err != nil {
+		return nil, internalError(ctx, "store refresh token", err)
+	}
+
+	audit.Log(audit.EventFacebookLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
+
+	tier := h.lookupTier(ctx, user.ID)
+
+	return connect.NewResponse(&toquiv1.FacebookLoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		User:         userToProto(user, tier),
 	}), nil
 }
 

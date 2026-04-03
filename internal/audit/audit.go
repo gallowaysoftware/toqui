@@ -32,6 +32,9 @@ const (
 	EventTripInvite          = "trip.invite"
 	EventTripInviteAccept    = "trip.invite_accept"
 	EventTripCollabRemove    = "trip.collaborator_remove"
+	EventFacebookLogin       = "auth.facebook_login"
+	EventFacebookLoginNew    = "auth.facebook_login_new_user"
+	EventFacebookLink        = "auth.facebook_link"
 )
 
 // Log records a structured audit event. All audit events include the event

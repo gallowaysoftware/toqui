@@ -42,3 +42,14 @@ LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 SELECT * FROM users WHERE email ILIKE '%' || sqlc.arg(query)::text || '%' OR name ILIKE '%' || sqlc.arg(query)::text || '%'
 ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- name: GetUserByFacebookID :one
+SELECT * FROM users WHERE facebook_id = $1;
+
+-- name: UpdateUserFacebookID :exec
+UPDATE users SET facebook_id = $2, updated_at = NOW() WHERE id = $1;
+
+-- name: CreateUserWithFacebook :one
+INSERT INTO users (email, name, facebook_id, avatar_url)
+VALUES ($1, $2, $3, $4)
+RETURNING *;

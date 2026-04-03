@@ -208,6 +208,7 @@ type User struct {
 	DefaultPersonaID pgtype.Text        `json:"default_persona_id"`
 	SubscriptionTier string             `json:"subscription_tier"`
 	AgeVerifiedAt    pgtype.Timestamptz `json:"age_verified_at"`
+	FacebookID       pgtype.Text        `json:"facebook_id"`
 }
 
 type Waitlist struct {

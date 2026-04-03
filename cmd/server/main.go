@@ -207,7 +207,9 @@ func main() {
 
 	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
 
-	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter)
+	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
+		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
+		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey)
@@ -225,7 +227,9 @@ func main() {
 	} else if cfg.TargetEnv != "local" {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender)
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender).
+		WithMaxFreeUsers(cfg.MaxFreeUsers).
+		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI)
 
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
 
@@ -267,6 +271,8 @@ func main() {
 	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
+	mux.HandleFunc("/auth/facebook/login", oauthHandler.HandleFacebookLogin)
+	mux.HandleFunc("/auth/facebook/callback", oauthHandler.HandleFacebookCallback)
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
 	mux.HandleFunc("/auth/refresh", oauthHandler.HandleRefresh)
 	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)

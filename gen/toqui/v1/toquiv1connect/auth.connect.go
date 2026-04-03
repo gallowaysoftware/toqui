@@ -35,6 +35,9 @@ const (
 const (
 	// AuthServiceGoogleLoginProcedure is the fully-qualified name of the AuthService's GoogleLogin RPC.
 	AuthServiceGoogleLoginProcedure = "/toqui.v1.AuthService/GoogleLogin"
+	// AuthServiceFacebookLoginProcedure is the fully-qualified name of the AuthService's FacebookLogin
+	// RPC.
+	AuthServiceFacebookLoginProcedure = "/toqui.v1.AuthService/FacebookLogin"
 	// AuthServiceRefreshTokenProcedure is the fully-qualified name of the AuthService's RefreshToken
 	// RPC.
 	AuthServiceRefreshTokenProcedure = "/toqui.v1.AuthService/RefreshToken"
@@ -51,6 +54,7 @@ const (
 // AuthServiceClient is a client for the toqui.v1.AuthService service.
 type AuthServiceClient interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
+	FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	GetCurrentUser(context.Context, *connect.Request[v1.GetCurrentUserRequest]) (*connect.Response[v1.GetCurrentUserResponse], error)
 	// Privacy / data lifecycle
@@ -73,6 +77,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceGoogleLoginProcedure,
 			connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
+			connect.WithClientOptions(opts...),
+		),
+		facebookLogin: connect.NewClient[v1.FacebookLoginRequest, v1.FacebookLoginResponse](
+			httpClient,
+			baseURL+AuthServiceFacebookLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("FacebookLogin")),
 			connect.WithClientOptions(opts...),
 		),
 		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
@@ -105,6 +115,7 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
 	googleLogin    *connect.Client[v1.GoogleLoginRequest, v1.GoogleLoginResponse]
+	facebookLogin  *connect.Client[v1.FacebookLoginRequest, v1.FacebookLoginResponse]
 	refreshToken   *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
 	getCurrentUser *connect.Client[v1.GetCurrentUserRequest, v1.GetCurrentUserResponse]
 	deleteAccount  *connect.Client[v1.DeleteAccountRequest, v1.DeleteAccountResponse]
@@ -114,6 +125,11 @@ type authServiceClient struct {
 // GoogleLogin calls toqui.v1.AuthService.GoogleLogin.
 func (c *authServiceClient) GoogleLogin(ctx context.Context, req *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error) {
 	return c.googleLogin.CallUnary(ctx, req)
+}
+
+// FacebookLogin calls toqui.v1.AuthService.FacebookLogin.
+func (c *authServiceClient) FacebookLogin(ctx context.Context, req *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error) {
+	return c.facebookLogin.CallUnary(ctx, req)
 }
 
 // RefreshToken calls toqui.v1.AuthService.RefreshToken.
@@ -139,6 +155,7 @@ func (c *authServiceClient) ExportData(ctx context.Context, req *connect.Request
 // AuthServiceHandler is an implementation of the toqui.v1.AuthService service.
 type AuthServiceHandler interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
+	FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	GetCurrentUser(context.Context, *connect.Request[v1.GetCurrentUserRequest]) (*connect.Response[v1.GetCurrentUserResponse], error)
 	// Privacy / data lifecycle
@@ -157,6 +174,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceGoogleLoginProcedure,
 		svc.GoogleLogin,
 		connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceFacebookLoginHandler := connect.NewUnaryHandler(
+		AuthServiceFacebookLoginProcedure,
+		svc.FacebookLogin,
+		connect.WithSchema(authServiceMethods.ByName("FacebookLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceRefreshTokenHandler := connect.NewUnaryHandler(
@@ -187,6 +210,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case AuthServiceGoogleLoginProcedure:
 			authServiceGoogleLoginHandler.ServeHTTP(w, r)
+		case AuthServiceFacebookLoginProcedure:
+			authServiceFacebookLoginHandler.ServeHTTP(w, r)
 		case AuthServiceRefreshTokenProcedure:
 			authServiceRefreshTokenHandler.ServeHTTP(w, r)
 		case AuthServiceGetCurrentUserProcedure:
@@ -206,6 +231,10 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.GoogleLogin is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.FacebookLogin is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,21 +14,24 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/payment"
+	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 )
 
 // CheckoutHandler handles Trip Pro purchase endpoints.
 type CheckoutHandler struct {
-	paymentSvc *payment.Service
-	authSvc    *auth.Service
-	queries    *dbgen.Queries
+	paymentSvc      *payment.Service
+	authSvc         *auth.Service
+	queries         *dbgen.Queries
+	checkoutLimiter *ratelimit.RESTLimiter
 }
 
 // NewCheckoutHandler creates a new CheckoutHandler.
 func NewCheckoutHandler(paymentSvc *payment.Service, authSvc *auth.Service, pool *pgxpool.Pool) *CheckoutHandler {
 	return &CheckoutHandler{
-		paymentSvc: paymentSvc,
-		authSvc:    authSvc,
-		queries:    dbgen.New(pool),
+		paymentSvc:      paymentSvc,
+		authSvc:         authSvc,
+		queries:         dbgen.New(pool),
+		checkoutLimiter: ratelimit.NewRESTLimiter(3, 1*time.Hour), // 3 checkout initiations per hour
 	}
 }
 
@@ -41,6 +46,13 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 	userID, ok := authenticateRESTRequest(r, h.authSvc)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Per-user rate limit: 3 checkout initiations per hour
+	rateLimitKey := fmt.Sprintf("checkout:%s", userID.String())
+	if !h.checkoutLimiter.Allow(rateLimitKey) {
+		ratelimit.Reject(w, "too many checkout attempts, please try again later")
 		return
 	}
 

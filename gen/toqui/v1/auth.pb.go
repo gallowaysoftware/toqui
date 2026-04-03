@@ -143,6 +143,110 @@ func (x *GoogleLoginResponse) GetUser() *User {
 	return nil
 }
 
+type FacebookLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FacebookLoginRequest) Reset() {
+	*x = FacebookLoginRequest{}
+	mi := &file_toqui_v1_auth_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FacebookLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FacebookLoginRequest) ProtoMessage() {}
+
+func (x *FacebookLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_auth_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FacebookLoginRequest.ProtoReflect.Descriptor instead.
+func (*FacebookLoginRequest) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *FacebookLoginRequest) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+type FacebookLoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FacebookLoginResponse) Reset() {
+	*x = FacebookLoginResponse{}
+	mi := &file_toqui_v1_auth_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FacebookLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FacebookLoginResponse) ProtoMessage() {}
+
+func (x *FacebookLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_auth_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FacebookLoginResponse.ProtoReflect.Descriptor instead.
+func (*FacebookLoginResponse) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FacebookLoginResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *FacebookLoginResponse) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *FacebookLoginResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 type RefreshTokenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
@@ -152,7 +256,7 @@ type RefreshTokenRequest struct {
 
 func (x *RefreshTokenRequest) Reset() {
 	*x = RefreshTokenRequest{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[2]
+	mi := &file_toqui_v1_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -164,7 +268,7 @@ func (x *RefreshTokenRequest) String() string {
 func (*RefreshTokenRequest) ProtoMessage() {}
 
 func (x *RefreshTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[2]
+	mi := &file_toqui_v1_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -177,7 +281,7 @@ func (x *RefreshTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshTokenRequest.ProtoReflect.Descriptor instead.
 func (*RefreshTokenRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{2}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RefreshTokenRequest) GetRefreshToken() string {
@@ -198,7 +302,7 @@ type RefreshTokenResponse struct {
 
 func (x *RefreshTokenResponse) Reset() {
 	*x = RefreshTokenResponse{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[3]
+	mi := &file_toqui_v1_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +314,7 @@ func (x *RefreshTokenResponse) String() string {
 func (*RefreshTokenResponse) ProtoMessage() {}
 
 func (x *RefreshTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[3]
+	mi := &file_toqui_v1_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,7 +327,7 @@ func (x *RefreshTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshTokenResponse.ProtoReflect.Descriptor instead.
 func (*RefreshTokenResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{3}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RefreshTokenResponse) GetAccessToken() string {
@@ -255,7 +359,7 @@ type GetCurrentUserRequest struct {
 
 func (x *GetCurrentUserRequest) Reset() {
 	*x = GetCurrentUserRequest{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[4]
+	mi := &file_toqui_v1_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -267,7 +371,7 @@ func (x *GetCurrentUserRequest) String() string {
 func (*GetCurrentUserRequest) ProtoMessage() {}
 
 func (x *GetCurrentUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[4]
+	mi := &file_toqui_v1_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -280,7 +384,7 @@ func (x *GetCurrentUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentUserRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentUserRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{4}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{6}
 }
 
 type GetCurrentUserResponse struct {
@@ -292,7 +396,7 @@ type GetCurrentUserResponse struct {
 
 func (x *GetCurrentUserResponse) Reset() {
 	*x = GetCurrentUserResponse{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[5]
+	mi := &file_toqui_v1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -304,7 +408,7 @@ func (x *GetCurrentUserResponse) String() string {
 func (*GetCurrentUserResponse) ProtoMessage() {}
 
 func (x *GetCurrentUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[5]
+	mi := &file_toqui_v1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +421,7 @@ func (x *GetCurrentUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentUserResponse.ProtoReflect.Descriptor instead.
 func (*GetCurrentUserResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetCurrentUserResponse) GetUser() *User {
@@ -341,7 +445,7 @@ type User struct {
 
 func (x *User) Reset() {
 	*x = User{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[6]
+	mi := &file_toqui_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -353,7 +457,7 @@ func (x *User) String() string {
 func (*User) ProtoMessage() {}
 
 func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[6]
+	mi := &file_toqui_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -366,7 +470,7 @@ func (x *User) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use User.ProtoReflect.Descriptor instead.
 func (*User) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *User) GetId() string {
@@ -422,7 +526,7 @@ type DeleteAccountRequest struct {
 
 func (x *DeleteAccountRequest) Reset() {
 	*x = DeleteAccountRequest{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[7]
+	mi := &file_toqui_v1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -434,7 +538,7 @@ func (x *DeleteAccountRequest) String() string {
 func (*DeleteAccountRequest) ProtoMessage() {}
 
 func (x *DeleteAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[7]
+	mi := &file_toqui_v1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -447,7 +551,7 @@ func (x *DeleteAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAccountRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAccountRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteAccountRequest) GetConfirm() bool {
@@ -467,7 +571,7 @@ type DeleteAccountResponse struct {
 
 func (x *DeleteAccountResponse) Reset() {
 	*x = DeleteAccountResponse{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[8]
+	mi := &file_toqui_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +583,7 @@ func (x *DeleteAccountResponse) String() string {
 func (*DeleteAccountResponse) ProtoMessage() {}
 
 func (x *DeleteAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[8]
+	mi := &file_toqui_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +596,7 @@ func (x *DeleteAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAccountResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAccountResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteAccountResponse) GetRequestId() string {
@@ -518,7 +622,7 @@ type ExportDataRequest struct {
 
 func (x *ExportDataRequest) Reset() {
 	*x = ExportDataRequest{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[9]
+	mi := &file_toqui_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -530,7 +634,7 @@ func (x *ExportDataRequest) String() string {
 func (*ExportDataRequest) ProtoMessage() {}
 
 func (x *ExportDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[9]
+	mi := &file_toqui_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -543,7 +647,7 @@ func (x *ExportDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportDataRequest.ProtoReflect.Descriptor instead.
 func (*ExportDataRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 type ExportDataResponse struct {
@@ -556,7 +660,7 @@ type ExportDataResponse struct {
 
 func (x *ExportDataResponse) Reset() {
 	*x = ExportDataResponse{}
-	mi := &file_toqui_v1_auth_proto_msgTypes[10]
+	mi := &file_toqui_v1_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -568,7 +672,7 @@ func (x *ExportDataResponse) String() string {
 func (*ExportDataResponse) ProtoMessage() {}
 
 func (x *ExportDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_auth_proto_msgTypes[10]
+	mi := &file_toqui_v1_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -581,7 +685,7 @@ func (x *ExportDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportDataResponse.ProtoReflect.Descriptor instead.
 func (*ExportDataResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{10}
+	return file_toqui_v1_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ExportDataResponse) GetRequestId() string {
@@ -608,6 +712,12 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
 	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\x81\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
+	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"B\n" +
+	"\x14FacebookLoginRequest\x12*\n" +
+	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\x83\x01\n" +
+	"\x15FacebookLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"C\n" +
@@ -639,9 +749,10 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x12ExportDataResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\x98\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xea\x03\n" +
 	"\vAuthService\x12J\n" +
-	"\vGoogleLogin\x12\x1c.toqui.v1.GoogleLoginRequest\x1a\x1d.toqui.v1.GoogleLoginResponse\x12M\n" +
+	"\vGoogleLogin\x12\x1c.toqui.v1.GoogleLoginRequest\x1a\x1d.toqui.v1.GoogleLoginResponse\x12P\n" +
+	"\rFacebookLogin\x12\x1e.toqui.v1.FacebookLoginRequest\x1a\x1f.toqui.v1.FacebookLoginResponse\x12M\n" +
 	"\fRefreshToken\x12\x1d.toqui.v1.RefreshTokenRequest\x1a\x1e.toqui.v1.RefreshTokenResponse\x12S\n" +
 	"\x0eGetCurrentUser\x12\x1f.toqui.v1.GetCurrentUserRequest\x1a .toqui.v1.GetCurrentUserResponse\x12P\n" +
 	"\rDeleteAccount\x12\x1e.toqui.v1.DeleteAccountRequest\x1a\x1f.toqui.v1.DeleteAccountResponse\x12G\n" +
@@ -660,41 +771,46 @@ func file_toqui_v1_auth_proto_rawDescGZIP() []byte {
 	return file_toqui_v1_auth_proto_rawDescData
 }
 
-var file_toqui_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_toqui_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_toqui_v1_auth_proto_goTypes = []any{
 	(*GoogleLoginRequest)(nil),     // 0: toqui.v1.GoogleLoginRequest
 	(*GoogleLoginResponse)(nil),    // 1: toqui.v1.GoogleLoginResponse
-	(*RefreshTokenRequest)(nil),    // 2: toqui.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),   // 3: toqui.v1.RefreshTokenResponse
-	(*GetCurrentUserRequest)(nil),  // 4: toqui.v1.GetCurrentUserRequest
-	(*GetCurrentUserResponse)(nil), // 5: toqui.v1.GetCurrentUserResponse
-	(*User)(nil),                   // 6: toqui.v1.User
-	(*DeleteAccountRequest)(nil),   // 7: toqui.v1.DeleteAccountRequest
-	(*DeleteAccountResponse)(nil),  // 8: toqui.v1.DeleteAccountResponse
-	(*ExportDataRequest)(nil),      // 9: toqui.v1.ExportDataRequest
-	(*ExportDataResponse)(nil),     // 10: toqui.v1.ExportDataResponse
-	(*timestamppb.Timestamp)(nil),  // 11: google.protobuf.Timestamp
+	(*FacebookLoginRequest)(nil),   // 2: toqui.v1.FacebookLoginRequest
+	(*FacebookLoginResponse)(nil),  // 3: toqui.v1.FacebookLoginResponse
+	(*RefreshTokenRequest)(nil),    // 4: toqui.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),   // 5: toqui.v1.RefreshTokenResponse
+	(*GetCurrentUserRequest)(nil),  // 6: toqui.v1.GetCurrentUserRequest
+	(*GetCurrentUserResponse)(nil), // 7: toqui.v1.GetCurrentUserResponse
+	(*User)(nil),                   // 8: toqui.v1.User
+	(*DeleteAccountRequest)(nil),   // 9: toqui.v1.DeleteAccountRequest
+	(*DeleteAccountResponse)(nil),  // 10: toqui.v1.DeleteAccountResponse
+	(*ExportDataRequest)(nil),      // 11: toqui.v1.ExportDataRequest
+	(*ExportDataResponse)(nil),     // 12: toqui.v1.ExportDataResponse
+	(*timestamppb.Timestamp)(nil),  // 13: google.protobuf.Timestamp
 }
 var file_toqui_v1_auth_proto_depIdxs = []int32{
-	6,  // 0: toqui.v1.GoogleLoginResponse.user:type_name -> toqui.v1.User
-	6,  // 1: toqui.v1.RefreshTokenResponse.user:type_name -> toqui.v1.User
-	6,  // 2: toqui.v1.GetCurrentUserResponse.user:type_name -> toqui.v1.User
-	11, // 3: toqui.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 4: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
-	2,  // 5: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
-	4,  // 6: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
-	7,  // 7: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
-	9,  // 8: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
-	1,  // 9: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
-	3,  // 10: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
-	5,  // 11: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
-	8,  // 12: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
-	10, // 13: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	8,  // 0: toqui.v1.GoogleLoginResponse.user:type_name -> toqui.v1.User
+	8,  // 1: toqui.v1.FacebookLoginResponse.user:type_name -> toqui.v1.User
+	8,  // 2: toqui.v1.RefreshTokenResponse.user:type_name -> toqui.v1.User
+	8,  // 3: toqui.v1.GetCurrentUserResponse.user:type_name -> toqui.v1.User
+	13, // 4: toqui.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
+	2,  // 6: toqui.v1.AuthService.FacebookLogin:input_type -> toqui.v1.FacebookLoginRequest
+	4,  // 7: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
+	6,  // 8: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
+	9,  // 9: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
+	11, // 10: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
+	1,  // 11: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
+	3,  // 12: toqui.v1.AuthService.FacebookLogin:output_type -> toqui.v1.FacebookLoginResponse
+	5,  // 13: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
+	7,  // 14: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
+	10, // 15: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
+	12, // 16: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_auth_proto_init() }
@@ -708,7 +824,7 @@ func file_toqui_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_toqui_v1_auth_proto_rawDesc), len(file_toqui_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
