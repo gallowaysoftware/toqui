@@ -2,6 +2,44 @@
 
 AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Firestore, and Claude/Gemini.
 
+## Core Principles
+
+### User Privacy — Non-Negotiable
+
+Toqui exists to help travelers, not to exploit them. These rules are absolute and override any business or feature consideration:
+
+**Data Collection:**
+- Collect only what's needed to deliver the feature. If in doubt, don't collect it.
+- Travel data is inherently sensitive — destinations can reveal religion, health conditions, sexuality, and political activity. Treat ALL travel data as potentially sensitive under GDPR Article 9.
+- Never log, track, or store destination names, chat content, specific travel dates, hotel/flight names, or booking details in analytics. Track counts and categories, never content.
+- Pseudonymize user IDs in any analytics or logging pipeline.
+
+**Compliance:**
+- Comply with EU GDPR as the baseline for ALL users, regardless of their location. Do not maintain separate privacy standards by region.
+- Comply with Canadian PIPEDA. As a Canadian company, PIPEDA applies to all commercial activities.
+- Apple App Tracking Transparency: use only first-party analytics. Never track users across apps or websites.
+- Cookie-less analytics only. No tracking cookies, no fingerprinting, no IDFA/GAID collection.
+
+**Monetization Ethics:**
+- Affiliate revenue is acceptable and must be transparently disclosed (see toqui.travel/affiliate-disclosure).
+- Never bias AI recommendations for revenue. The AI recommends what's best for the traveler, not what pays us the most.
+- Never sell, share, or broker user data to third parties. Period.
+- Never serve display advertising that tracks users.
+- Sponsored/promoted placements, if ever introduced, must be clearly labeled and must not degrade recommendation quality.
+
+**Analytics:**
+- Session replay must mask all text inputs, chat content, and itinerary details.
+- Analytics events track behavior patterns (user created a trip), never content (user planned a trip to Mecca).
+- Self-hosted or EU-hosted analytics only. Google Analytics is explicitly prohibited (ruled non-compliant by multiple EU DPAs).
+- Users must be informed about analytics in the privacy policy with a clear opt-out mechanism for EU users.
+
+**Data Lifecycle:**
+- GDPR Article 17 (right to deletion) and Article 20 (data portability) are implemented and must remain functional.
+- Trip data is archived after 90 days of completion and eventually purged.
+- Account deletion must be complete — no shadow profiles, no retained analytics, no "soft delete" that keeps data.
+
+These principles are not aspirational. They are engineering requirements. Code that violates them must not be merged.
+
 ## Project Structure
 
 This is a 5-repo project under `github.com/gallowaysoftware`:
