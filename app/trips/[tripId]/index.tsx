@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
+import { ShareNudgeBanner } from "@/components/share/ShareNudgeBanner";
 import { useQueryClient } from "@tanstack/react-query";
 
 function formatTripDate(dateStr: string): string {
@@ -52,6 +53,8 @@ export default function TripDetailScreen() {
   const { colors } = useTheme();
   const [isSharing, setIsSharing] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [shareNudgeDismissed, setShareNudgeDismissed] = useState(false);
+  const [shareViewCount, setShareViewCount] = useState<number | null>(null);
 
   // Extract first available coordinates from itinerary for weather lookup
   const firstLocation = itinerary?.days
@@ -65,16 +68,46 @@ export default function TripDetailScreen() {
   );
 
   const dismissalKey = `toqui_planning_dismissed_${tripId}`;
+  const shareNudgeKey = `toqui_share_nudge_dismissed_${tripId}`;
 
   useEffect(() => {
     AsyncStorage.getItem(dismissalKey).then((val) => {
       if (val === "true") setBannerDismissed(true);
     });
-  }, [dismissalKey]);
+    AsyncStorage.getItem(shareNudgeKey).then((val) => {
+      if (val === "true") setShareNudgeDismissed(true);
+    });
+  }, [dismissalKey, shareNudgeKey]);
+
+  // Fetch share view count if trip has been shared
+  useEffect(() => {
+    if (!tripId || !accessToken) return;
+    authFetch(
+      `${getConfig().apiUrl}/api/trips/share/stats?trip_id=${encodeURIComponent(tripId)}`,
+      accessToken,
+    )
+      .then((res) => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then((data: { view_count?: number } | null) => {
+        if (data && typeof data.view_count === "number" && data.view_count > 0) {
+          setShareViewCount(data.view_count);
+        }
+      })
+      .catch(() => {
+        // Share stats are non-critical — silently ignore errors
+      });
+  }, [tripId, accessToken]);
 
   const handleDismissBanner = () => {
     setBannerDismissed(true);
     void AsyncStorage.setItem(dismissalKey, "true");
+  };
+
+  const handleDismissShareNudge = () => {
+    setShareNudgeDismissed(true);
+    void AsyncStorage.setItem(shareNudgeKey, "true");
   };
 
   const styles = StyleSheet.create({
@@ -255,6 +288,15 @@ export default function TripDetailScreen() {
       color: colors.accent,
       fontWeight: "500",
     },
+    shareStats: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 4,
+      marginTop: -16,
+      marginBottom: 24,
+    },
+    shareStatsText: { fontSize: 13, color: colors.textTertiary },
   });
 
   if (isLoading) {
@@ -304,6 +346,8 @@ export default function TripDetailScreen() {
     !isItineraryLoading &&
     coveredDays < totalDays * 0.7 &&
     !bannerDismissed;
+
+  const showShareNudge = hasItinerary && !shareNudgeDismissed;
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -369,6 +413,10 @@ export default function TripDetailScreen() {
               {t("trial.expired")} — {t("trial.upgradePrompt")}
             </Text>
           </View>
+        )}
+
+        {showShareNudge && (
+          <ShareNudgeBanner onShare={handleShare} onDismiss={handleDismissShareNudge} />
         )}
 
         <View style={styles.actions}>
@@ -450,6 +498,15 @@ export default function TripDetailScreen() {
                 </Pressable>
               ))}
             </View>
+          </View>
+        )}
+
+        {shareViewCount !== null && shareViewCount > 0 && (
+          <View style={styles.shareStats as object}>
+            <Eye color={colors.textTertiary} size={14} />
+            <Text style={styles.shareStatsText}>
+              {shareViewCount === 1 ? t("share.viewCountOne") : t("share.viewCount", { count: shareViewCount })}
+            </Text>
           </View>
         )}
 
