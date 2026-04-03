@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Platform } from "react-native";
+import * as Location from "expo-location";
 
 export interface LocationCoords {
   latitude: number;
@@ -25,11 +26,10 @@ export interface UseLocationReturn {
 const UPDATE_INTERVAL_MS = 30_000;
 
 /**
- * Cross-platform location hook using the web Geolocation API.
+ * Cross-platform location hook.
  *
- * expo-location is not installed, so this uses navigator.geolocation on all
- * platforms.  On native (iOS/Android via Expo), the Geolocation polyfill is
- * available through React Native.
+ * On native (iOS/Android) uses expo-location for reliable permission handling
+ * and geolocation. On web, uses the browser Geolocation API.
  */
 export function useLocation(): UseLocationReturn {
   const [location, setLocation] = useState<LocationCoords | null>(null);
@@ -39,21 +39,23 @@ export function useLocation(): UseLocationReturn {
     "prompt" | "granted" | "denied" | "unavailable"
   >("prompt");
 
-  const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check if geolocation is available
-  const isAvailable = typeof navigator !== "undefined" && !!navigator.geolocation;
+  const isWeb = Platform.OS === "web";
 
-  // Query the permission state (web Permissions API — not available on all
-  // platforms, so we fall back gracefully).
+  // Check if web geolocation is available (only relevant on web)
+  const isWebAvailable =
+    isWeb && typeof navigator !== "undefined" && !!navigator.geolocation;
+
+  // Query the permission state on web via the Permissions API.
   useEffect(() => {
-    if (!isAvailable) {
+    if (!isWeb) return;
+    if (!isWebAvailable) {
       setPermissionState("unavailable");
       return;
     }
 
-    if (Platform.OS === "web" && navigator.permissions) {
+    if (navigator.permissions) {
       let permStatus: PermissionStatus | null = null;
       const handleChange = () => {
         if (permStatus) {
@@ -71,7 +73,13 @@ export function useLocation(): UseLocationReturn {
         .query({ name: "geolocation" })
         .then((result) => {
           permStatus = result;
-          setPermissionState(result.state === "granted" ? "granted" : result.state === "denied" ? "denied" : "prompt");
+          setPermissionState(
+            result.state === "granted"
+              ? "granted"
+              : result.state === "denied"
+                ? "denied"
+                : "prompt",
+          );
           result.addEventListener("change", handleChange);
         })
         .catch(() => {
@@ -84,44 +92,55 @@ export function useLocation(): UseLocationReturn {
         }
       };
     }
-  }, [isAvailable]);
+  }, [isWeb, isWebAvailable]);
 
   const clearTracking = useCallback(() => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
   }, []);
 
-  const handlePosition = useCallback((pos: GeolocationPosition) => {
-    setLocation({
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
-    });
-    setError(null);
-    setPermissionState("granted");
-  }, []);
+  const updateLocation = useCallback(
+    (coords: { latitude: number; longitude: number; accuracy: number | null }) => {
+      setLocation(coords);
+      setError(null);
+    },
+    [],
+  );
 
-  const handleError = useCallback((err: GeolocationPositionError) => {
-    if (err.code === err.PERMISSION_DENIED) {
-      setPermissionState("denied");
-      setError("Location permission denied");
-      setIsTracking(false);
-      clearTracking();
-    } else if (err.code === err.POSITION_UNAVAILABLE) {
-      setError("Location unavailable");
-    } else if (err.code === err.TIMEOUT) {
-      setError("Location request timed out");
-    }
-  }, [clearTracking]);
+  // ── Web implementation ──────────────────────────────────────────────────
 
-  const startTracking = useCallback(() => {
-    if (!isAvailable) {
+  const handleWebPosition = useCallback(
+    (pos: GeolocationPosition) => {
+      updateLocation({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      });
+      setPermissionState("granted");
+    },
+    [updateLocation],
+  );
+
+  const handleWebError = useCallback(
+    (err: GeolocationPositionError) => {
+      if (err.code === err.PERMISSION_DENIED) {
+        setPermissionState("denied");
+        setError("Location permission denied");
+        setIsTracking(false);
+        clearTracking();
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        setError("Location unavailable");
+      } else if (err.code === err.TIMEOUT) {
+        setError("Location request timed out");
+      }
+    },
+    [clearTracking],
+  );
+
+  const startWebTracking = useCallback(() => {
+    if (!isWebAvailable) {
       setPermissionState("unavailable");
       setError("Geolocation is not supported");
       return;
@@ -130,23 +149,81 @@ export function useLocation(): UseLocationReturn {
     setIsTracking(true);
     setError(null);
 
-    // Get an immediate position
-    navigator.geolocation.getCurrentPosition(handlePosition, handleError, {
+    navigator.geolocation.getCurrentPosition(handleWebPosition, handleWebError, {
       enableHighAccuracy: true,
       timeout: 10_000,
       maximumAge: UPDATE_INTERVAL_MS,
     });
 
-    // Poll every 30 seconds instead of continuous watchPosition (battery)
     const id = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(handlePosition, handleError, {
-        enableHighAccuracy: false,
-        timeout: 10_000,
-        maximumAge: UPDATE_INTERVAL_MS,
-      });
+      navigator.geolocation.getCurrentPosition(
+        handleWebPosition,
+        handleWebError,
+        {
+          enableHighAccuracy: false,
+          timeout: 10_000,
+          maximumAge: UPDATE_INTERVAL_MS,
+        },
+      );
     }, UPDATE_INTERVAL_MS);
     intervalRef.current = id;
-  }, [isAvailable, handlePosition, handleError]);
+  }, [isWebAvailable, handleWebPosition, handleWebError]);
+
+  // ── Native implementation (expo-location) ───────────────────────────────
+
+  const fetchNativePosition = useCallback(async () => {
+    try {
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      updateLocation({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      });
+    } catch {
+      setError("Location unavailable");
+    }
+  }, [updateLocation]);
+
+  const startNativeTracking = useCallback(async () => {
+    setIsTracking(true);
+    setError(null);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setPermissionState("denied");
+        setError("Location permission denied");
+        setIsTracking(false);
+        return;
+      }
+
+      setPermissionState("granted");
+
+      // Get an immediate position
+      await fetchNativePosition();
+
+      // Poll every 30 seconds
+      const id = setInterval(() => {
+        void fetchNativePosition();
+      }, UPDATE_INTERVAL_MS);
+      intervalRef.current = id;
+    } catch {
+      setError("Location unavailable");
+      setIsTracking(false);
+    }
+  }, [fetchNativePosition]);
+
+  // ── Unified API ─────────────────────────────────────────────────────────
+
+  const startTracking = useCallback(() => {
+    if (isWeb) {
+      startWebTracking();
+    } else {
+      void startNativeTracking();
+    }
+  }, [isWeb, startWebTracking, startNativeTracking]);
 
   const stopTracking = useCallback(() => {
     setIsTracking(false);

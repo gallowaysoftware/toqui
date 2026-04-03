@@ -42,6 +42,7 @@
     "expo-glass-effect": "55.0.8",
     "expo-image": "55.0.6",
     "expo-linking": "~55.0.8",
+    "expo-location": "^55.1.6",
     "expo-modules-core": "55.0.18",
     "expo-print": "^55.0.9",
     "expo-router": "~55.0.7",
