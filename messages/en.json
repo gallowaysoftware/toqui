@@ -374,7 +374,12 @@
   },
   "weather": {
     "title": "Weather forecast",
-    "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary."
+    "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary.",
+    "climateInfo": "Climate data info",
+    "switchToCelsius": "Switch to Celsius",
+    "switchToFahrenheit": "Switch to Fahrenheit",
+    "collapse": "Collapse weather",
+    "expand": "Expand weather"
   },
   "onboarding": {
     "next": "Next \u2192",

@@ -423,6 +423,8 @@ export default function TripDetailScreen() {
           <Pressable
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/chat` as never)}
+            accessibilityRole="button"
+            accessibilityLabel={t("tripDetail.chat")}
           >
             <MessageCircle color={colors.accent} size={24} />
             <Text style={styles.actionText}>{t("tripDetail.chat")}</Text>
@@ -431,6 +433,8 @@ export default function TripDetailScreen() {
           <Pressable
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/bookings` as never)}
+            accessibilityRole="button"
+            accessibilityLabel={t("tripDetail.bookings")}
           >
             <Calendar color={colors.accent} size={24} />
             <Text style={styles.actionText}>{t("tripDetail.bookings")}</Text>
@@ -439,6 +443,8 @@ export default function TripDetailScreen() {
           <Pressable
             style={styles.actionButton}
             onPress={() => router.push(`/trips/${tripId}/settings` as never)}
+            accessibilityRole="button"
+            accessibilityLabel={t("tripDetail.settings")}
           >
             <Settings color={colors.accent} size={24} />
             <Text style={styles.actionText}>{t("tripDetail.settings")}</Text>
@@ -448,6 +454,8 @@ export default function TripDetailScreen() {
             style={styles.actionButton}
             onPress={handleShare}
             disabled={isSharing}
+            accessibilityRole="button"
+            accessibilityLabel={t("referral.share")}
           >
             {isSharing ? (
               <ActivityIndicator size="small" color={colors.accent} />

@@ -145,18 +145,31 @@ export function WeatherCard({ weather, isClimate }: WeatherCardProps) {
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>{t("weather.title")}</Text>
           {isClimate && (
-            <Pressable onPress={() => setShowTooltip((v) => !v)}>
+            <Pressable
+              onPress={() => setShowTooltip((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={t("weather.climateInfo")}
+            >
               <Info color={colors.textTertiary} size={14} />
             </Pressable>
           )}
         </View>
         <View style={styles.headerRight}>
-          <Pressable style={styles.unitToggle} onPress={toggleUnit}>
+          <Pressable
+            style={styles.unitToggle}
+            onPress={toggleUnit}
+            accessibilityRole="button"
+            accessibilityLabel={useFahrenheit ? t("weather.switchToCelsius") : t("weather.switchToFahrenheit")}
+          >
             <Text style={styles.unitToggleText}>
               {useFahrenheit ? "\u00B0F" : "\u00B0C"}
             </Text>
           </Pressable>
-          <Pressable onPress={() => setExpanded((v) => !v)}>
+          <Pressable
+            onPress={() => setExpanded((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? t("weather.collapse") : t("weather.expand")}
+          >
             {expanded ? (
               <ChevronUp color={colors.textTertiary} size={18} />
             ) : (
