@@ -1,5 +1,5 @@
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Send, Paperclip, X } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 
@@ -83,6 +83,26 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
     setAttachments([]);
     setError("");
   }, [text, attachments, disabled, onSend]);
+
+  // Web: Enter sends, Shift+Enter inserts newline
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const textInputRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    // On web, RN TextInput renders as a <textarea>. Attach a native keydown
+    // listener so we can call preventDefault() to stop the newline insertion.
+    const node = textInputRef.current as HTMLTextAreaElement | null;
+    if (!node) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    };
+    node.addEventListener("keydown", handler);
+    return () => node.removeEventListener("keydown", handler);
+  }, [handleSend]);
 
   const handleFileSelect = useCallback(() => {
     if (Platform.OS === "web") {
@@ -245,6 +265,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           <Paperclip color={disabled ? colors.border : colors.textTertiary} size={20} />
         </Pressable>
         <TextInput
+          ref={textInputRef}
           style={[styles.input, disabled && { backgroundColor: colors.surfaceSecondary }]}
           value={text}
           onChangeText={setText}
@@ -253,7 +274,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
           multiline
           maxLength={10000}
           editable={!disabled}
-          onSubmitEditing={Platform.OS === "web" ? handleSend : undefined}
+          onSubmitEditing={Platform.OS !== "web" ? handleSend : undefined}
           blurOnSubmit={false}
         />
         <Pressable
