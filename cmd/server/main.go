@@ -421,6 +421,10 @@ func main() {
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			slog.Error("server shutdown error", "error", err)
 		}
+
+		// Drain PostHog event queue after server stops accepting new requests.
+		slog.Info("draining PostHog event queue")
+		posthogClient.Close()
 	}()
 
 	slog.Info("server starting", "port", cfg.Port, "env", cfg.TargetEnv)
