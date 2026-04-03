@@ -24,10 +24,7 @@
     "android": {
       "package": "travel.toqui.app",
       "versionCode": 1,
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#e8654a"
@@ -44,7 +41,15 @@
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker",
       "expo-document-picker",
-      "./plugins/xcode16-compat"
+      "./plugins/xcode16-compat",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "toqui",
+          "organization": "galloway-software-solutions-in"
+        }
+      ]
     ]
   }
 }

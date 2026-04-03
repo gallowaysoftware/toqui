@@ -10,6 +10,44 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig } from "@/lib/config";
+import * as Sentry from "@sentry/react-native";
+
+Sentry.init({
+  dsn: "https://9a4287e61882165484eb43ee7e4b100f@o4511157132001280.ingest.de.sentry.io/4511157139013712",
+
+  // Privacy: do NOT send PII (emails, IPs, cookies)
+  sendDefaultPii: false,
+
+  enableLogs: true,
+
+  // Session Replay: mask all text for privacy (travel data is sensitive)
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [
+    Sentry.mobileReplayIntegration({
+      maskAllText: true,
+      maskAllImages: false,
+    }),
+    Sentry.feedbackIntegration(),
+  ],
+
+  // Privacy: strip PII from error reports before sending
+  beforeSend(event) {
+    if (event.user) {
+      delete event.user.email;
+      delete event.user.username;
+      delete event.user.ip_address;
+    }
+    // Remove breadcrumb data that might contain travel info
+    if (event.breadcrumbs) {
+      event.breadcrumbs = event.breadcrumbs.map(b => ({
+        ...b,
+        data: undefined,
+      }));
+    }
+    return event;
+  },
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,7 +74,10 @@ function ThemedStack() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="trips/[tripId]" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-        <Stack.Screen name="shared/[token]" options={{ title: "Shared Trip" }} />
+        <Stack.Screen
+          name="shared/[token]"
+          options={{ title: "Shared Trip" }}
+        />
         <Stack.Screen name="privacy" options={{ title: "Privacy Policy" }} />
         <Stack.Screen name="terms" options={{ title: "Terms of Service" }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -45,7 +86,7 @@ function ThemedStack() {
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [configLoaded, setConfigLoaded] = useState(false);
 
   useEffect(() => {
@@ -82,7 +123,7 @@ export default function RootLayout() {
       </I18nProvider>
     </ThemeProvider>
   );
-}
+});
 
 const layoutStyles = StyleSheet.create({
   root: {
