@@ -20,6 +20,7 @@ import {
   Pressable,
   Platform,
   useWindowDimensions,
+  Image,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import Head from "expo-router/head";
@@ -39,6 +40,7 @@ import {
   Moon,
   ChevronRight,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import type { ThemeColors } from "@/lib/theme";
@@ -503,12 +505,24 @@ function CtaSection({
   colors,
   isLoggedIn,
   onPress,
+  token,
 }: {
   colors: ThemeColors;
   isLoggedIn: boolean;
   onPress: () => void;
+  token?: string;
 }) {
+  const { t } = useTranslation();
   const styles = makeStyles(colors);
+
+  const handleGoogleSignIn = () => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      // Store the shared trip token so we can redirect back after login
+      sessionStorage.setItem("toqui_post_login_redirect", `/shared/${token}`);
+      // Redirect to the home page which has the sign-in flow
+      window.location.href = "/";
+    }
+  };
 
   return (
     <View style={[styles.ctaSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -520,6 +534,34 @@ function CtaSection({
           ? "Start a similar trip in your account and customize it with AI."
           : "Toqui's AI builds personalized itineraries in minutes. Free to try."}
       </Text>
+
+      {/* Inline Google sign-in for unauthenticated viewers */}
+      {!isLoggedIn && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.googleButton,
+            { opacity: pressed ? 0.9 : 1 },
+          ]}
+          onPress={handleGoogleSignIn}
+          accessibilityRole="button"
+          accessibilityLabel={t("share.signInWithGoogle")}
+        >
+          <Image
+            source={{ uri: "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" }}
+            style={styles.googleIcon}
+          />
+          <Text style={[styles.googleButtonText, { color: colors.textPrimary }]}>
+            {t("share.signInWithGoogle")}
+          </Text>
+        </Pressable>
+      )}
+
+      {!isLoggedIn && (
+        <Text style={[styles.ctaOrDivider, { color: colors.textTertiary }]}>
+          {t("share.orContinue")}
+        </Text>
+      )}
+
       <Pressable
         style={({ pressed }) => [
           styles.ctaButton,
@@ -641,6 +683,10 @@ export default function SharedTripScreen() {
     if (accessToken) {
       router.push("/trips/new" as never);
     } else {
+      // Store redirect so user returns to shared trip after sign-up
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        sessionStorage.setItem("toqui_post_login_redirect", `/shared/${token}`);
+      }
       router.push("/" as never);
     }
   };
@@ -726,7 +772,7 @@ export default function SharedTripScreen() {
         )}
 
         {/* 5. CTA Section */}
-        <CtaSection colors={colors} isLoggedIn={!!accessToken} onPress={handleCta} />
+        <CtaSection colors={colors} isLoggedIn={!!accessToken} onPress={handleCta} token={token} />
 
         {/* 6. Footer */}
         <Footer colors={colors} />
@@ -1035,6 +1081,33 @@ function createStyles(colors: ThemeColors) {
       lineHeight: 22,
       textAlign: "center",
       marginBottom: 20,
+    },
+    googleButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 28,
+      width: "100%",
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    googleIcon: {
+      width: 20,
+      height: 20,
+    },
+    googleButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    ctaOrDivider: {
+      fontSize: 13,
+      textAlign: "center",
+      marginBottom: 12,
     },
     ctaButton: {
       flexDirection: "row",

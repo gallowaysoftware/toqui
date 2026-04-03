@@ -7,22 +7,31 @@ import {
   Platform,
   ActivityIndicator,
   Pressable,
+  Share,
+  Alert,
 } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
 import { useChat } from "@/lib/hooks/useChat";
 import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
+import { useTrip } from "@/lib/hooks/useTrips";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
+import { SharePromptCard } from "@/components/chat/SharePromptCard";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+import { useAnalytics } from "@/lib/analytics";
+import { useAuth } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
+import { getConfig } from "@/lib/config";
 
 const errorReportStyles = StyleSheet.create({
   link: {
@@ -52,8 +61,14 @@ export default function ChatScreen() {
   }>();
   const router = useRouter();
   const { colors } = useTheme();
+  const { track } = useAnalytics();
+  const { accessToken } = useAuth();
+  const { trip } = useTrip(tripId!);
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const [isSharePromptSharing, setIsSharePromptSharing] = useState(false);
+  const sharePromptCheckedRef = useRef(false);
   const { used, limit, resetsAt } = useUsage();
   const {
     messages,
@@ -78,6 +93,13 @@ export default function ChatScreen() {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
+  // Track when the AI generates an itinerary
+  useEffect(() => {
+    if (toolActivity?.toolName === "create_itinerary_items" && toolActivity.status === "done") {
+      track("itinerary_generated");
+    }
+  }, [toolActivity, track]);
+
   const suggestedPromptSentRef = useRef(false);
   useEffect(() => {
     if (suggestedPrompt && !suggestedPromptSentRef.current && !isLoadingHistory && !historyError && messages.length === 0) {
@@ -85,6 +107,55 @@ export default function ChatScreen() {
       sendMessage(suggestedPrompt);
     }
   }, [suggestedPrompt, isLoadingHistory, historyError, messages.length, sendMessage]);
+
+  // Detect when AI finishes creating itinerary items and show share prompt (once per trip)
+  const sharePromptKey = `toqui_share_prompted_${tripId}`;
+  useEffect(() => {
+    if (
+      toolActivity?.toolName === "create_itinerary_items" &&
+      toolActivity.status === "done" &&
+      tripId &&
+      !sharePromptCheckedRef.current
+    ) {
+      sharePromptCheckedRef.current = true;
+      void AsyncStorage.getItem(sharePromptKey).then((val) => {
+        if (val !== "true") {
+          setShowSharePrompt(true);
+          void AsyncStorage.setItem(sharePromptKey, "true");
+        }
+      });
+    }
+  }, [toolActivity, tripId, sharePromptKey]);
+
+  const handleShareFromChat = useCallback(async () => {
+    if (!tripId) return;
+    setIsSharePromptSharing(true);
+    try {
+      const res = await authFetch(
+        `${getConfig().apiUrl}/api/trips/share`,
+        accessToken,
+        { method: "POST", body: JSON.stringify({ trip_id: tripId }) },
+      );
+      if (!res.ok) throw new Error(`Failed to enable sharing (${res.status})`);
+      const data: { share_token: string } = await res.json();
+      const shareUrl = `https://app.toqui.travel/shared/${data.share_token}`;
+      const shareMessage = trip?.destinationCountry
+        ? `Check out my trip to ${trip.destinationCountry} on Toqui!`
+        : `Check out "${trip?.title ?? "my trip"}" on Toqui!`;
+
+      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: `${trip?.title ?? "My Trip"} — Toqui`, text: shareMessage, url: shareUrl });
+      } else {
+        await Share.share({ message: `${shareMessage}\n${shareUrl}`, url: shareUrl });
+      }
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes("User did not share") || err.name === "AbortError")) return;
+      Alert.alert(t("common.error"));
+    } finally {
+      setIsSharePromptSharing(false);
+      setShowSharePrompt(false);
+    }
+  }, [tripId, accessToken, trip, t]);
 
   const suggestions = useMemo(
     () => CHAT_SUGGESTION_DEFS.map((s) => ({ ...s, label: t(`chat.suggestions.${s.key}`) })),
@@ -325,6 +396,12 @@ export default function ChatScreen() {
               >
                 <Text style={styles.stopButtonText}>{t("chat.stopGenerating")}</Text>
               </Pressable>
+            )}
+            {showSharePrompt && !isStreaming && (
+              <SharePromptCard
+                onShare={handleShareFromChat}
+                isSharing={isSharePromptSharing}
+              />
             )}
             {showFollowUps && lastAssistantMessage && (
               <FollowUpSuggestions

@@ -1,142 +1,121 @@
-import { useRef, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
-  ScrollView,
+  TextInput,
   Pressable,
   StyleSheet,
-  Dimensions,
-  type NativeSyntheticEvent,
-  type NativeScrollEvent,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Compass, Map, Briefcase } from "lucide-react-native";
+import { Plane } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
+import { useCreateTrip } from "@/lib/hooks/useTrips";
+import { useAnalytics } from "@/lib/analytics";
 
-const SCREEN_COUNT = 3;
-
-interface SlideData {
-  headlineKey: string;
-  subtextKey: string;
-  Icon: typeof Compass;
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
-
-const SLIDES: SlideData[] = [
-  {
-    headlineKey: "onboarding.planSmarter.headline",
-    subtextKey: "onboarding.planSmarter.subtext",
-    Icon: Compass,
-  },
-  {
-    headlineKey: "onboarding.travelConfidently.headline",
-    subtextKey: "onboarding.travelConfidently.subtext",
-    Icon: Map,
-  },
-  {
-    headlineKey: "onboarding.getStarted.headline",
-    subtextKey: "onboarding.getStarted.subtext",
-    Icon: Briefcase,
-  },
-];
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
   const { completeOnboarding } = useOnboarding();
-  const scrollRef = useRef<ScrollView>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const screenWidth = Dimensions.get("window").width;
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(offsetX / screenWidth);
-      setActiveIndex(index);
-    },
-    [screenWidth],
-  );
-
-  const handleNext = useCallback(() => {
-    const nextIndex = Math.min(activeIndex + 1, SCREEN_COUNT - 1);
-    scrollRef.current?.scrollTo({ x: screenWidth * nextIndex, animated: true });
-  }, [activeIndex, screenWidth]);
-
-  const handleSkip = useCallback(() => {
-    scrollRef.current?.scrollTo({ x: screenWidth * (SCREEN_COUNT - 1), animated: true });
-  }, [screenWidth]);
+  const createTrip = useCreateTrip();
+  const { track } = useAnalytics();
+  const [destination, setDestination] = useState("");
 
   const handleStartPlanning = useCallback(async () => {
-    await completeOnboarding();
-    router.replace("/trips/new" as never);
-  }, [completeOnboarding, router]);
+    if (!destination.trim()) return;
 
-  const handleExploreFirst = useCallback(async () => {
     await completeOnboarding();
+    track("onboarding_completed", { cta: "start_planning" });
+
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 14);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+
+      const trip = await createTrip.mutateAsync({
+        title: destination.trim(),
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
+      });
+
+      if (trip) {
+        router.replace(`/trips/${trip.id}/chat` as never);
+      }
+    } catch {
+      // Fall back to new trip form on error
+      router.replace({
+        pathname: "/trips/new" as never,
+        params: { destination: destination.trim() },
+      });
+    }
+  }, [completeOnboarding, createTrip, destination, router, track]);
+
+  const handleBrowseIdeas = useCallback(async () => {
+    await completeOnboarding();
+    track("onboarding_completed", { cta: "explore_first" });
     router.replace("/(tabs)" as never);
-  }, [completeOnboarding, router]);
+  }, [completeOnboarding, router, track]);
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.surfaceSecondary,
     },
-    scrollView: {
-      flex: 1,
-    },
-    slide: {
-      width: screenWidth,
+    content: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: 40,
+      paddingHorizontal: 32,
     },
     iconContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       backgroundColor: colors.accentSoft,
       justifyContent: "center",
       alignItems: "center",
-      marginBottom: 32,
+      marginBottom: 24,
     },
     headline: {
       fontSize: 28,
       fontWeight: "bold",
       color: colors.textPrimary,
       textAlign: "center",
-      marginBottom: 12,
+      marginBottom: 8,
     },
-    subtext: {
+    valueProp: {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: "center",
       lineHeight: 24,
       maxWidth: 320,
+      marginBottom: 32,
     },
-    footer: {
-      paddingHorizontal: 24,
-      paddingBottom: 48,
-      alignItems: "center",
-    },
-    dotsContainer: {
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: 8,
-      marginBottom: 24,
-    },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    dotActive: {
-      backgroundColor: colors.accent,
-    },
-    dotInactive: {
-      backgroundColor: colors.border,
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 17,
+      color: colors.textPrimary,
+      width: "100%",
+      maxWidth: 360,
+      marginBottom: 16,
+      textAlign: "center",
     },
     primaryButton: {
       backgroundColor: colors.accent,
@@ -144,9 +123,12 @@ export default function OnboardingScreen() {
       paddingVertical: 16,
       paddingHorizontal: 32,
       width: "100%",
-      maxWidth: 320,
+      maxWidth: 360,
       alignItems: "center",
-      marginBottom: 12,
+      marginBottom: 16,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.5,
     },
     primaryButtonText: {
       color: "#fff",
@@ -163,115 +145,68 @@ export default function OnboardingScreen() {
       fontSize: 15,
       fontWeight: "500",
     },
-    navRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      width: "100%",
-      maxWidth: 320,
-      height: 80,
-    },
-    skipButton: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-    },
-    skipButtonText: {
-      color: colors.textTertiary,
-      fontSize: 15,
-      fontWeight: "500",
-    },
-    nextButton: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-    },
-    nextButtonText: {
-      color: colors.accent,
-      fontSize: 15,
-      fontWeight: "600",
-    },
   });
 
+  const isDisabled = !destination.trim() || createTrip.isPending;
+
   return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        style={styles.scrollView}
-        testID="onboarding-scroll"
-      >
-        {SLIDES.map((slide, index) => (
-          <View key={index} style={styles.slide} testID={`onboarding-slide-${index}`}>
-            <View style={styles.iconContainer}>
-              <slide.Icon color={colors.accent} size={56} />
-            </View>
-            <Text style={styles.headline}>{t(slide.headlineKey)}</Text>
-            <Text style={styles.subtext}>{t(slide.subtextKey)}</Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <View style={styles.dotsContainer} accessibilityLabel={`Page ${activeIndex + 1} of ${SCREEN_COUNT}`}>
-          {Array.from({ length: SCREEN_COUNT }).map((_, i) => (
-            <View
-              key={i}
-              style={[styles.dot, i === activeIndex ? styles.dotActive : styles.dotInactive]}
-            />
-          ))}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.content}>
+        <View style={styles.iconContainer}>
+          <Plane color={colors.accent} size={48} />
         </View>
+        <Text style={styles.headline} testID="onboarding-headline">
+          {t("onboarding.welcome.headline")}
+        </Text>
+        <Text style={styles.valueProp}>
+          {t("onboarding.welcome.valueProp")}
+        </Text>
 
-        {activeIndex === SCREEN_COUNT - 1 ? (
-          <>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handleStartPlanning}
-              accessibilityRole="button"
-              accessibilityLabel={t("onboarding.getStarted.startPlanning")}
-              testID="onboarding-start-planning"
-            >
-              <Text style={styles.primaryButtonText}>
-                {t("onboarding.getStarted.startPlanning")}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={handleExploreFirst}
-              accessibilityRole="button"
-              accessibilityLabel={t("onboarding.getStarted.exploreFirst")}
-              testID="onboarding-explore-first"
-            >
-              <Text style={styles.secondaryButtonText}>
-                {t("onboarding.getStarted.exploreFirst")}
-              </Text>
-            </Pressable>
-          </>
-        ) : (
-          <View style={styles.navRow}>
-            <Pressable
-              style={styles.skipButton}
-              onPress={handleSkip}
-              accessibilityRole="button"
-              accessibilityLabel={t("onboarding.skip")}
-              testID="onboarding-skip"
-            >
-              <Text style={styles.skipButtonText}>{t("onboarding.skip")}</Text>
-            </Pressable>
-            <Pressable
-              style={styles.nextButton}
-              onPress={handleNext}
-              accessibilityRole="button"
-              accessibilityLabel={t("onboarding.next")}
-              testID="onboarding-next"
-            >
-              <Text style={styles.nextButtonText}>{t("onboarding.next")}</Text>
-            </Pressable>
-          </View>
-        )}
+        <TextInput
+          style={styles.input}
+          placeholder={t("onboarding.welcome.destinationPlaceholder")}
+          placeholderTextColor={colors.textTertiary}
+          value={destination}
+          onChangeText={setDestination}
+          autoFocus
+          returnKeyType="go"
+          onSubmitEditing={handleStartPlanning}
+          accessibilityLabel="Trip destination"
+          testID="onboarding-destination-input"
+        />
+
+        <Pressable
+          style={[styles.primaryButton, isDisabled && styles.primaryButtonDisabled]}
+          onPress={handleStartPlanning}
+          disabled={isDisabled}
+          accessibilityRole="button"
+          accessibilityLabel={t("onboarding.welcome.startPlanning")}
+          testID="onboarding-start-planning"
+        >
+          {createTrip.isPending ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.primaryButtonText}>
+              {t("onboarding.welcome.startPlanning")}
+            </Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={styles.secondaryButton}
+          onPress={handleBrowseIdeas}
+          accessibilityRole="button"
+          accessibilityLabel={t("onboarding.welcome.browseIdeas")}
+          testID="onboarding-browse-ideas"
+        >
+          <Text style={styles.secondaryButtonText}>
+            {t("onboarding.welcome.browseIdeas")}
+          </Text>
+        </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

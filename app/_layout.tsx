@@ -1,53 +1,98 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Platform, View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { TransportProvider } from "@/lib/transport";
+import { AnalyticsProvider, useAnalytics } from "@/lib/analytics";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { loadConfig } from "@/lib/config";
+import { loadConfig, getConfig } from "@/lib/config";
 import * as Sentry from "@sentry/react-native";
 
-Sentry.init({
-  dsn: "https://9a4287e61882165484eb43ee7e4b100f@o4511157132001280.ingest.de.sentry.io/4511157139013712",
+// ---------------------------------------------------------------------------
+// Sentry initialisation — deferred until runtime config is loaded so we can
+// read the DSN from config.json (injected at container start) rather than
+// hard-coding it into the JS bundle.
+// ---------------------------------------------------------------------------
 
-  // Privacy: do NOT send PII (emails, IPs, cookies)
-  sendDefaultPii: false,
+/** Regex patterns whose trailing content likely contains user travel data. */
+const TRAVEL_DATA_PATTERNS =
+  /(?:trip to|destination|itinerary for|travel(?:ing)? to)\s+.+/gi;
 
-  enableLogs: true,
+function initSentry() {
+  const dsn = getConfig().sentryDsn;
+  if (!dsn) return; // dev mode — no DSN, skip init
 
-  // Session Replay: mask all text for privacy (travel data is sensitive)
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [
-    Sentry.mobileReplayIntegration({
-      maskAllText: true,
-      maskAllImages: false,
-    }),
-    Sentry.feedbackIntegration(),
-  ],
+  Sentry.init({
+    dsn,
 
-  // Privacy: strip PII from error reports before sending
-  beforeSend(event) {
-    if (event.user) {
-      delete event.user.email;
-      delete event.user.username;
-      delete event.user.ip_address;
-    }
-    // Remove breadcrumb data that might contain travel info
-    if (event.breadcrumbs) {
-      event.breadcrumbs = event.breadcrumbs.map(b => ({
-        ...b,
-        data: undefined,
-      }));
-    }
-    return event;
-  },
-});
+    environment: __DEV__ ? "development" : "production",
+
+    // Privacy: do NOT send PII (emails, IPs, cookies)
+    sendDefaultPii: false,
+
+    enableLogs: true,
+
+    // Session Replay: mask all text AND images for privacy
+    // (travel photos, maps, booking confirmations should not be captured)
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1,
+    integrations: [
+      Sentry.mobileReplayIntegration({
+        maskAllText: true,
+        maskAllImages: true,
+      }),
+      Sentry.feedbackIntegration(),
+    ],
+
+    // Privacy: strip PII and user-generated content from error reports
+    beforeSend(event) {
+      // --- user fields ---
+      if (event.user) {
+        delete event.user.email;
+        delete event.user.username;
+        delete event.user.ip_address;
+      }
+
+      // --- exception values: scrub travel data from messages ---
+      if (event.exception?.values) {
+        for (const ex of event.exception.values) {
+          if (ex.value) {
+            ex.value = ex.value.replace(TRAVEL_DATA_PATTERNS, (match) => {
+              const keyword = match.split(/\s+/)[0]; // keep the keyword
+              return `${keyword} [REDACTED]`;
+            });
+          }
+        }
+      }
+
+      // --- request query string ---
+      if (event.request?.query_string) {
+        event.request.query_string = "[REDACTED]";
+      }
+
+      // --- breadcrumbs: keep structure, strip data & sanitise message ---
+      if (event.breadcrumbs) {
+        event.breadcrumbs = event.breadcrumbs.map((b) => ({
+          category: b.category,
+          type: b.type,
+          timestamp: b.timestamp,
+          // Strip `data` entirely and sanitise `message` (remove URL query params)
+          message: b.message
+            ? b.message.replace(/\?[^\s]*/g, "?[REDACTED]")
+            : undefined,
+        }));
+      }
+
+      return event;
+    },
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,11 +131,56 @@ function ThemedStack() {
   );
 }
 
-export default Sentry.wrap(function RootLayout() {
-  const [configLoaded, setConfigLoaded] = useState(false);
+/**
+ * ErrorBoundary wrapper that reports errors to analytics.
+ */
+function AnalyticsErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { track } = useAnalytics();
+  return (
+    <ErrorBoundary
+      onError={(error) => {
+        track("error_encountered", {
+          error_name: error.name,
+        });
+      }}
+    >
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+/**
+ * Fires session_start on mount and auto-identifies authenticated users.
+ */
+function AnalyticsBootstrap() {
+  const { track, identify } = useAnalytics();
+  const { user } = useAuth();
 
   useEffect(() => {
-    loadConfig().then(() => setConfigLoaded(true));
+    track("session_start", { platform: Platform.OS });
+  }, [track]);
+
+  useEffect(() => {
+    if (user?.id) {
+      identify(user.id);
+    }
+  }, [user?.id, identify]);
+
+  return null;
+}
+
+export default Sentry.wrap(function RootLayout() {
+  const [configLoaded, setConfigLoaded] = useState(false);
+  const sentryInitialised = useRef(false);
+
+  useEffect(() => {
+    loadConfig().then(() => {
+      setConfigLoaded(true);
+      if (!sentryInitialised.current) {
+        sentryInitialised.current = true;
+        initSentry();
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -110,14 +200,19 @@ export default Sentry.wrap(function RootLayout() {
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TransportProvider>
-              <AgeGate>
-                <View style={layoutStyles.root}>
-                  <OfflineBanner />
-                  <ThemedStack />
-                </View>
-              </AgeGate>
-            </TransportProvider>
+            <AnalyticsProvider>
+              <TransportProvider>
+                <AgeGate>
+                  <AnalyticsErrorBoundary>
+                    <AnalyticsBootstrap />
+                    <View style={layoutStyles.root}>
+                      <OfflineBanner />
+                      <ThemedStack />
+                    </View>
+                  </AnalyticsErrorBoundary>
+                </AgeGate>
+              </TransportProvider>
+            </AnalyticsProvider>
           </AuthProvider>
         </QueryClientProvider>
       </I18nProvider>
