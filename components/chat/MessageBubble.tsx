@@ -88,7 +88,7 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
   if (isUser) {
     const userInitial = getUserInitial(user);
     return (
-      <View style={styles.rowUser}>
+      <View style={styles.rowUser} accessibilityLabel="Your message">
         <View style={[
           styles.bubble,
           styles.userBubble,
@@ -113,7 +113,7 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
   const speakerLabel = personaName ?? "Toqui";
 
   return (
-    <View style={styles.rowAssistant}>
+    <View style={styles.rowAssistant} accessibilityLabel={personaName ? `${personaName} says` : "Assistant message"}>
       <View style={styles.avatarSlot}>
         {showAvatar ? (
           <SpeakerAvatar
