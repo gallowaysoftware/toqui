@@ -301,6 +301,8 @@ export default function TripsScreen() {
         </Pressable>
 
         <View style={{ marginTop: 32, width: "100%" }}>
+          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 }}>{t("trips.templates.title")}</Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 16 }}>{t("trips.templates.subtitle")}</Text>
           <TemplateBrowser />
         </View>
       </ScrollView>
@@ -333,6 +335,8 @@ export default function TripsScreen() {
         }
         ListFooterComponent={
           <View style={{ marginTop: 20, paddingBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 }}>{t("trips.templates.title")}</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 12 }}>{t("trips.templates.subtitle")}</Text>
             <TemplateBrowser compact />
           </View>
         }

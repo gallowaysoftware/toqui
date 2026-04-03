@@ -111,6 +111,10 @@
         "description": "Two weeks across multiple destinations"
       },
       "customTrip": "Or create a custom trip"
+    },
+    "templates": {
+      "title": "Get Inspired",
+      "subtitle": "Start with a template and customize it with AI"
     }
   },
   "tripCreate": {
