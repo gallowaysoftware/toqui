@@ -3,7 +3,7 @@
     "appName": "Toqui",
     "tagline": "Your AI-powered travel companion",
     "signIn": "Sign In",
-    "getStarted": "Get Started Free",
+    "getStarted": "Sign In with Google",
     "signOut": "Sign Out",
     "loading": "Loading...",
     "error": "Something went wrong. Please try again.",
@@ -398,7 +398,7 @@
       "valueProp": "Chat with AI travel experts to plan your perfect trip in minutes.",
       "destinationPlaceholder": "Where's your next trip?",
       "startPlanning": "Start Planning",
-      "browseIdeas": "Browse trip ideas"
+      "browseIdeas": "View My Trips"
     }
   },
   "templates": {
