@@ -3,8 +3,10 @@ import { Platform, View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { TransportProvider } from "@/lib/transport";
+import { AnalyticsProvider, useAnalytics } from "@/lib/analytics";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
@@ -45,6 +47,45 @@ function ThemedStack() {
   );
 }
 
+/**
+ * ErrorBoundary wrapper that reports errors to analytics.
+ */
+function AnalyticsErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { track } = useAnalytics();
+  return (
+    <ErrorBoundary
+      onError={(error) => {
+        track("error_encountered", {
+          error_message: error.message,
+          error_name: error.name,
+        });
+      }}
+    >
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+/**
+ * Fires session_start on mount and auto-identifies authenticated users.
+ */
+function AnalyticsBootstrap() {
+  const { track, identify } = useAnalytics();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    track("session_start", { platform: Platform.OS });
+  }, [track]);
+
+  useEffect(() => {
+    if (user?.id) {
+      identify(user.id);
+    }
+  }, [user?.id, identify]);
+
+  return null;
+}
+
 export default function RootLayout() {
   const [configLoaded, setConfigLoaded] = useState(false);
 
@@ -69,14 +110,19 @@ export default function RootLayout() {
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TransportProvider>
-              <AgeGate>
-                <View style={layoutStyles.root}>
-                  <OfflineBanner />
-                  <ThemedStack />
-                </View>
-              </AgeGate>
-            </TransportProvider>
+            <AnalyticsProvider>
+              <TransportProvider>
+                <AgeGate>
+                  <AnalyticsErrorBoundary>
+                    <AnalyticsBootstrap />
+                    <View style={layoutStyles.root}>
+                      <OfflineBanner />
+                      <ThemedStack />
+                    </View>
+                  </AnalyticsErrorBoundary>
+                </AgeGate>
+              </TransportProvider>
+            </AnalyticsProvider>
           </AuthProvider>
         </QueryClientProvider>
       </I18nProvider>

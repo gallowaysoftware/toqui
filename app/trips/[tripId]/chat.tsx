@@ -23,6 +23,7 @@ import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+import { useAnalytics } from "@/lib/analytics";
 
 const errorReportStyles = StyleSheet.create({
   link: {
@@ -52,6 +53,7 @@ export default function ChatScreen() {
   }>();
   const router = useRouter();
   const { colors } = useTheme();
+  const { track } = useAnalytics();
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { used, limit, resetsAt } = useUsage();
@@ -77,6 +79,13 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // Track when the AI generates an itinerary
+  useEffect(() => {
+    if (toolActivity?.toolName === "create_itinerary_items" && toolActivity.status === "done") {
+      track("itinerary_generated");
+    }
+  }, [toolActivity, track]);
 
   const suggestedPromptSentRef = useRef(false);
   useEffect(() => {
