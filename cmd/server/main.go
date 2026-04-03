@@ -296,6 +296,10 @@ func main() {
 	mux.HandleFunc("/health", healthHandler.HandleHealth)
 	mux.HandleFunc("/ready", healthHandler.HandleReadiness)
 
+	// Well-known files for deep linking (public, no auth)
+	mux.HandleFunc("/.well-known/apple-app-site-association", handlers.HandleAppleAppSiteAssociation)
+	mux.HandleFunc("/.well-known/assetlinks.json", handlers.HandleAssetLinks)
+
 	// Usage route (authenticated via Bearer token)
 	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
 

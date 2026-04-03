@@ -66,12 +66,20 @@ func (h *ReferralHandler) HandleGetReferralCode(w http.ResponseWriter, r *http.R
 	successful, _ := h.queries.CountSuccessfulReferrals(ctx, userID)
 	rewards, _ := h.queries.CountRewardsEarned(ctx, userID)
 
+	// Check if this user was referred by someone and whether they received a reward.
+	var refereeRewardGranted bool
+	if refByOther, err := h.queries.GetReferralByReferee(ctx, pgtype.UUID{Bytes: userID, Valid: true}); err == nil {
+		refereeRewardGranted = refByOther.RefereeRewardGranted
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"code":                 ref.Code,
-		"link":                 h.appURL + "/?ref=" + ref.Code,
-		"successful_referrals": successful,
-		"rewards_earned":       rewards,
+		"code":                   ref.Code,
+		"link":                   h.appURL + "/?ref=" + ref.Code,
+		"successful_referrals":   successful,
+		"rewards_earned":         rewards,
+		"referrer_reward_granted": rewards > 0,
+		"referee_reward_granted":  refereeRewardGranted,
 	})
 }
 
@@ -129,9 +137,23 @@ func (h *ReferralHandler) HandleRedeemReferral(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Grant rewards to both parties
-	_ = h.queries.GrantReferrerReward(ctx, ref.ID)
-	_ = h.queries.GrantRefereeReward(ctx, ref.ID)
+	// Mark referral rewards as granted for both parties.
+	if err := h.queries.GrantReferrerReward(ctx, ref.ID); err != nil {
+		slog.Error("grant referrer reward flag failed", "error", err, "referral_id", ref.ID)
+	}
+	if err := h.queries.GrantRefereeReward(ctx, ref.ID); err != nil {
+		slog.Error("grant referee reward flag failed", "error", err, "referral_id", ref.ID)
+	}
+
+	// Attempt to unlock each party's most recent trip. If either has no trip
+	// yet, the boolean flag is persisted and the unlock can be applied later
+	// (e.g. when they create their first trip via HasPendingReferralCredit).
+	if _, err := h.queries.GrantReferralTripUnlock(ctx, ref.ReferrerID); err != nil {
+		slog.Info("referrer has no eligible trip to unlock yet", "referrer_id", ref.ReferrerID)
+	}
+	if _, err := h.queries.GrantReferralTripUnlock(ctx, userID); err != nil {
+		slog.Info("referee has no eligible trip to unlock yet", "referee_id", userID)
+	}
 
 	audit.Log(audit.EventReferralRedeem,
 		"referee_id", userID.String(),

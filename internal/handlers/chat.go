@@ -756,8 +756,8 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 		sb.WriteString("\nThe traveler has accommodation bookings listed above. When planning daily activities, consider proximity to their hotel/accommodation and suggest activities in nearby neighborhoods first.\n")
 	}
 
-	sb.WriteString("\nDo NOT ask the user for information you already have. You know their destination, travel dates, trip duration, existing itinerary, existing bookings, and whether they are traveling solo or in a group. Proactively use this information to give specific, actionable advice. Reference their existing plans naturally — don't ask them to repeat anything.")
-	sb.WriteString("\n\nITINERARY TOOL USAGE: Use the create_itinerary_items tool ONLY when the user explicitly asks you to plan, structure, or add activities to their itinerary (e.g., \"plan me a 3-day itinerary\", \"add a dinner for day 2\"). For simple questions about transport, safety, budgets, or general recommendations, answer directly WITHOUT creating itinerary items.")
+	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. However, DO ask clarifying questions about the traveler's preferences, interests, pace, budget, dietary restrictions, mobility needs, and travel style — these help you give better recommendations.")
+	sb.WriteString("\n\nITINERARY TOOL USAGE: ALWAYS use the create_itinerary_items tool when you suggest specific activities, meals, sightseeing, or experiences for the trip. If you mention a concrete place or activity the traveler should do, save it to the itinerary — don't just describe it in prose. The user expects items to appear in their itinerary view. Only skip the tool for abstract questions about transport logistics, safety, budgets, or general destination info where no specific activity is being recommended.")
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()

@@ -80,6 +80,26 @@ func (q *Queries) GetReferralByCode(ctx context.Context, code string) (Referral,
 	return i, err
 }
 
+const getReferralByReferee = `-- name: GetReferralByReferee :one
+SELECT id, referrer_id, referee_id, code, redeemed_at, referrer_reward_granted, referee_reward_granted, created_at FROM referrals WHERE referee_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetReferralByReferee(ctx context.Context, refereeID pgtype.UUID) (Referral, error) {
+	row := q.db.QueryRow(ctx, getReferralByReferee, refereeID)
+	var i Referral
+	err := row.Scan(
+		&i.ID,
+		&i.ReferrerID,
+		&i.RefereeID,
+		&i.Code,
+		&i.RedeemedAt,
+		&i.ReferrerRewardGranted,
+		&i.RefereeRewardGranted,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getReferralByReferrer = `-- name: GetReferralByReferrer :one
 SELECT id, referrer_id, referee_id, code, redeemed_at, referrer_reward_granted, referee_reward_granted, created_at FROM referrals WHERE referrer_id = $1 AND referee_id IS NULL
 ORDER BY created_at DESC LIMIT 1
@@ -110,6 +130,34 @@ func (q *Queries) GrantRefereeReward(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const grantReferralTripUnlock = `-- name: GrantReferralTripUnlock :one
+INSERT INTO trip_unlocks (user_id, trip_id, source)
+SELECT $1, t.id, 'referral'
+FROM trips t
+WHERE t.user_id = $1
+  AND NOT EXISTS (
+    SELECT 1 FROM trip_unlocks tu WHERE tu.user_id = $1 AND tu.trip_id = t.id
+  )
+ORDER BY t.created_at DESC
+LIMIT 1
+ON CONFLICT (user_id, trip_id) DO NOTHING
+RETURNING id, user_id, trip_id, payment_id, source, unlocked_at
+`
+
+func (q *Queries) GrantReferralTripUnlock(ctx context.Context, userID uuid.UUID) (TripUnlock, error) {
+	row := q.db.QueryRow(ctx, grantReferralTripUnlock, userID)
+	var i TripUnlock
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TripID,
+		&i.PaymentID,
+		&i.Source,
+		&i.UnlockedAt,
+	)
+	return i, err
+}
+
 const grantReferrerReward = `-- name: GrantReferrerReward :exec
 UPDATE referrals SET referrer_reward_granted = true WHERE id = $1
 `
@@ -117,6 +165,22 @@ UPDATE referrals SET referrer_reward_granted = true WHERE id = $1
 func (q *Queries) GrantReferrerReward(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, grantReferrerReward, id)
 	return err
+}
+
+const hasPendingReferralCredit = `-- name: HasPendingReferralCredit :one
+SELECT EXISTS(
+  SELECT 1 FROM referrals r
+  WHERE (r.referrer_id = $1 AND r.referrer_reward_granted = true)
+) AND NOT EXISTS(
+  SELECT 1 FROM trip_unlocks tu WHERE tu.user_id = $1 AND tu.source = 'referral'
+)
+`
+
+func (q *Queries) HasPendingReferralCredit(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingReferralCredit, userID)
+	var result bool
+	err := row.Scan(&result)
+	return result, err
 }
 
 const listReferralsByUser = `-- name: ListReferralsByUser :many
