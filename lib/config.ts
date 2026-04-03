@@ -4,6 +4,7 @@ interface AppConfig {
   apiUrl: string;
   googleClientId: string;
   posthogKey: string;
+  sentryDsn: string;
 }
 
 // Default config from build-time env vars (used in dev / native builds)
@@ -11,6 +12,7 @@ const defaults: AppConfig = {
   apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8090",
   googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "",
   posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "",
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? "",
 };
 
 let runtimeConfig: AppConfig | null = null;
@@ -35,6 +37,7 @@ export async function loadConfig(): Promise<AppConfig> {
           apiUrl: json.apiUrl || defaults.apiUrl,
           googleClientId: json.googleClientId || defaults.googleClientId,
           posthogKey: json.posthogKey || defaults.posthogKey,
+          sentryDsn: json.sentryDsn || defaults.sentryDsn,
         };
         return runtimeConfig;
       }

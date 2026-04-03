@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useAnalytics } from "@/lib/analytics";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
+import { captureException } from "@/lib/sentry";
 
 // Attempt to complete the auth session via the popup postMessage flow.
 // If window.opener is available (popup not severed by COOP), this resolves
@@ -50,6 +51,7 @@ export default function AuthCallbackScreen() {
       })
       .catch((err) => {
         console.error("OAuth callback login failed:", err);
+        captureException(err, { source: "auth_callback" });
         setError("Sign-in failed. Please try again.");
       });
   }, [login, router, track]);

@@ -12,6 +12,7 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig } from "@/lib/config";
+import { initSentry, captureException } from "@/lib/sentry";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +60,7 @@ function AnalyticsErrorBoundary({ children }: { children: React.ReactNode }) {
           error_message: error.message,
           error_name: error.name,
         });
+        captureException(error, { source: "error_boundary" });
       }}
     >
       {children}
@@ -90,7 +92,10 @@ export default function RootLayout() {
   const [configLoaded, setConfigLoaded] = useState(false);
 
   useEffect(() => {
-    loadConfig().then(() => setConfigLoaded(true));
+    loadConfig().then(() => {
+      initSentry();
+      setConfigLoaded(true);
+    });
   }, []);
 
   useEffect(() => {

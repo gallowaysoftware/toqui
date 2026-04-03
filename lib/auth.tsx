@@ -12,6 +12,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 import { getConfig } from "./config";
+import { captureException } from "./sentry";
 
 // Token storage: SecureStore on native (Keychain/Keystore), localStorage on web.
 // localStorage persists across browser sessions so users stay logged in between
@@ -143,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return res.accessToken;
     } catch (err) {
       console.error("Token refresh failed:", err);
+      captureException(err, { source: "token_refresh" });
       // Clear all stale auth state — tokens AND user
       setAccessToken(null);
       setRefreshToken(null);
