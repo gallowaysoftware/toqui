@@ -124,7 +124,13 @@
     "submit": "Start Planning",
     "submitting": "Creating...",
     "dateRangeError": "End date must be on or after start date",
-    "createError": "Failed to create trip. Please try again."
+    "createError": "Failed to create trip. Please try again.",
+    "quickCreate": {
+      "destinationPlaceholder": "Where do you want to go?",
+      "startPlanning": "Start Planning",
+      "advancedOptions": "Advanced options",
+      "hideAdvanced": "Hide advanced options"
+    }
   },
   "bookings": {
     "untitled": "Untitled booking",
@@ -170,7 +176,15 @@
     "guideAuthor": "By {{name}} \u2014 {{specialty}}",
     "failedToCreate": "Failed to create trip",
     "loadError": "Couldn't load this trip",
-    "loadErrorSubtitle": "Check your connection and try again."
+    "loadErrorSubtitle": "Check your connection and try again.",
+    "emptyState": {
+      "headline": "Let's plan your trip!",
+      "subtitle": "Chat with AI to build your perfect itinerary",
+      "startPlanning": "Start Planning",
+      "buildItinerary": "Build my itinerary",
+      "findFlights": "Find flights",
+      "whereToStay": "Where should I stay?"
+    }
   },
   "tripSettings": {
     "title": "Trip Settings",
@@ -367,6 +381,13 @@
       "subtext": "Create a trip and let Toqui build your perfect itinerary",
       "startPlanning": "Start Planning",
       "exploreFirst": "Explore First"
+    },
+    "welcome": {
+      "headline": "Welcome to Toqui",
+      "valueProp": "Chat with AI travel experts to plan your perfect trip in minutes.",
+      "destinationPlaceholder": "Where's your next trip?",
+      "startPlanning": "Start Planning",
+      "browseIdeas": "Browse trip ideas"
     }
   },
   "templates": {

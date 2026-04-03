@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -189,6 +189,72 @@ export default function TripDetailScreen() {
     guideHeader: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginBottom: 10 },
     guideExcerpt: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 12 },
     guideSection: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6 },
+    emptyStateContainer: {
+      alignItems: "center",
+      paddingVertical: 32,
+      paddingHorizontal: 16,
+    },
+    emptyStateIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.accentSoft,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    emptyStateHeadline: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    emptyStateSubtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 22,
+      marginBottom: 24,
+      maxWidth: 280,
+    },
+    emptyStatePrimaryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 20,
+      width: "100%",
+      maxWidth: 320,
+      justifyContent: "center",
+    },
+    emptyStatePrimaryButtonText: {
+      color: "#fff",
+      fontSize: 17,
+      fontWeight: "600",
+    },
+    suggestionChipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 8,
+    },
+    suggestionChip: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    suggestionChipText: {
+      fontSize: 14,
+      color: colors.accent,
+      fontWeight: "500",
+    },
   });
 
   if (isLoading) {
@@ -220,6 +286,15 @@ export default function TripDetailScreen() {
 
   const isPlannable = trip.status === TripStatus.PLANNING;
   const isActive = trip.status === TripStatus.ACTIVE;
+
+  const hasItinerary = !isItineraryLoading && itinerary && itinerary.days && itinerary.days.length > 0;
+  const showEmptyState = !isItineraryLoading && !hasItinerary;
+
+  const SUGGESTION_CHIPS = [
+    { key: "buildItinerary", labelKey: "tripDetail.emptyState.buildItinerary" },
+    { key: "findFlights", labelKey: "tripDetail.emptyState.findFlights" },
+    { key: "whereToStay", labelKey: "tripDetail.emptyState.whereToStay" },
+  ] as const;
 
   const totalDays =
     trip.startDate && trip.endDate ? countDays(trip.startDate, trip.endDate) : 0;
@@ -334,6 +409,49 @@ export default function TripDetailScreen() {
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
+
+        {showEmptyState && (
+          <View style={styles.emptyStateContainer} testID="empty-trip-cta">
+            <View style={styles.emptyStateIconCircle}>
+              <MessageCircle color={colors.accent} size={36} />
+            </View>
+            <Text style={styles.emptyStateHeadline}>
+              {t("tripDetail.emptyState.headline")}
+            </Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {t("tripDetail.emptyState.subtitle")}
+            </Text>
+            <Pressable
+              style={styles.emptyStatePrimaryButton}
+              onPress={() => router.push(`/trips/${tripId}/chat` as never)}
+              accessibilityRole="button"
+              testID="empty-trip-start-planning"
+            >
+              <Send color="#fff" size={18} />
+              <Text style={styles.emptyStatePrimaryButtonText}>
+                {t("tripDetail.emptyState.startPlanning")}
+              </Text>
+            </Pressable>
+            <View style={styles.suggestionChipsRow}>
+              {SUGGESTION_CHIPS.map((chip) => (
+                <Pressable
+                  key={chip.key}
+                  style={styles.suggestionChip}
+                  onPress={() =>
+                    router.push({
+                      pathname: `/trips/${tripId}/chat` as never,
+                      params: { suggestedPrompt: t(chip.labelKey) },
+                    })
+                  }
+                  accessibilityRole="button"
+                  testID={`suggestion-chip-${chip.key}`}
+                >
+                  <Text style={styles.suggestionChipText}>{t(chip.labelKey)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
 
         {weather && weather.length > 0 && (
           <WeatherCard weather={weather} isClimate={isClimate} />

@@ -7,6 +7,17 @@ import en from "@/messages/en.json";
 const mockReplace = vi.fn();
 const mockPush = vi.fn();
 
+// Mock createTrip mutation
+const mockMutateAsync = vi.fn();
+vi.mock("@/lib/hooks/useTrips", () => ({
+  useCreateTrip: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
+}));
+
 // Mock react-native with web platform
 vi.mock("react-native", async () => {
   const actual = await vi.importActual<typeof import("react-native")>("react-native");
@@ -95,6 +106,7 @@ beforeEach(() => {
   sessionStorage.clear();
   mockReplace.mockClear();
   mockPush.mockClear();
+  mockMutateAsync.mockClear();
 });
 
 afterEach(() => {
@@ -102,103 +114,85 @@ afterEach(() => {
 });
 
 describe("OnboardingScreen", () => {
-  it("renders the first slide with headline and subtext", async () => {
+  it("renders the welcome headline", async () => {
     await act(async () => {
       renderOnboarding();
     });
 
-    expect(screen.getByText("AI-powered trip planning")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to Toqui")).toBeInTheDocument();
+  });
+
+  it("renders the value proposition", async () => {
+    await act(async () => {
+      renderOnboarding();
+    });
+
     expect(
-      screen.getByText("Chat with expert personas who know your destination inside and out"),
+      screen.getByText("Chat with AI travel experts to plan your perfect trip in minutes."),
     ).toBeInTheDocument();
   });
 
-  it("renders all three slides", async () => {
+  it("renders a destination input field", async () => {
     await act(async () => {
       renderOnboarding();
     });
 
-    expect(screen.getByTestId("onboarding-slide-0")).toBeInTheDocument();
-    expect(screen.getByTestId("onboarding-slide-1")).toBeInTheDocument();
-    expect(screen.getByTestId("onboarding-slide-2")).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-destination-input")).toBeInTheDocument();
   });
 
-  it("renders dot indicators", async () => {
+  it("renders Start Planning and Browse trip ideas buttons", async () => {
     await act(async () => {
       renderOnboarding();
     });
 
-    const dotsContainer = screen.getByLabelText("Page 1 of 3");
-    expect(dotsContainer).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-start-planning")).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-browse-ideas")).toBeInTheDocument();
   });
 
-  it("does not show CTA buttons on initial slide (not the last)", async () => {
+  it("Start Planning is disabled when no destination is entered", async () => {
     await act(async () => {
       renderOnboarding();
-    });
-
-    expect(screen.queryByTestId("onboarding-start-planning")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("onboarding-explore-first")).not.toBeInTheDocument();
-  });
-
-  it("'Start Planning' button sets completion flag and navigates to /trips/new", async () => {
-    await act(async () => {
-      renderOnboarding();
-    });
-
-    // In jsdom, scroll events on react-native-web ScrollView don't propagate
-    // nativeEvent.contentOffset. Instead, simulate the DOM-level scroll event
-    // which react-native-web translates.
-    const scrollView = screen.getByTestId("onboarding-scroll");
-    Object.defineProperty(scrollView, "scrollLeft", { value: 375 * 2, writable: true });
-    Object.defineProperty(scrollView, "scrollWidth", { value: 375 * 3, writable: true });
-    Object.defineProperty(scrollView, "clientWidth", { value: 375, writable: true });
-    await act(async () => {
-      fireEvent.scroll(scrollView);
     });
 
     const startButton = screen.getByTestId("onboarding-start-planning");
-    expect(startButton).toBeInTheDocument();
+    expect(startButton).toBeDisabled();
+  });
 
+  it("Start Planning creates trip and navigates to chat", async () => {
+    mockMutateAsync.mockResolvedValueOnce({ id: "trip-123" });
+
+    await act(async () => {
+      renderOnboarding();
+    });
+
+    const input = screen.getByTestId("onboarding-destination-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Tokyo" } });
+    });
+
+    const startButton = screen.getByTestId("onboarding-start-planning");
     await act(async () => {
       fireEvent.click(startButton);
     });
 
     expect(sessionStorage.getItem("toqui_onboarding_complete")).toBe("true");
-    expect(mockReplace).toHaveBeenCalledWith("/trips/new");
+    expect(mockMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Tokyo" }),
+    );
+    expect(mockReplace).toHaveBeenCalledWith("/trips/trip-123/chat");
   });
 
-  it("'Explore First' button sets completion flag and navigates to home", async () => {
+  it("Browse trip ideas sets completion flag and navigates to home", async () => {
     await act(async () => {
       renderOnboarding();
     });
 
-    // Simulate scroll to last slide
-    const scrollView = screen.getByTestId("onboarding-scroll");
-    Object.defineProperty(scrollView, "scrollLeft", { value: 375 * 2, writable: true });
-    Object.defineProperty(scrollView, "scrollWidth", { value: 375 * 3, writable: true });
-    Object.defineProperty(scrollView, "clientWidth", { value: 375, writable: true });
+    const browseButton = screen.getByTestId("onboarding-browse-ideas");
     await act(async () => {
-      fireEvent.scroll(scrollView);
-    });
-
-    const exploreButton = screen.getByTestId("onboarding-explore-first");
-
-    await act(async () => {
-      fireEvent.click(exploreButton);
+      fireEvent.click(browseButton);
     });
 
     expect(sessionStorage.getItem("toqui_onboarding_complete")).toBe("true");
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
-  });
-
-  it("shows all three slide headlines across the swiper", async () => {
-    await act(async () => {
-      renderOnboarding();
-    });
-
-    expect(screen.getByText("AI-powered trip planning")).toBeInTheDocument();
-    expect(screen.getByText("Everything in one place")).toBeInTheDocument();
-    expect(screen.getByText("Your first trip awaits")).toBeInTheDocument();
   });
 });
