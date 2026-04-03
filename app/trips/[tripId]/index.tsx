@@ -55,6 +55,8 @@ export default function TripDetailScreen() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(false);
   const [shareViewCount, setShareViewCount] = useState<number | null>(null);
+  const [proBannerDismissed, setProBannerDismissed] = useState(false);
+  const [hasChatVisit, setHasChatVisit] = useState(false);
 
   // Extract first available coordinates from itinerary for weather lookup
   const firstLocation = itinerary?.days
@@ -69,6 +71,8 @@ export default function TripDetailScreen() {
 
   const dismissalKey = `toqui_planning_dismissed_${tripId}`;
   const shareNudgeKey = `toqui_share_nudge_dismissed_${tripId}`;
+  const proBannerKey = `toqui_pro_dismissed_${tripId}`;
+  const chatVisitKey = `toqui_chat_visited_${tripId}`;
 
   useEffect(() => {
     AsyncStorage.getItem(dismissalKey).then((val) => {
@@ -77,7 +81,13 @@ export default function TripDetailScreen() {
     AsyncStorage.getItem(shareNudgeKey).then((val) => {
       if (val === "true") setShareNudgeDismissed(true);
     });
-  }, [dismissalKey, shareNudgeKey]);
+    AsyncStorage.getItem(proBannerKey).then((val) => {
+      if (val === "true") setProBannerDismissed(true);
+    });
+    AsyncStorage.getItem(chatVisitKey).then((val) => {
+      if (val === "true") setHasChatVisit(true);
+    });
+  }, [dismissalKey, shareNudgeKey, proBannerKey, chatVisitKey]);
 
   // Fetch share view count if trip has been shared
   useEffect(() => {
@@ -108,6 +118,11 @@ export default function TripDetailScreen() {
   const handleDismissShareNudge = () => {
     setShareNudgeDismissed(true);
     void AsyncStorage.setItem(shareNudgeKey, "true");
+  };
+
+  const handleDismissProBanner = () => {
+    setProBannerDismissed(true);
+    void AsyncStorage.setItem(proBannerKey, "true");
   };
 
   const styles = StyleSheet.create({
@@ -569,7 +584,13 @@ export default function TripDetailScreen() {
           </>
         )}
 
-        <ProUpgrade tripId={tripId!} />
+        {hasChatVisit && !proBannerDismissed && (
+          <ProUpgrade
+            tripId={tripId!}
+            compact
+            onDismiss={handleDismissProBanner}
+          />
+        )}
 
         {isPlannable && (
           <Pressable

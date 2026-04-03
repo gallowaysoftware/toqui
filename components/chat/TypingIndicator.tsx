@@ -1,8 +1,45 @@
-import { View, Text, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { useTheme } from "@/lib/theme";
 
 interface TypingIndicatorProps {
   toolName?: string | null;
+}
+
+function PulsingDot({ color, delay }: { color: string; delay: number }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 400,
+          delay,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [opacity, delay]);
+
+  return (
+    <Animated.View
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: color,
+        opacity,
+      }}
+    />
+  );
 }
 
 export function TypingIndicator({ toolName }: TypingIndicatorProps) {
@@ -31,15 +68,6 @@ export function TypingIndicator({ toolName }: TypingIndicatorProps) {
       gap: 4,
       alignItems: "center",
     },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.border,
-    },
-    dot1: { opacity: 0.4 },
-    dot2: { opacity: 0.6 },
-    dot3: { opacity: 0.8 },
   });
 
   return (
@@ -52,9 +80,9 @@ export function TypingIndicator({ toolName }: TypingIndicatorProps) {
         <Text style={styles.text}>Using {toolName}...</Text>
       ) : (
         <View style={styles.dots}>
-          <View style={[styles.dot, styles.dot1]} />
-          <View style={[styles.dot, styles.dot2]} />
-          <View style={[styles.dot, styles.dot3]} />
+          <PulsingDot color={colors.border} delay={0} />
+          <PulsingDot color={colors.border} delay={150} />
+          <PulsingDot color={colors.border} delay={300} />
         </View>
       )}
     </View>

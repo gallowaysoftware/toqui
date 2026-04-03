@@ -69,6 +69,14 @@ export default function ChatScreen() {
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [isSharePromptSharing, setIsSharePromptSharing] = useState(false);
   const sharePromptCheckedRef = useRef(false);
+
+  // Mark that the user has visited chat for this trip (used to gate pro upsell)
+  useEffect(() => {
+    if (tripId) {
+      void AsyncStorage.setItem(`toqui_chat_visited_${tripId}`, "true");
+    }
+  }, [tripId]);
+
   const { used, limit, resetsAt } = useUsage();
   const {
     messages,
