@@ -1,0 +1,27 @@
+meta {
+  name: Resolve Persona
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{host}}/toqui.v1.PersonaService/ResolvePersona
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Resolves a composed expert persona for a given location and theme.
+  Returns the persona identity (name, description, greeting) for the
+  specific location+theme combination (e.g., a food expert for Japan).
+}
+
+body:json {
+  {
+    "location_code": "JP",
+    "themes": ["food", "history"]
+  }
+}

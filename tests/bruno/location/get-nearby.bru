@@ -1,0 +1,28 @@
+meta {
+  name: Get Nearby
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.LocationService/GetNearby
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Returns nearby points of interest based on the user's cached location.
+  The user must have called UpdateLocation first to set their position.
+}
+
+body:json {
+  {
+    "latitude": 35.6762,
+    "longitude": 139.6503,
+    "radius_meters": 1000,
+    "category": "restaurant"
+  }
+}

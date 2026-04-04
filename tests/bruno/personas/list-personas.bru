@@ -1,0 +1,18 @@
+meta {
+  name: List Personas
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.PersonaService/ListPersonas
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {}
+}

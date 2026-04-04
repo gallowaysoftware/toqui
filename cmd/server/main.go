@@ -15,6 +15,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"connectrpc.com/connect"
+	"connectrpc.com/grpcreflect"
 	"github.com/google/uuid"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -380,6 +381,18 @@ func main() {
 	mux.Handle(toquiv1connect.NewBookingServiceHandler(bookingHandler, interceptors))
 	mux.Handle(toquiv1connect.NewLocationServiceHandler(locationHandler, interceptors))
 	mux.Handle(toquiv1connect.NewPersonaServiceHandler(personaHandler, interceptors))
+
+	// gRPC reflection — enables service discovery for tools like grpcurl and Bruno.
+	reflector := grpcreflect.NewStaticReflector(
+		toquiv1connect.AuthServiceName,
+		toquiv1connect.TripServiceName,
+		toquiv1connect.ChatServiceName,
+		toquiv1connect.BookingServiceName,
+		toquiv1connect.LocationServiceName,
+		toquiv1connect.PersonaServiceName,
+	)
+	mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
 	// Per-IP rate limiting — 120 requests/min sustained, burst of 20.
 	// Applies to all routes (public + authenticated). The per-user ConnectRPC

@@ -1,0 +1,20 @@
+meta {
+  name: Delete Booking
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{host}}/toqui.v1.BookingService/DeleteBooking
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "booking_id": "<booking-id-from-ingest>"
+  }
+}

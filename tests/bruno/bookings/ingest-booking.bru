@@ -1,0 +1,21 @@
+meta {
+  name: Ingest Booking
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.BookingService/IngestBooking
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>",
+    "raw_text": "Booking Confirmation\nHotel: Park Hyatt Tokyo\nCheck-in: 2025-09-15\nCheck-out: 2025-09-18\nGuests: 2\nConfirmation #: PH-789012\nTotal: $1,245.00 USD"
+  }
+}
