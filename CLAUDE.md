@@ -153,6 +153,30 @@ make docker-down      # Tear down
 
 TS proto bindings are generated in the frontend repo (`pnpm generate` in `../toqui`).
 
+### gRPC Reflection
+
+gRPC reflection is enabled on the server. You can use `grpcurl` to explore and test RPCs:
+
+```bash
+# List all services
+grpcurl -plaintext localhost:8090 list
+
+# Describe a service
+grpcurl -plaintext localhost:8090 describe toqui.v1.TripService
+
+# Call an RPC (with auth)
+grpcurl -plaintext -H "Authorization: Bearer <token>" \
+  -d '{"trip_id":"..."}' localhost:8090 toqui.v1.TripService/GetTrip
+```
+
+### Bruno Test Collections
+
+API test collections live in `tests/bruno/`. These are Bruno HTTP client collections for manual and semi-automated API testing:
+
+- Import the collection into [Bruno](https://www.usebruno.com/)
+- Collections cover auth flows, trip CRUD, chat, bookings, and admin endpoints
+- Environment variables are configured per environment (local, staging, prod)
+
 ### CI/CD
 
 GitHub Actions on push to `main` and all PRs (self-hosted runners on Unraid, 3 replicas):
@@ -213,6 +237,11 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `SENDGRID_WEBHOOK_KEY` | (none) | ECDSA public key for SendGrid webhook verification |
 | `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
 | `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
+| `POSTHOG_API_KEY` | (none) | PostHog project API key (EU instance, server-side events) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | (none) | OpenTelemetry collector endpoint |
+| `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
+| `OTEL_SERVICE_NAME` | (none) | OpenTelemetry service name |
 
 ## Trip Mode System
 
@@ -335,6 +364,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 - `workflow_dispatch` triggers `deploy-prod`. Run `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main` to deploy.
 - Always run `go build ./...` and `go test ./...` locally before pushing.
 - Run `gofmt -w <file>` on any Go files you edit — CI runs `gofmt` check and will fail if not formatted.
+- **AI/prompt changes**: Run `make ai-test` or use `buf curl` / `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles.
 
 ### Documentation Updates
 
@@ -671,11 +701,45 @@ The `internal/payment/` package handles Helcim payment integration for Trip Pro 
 ### Referral System
 Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POST /api/referral/redeem`. Redemption is audit-logged. Referral stats (count of referred users) are returned with the code.
 
+**Referral Rewards**: When a referred user signs up and creates their first trip, both the referrer and referee receive a free trip unlock (Trip Pro). The reward is granted automatically via the referral redemption flow.
+
 ### Destination Guides API
 Static destination guide content served at `/api/guides` (list) and `/api/guides/{slug}` (detail). Used by the marketing site's guide pages. Public endpoints — no auth required.
 
 ### Trip Sharing
 Users can share a trip publicly via `POST /api/trips/share`, which generates a share token. The public view is accessible at `/shared/{token}` without authentication. Sharing can be revoked via `POST /api/trips/unshare`.
+
+### PostHog Analytics (Server-Side)
+
+Server-side event tracking via PostHog (EU-hosted, `eu.i.posthog.com`). User IDs are SHA-256 hashed before sending. Five tracked events:
+
+- `user_signed_up` — new account created
+- `trip_created` — new trip created
+- `trip_pro_purchased` — Trip Pro payment completed
+- `referral_redeemed` — referral code redeemed
+- `message_sent` — chat message sent (count only, no content)
+
+Requires `POSTHOG_API_KEY` env var. Events are fire-and-forget (non-blocking). No PII or travel content is ever sent to PostHog.
+
+### AI Prompt Engineering
+
+The AI system prompt has been tuned for reliable tool usage. Key behaviors:
+
+- **Always create itinerary items**: When a user discusses plans, the AI proactively calls `create_itinerary_items` to add structured items to the itinerary. It does not just describe plans in text.
+- **Proactive expert handoff**: The AI calls `suggest_expert` when the conversation topic matches a location/theme combination, without waiting for the user to ask.
+- **Clarifying questions**: The AI asks about travel preferences (dates, budget, interests, dietary restrictions) before making recommendations, rather than assuming.
+- **Tool result confirmation**: After calling tools, the AI confirms what was created/updated in its response text.
+
+When modifying system prompts in `internal/chat/` or `internal/persona/`, always run `make ai-test` to verify the AI still calls tools correctly.
+
+### Deep Linking
+
+Apple App Site Association (AASA) and Android Asset Links are served at well-known endpoints for universal links / app links:
+
+- `GET /.well-known/apple-app-site-association` — AASA JSON for iOS universal links
+- `GET /.well-known/assetlinks.json` — Android asset links for app links
+
+These enable deep linking from `toqui.travel` URLs directly into the native app.
 
 ### Inbound Email Webhook
 `POST /webhooks/email/inbound` processes emails forwarded to the platform (e.g., booking confirmations forwarded to the user's Toqui email address). Payload is ECDSA-signed by SendGrid and verified before processing.
