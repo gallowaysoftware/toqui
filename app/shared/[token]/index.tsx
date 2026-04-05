@@ -711,7 +711,7 @@ export default function SharedTripScreen() {
     ? `AI-powered travel itinerary for ${trip.destination_country} with expert recommendations`
     : "AI-powered travel itinerary with expert recommendations";
   const ogUrl = `https://app.toqui.travel/shared/${token}`;
-  const ogImage = "https://toqui.travel/og-share-image.png";
+  const ogImage = "https://toqui.travel/og-default.png";
 
   return (
     <View style={styles.root}>
