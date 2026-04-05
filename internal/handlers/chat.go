@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -631,6 +632,7 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 	}
 
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Today's date is %s.\n\n", time.Now().Format("January 2, 2006"))
 	sb.WriteString("CURRENT TRIP CONTEXT:\n")
 	if title != "" {
 		statusLabel := status
@@ -706,7 +708,7 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 		}
 	}
 
-	// Bookings summary
+	// Bookings summary (rich detail so AI can answer questions about bookings)
 	if len(bookings) > 0 {
 		sb.WriteString("\nExisting bookings:\n")
 		for i, b := range bookings {
@@ -717,12 +719,42 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 			bookingType := sanitizeForPrompt(b.Type, 50)
 			bookingTitle := sanitizeForPrompt(b.Title, 150)
 			fmt.Fprintf(&sb, "  - %s: %s", bookingType, bookingTitle)
+			if b.Provider.Valid && b.Provider.String != "" {
+				fmt.Fprintf(&sb, " [%s]", sanitizeForPrompt(b.Provider.String, 100))
+			}
 			if b.StartTime.Valid {
 				fmt.Fprintf(&sb, " (%s", b.StartTime.Time.Format("Jan 2"))
 				if b.EndTime.Valid {
 					fmt.Fprintf(&sb, " to %s", b.EndTime.Time.Format("Jan 2"))
 				}
 				sb.WriteString(")")
+			}
+			if b.ConfirmationCode.Valid && b.ConfirmationCode.String != "" {
+				fmt.Fprintf(&sb, " Confirmation: %s", sanitizeForPrompt(b.ConfirmationCode.String, 50))
+			}
+			if b.DepartureLocation.Valid && b.DepartureLocation.String != "" {
+				fmt.Fprintf(&sb, " From: %s", sanitizeForPrompt(b.DepartureLocation.String, 100))
+			}
+			if b.ArrivalLocation.Valid && b.ArrivalLocation.String != "" {
+				fmt.Fprintf(&sb, " To: %s", sanitizeForPrompt(b.ArrivalLocation.String, 100))
+			}
+			if b.Address.Valid && b.Address.String != "" {
+				fmt.Fprintf(&sb, " Address: %s", sanitizeForPrompt(b.Address.String, 200))
+			}
+			// Include key fields from details_json if present
+			if len(b.DetailsJson) > 0 {
+				var details map[string]interface{}
+				if err := json.Unmarshal(b.DetailsJson, &details); err == nil {
+					var extras []string
+					for _, key := range []string{"airline", "flight_number", "hotel_name", "room_type", "check_in_time", "check_out_time", "meeting_point", "notes"} {
+						if v, ok := details[key]; ok && v != nil && fmt.Sprintf("%v", v) != "" {
+							extras = append(extras, fmt.Sprintf("%s: %v", key, v))
+						}
+					}
+					if len(extras) > 0 {
+						fmt.Fprintf(&sb, " | %s", strings.Join(extras, ", "))
+					}
+				}
 			}
 			sb.WriteString("\n")
 		}
@@ -758,6 +790,7 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 
 	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. However, DO ask clarifying questions about the traveler's preferences, interests, pace, budget, dietary restrictions, mobility needs, and travel style — these help you give better recommendations.")
 	sb.WriteString("\n\nITINERARY TOOL USAGE: ALWAYS use the create_itinerary_items tool when you suggest specific activities, meals, sightseeing, or experiences for the trip. If you mention a concrete place or activity the traveler should do, save it to the itinerary — don't just describe it in prose. The user expects items to appear in their itinerary view. Only skip the tool for abstract questions about transport logistics, safety, budgets, or general destination info where no specific activity is being recommended.")
+	sb.WriteString("\nCRITICAL: NEVER describe an itinerary plan in text without also calling create_itinerary_items to save it. If you mention specific activities, restaurants, or attractions for specific days, you MUST create itinerary items for them. The user's itinerary is only useful if it's saved — text descriptions alone are not visible in their trip plan.")
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()
@@ -766,9 +799,13 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 // buildSelectionContext returns system prompt context for selection mode:
 // the user's existing trips so Toqui can help them find or create one.
 func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID, userTier tier.UserTier) string {
+	today := time.Now().Format("January 2, 2006")
+
 	trips, _, err := h.tripSvc.ListByUser(ctx, userID, "", 20, 0)
 	if err != nil || len(trips) == 0 {
-		return fmt.Sprintf(`You are in SELECTION mode — no trip is selected yet.
+		return fmt.Sprintf(`Today's date is %s.
+
+You are in SELECTION mode — no trip is selected yet.
 
 Help the user decide on a trip. You can:
 - Help them brainstorm destinations and trip ideas
@@ -778,10 +815,11 @@ The user has no existing trips yet. Help them get started!
 
 When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.
 
-%s`, bookingInstructionsForTier(userTier))
+%s`, today, bookingInstructionsForTier(userTier))
 	}
 
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Today's date is %s.\n\n", today)
 	sb.WriteString(`You are in SELECTION mode — no trip is selected yet.
 
 Help the user decide on a trip. You can:
@@ -817,10 +855,20 @@ The user's existing trips:
 // bookingInstructionsForTier returns the system prompt snippet that tells the
 // AI how to handle booking recommendations based on the user's subscription tier.
 func bookingInstructionsForTier(userTier tier.UserTier) string {
+	triggerPhrases := `
+When the user asks about ANY of the following, you MUST call the recommend_booking tool:
+- "book a flight", "find flights", "search for flights"
+- "book a hotel", "find accommodation", "where to stay"
+- "book a tour", "book an activity", "things to book", "tickets"
+- "day trip", "excursion", "can I book"
+- "car rental", "rent a car"
+- Any question about purchasing, reserving, or booking travel services
+Do NOT respond with text-only suggestions when the user is asking to BOOK something. Use the tool.`
+
 	if userTier.IsPro() {
-		return "BOOKING RECOMMENDATIONS: Recommend the best options regardless of affiliate partnerships. Use the recommend_booking tool when the user asks about flights, hotels, activities, car rentals, or travel insurance."
+		return "BOOKING RECOMMENDATIONS: Recommend the best options regardless of affiliate partnerships. Use the recommend_booking tool when the user asks about flights, hotels, activities, car rentals, or travel insurance." + triggerPhrases
 	}
-	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement."
+	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
 }
 
 func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[toquiv1.GetChatHistoryRequest]) (*connect.Response[toquiv1.GetChatHistoryResponse], error) {
