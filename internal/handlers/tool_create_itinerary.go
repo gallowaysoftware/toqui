@@ -129,10 +129,23 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		return nil, fmt.Errorf("at least one item is required")
 	}
 
+	// Load existing items for deduplication.
+	existing, err := t.tripSvc.GetItinerary(ctx, t.tripID)
+	if err != nil {
+		slog.Warn("failed to load existing itinerary for dedup, proceeding without dedup", "trip_id", t.tripID, "error", err)
+		existing = nil
+	}
+
 	var created []itineraryItemWithLocation
 	var failed []string
+	var skipped int
 	for _, item := range params.Items {
 		if item.Title == "" {
+			continue
+		}
+		if isDuplicateItem(existing, item.DayNumber, item.Title) {
+			slog.Info("skipped duplicate itinerary item", "day", item.DayNumber, "title", item.Title)
+			skipped++
 			continue
 		}
 		dbItem, err := t.tripSvc.CreateItineraryItem(ctx, t.tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description)
@@ -199,18 +212,59 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		summary[i] = entry
 	}
 
+	msg := fmt.Sprintf("Successfully added %d items to the itinerary.", len(created))
+	if skipped > 0 || len(failed) > 0 {
+		parts := []string{fmt.Sprintf("Added %d items to the itinerary.", len(created))}
+		if skipped > 0 {
+			parts = append(parts, fmt.Sprintf("Skipped %d duplicate(s) already in the itinerary.", skipped))
+		}
+		if len(failed) > 0 {
+			parts = append(parts, fmt.Sprintf("%d items failed: %s.", len(failed), strings.Join(failed, ", ")))
+		}
+		msg = strings.Join(parts, " ")
+	}
+
 	result := map[string]any{
 		"created_count": len(created),
 		"items":         summary,
-		"message":       fmt.Sprintf("Successfully added %d items to the itinerary.", len(created)),
+		"message":       msg,
+	}
+	if skipped > 0 {
+		result["skipped_duplicates"] = skipped
 	}
 	if len(failed) > 0 {
 		result["failed_count"] = len(failed)
 		result["failed_items"] = failed
-		result["message"] = fmt.Sprintf("Added %d items to the itinerary. %d items failed: %s",
-			len(created), len(failed), strings.Join(failed, ", "))
 	}
 	return json.Marshal(result)
+}
+
+// normalizeTitle lowercases and collapses whitespace for fuzzy comparison.
+func normalizeTitle(s string) string {
+	return strings.ToLower(strings.Join(strings.Fields(s), " "))
+}
+
+// isDuplicateItem checks whether a new item on the given day has a title
+// similar enough to an existing item to be considered a duplicate.
+// Similarity is determined by containment (one title contains the other).
+func isDuplicateItem(existing []dbgen.ItineraryItem, dayNumber int, title string) bool {
+	norm := normalizeTitle(title)
+	if norm == "" {
+		return false
+	}
+	for _, e := range existing {
+		if !e.DayNumber.Valid || int(e.DayNumber.Int32) != dayNumber {
+			continue
+		}
+		if !e.Title.Valid {
+			continue
+		}
+		existNorm := normalizeTitle(e.Title.String)
+		if existNorm == norm || strings.Contains(existNorm, norm) || strings.Contains(norm, existNorm) {
+			return true
+		}
+	}
+	return false
 }
 
 // geocodeItems resolves location names to coordinates and persists them.
