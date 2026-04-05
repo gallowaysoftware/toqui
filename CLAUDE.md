@@ -61,6 +61,7 @@ app/                          Expo Router pages (file-based routing)
     settings.tsx              User settings
   trips/
     new.tsx                   Create new trip
+    invite.tsx                Accept collaboration invite
     [tripId]/
       _layout.tsx             Trip detail stack navigator
       index.tsx               Trip overview
@@ -69,73 +70,83 @@ app/                          Expo Router pages (file-based routing)
       settings.tsx            Trip settings
   auth/callback.tsx           OAuth callback handler
   shared/[token]/index.tsx    Public shared trip view
+  onboarding.tsx              Onboarding flow
   privacy.tsx                 Privacy policy
   terms.tsx                   Terms of service
   _layout.tsx                 Root layout (providers)
+components/                   Shared UI components
+  DatePicker.tsx              Date picker component
+  ErrorBoundary.tsx           React error boundary with Sentry reporting
+  LocationPermission.tsx      Location permission request flow
+  OfflineBanner.tsx           Network status banner (offline/reconnecting)
+  ShareButton.tsx             Native/web share sheet integration
+  auth/
+    AgeGate.tsx               Age verification gate (18+ enforcement)
+  bookings/
+    ForwardingCard.tsx        Email forwarding setup card for booking import
+  chat/
+    ChatInput.tsx             Message input with send button and typing state
+    FollowUpSuggestions.tsx   AI-generated follow-up question chips
+    MessageBubble.tsx         Single chat message (user/AI/tool-result variants)
+    PersonaIntroCard.tsx      Persona introduction card on switch
+    RecommendationCard.tsx    Affiliate recommendation card with booking link
+    SharePromptCard.tsx       Prompt to share trip with collaborators
+    SuggestionChips.tsx       Quick suggestion chips in chat
+    TypingIndicator.tsx       Animated typing indicator while AI responds
+  checkout/
+    ProUpgrade.tsx            Helcim payment iframe (web) or redirect (native)
+  feedback/
+    FeedbackModal.tsx         User feedback submission modal
+  itinerary/
+    ItineraryTimeline.tsx     Day-by-day itinerary timeline component
+  map/
+    ItineraryMap.tsx          Interactive map showing itinerary locations
+  referral/
+    ReferralCard.tsx          Referral code sharing with stats
+  share/
+    ShareNudgeBanner.tsx      Contextual nudge to share trip
+  trips/
+    TemplateBrowser.tsx       Browse and select trip templates
+  weather/
+    WeatherCard.tsx           Current weather for trip destination (Open-Meteo)
 lib/                          Shared utilities
-  auth.tsx                    Auth provider (SecureStore + Bearer tokens)
+  auth.tsx                    Auth provider (SecureStore/localStorage + Bearer tokens)
   transport.tsx               ConnectRPC transport with Bearer auth interceptor
   i18n.tsx                    i18next configuration
+  theme.tsx                   Light/dark/system theme with ThemeColors interface
+  google-auth.ts              useGoogleAuth() hook — expo-auth-session PKCE wrapper
+  authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
+  analytics.tsx               PostHog privacy-first analytics provider
+  config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
+  hooks/
+    useTrips.ts               Trip CRUD via ConnectRPC TripService
+    useChat.ts                SSE streaming chat — tool activity, personas, recommendations
+    useBookings.ts            Booking CRUD via ConnectRPC BookingService
+    useItinerary.ts           Itinerary fetch via ConnectRPC TripService
+    useCheckout.ts            Helcim checkout init/validate/status via REST
+    useTrialStatus.ts         Trial expiration tracking via REST
+    useReferral.ts            Referral code, stats, redemption via REST
+    useFeedback.ts            Submit user feedback via REST
+    useDestinationGuide.ts    Fetch destination guides via REST
+    useUsage.ts               Daily message usage tracking via REST
+    useLocation.ts            Device location permission + tracking
+    useWeather.ts             Current weather for trip destination (Open-Meteo)
+    useCollaborators.ts       Trip collaborator management
+    useOnboarding.ts          Onboarding flow state
+    useNetworkStatus.ts       Online/offline detection, reconnection handling
+  data/
+    tripTemplates.ts          Trip template data for onboarding
+  export/
+    pdf-export.ts             HTML itinerary → PDF (expo-print native, window.print web)
+    calendar-export.ts        ICS calendar export (expo-file-system native, blob download web)
 src/gen/                      Generated protobuf TypeScript bindings (committed)
   toqui/v1/                   Service + message types
   buf/validate/               Validation types
 messages/                     i18n translation files
   en.json                     English translations
-components/               Shared UI components
-  auth/
-    AgeGate.tsx           Age verification gate (18+ enforcement)
-  chat/
-    ChatInput.tsx         Message input with send button and typing state
-    MessageBubble.tsx     Single chat message (user/AI/tool-result variants)
-    RecommendationCard.tsx  Affiliate recommendation card with booking link
-    TypingIndicator.tsx   Animated typing indicator while AI responds
-  itinerary/
-    ItineraryTimeline.tsx Day-by-day itinerary timeline component
-  map/
-    ItineraryMap.tsx      Interactive map showing itinerary locations
-  checkout/
-    ProUpgrade.tsx        Helcim payment iframe (web) or redirect (native)
-  referral/
-    ReferralCard.tsx      Referral code sharing with stats
-  common/
-    OfflineBanner.tsx     Network status banner (offline/reconnecting)
-    ErrorBoundary.tsx     React error boundary with Sentry reporting
-  location/
-    LocationPermission.tsx  Location permission request flow
-  share/
-    ShareButton.tsx       Native/web share sheet integration
-    SharePromptCard.tsx   Prompt to share trip with collaborators
-    ShareNudgeBanner.tsx  Contextual nudge to share trip
-  weather/
-    WeatherCard.tsx       Current weather for trip destination (Open-Meteo)
-  chat/
-    FollowUpSuggestions.tsx  AI-generated follow-up question chips
-  onboarding/
-    TemplateBrowser.tsx   Browse and select trip templates
-  booking/
-    ForwardingCard.tsx    Email forwarding setup card for booking import
-lib/
-  auth.tsx                Auth provider (SecureStore/localStorage + Bearer tokens)
-  transport.tsx           ConnectRPC transport with Bearer auth interceptor
-  i18n.tsx                i18next configuration
-  theme.tsx               Light/dark/system theme with ThemeColors interface
-  google-auth.ts          useGoogleAuth() hook — expo-auth-session PKCE wrapper
-  authFetch.ts            Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
-  config.ts               Runtime config (EXPO_PUBLIC_* env vars)
-  hooks/
-    useTrips.ts           Trip CRUD via ConnectRPC TripService
-    useChat.ts            SSE streaming chat — tool activity, personas, recommendations
-    useBookings.ts        Booking CRUD via ConnectRPC BookingService
-    useItinerary.ts       Itinerary fetch via ConnectRPC TripService
-    useCheckout.ts        Helcim checkout init/validate/status via REST
-    useTrialStatus.ts     Trial expiration tracking via REST
-    useReferral.ts        Referral code, stats, redemption via REST
-  export/
-    pdf-export.ts         HTML itinerary → PDF (expo-print native, window.print web)
-    calendar-export.ts    ICS calendar export (expo-file-system native, blob download web)
 assets/                       App icons and splash screen
 docs/
-  strategy/               Product strategy and planning docs
+  strategy/                   Product strategy and planning docs
 fastlane/                     iOS build automation (Fastlane config)
 metro.config.js               Metro bundler config (custom resolvers, patches)
 patches/                      patch-package patches (Xcode 16.4 compat, etc.)
@@ -156,6 +167,14 @@ pnpm android              # Android emulator
 pnpm build:web            # Production web bundle
 pnpm build:ios            # Production iOS bundle
 pnpm build:android        # Production Android bundle
+pnpm build:ios:dev        # EAS Build iOS (development profile)
+pnpm build:ios:preview    # EAS Build iOS (preview profile)
+pnpm build:ios:prod       # EAS Build iOS (production profile)
+pnpm build:android:dev    # EAS Build Android (development profile)
+pnpm build:android:preview # EAS Build Android (preview profile)
+pnpm build:android:prod   # EAS Build Android (production profile)
+pnpm submit:ios           # EAS Submit iOS
+pnpm submit:android       # EAS Submit Android
 pnpm typecheck            # TypeScript type checking
 pnpm generate             # Regenerate proto bindings from ../toqui-backend
 pnpm lint                 # ESLint (typescript-eslint type-checked)
@@ -281,7 +300,10 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useCollaborators` | ConnectRPC | Trip collaborator management (invite, remove, list) |
 | `useOnboarding` | Local state | Onboarding flow state (age gate, template selection, first trip) |
 | `useNetworkStatus` | expo-network | Online/offline detection, reconnection handling |
-| `useAnalytics` | PostHog | Privacy-first event tracking (EU-hosted, 12 events) |
+| `useAnalytics` | PostHog | Privacy-first event tracking (EU-hosted, via `lib/analytics.tsx`) |
+| `useFeedback` | REST | Submit user feedback (`POST /api/feedback`) |
+| `useDestinationGuide` | REST | Fetch destination guides (`GET /api/guides`) |
+| `useUsage` | REST | Daily message usage tracking (`GET /api/usage`) |
 
 ## Security
 
@@ -362,12 +384,13 @@ When modifying chat-related components, hooks, or AI behavior, test against the 
 
 ## Cross-Repo Consistency
 
-**IMPORTANT**: This project spans 4 repos. When making changes that affect shared documentation, update CLAUDE.md in ALL repos:
+**IMPORTANT**: This project spans 5 repos. When making changes that affect shared documentation, update CLAUDE.md in ALL repos:
 
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md` (this file)
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
+- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-admin/CLAUDE.md`
 
 ## Related Repos
 
