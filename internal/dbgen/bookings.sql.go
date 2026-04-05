@@ -80,6 +80,46 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 	return i, err
 }
 
+const findBookingByConfirmationCode = `-- name: FindBookingByConfirmationCode :one
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+WHERE user_id = $1 AND trip_id = $2
+  AND confirmation_code = $3
+  AND confirmation_code != ''
+LIMIT 1
+`
+
+type FindBookingByConfirmationCodeParams struct {
+	UserID           uuid.UUID   `json:"user_id"`
+	TripID           pgtype.UUID `json:"trip_id"`
+	ConfirmationCode pgtype.Text `json:"confirmation_code"`
+}
+
+func (q *Queries) FindBookingByConfirmationCode(ctx context.Context, arg FindBookingByConfirmationCodeParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, findBookingByConfirmationCode, arg.UserID, arg.TripID, arg.ConfirmationCode)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+	)
+	return i, err
+}
+
 const deleteBooking = `-- name: DeleteBooking :exec
 DELETE FROM bookings WHERE id = $1 AND user_id = $2
 `
