@@ -232,7 +232,7 @@ Trip Pro ($12/trip) is purchased via Helcim (web-only payment UI, native shows r
 4. Backend verifies with Helcim API and unlocks the trip in the database
 5. `useCheckout.checkStatus(tripId)` polls `GET /api/checkout/status` to confirm unlock
 
-Unlocked trips get: unlimited messages, all 800+ expert personas, email forwarding, export, unbiased recommendations.
+Unlocked trips get: unlimited messages, all 800+ expert personas, email forwarding, export, best-fit recommendations.
 
 ## Referral
 `ReferralCard.tsx` and `useReferral` hook:

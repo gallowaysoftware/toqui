@@ -30,7 +30,7 @@ Toqui currently generates revenue through a single channel: a $12 CAD per-trip u
 
 ### 1. Trip Pro Per-Trip Unlock (CURRENT)
 
-**What it is:** $12 CAD one-time unlock per trip. Grants unlimited messages, all 800+ expert personas, email forwarding, export, and unbiased recommendations.
+**What it is:** $12 CAD one-time unlock per trip. Grants unlimited messages, all 800+ expert personas, email forwarding, export, and best-fit recommendations.
 
 | Metric            | Estimate                                                           |
 | ----------------- | ------------------------------------------------------------------ |

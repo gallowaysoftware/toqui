@@ -280,7 +280,7 @@ Each guide should include:
 | Competitor | Pricing | Key Weakness |
 |-----------|---------|-------------|
 | **Layla** | $9.99/month or $49/year | Subscription model -- you pay even when not traveling. Struggles with complex multi-destination routes. |
-| **Mindtrip** | Free (affiliate revenue) | Beautiful but recommendations are influenced by affiliate partnerships (Priceline, Viator). Not truly unbiased. |
+| **Mindtrip** | Free (affiliate revenue) | Beautiful but recommendations are influenced by affiliate partnerships (Priceline, Viator). Not truly best-fit. |
 | **Wonderplan** | Free / $49.99/year premium | Generic itineraries. No chat interface -- form-based input only. |
 | **TripPlanner.ai** | Free / paid tiers | Basic output quality. No expert personas or during-trip features. |
 | **ChatGPT/Gemini** | $20/month (or free tier) | General-purpose AI -- no travel-specific features, no itinerary maps, no booking integration, no group trips. Hallucination risk with restaurants/hotels. |
@@ -302,7 +302,7 @@ This is the single clearest differentiator. Frame it as:
 
 3. **Group trips that actually work** -- Share a trip, everyone contributes, the AI synthesizes everyone's preferences. This is inherently viral and no competitor does it well.
 
-4. **No affiliate bias** -- Mindtrip is free because Priceline and Viator pay them. Their recommendations are influenced by who pays the highest commission. Toqui's Pro unlock means the user is the customer, not the hotel chain. Recommendations are unbiased.
+4. **No affiliate bias** -- Mindtrip is free because Priceline and Viator pay them. Their recommendations are influenced by who pays the highest commission. Toqui's AI always recommends what best fits the traveler, regardless of tier. Affiliate links support the platform but never influence what's recommended.
 
 ### Positioning by Channel
 

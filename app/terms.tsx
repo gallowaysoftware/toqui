@@ -111,7 +111,7 @@ export default function TermsScreen() {
       <Text style={styles.text}>
         Trip Pro is a per-trip upgrade priced at $12 per trip. Trip Pro unlocks
         unlimited messages, all 800+ expert AI personas, email booking
-        forwarding, itinerary export (PDF and calendar), and unbiased
+        forwarding, itinerary export (PDF and calendar), and best-fit
         recommendations for the purchased trip. Trip Pro applies only to the
         specific trip it is purchased for and is not transferable.
       </Text>
@@ -142,8 +142,8 @@ export default function TermsScreen() {
         AI-generated content
       </Bullet>
       <Bullet>
-        Recommendations may include affiliate links; Trip Pro users receive
-        unbiased recommendations without affiliate influence
+        Recommendations may include affiliate links for any user. Affiliate
+        links help support Toqui but never influence the AI's choices
       </Bullet>
 
       <Text style={styles.sectionTitle}>5. Payment Terms</Text>
