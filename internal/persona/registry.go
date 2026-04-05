@@ -53,9 +53,10 @@ func (r *Registry) Resolve(ctx context.Context, regionCode string, themes []stri
 	expert, err := r.composer.Compose(ctx, regionCode, themes)
 	if err != nil {
 		// Fall back to Toqui on composition failure — intentionally swallow the error
-		slog.Debug("persona composition failed, falling back to Toqui", "region", regionCode, "error", err)
+		slog.Warn("persona composition failed, falling back to Toqui", "region", regionCode, "themes", themes, "error", err)
 		return r.toqui, nil
 	}
+	slog.Info("persona resolved", "region", regionCode, "themes", themes, "persona_id", expert.ID, "persona_name", expert.Name)
 
 	return expert, nil
 }
