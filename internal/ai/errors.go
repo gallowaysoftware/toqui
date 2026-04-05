@@ -2,7 +2,6 @@ package ai
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -108,29 +107,3 @@ func OriginalError(err error) error {
 	return err
 }
 
-// sanitizeErrorMessage returns a client-safe version of an error message,
-// stripping provider-specific details. Used for stream error events where
-// only a string message (not a full error) is available.
-func sanitizeErrorMessage(msg string) string {
-	lower := strings.ToLower(msg)
-	if strings.Contains(lower, "rate_limit") || strings.Contains(msg, "429") {
-		return errMsgRateLimit
-	}
-	return fmt.Sprintf("%s: %s", errMsgGeneric, sanitizeDetail(msg))
-}
-
-// sanitizeDetail removes known sensitive patterns from an error message.
-func sanitizeDetail(msg string) string {
-	// If the message looks like it contains provider internals, return generic.
-	lower := strings.ToLower(msg)
-	for _, pattern := range []string{
-		"anthropic", "org-", "api.anthropic.com", "claude-",
-		"vertex", "aiplatform.googleapis.com", "gemini-",
-		"x-api-key", "api_key",
-	} {
-		if strings.Contains(lower, pattern) {
-			return "please try again"
-		}
-	}
-	return "please try again"
-}

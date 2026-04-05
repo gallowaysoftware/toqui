@@ -40,7 +40,7 @@ func TestSanitizeProviderError_RateLimitPatterns(t *testing.T) {
 			if !errors.As(got, &se) {
 				t.Fatal("expected SanitizedError")
 			}
-			if se.Unwrap() != tt.err {
+			if !errors.Is(se.Unwrap(), tt.err) {
 				t.Errorf("Unwrap() = %v, want %v", se.Unwrap(), tt.err)
 			}
 		})
@@ -98,13 +98,13 @@ func TestOriginalError(t *testing.T) {
 	sanitized := SanitizeProviderError(original)
 
 	got := OriginalError(sanitized)
-	if got != original {
+	if !errors.Is(got, original) {
 		t.Errorf("OriginalError() = %v, want %v", got, original)
 	}
 
 	// Non-sanitized error returns itself.
 	plain := fmt.Errorf("plain error")
-	if OriginalError(plain) != plain {
+	if !errors.Is(OriginalError(plain), plain) {
 		t.Error("OriginalError(plain) should return the input unchanged")
 	}
 }

@@ -73,14 +73,15 @@ func (h *ReferralHandler) HandleGetReferralCode(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"code":                   ref.Code,
-		"link":                   h.appURL + "/?ref=" + ref.Code,
-		"successful_referrals":   successful,
-		"rewards_earned":         rewards,
+	resp := map[string]any{
+		"code":                    ref.Code,
+		"link":                    h.appURL + "/?ref=" + ref.Code,
+		"successful_referrals":    successful,
+		"rewards_earned":          rewards,
 		"referrer_reward_granted": rewards > 0,
 		"referee_reward_granted":  refereeRewardGranted,
-	})
+	}
+	json.NewEncoder(w).Encode(resp)
 }
 
 // HandleRedeemReferral handles POST /api/referral/redeem — redeem a referral code.
