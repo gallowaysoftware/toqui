@@ -425,6 +425,17 @@ Note: companion responses should be more concise than planning responses.
 - 4 = Good, genuinely helpful
 - 5 = Excellent, better than doing it myself
 
+## Critical Rules
+
+**DO NOT** attempt to restart, manage, or diagnose infrastructure:
+- Do NOT run `docker compose`, `docker`, `make docker-up`, `make run`, or any server management commands
+- Do NOT try to start, stop, or restart the backend server
+- Do NOT try to start or stop OrbStack, Docker, PostgreSQL, or Firestore
+- Do NOT run `pkill`, `kill`, or any process management commands
+- If the API is unreachable, report it as a P0 bug and produce your report with whatever steps you completed
+
+The orchestrator manages all infrastructure. Your job is ONLY to test the API.
+
 ## Tips
 
 - If an API call returns an error, include the full error in your bug report
@@ -433,3 +444,5 @@ Note: companion responses should be more concise than planning responses.
 - Test edge cases relevant to your persona
 - Be honest in your usefulness evaluation — this helps improve the product
 - When parsing streaming output, pipe through `head -N` if output is very long, or redirect to a file and read it
+- If you get a 429 rate limit error, wait 30 seconds and retry once. If it fails again, note it and move on to the next step
+- Write each API response to a temp file (e.g., `/tmp/toqui-agent-$RANDOM-step2.json`) rather than parsing inline, to avoid output interleaving issues

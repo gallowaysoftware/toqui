@@ -27,3 +27,4 @@ buf.lock
 
 # AI test reports
 **/aitest-reports/
+.claude/worktrees/

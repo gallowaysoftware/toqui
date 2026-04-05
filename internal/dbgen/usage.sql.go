@@ -23,6 +23,16 @@ func (q *Queries) CountDailyMessages(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const decrementDailyUsage = `-- name: DecrementDailyUsage :exec
+UPDATE daily_usage SET message_count = GREATEST(message_count - 1, 0), updated_at = NOW()
+WHERE user_id = $1 AND date = CURRENT_DATE
+`
+
+func (q *Queries) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, decrementDailyUsage, userID)
+	return err
+}
+
 const getDailyUsage = `-- name: GetDailyUsage :one
 SELECT id, user_id, date, message_count, ai_cost_cents, created_at, updated_at FROM daily_usage
 WHERE user_id = $1 AND date = $2

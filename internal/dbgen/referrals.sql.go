@@ -144,6 +144,8 @@ ON CONFLICT (user_id, trip_id) DO NOTHING
 RETURNING id, user_id, trip_id, payment_id, source, unlocked_at
 `
 
+// Finds the user's most recent trip that isn't already unlocked and creates a
+// trip_unlocks row with source='referral'. Returns NULL if user has no eligible trip.
 func (q *Queries) GrantReferralTripUnlock(ctx context.Context, userID uuid.UUID) (TripUnlock, error) {
 	row := q.db.QueryRow(ctx, grantReferralTripUnlock, userID)
 	var i TripUnlock
@@ -176,11 +178,13 @@ SELECT EXISTS(
 )
 `
 
-func (q *Queries) HasPendingReferralCredit(ctx context.Context, userID uuid.UUID) (bool, error) {
+// Checks if a user has a referral reward granted (as referrer or referee) but
+// no trip unlock with source='referral' yet.
+func (q *Queries) HasPendingReferralCredit(ctx context.Context, userID uuid.UUID) (pgtype.Bool, error) {
 	row := q.db.QueryRow(ctx, hasPendingReferralCredit, userID)
-	var result bool
-	err := row.Scan(&result)
-	return result, err
+	var column_1 pgtype.Bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const listReferralsByUser = `-- name: ListReferralsByUser :many

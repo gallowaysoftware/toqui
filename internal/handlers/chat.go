@@ -35,6 +35,10 @@ import (
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
 
+// dateFormatLong is the Go reference-time layout for human-readable dates
+// like dateFormatLong. Used in system prompts and trip date formatting.
+const dateFormatLong = "January 2, 2006"
+
 type ChatHandler struct {
 	chatSvc       *chat.Service
 	tripSvc       *trip.Service
@@ -190,10 +194,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					destinationCountry = t.DestinationCountry.String
 				}
 				if t.StartDate.Valid {
-					tripStartDate = t.StartDate.Time.Format("January 2, 2006")
+					tripStartDate = t.StartDate.Time.Format(dateFormatLong)
 				}
 				if t.EndDate.Valid {
-					tripEndDate = t.EndDate.Time.Format("January 2, 2006")
+					tripEndDate = t.EndDate.Time.Format(dateFormatLong)
 				}
 			}
 			if h.themeSvc != nil {
@@ -382,17 +386,20 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	}
 
 	var fullContent string
+	hadContent := false // Track if any AI content was received (for usage refund on failure)
 	for event := range eventCh {
 		var chatEvent *toquiv1.SendMessageResponse
 
 		switch event.Type {
 		case "text_delta":
+			hadContent = true
 			chatEvent = &toquiv1.SendMessageResponse{
 				Event: &toquiv1.SendMessageResponse_TextDelta{
 					TextDelta: &toquiv1.TextDelta{Text: event.Text},
 				},
 			}
 		case "tool_call":
+			hadContent = true
 			chatEvent = &toquiv1.SendMessageResponse{
 				Event: &toquiv1.SendMessageResponse_ToolCall{
 					ToolCall: &toquiv1.ToolCall{
@@ -570,6 +577,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
+	// Refund daily usage if the AI produced no content (e.g., 429 rate limit killed the stream).
+	if !hadContent && h.usageSvc != nil && !isAdmin {
+		if err := h.queries.DecrementDailyUsage(ctx, userID); err != nil {
+			slog.Error("failed to decrement daily usage after empty AI response", "user_id", userID, "error", err)
+		}
+	}
+
 	return nil
 }
 
@@ -632,7 +646,7 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 	}
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Today's date is %s.\n\n", time.Now().Format("January 2, 2006"))
+	fmt.Fprintf(&sb, "Today's date is %s.\n\n", time.Now().Format(dateFormatLong))
 	sb.WriteString("CURRENT TRIP CONTEXT:\n")
 	if title != "" {
 		statusLabel := status
@@ -762,8 +776,8 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 
 	// Smart planning advice based on trip context
 	if startDate != "" && endDate != "" {
-		start, errS := time.Parse("January 2, 2006", startDate)
-		end, errE := time.Parse("January 2, 2006", endDate)
+		start, errS := time.Parse(dateFormatLong, startDate)
+		end, errE := time.Parse(dateFormatLong, endDate)
 		if errS == nil && errE == nil {
 			tripDays := int(end.Sub(start).Hours()/24) + 1
 			if tripDays > 7 {
@@ -799,7 +813,7 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 // buildSelectionContext returns system prompt context for selection mode:
 // the user's existing trips so Toqui can help them find or create one.
 func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID, userTier tier.UserTier) string {
-	today := time.Now().Format("January 2, 2006")
+	today := time.Now().Format(dateFormatLong)
 
 	trips, _, err := h.tripSvc.ListByUser(ctx, userID, "", 20, 0)
 	if err != nil || len(trips) == 0 {

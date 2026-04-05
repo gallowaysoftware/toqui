@@ -428,15 +428,17 @@ Black-box testing where Claude agents adopt traveler personas and interact with 
 
 ```
 Orchestrator (Claude Code session)
-  ├── cmd/testctl create-user → {user_id, token}
-  ├── Agent(skill=agentic-test, persona + token)
-  │     ├── Acts as traveler persona via grpcurl
-  │     ├── Tests full flow against live API
-  │     ├── Verifies state with read calls after every write
-  │     └── Returns structured report (bugs + usefulness evaluation)
-  ├── ... × 20 agents in parallel
-  └── Collect reports → synthesize → gh issue create
+  ├── Start infra: make docker-up, migrate-up, run
+  ├── For each batch of 2 personas:
+  │     ├── cmd/testctl create-user × 2 → {user_id, token}
+  │     ├── Launch 2 agents in parallel (background)
+  │     ├── Wait for both to complete
+  │     └── Collect reports
+  ├── Repeat for all 10 batches (20 personas total)
+  └── Synthesize all reports → gh issue create
 ```
+
+**IMPORTANT**: Launch only **2 agents at a time** to avoid hitting the Anthropic API rate limit (each agent triggers multiple AI chat calls against the shared API key). Wait for both to complete before launching the next batch.
 
 ### Running Agentic Tests
 
@@ -445,10 +447,16 @@ Orchestrator (Claude Code session)
 make docker-up          # Postgres + Firestore emulator
 make migrate-up         # Apply migrations
 make run &              # Start backend on :8090
+# Wait for: curl -s http://localhost:8090/healthz → {"status":"ok"}
 
 # 2. In Claude Code, run the agentic test suite
-# The orchestrator creates users, launches agents, and synthesizes results.
+# The orchestrator creates users and launches agents in batches of 2.
+# Each agent uses the agentic-test skill with a persona prompt + JWT token.
+# Wait for each batch to complete before launching the next.
+# After all 20 personas complete, synthesize reports and create GitHub issues.
 ```
+
+**Rate limit guidance**: The Anthropic API has per-org rate limits. Running more than 2 agents simultaneously causes 429 errors that degrade test quality. The orchestrator should launch agents in batches of 2, waiting for each batch to finish before starting the next. Persona 07 (update regression) does not use AI and can be included in any batch as a freebie.
 
 ### Test User Management (`cmd/testctl`)
 
