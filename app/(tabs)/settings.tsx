@@ -4,13 +4,15 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare, BarChart2 } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare, BarChart2, Crown } from "lucide-react-native";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import ReferralCard from "@/components/referral/ReferralCard";
+import { SubscriptionCard } from "@/components/subscription/SubscriptionCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
 import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
+import { useSubscription } from "@/lib/hooks/useSubscription";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 const COLOR_WARNING = "#f59e0b";
@@ -26,6 +28,9 @@ export default function SettingsScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const isPro = user?.tier === "pro";
   const { used, limit, resetsAt } = useUsage();
+  const { subscription } = useSubscription();
+  const subscriptionTier = subscription?.tier ?? "free";
+  const isSubscriber = subscriptionTier === "explorer" || subscriptionTier === "voyager";
 
   const exportData = useMutation({
     mutationFn: async () => {
@@ -194,23 +199,37 @@ export default function SettingsScreen() {
         </View>
         <View style={styles.billingPlanRow}>
           <Text style={styles.billingLabel}>{t("settings.billing.currentPlan")}</Text>
-          <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
-            <Text style={[styles.planBadgeText, isPro && styles.planBadgeTextPro]}>
-              {isPro ? t("settings.billing.pro") : t("settings.billing.free")}
+          <View style={[styles.planBadge, (isPro || isSubscriber) && styles.planBadgePro]}>
+            <Text style={[styles.planBadgeText, (isPro || isSubscriber) && styles.planBadgeTextPro]}>
+              {isSubscriber
+                ? t(`subscription.${subscriptionTier}.name`)
+                : isPro
+                  ? t("settings.billing.pro")
+                  : t("settings.billing.free")}
             </Text>
           </View>
         </View>
-        {isPro ? (
+        {isSubscriber && subscription?.currentPeriodEnd ? (
+          <Text style={styles.billingDescription}>
+            {subscription.cancelAtPeriodEnd
+              ? t("subscription.endsOn")
+              : t("subscription.renewsOn")}{" "}
+            {subscription.currentPeriodEnd.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+        ) : isPro ? (
           <Text style={styles.billingDescription}>{t("settings.billing.proDescription")}</Text>
         ) : (
-          <>
-            <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
-            <Pressable style={styles.learnMoreRow}>
-              <ExternalLink color={colors.accent} size={14} />
-              <Text style={styles.learnMoreText}>{t("settings.billing.learnMore")}</Text>
-            </Pressable>
-          </>
+          <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
         )}
+      </View>
+
+      {/* Subscription Plans */}
+      <View style={{ marginBottom: 16 }}>
+        <SubscriptionCard />
       </View>
 
       {/* Usage */}

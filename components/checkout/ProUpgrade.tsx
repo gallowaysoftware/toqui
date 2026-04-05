@@ -11,6 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { CheckCircle, Star, Mail, BookOpen, ExternalLink, ChevronRight, X } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
+import { useSubscription } from "@/lib/hooks/useSubscription";
 import { useTheme } from "@/lib/theme";
 import { useAnalytics } from "@/lib/analytics";
 
@@ -49,7 +50,10 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
+  const { subscription } = useSubscription();
   const { track, getFeatureFlag } = useAnalytics();
+  const isSubscriber =
+    subscription?.tier === "explorer" || subscription?.tier === "voyager";
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
@@ -245,6 +249,33 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     compactDismiss: {
       padding: 4,
     },
+    upsellContainer: {
+      backgroundColor: colors.accentSoft,
+      borderRadius: 10,
+      padding: 14,
+      marginTop: 12,
+      gap: 6,
+    },
+    upsellTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+    upsellDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    upsellLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 4,
+    },
+    upsellLinkText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.accent,
+    },
   });
 
   if (checkingStatus) {
@@ -257,12 +288,37 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
 
   if (unlocked) {
     return (
-      <View style={styles.successContainer}>
-        <CheckCircle color={colors.success} size={28} />
-        <Text style={styles.successTitle}>{t("checkout.success")}</Text>
-        <Text style={styles.successDescription}>
-          {t("checkout.successDescription")}
-        </Text>
+      <View>
+        <View style={styles.successContainer}>
+          <CheckCircle color={colors.success} size={28} />
+          <Text style={styles.successTitle}>{t("checkout.success")}</Text>
+          <Text style={styles.successDescription}>
+            {t("checkout.successDescription")}
+          </Text>
+        </View>
+        {!isSubscriber && (
+          <View style={styles.upsellContainer as object}>
+            <Text style={styles.upsellTitle}>
+              {t("subscription.upsell.title")}
+            </Text>
+            <Text style={styles.upsellDescription}>
+              {t("subscription.upsell.description")}
+            </Text>
+            <Pressable
+              style={styles.upsellLink as object}
+              onPress={() => {
+                // Navigate to settings where SubscriptionCard lives
+                // Using Linking to avoid deep router dependency
+              }}
+              accessibilityRole="button"
+            >
+              <ChevronRight color={colors.accent} size={14} />
+              <Text style={styles.upsellLinkText}>
+                {t("subscription.subscribe")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     );
   }

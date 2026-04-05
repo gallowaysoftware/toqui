@@ -53,6 +53,17 @@ vi.mock("@/lib/hooks/useCheckout", () => ({
   useCheckout: () => mockCheckout,
 }));
 
+vi.mock("@/lib/hooks/useSubscription", () => ({
+  useSubscription: () => ({
+    subscription: null,
+    isLoading: false,
+    error: null,
+    subscribe: vi.fn(),
+    cancel: vi.fn(),
+    manageSubscription: vi.fn(),
+  }),
+}));
+
 const mockGetFeatureFlag = vi.fn();
 vi.mock("@/lib/analytics", () => ({
   useAnalytics: () => ({

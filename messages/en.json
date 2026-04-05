@@ -431,6 +431,45 @@
       "browseIdeas": "View My Trips"
     }
   },
+  "subscription": {
+    "title": "Subscription Plans",
+    "currentTier": "Current",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "saveBadge": "Save 33%",
+    "subscribe": "Subscribe",
+    "upgrade": "Upgrade",
+    "cancel": "Cancel Subscription",
+    "manage": "Manage Billing",
+    "status": "Status",
+    "active": "Active",
+    "pastDue": "Past Due",
+    "renewsOn": "Renews on",
+    "endsOn": "Ends on",
+    "cancelingNote": "Your subscription will not renew at the end of the current period.",
+    "free": {
+      "name": "Free",
+      "description": "1 trip, 10 messages per day"
+    },
+    "explorer": {
+      "name": "Explorer",
+      "feature1": "3 active trips",
+      "feature2": "Unlimited messages",
+      "feature3": "All 800+ expert personas",
+      "annualPrice": "{{price}}/yr — save {{savings}}%"
+    },
+    "voyager": {
+      "name": "Voyager",
+      "feature1": "Unlimited active trips",
+      "feature2": "Unlimited messages",
+      "feature3": "Priority AI responses",
+      "annualPrice": "{{price}}/yr — save {{savings}}%"
+    },
+    "upsell": {
+      "title": "Save with Explorer",
+      "description": "Get unlimited trips for $9.99/mo instead of paying per trip"
+    }
+  },
   "templates": {
     "title": "Popular Trips",
     "searchPlaceholder": "Search by destination...",
