@@ -44,6 +44,8 @@ const SAFE_PROPERTIES = new Set([
   "amount",
   "screen",
   "error_type",
+  "partner",
+  "category",
   "$lib",
   "$lib_version",
 ]);

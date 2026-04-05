@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet, Linking } from "react-native";
 import { ExternalLink, Plane, Hotel, Ticket, Car, Shield } from "lucide-react-native";
 import type { Recommendation } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
+import { useAnalytics } from "@/lib/analytics";
 
 const partnerConfig: Record<string, { label: string; Icon: typeof Plane }> = {
   skyscanner: { label: "Skyscanner", Icon: Plane },
@@ -20,6 +21,7 @@ interface RecommendationCardProps {
 
 export function RecommendationCard({ recommendation }: RecommendationCardProps) {
   const { colors } = useTheme();
+  const { track } = useAnalytics();
   const config = partnerConfig[recommendation.partner.toLowerCase()];
   const Icon = config?.Icon ?? ExternalLink;
   const partnerLabel = config?.label ?? recommendation.partner;
@@ -59,7 +61,13 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       style={styles.card}
       onPress={() => {
         const url = recommendation.url;
-        if (url.startsWith("https://")) Linking.openURL(url);
+        if (url.startsWith("https://")) {
+          track("recommendation_clicked", {
+            partner: recommendation.partner,
+            category: recommendation.category,
+          });
+          Linking.openURL(url);
+        }
       }}
     >
       <View style={styles.header}>

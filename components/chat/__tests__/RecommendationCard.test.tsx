@@ -27,6 +27,11 @@ vi.mock("@/lib/theme", () => ({
   }),
 }));
 
+const mockTrack = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics", () => ({
+  useAnalytics: () => ({ track: mockTrack }),
+}));
+
 // Mock lucide icons to simple spans
 vi.mock("lucide-react-native", () => ({
   ExternalLink: ({ color, size }: { color: string; size: number }) => (
@@ -53,6 +58,7 @@ function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommenda
 describe("RecommendationCard", () => {
   beforeEach(() => {
     mockOpenURL.mockClear();
+    mockTrack.mockClear();
   });
 
   describe("URL security validation", () => {
@@ -249,6 +255,31 @@ describe("RecommendationCard", () => {
     it("renders CTA with raw partner name for unknown partners", () => {
       render(<RecommendationCard recommendation={makeRecommendation({ partner: "kayak" })} />);
       expect(screen.getByText("View on kayak")).toBeInTheDocument();
+    });
+  });
+
+  describe("analytics tracking", () => {
+    it("fires recommendation_clicked with partner and category on valid URL click", () => {
+      render(
+        <RecommendationCard
+          recommendation={makeRecommendation({ partner: "skyscanner", category: "flights" })}
+        />,
+      );
+      fireEvent.click(screen.getByText("Flight to Tokyo"));
+      expect(mockTrack).toHaveBeenCalledWith("recommendation_clicked", {
+        partner: "skyscanner",
+        category: "flights",
+      });
+    });
+
+    it("does not fire recommendation_clicked when URL is invalid", () => {
+      render(
+        <RecommendationCard
+          recommendation={makeRecommendation({ url: "http://evil.com" })}
+        />,
+      );
+      fireEvent.click(screen.getByText("Flight to Tokyo"));
+      expect(mockTrack).not.toHaveBeenCalled();
     });
   });
 });
