@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Linking } from "react-native";
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -317,6 +317,10 @@ export default function SettingsScreen() {
         <Pressable style={styles.actionRow} onPress={() => router.push("/terms" as never)}>
           <FileText color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Terms of Service</Text>
+        </Pressable>
+        <Pressable style={styles.actionRow} onPress={() => Linking.openURL("https://toqui.travel/affiliate-disclosure")}>
+          <ExternalLink color={colors.textSecondary} size={16} />
+          <Text style={styles.linkText}>Affiliate Disclosure</Text>
         </Pressable>
       </View>
 
