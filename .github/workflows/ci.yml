@@ -173,10 +173,11 @@ jobs:
     environment: production
 
     env:
-      # Single-registry pattern: prod deploys the same image that was tested in staging.
-      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -186,11 +187,12 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Verify staging image exists
+      - name: Build and push
         run: |
-          gcloud artifacts docker images describe $IMAGE:${{ github.sha }} \
-            --project=toqui-staging || \
-            (echo "ERROR: Image $IMAGE:${{ github.sha }} not found. Run staging deploy first." && exit 1)
+          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
 
       - name: Run migrations (before deploy to avoid schema mismatch)
         run: |
@@ -209,7 +211,7 @@ jobs:
             --execute-now \
             --wait
 
-      - name: Deploy to Cloud Run (promote staging image)
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy toqui-backend \
             --image=$IMAGE:${{ github.sha }} \
