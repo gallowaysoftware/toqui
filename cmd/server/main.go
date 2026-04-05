@@ -62,18 +62,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// OpenTelemetry tracing — must happen before any other SDK usage.
+	// OpenTelemetry tracing — non-fatal, server continues without traces if init fails.
 	// Resolves gcsm:// in OTEL_EXPORTER_OTLP_HEADERS via GCP Secret Manager.
-	otelShutdown, err := telemetry.Init(ctx, "toqui-backend", cfg.FirestoreProjectID)
-	if err != nil {
-		slog.Error("failed to initialize OpenTelemetry", "error", err)
-		os.Exit(1)
+	otelShutdown, otelErr := telemetry.Init(ctx, "toqui-backend", cfg.FirestoreProjectID)
+	if otelErr != nil {
+		slog.Error("failed to initialize OpenTelemetry, continuing without tracing", "error", otelErr)
 	}
-	defer func() {
-		if err := otelShutdown(context.Background()); err != nil {
-			slog.Error("OpenTelemetry shutdown error", "error", err)
-		}
-	}()
+	if otelShutdown != nil {
+		defer func() {
+			if err := otelShutdown(context.Background()); err != nil {
+				slog.Error("OpenTelemetry shutdown error", "error", err)
+			}
+		}()
+	}
 
 	// Use JSON structured logging in non-local environments for Cloud Logging.
 	// Cloud Logging automatically parses JSON from stdout and indexes severity,

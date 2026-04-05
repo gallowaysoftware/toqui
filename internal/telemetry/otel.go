@@ -56,17 +56,13 @@ func Init(ctx context.Context, serviceName, projectID string) (shutdown func(con
 		return noop, fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
 
-	// Build resource with service name.
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(serviceName),
-		),
+	// Build resource with service name. We avoid resource.Merge with
+	// resource.Default() because the SDK's default resource uses a newer
+	// schema URL than semconv/v1.26.0, causing a conflict error.
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(serviceName),
 	)
-	if err != nil {
-		return noop, fmt.Errorf("create OTEL resource: %w", err)
-	}
 
 	// Create TracerProvider with batch span processor.
 	tp := sdktrace.NewTracerProvider(
