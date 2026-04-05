@@ -49,6 +49,8 @@ const SAFE_PROPERTIES = new Set([
   "trigger",
   "count",
   "is_first",
+  "price_variant",
+  "remaining",
   "$lib",
   "$lib_version",
 ]);
@@ -106,12 +108,15 @@ interface AnalyticsContext {
   identify: (userId: string) => void;
   /** Reset identity (call on logout). */
   reset: () => void;
+  /** Read a PostHog feature flag value. Returns undefined when unavailable. */
+  getFeatureFlag: (key: string) => string | boolean | undefined;
 }
 
 const noop: AnalyticsContext = {
   track: () => {},
   identify: () => {},
   reset: () => {},
+  getFeatureFlag: () => undefined,
 };
 
 const Ctx = createContext<AnalyticsContext>(noop);
@@ -181,9 +186,18 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     clientRef.current?.reset();
   }, []);
 
+  const getFeatureFlag = useCallback(
+    (key: string): string | boolean | undefined => {
+      const val = clientRef.current?.getFeatureFlag(key);
+      if (val === null || val === undefined) return undefined;
+      return val as string | boolean;
+    },
+    [],
+  );
+
   const value = useMemo(
-    () => ({ track, identify, reset }),
-    [track, identify, reset],
+    () => ({ track, identify, reset, getFeatureFlag }),
+    [track, identify, reset, getFeatureFlag],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

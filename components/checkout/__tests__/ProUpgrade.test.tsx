@@ -53,6 +53,14 @@ vi.mock("@/lib/hooks/useCheckout", () => ({
   useCheckout: () => mockCheckout,
 }));
 
+const mockGetFeatureFlag = vi.fn();
+vi.mock("@/lib/analytics", () => ({
+  useAnalytics: () => ({
+    track: vi.fn(),
+    getFeatureFlag: mockGetFeatureFlag,
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -64,6 +72,8 @@ describe("ProUpgrade", () => {
     mockCheckout.error = null;
     // Default: status check resolves to not unlocked
     mockCheckStatus.mockResolvedValue({ unlocked: false });
+    // Default: no feature flag set (falls back to $19)
+    mockGetFeatureFlag.mockReturnValue(undefined);
   });
 
   it("shows loading indicator while checking status", () => {
@@ -80,7 +90,7 @@ describe("ProUpgrade", () => {
     await waitFor(() => {
       expect(screen.getByText("checkout.title")).toBeInTheDocument();
     });
-    expect(screen.getByText("checkout.price")).toBeInTheDocument();
+    expect(screen.getByText("$19 CAD")).toBeInTheDocument();
     expect(screen.getByText("checkout.priceDescription")).toBeInTheDocument();
   });
 
@@ -124,6 +134,16 @@ describe("ProUpgrade", () => {
     });
   });
 
+  it("displays price from PostHog feature flag variant", async () => {
+    mockGetFeatureFlag.mockReturnValue("15");
+    mockCheckStatus.mockResolvedValue({ unlocked: false });
+    render(<ProUpgrade tripId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("$15 CAD")).toBeInTheDocument();
+    });
+  });
+
   it("renders not-unlocked state when status check fails", async () => {
     mockCheckStatus.mockRejectedValue(new Error("Network error"));
     render(<ProUpgrade tripId="t1" />);
@@ -143,7 +163,7 @@ describe("ProUpgrade", () => {
     });
     // Should not render the full card elements
     expect(screen.queryByText("checkout.title")).toBeNull();
-    expect(screen.queryByText("checkout.price")).toBeNull();
+    expect(screen.queryByText("$19 CAD")).toBeNull();
   });
 
   it("calls onDismiss when compact banner dismiss is clicked", async () => {

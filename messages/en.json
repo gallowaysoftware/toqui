@@ -286,6 +286,13 @@
       "translateSomething": "Translate something for me"
     }
   },
+  "usage": {
+    "nearLimit": "You have {{remaining}} messages left today",
+    "atLimit": "You've reached your daily message limit",
+    "upgradeFromFree": "Upgrade to Trip Pro for 50 messages per day",
+    "upgradeFromPro": "Get unlimited messages with Explorer — $9.99/mo",
+    "resetsIn": "Limit resets {{time}}"
+  },
   "checkout": {
     "title": "Unlock Trip Pro",
     "price": "$19 CAD",

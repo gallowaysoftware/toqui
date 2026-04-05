@@ -25,16 +25,18 @@ export function useCheckout(tripId: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const initCheckout = useCallback(async (): Promise<CheckoutInitResponse> => {
+  const initCheckout = useCallback(async (priceVariant?: string): Promise<CheckoutInitResponse> => {
     setIsLoading(true);
     setError(null);
     try {
+      const body: Record<string, string> = { trip_id: tripId };
+      if (priceVariant) body.price_variant = priceVariant;
       const res = await authFetch(
         `${getConfig().apiUrl}/api/checkout`,
         accessToken,
         {
           method: "POST",
-          body: JSON.stringify({ trip_id: tripId }),
+          body: JSON.stringify(body),
         },
       );
       if (!res.ok) {

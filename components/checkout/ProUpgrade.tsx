@@ -50,9 +50,15 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
   const { track } = useAnalytics();
+  const { getFeatureFlag } = useAnalytics();
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
+
+  // A/B price test: read PostHog feature flag with $19 default
+  const rawFlag = getFeatureFlag("trip-pro-price");
+  const priceVariant = typeof rawFlag === "string" ? rawFlag : "19";
+  const priceDisplay = `$${priceVariant} CAD`;
 
   useEffect(() => {
     if (statusChecked.current) return;
@@ -77,9 +83,9 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   useEffect(() => {
     if (!checkingStatus && unlocked === false) {
       track("upgrade_viewed");
-      track("upgrade_prompt_shown", { trigger: compact ? "inline" : "settings" });
+      track("upgrade_prompt_shown", { trigger: compact ? "inline" : "settings", price_variant: priceVariant });
     }
-  }, [checkingStatus, unlocked, track, compact]);
+  }, [checkingStatus, unlocked, track, compact, priceVariant]);
 
   const handleCheckout = useCallback(async () => {
     if (Platform.OS !== "web") return;
@@ -87,7 +93,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     track("upgrade_started");
 
     try {
-      const checkout = await initCheckout();
+      const checkout = await initCheckout(priceVariant);
       track("checkout_initiated");
       await loadHelcimJS();
 
@@ -115,7 +121,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     } catch {
       // Error is already captured in the hook
     }
-  }, [initCheckout, validatePayment, onUnlocked, track]);
+  }, [initCheckout, validatePayment, onUnlocked, track, priceVariant]);
 
   const styles = StyleSheet.create({
     container: {
@@ -302,7 +308,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
         <Text style={styles.title}>{t("checkout.title")}</Text>
       </View>
 
-      <Text style={styles.price}>{t("checkout.price")}</Text>
+      <Text style={styles.price}>{priceDisplay}</Text>
       <Text style={styles.priceDescription}>
         {t("checkout.priceDescription")}
       </Text>
