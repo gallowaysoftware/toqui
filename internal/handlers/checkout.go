@@ -52,6 +52,10 @@ func (h *CheckoutHandler) WithAnalytics(client *analytics.Client) *CheckoutHandl
 	return h
 }
 
+// TODO(#160): Add referee discount — 50% off first Trip Pro purchase for referred users.
+// This requires checking if the user was referred (GetReferralByReferee) and whether
+// they've already used their discount, then applying a reduced price to the Helcim session.
+
 // HandleCreateCheckout handles POST /api/checkout.
 // Initializes a Helcim checkout session for a trip purchase.
 func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Request) {

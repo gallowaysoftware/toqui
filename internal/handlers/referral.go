@@ -18,17 +18,19 @@ import (
 
 // ReferralHandler handles referral code endpoints.
 type ReferralHandler struct {
-	authSvc *auth.Service
-	queries *dbgen.Queries
-	appURL  string
+	authSvc    *auth.Service
+	queries    *dbgen.Queries
+	appURL     string
+	maxRewards int // maximum referral trip unlocks a referrer can earn
 }
 
 // NewReferralHandler creates a new ReferralHandler.
-func NewReferralHandler(authSvc *auth.Service, pool *pgxpool.Pool, appURL string) *ReferralHandler {
+func NewReferralHandler(authSvc *auth.Service, pool *pgxpool.Pool, appURL string, maxRewards int) *ReferralHandler {
 	return &ReferralHandler{
-		authSvc: authSvc,
-		queries: dbgen.New(pool),
-		appURL:  appURL,
+		authSvc:    authSvc,
+		queries:    dbgen.New(pool),
+		appURL:     appURL,
+		maxRewards: maxRewards,
 	}
 }
 
@@ -65,11 +67,17 @@ func (h *ReferralHandler) HandleGetReferralCode(w http.ResponseWriter, r *http.R
 
 	successful, _ := h.queries.CountSuccessfulReferrals(ctx, userID)
 	rewards, _ := h.queries.CountRewardsEarned(ctx, userID)
+	unlockCount, _ := h.queries.CountReferrerUnlocks(ctx, userID)
 
 	// Check if this user was referred by someone and whether they received a reward.
 	var refereeRewardGranted bool
 	if refByOther, err := h.queries.GetReferralByReferee(ctx, pgtype.UUID{Bytes: userID, Valid: true}); err == nil {
 		refereeRewardGranted = refByOther.RefereeRewardGranted
+	}
+
+	rewardsRemaining := h.maxRewards - int(unlockCount)
+	if rewardsRemaining < 0 {
+		rewardsRemaining = 0
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -80,6 +88,8 @@ func (h *ReferralHandler) HandleGetReferralCode(w http.ResponseWriter, r *http.R
 		"rewards_earned":          rewards,
 		"referrer_reward_granted": rewards > 0,
 		"referee_reward_granted":  refereeRewardGranted,
+		"rewards_remaining":       rewardsRemaining,
+		"max_rewards":             h.maxRewards,
 	}
 	json.NewEncoder(w).Encode(resp)
 }
@@ -138,20 +148,31 @@ func (h *ReferralHandler) HandleRedeemReferral(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Mark referral rewards as granted for both parties.
-	if err := h.queries.GrantReferrerReward(ctx, ref.ID); err != nil {
-		slog.Error("grant referrer reward flag failed", "error", err, "referral_id", ref.ID)
-	}
+	// Check if referrer has hit the reward cap before granting their reward.
+	referrerUnlocks, _ := h.queries.CountReferrerUnlocks(ctx, ref.ReferrerID)
+	referrerCapped := int(referrerUnlocks) >= h.maxRewards
+
+	// Always grant the referee reward.
 	if err := h.queries.GrantRefereeReward(ctx, ref.ID); err != nil {
 		slog.Error("grant referee reward flag failed", "error", err, "referral_id", ref.ID)
 	}
 
-	// Attempt to unlock each party's most recent trip. If either has no trip
+	// Only grant the referrer reward if they haven't hit the cap.
+	if !referrerCapped {
+		if err := h.queries.GrantReferrerReward(ctx, ref.ID); err != nil {
+			slog.Error("grant referrer reward flag failed", "error", err, "referral_id", ref.ID)
+		}
+		if _, err := h.queries.GrantReferralTripUnlock(ctx, ref.ReferrerID); err != nil {
+			slog.Info("referrer has no eligible trip to unlock yet", "referrer_id", ref.ReferrerID)
+		}
+	} else {
+		slog.Info("referrer has reached reward cap, skipping unlock",
+			"referrer_id", ref.ReferrerID, "unlocks", referrerUnlocks, "max", h.maxRewards)
+	}
+
+	// Attempt to unlock the referee's most recent trip. If they have no trip
 	// yet, the boolean flag is persisted and the unlock can be applied later
 	// (e.g. when they create their first trip via HasPendingReferralCredit).
-	if _, err := h.queries.GrantReferralTripUnlock(ctx, ref.ReferrerID); err != nil {
-		slog.Info("referrer has no eligible trip to unlock yet", "referrer_id", ref.ReferrerID)
-	}
 	if _, err := h.queries.GrantReferralTripUnlock(ctx, userID); err != nil {
 		slog.Info("referee has no eligible trip to unlock yet", "referee_id", userID)
 	}

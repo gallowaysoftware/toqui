@@ -103,6 +103,9 @@ type Config struct {
 	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
 	AdminEmails         []string // Emails allowed to access /admin/* endpoints
 
+	// Referral
+	ReferralMaxRewards int // Max referral trip unlocks a referrer can earn (default: 10)
+
 	// Staging overrides
 	StagingProAll bool // When true, all trips are treated as unlocked (staging only)
 }
@@ -158,6 +161,7 @@ func Load() (*Config, error) {
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		AllowedEmails:            parseCSVEnv("ALLOWED_EMAILS"),
 		AdminEmails:              parseCSVEnv("ADMIN_EMAILS"),
+		ReferralMaxRewards:       getEnvInt("REFERRAL_MAX_REWARDS", 10),
 		StagingProAll:            getEnvBool("STAGING_PRO_ALL", false),
 		ResendAPIKey:             os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),

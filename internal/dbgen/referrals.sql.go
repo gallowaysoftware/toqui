@@ -12,6 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countReferrerUnlocks = `-- name: CountReferrerUnlocks :one
+SELECT COUNT(*) FROM trip_unlocks WHERE user_id = $1 AND source = 'referral'
+`
+
+// Counts trip_unlocks with source='referral' for a given user.
+func (q *Queries) CountReferrerUnlocks(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countReferrerUnlocks, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countRewardsEarned = `-- name: CountRewardsEarned :one
 SELECT COUNT(*) FROM referrals WHERE referrer_id = $1 AND referrer_reward_granted = true
 `

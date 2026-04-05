@@ -372,7 +372,7 @@ func main() {
 	mux.HandleFunc("/api/feedback", feedbackHandler.HandleSubmitFeedback)
 
 	// Referral system
-	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL)
+	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL, cfg.ReferralMaxRewards)
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
 	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
 

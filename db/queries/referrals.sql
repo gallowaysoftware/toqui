@@ -54,5 +54,9 @@ SELECT EXISTS(
   SELECT 1 FROM trip_unlocks tu WHERE tu.user_id = sqlc.arg(user_id) AND tu.source = 'referral'
 );
 
+-- name: CountReferrerUnlocks :one
+-- Counts trip_unlocks with source='referral' for a given user.
+SELECT COUNT(*) FROM trip_unlocks WHERE user_id = $1 AND source = 'referral';
+
 -- name: GetReferralByReferee :one
 SELECT * FROM referrals WHERE referee_id = sqlc.arg(referee_id) LIMIT 1;
