@@ -166,6 +166,7 @@ export function useChat(
   const streamingMessageIdRef = useRef<string | null>(null);
   // Track delayed geocode re-fetch timers so they can be cleaned up on unmount.
   const geocodeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const toolActivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
   const onExpertLimitReachedRef = useRef(options?.onExpertLimitReached);
   useEffect(() => {
@@ -192,9 +193,11 @@ export function useChat(
     nextPageTokenRef.current = "";
     streamingMessageIdRef.current = null;
     isSendingRef.current = false;
-    // Clear any pending geocode re-fetch timers from previous trip.
+    // Clear any pending timers from previous trip.
     for (const t of geocodeTimersRef.current) clearTimeout(t);
     geocodeTimersRef.current = [];
+    if (toolActivityTimerRef.current) clearTimeout(toolActivityTimerRef.current);
+    toolActivityTimerRef.current = null;
   }, [tripId]);
 
   // Hydrate sessionIdRef from persistent storage so remounts resume the same session.
@@ -397,7 +400,8 @@ export function useChat(
               const toolResult = resp.event.value;
               // Brief "done" state lets the UI animate out before the indicator disappears.
               setToolActivity({ toolName: toolResult.toolName, status: "done" });
-              setTimeout(() => setToolActivity(null), 300);
+              if (toolActivityTimerRef.current) clearTimeout(toolActivityTimerRef.current);
+              toolActivityTimerRef.current = setTimeout(() => setToolActivity(null), 300);
               // Invalidate itinerary and trip caches so navigating back shows fresh data.
               if (toolResult.toolName === "create_itinerary_items" && tripId) {
                 void queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
