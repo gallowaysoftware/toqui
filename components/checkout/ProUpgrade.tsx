@@ -77,14 +77,18 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   useEffect(() => {
     if (!checkingStatus && unlocked === false) {
       track("upgrade_viewed");
+      track("upgrade_prompt_shown", { trigger: compact ? "inline" : "settings" });
     }
-  }, [checkingStatus, unlocked, track]);
+  }, [checkingStatus, unlocked, track, compact]);
 
   const handleCheckout = useCallback(async () => {
     if (Platform.OS !== "web") return;
 
+    track("upgrade_started");
+
     try {
       const checkout = await initCheckout();
+      track("checkout_initiated");
       await loadHelcimJS();
 
       window.helcimPaySuccess = async () => {
@@ -96,11 +100,12 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
 
           const result = await validatePayment(response, hash);
           if (result.unlocked) {
+            track("payment_completed");
             setUnlocked(true);
             onUnlocked?.();
           }
         } catch {
-          // useCheckout hook captures the error for display
+          track("payment_abandoned");
         }
       };
 
@@ -110,7 +115,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     } catch {
       // Error is already captured in the hook
     }
-  }, [initCheckout, validatePayment, onUnlocked]);
+  }, [initCheckout, validatePayment, onUnlocked, track]);
 
   const styles = StyleSheet.create({
     container: {

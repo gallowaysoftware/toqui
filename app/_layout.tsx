@@ -150,7 +150,8 @@ function AnalyticsErrorBoundary({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Fires session_start on mount and auto-identifies authenticated users.
+ * Fires session_start on mount, tracks return visits, and auto-identifies
+ * authenticated users.
  */
 function AnalyticsBootstrap() {
   const { track, identify } = useAnalytics();
@@ -158,6 +159,29 @@ function AnalyticsBootstrap() {
 
   useEffect(() => {
     track("session_start", { platform: Platform.OS });
+
+    // Track return visits: if the user has opened the app before, fire return_visit.
+    const VISITED_KEY = "toqui_has_visited";
+    if (Platform.OS === "web") {
+      if (localStorage.getItem(VISITED_KEY) === "true") {
+        track("return_visit", { platform: Platform.OS });
+      } else {
+        localStorage.setItem(VISITED_KEY, "true");
+      }
+    } else {
+      // Native: use dynamic import to avoid top-level dependency
+      void import("@react-native-async-storage/async-storage").then(
+        ({ default: AsyncStorage }) => {
+          void AsyncStorage.getItem(VISITED_KEY).then((val) => {
+            if (val === "true") {
+              track("return_visit", { platform: Platform.OS });
+            } else {
+              void AsyncStorage.setItem(VISITED_KEY, "true");
+            }
+          });
+        },
+      );
+    }
   }, [track]);
 
   useEffect(() => {

@@ -105,6 +105,13 @@ export default function ChatScreen() {
   useEffect(() => {
     if (toolActivity?.toolName === "create_itinerary_items" && toolActivity.status === "done") {
       track("itinerary_generated");
+      // Track first-ever itinerary generation (once per user)
+      void AsyncStorage.getItem("toqui_first_itinerary_tracked").then((val) => {
+        if (val !== "true") {
+          track("first_itinerary_generated");
+          void AsyncStorage.setItem("toqui_first_itinerary_tracked", "true");
+        }
+      });
     }
   }, [toolActivity, track]);
 
@@ -474,7 +481,16 @@ export default function ChatScreen() {
         </View>
       )}
       <ChatInput
-        onSend={(text, attachments) => sendMessage(text, attachments)}
+        onSend={(text, attachments) => {
+          sendMessage(text, attachments);
+          // Track first-ever message sent (once per user)
+          void AsyncStorage.getItem("toqui_first_message_tracked").then((val) => {
+            if (val !== "true") {
+              track("first_message_sent");
+              void AsyncStorage.setItem("toqui_first_message_tracked", "true");
+            }
+          });
+        }}
         disabled={isStreaming}
       />
     </KeyboardAvoidingView>

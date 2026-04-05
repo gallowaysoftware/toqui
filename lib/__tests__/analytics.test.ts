@@ -95,6 +95,11 @@ describe("stripSensitiveProps", () => {
     expect(stripSensitiveProps(input)).toEqual(input);
   });
 
+  it("passes through funnel tracking properties (trigger, count, is_first)", () => {
+    const input = { trigger: "inline", count: 2, is_first: true, destination: "Paris" };
+    expect(stripSensitiveProps(input)).toEqual({ trigger: "inline", count: 2, is_first: true });
+  });
+
   it("strips properties not in the allowlist", () => {
     const input = {
       platform: "web",

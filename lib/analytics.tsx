@@ -46,6 +46,9 @@ const SAFE_PROPERTIES = new Set([
   "error_type",
   "partner",
   "category",
+  "trigger",
+  "count",
+  "is_first",
   "$lib",
   "$lib_version",
 ]);

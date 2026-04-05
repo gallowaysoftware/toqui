@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { useAnalytics } from "@/lib/analytics";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
@@ -65,6 +66,7 @@ export function AgeGate({ children }: AgeGateProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { accessToken } = useAuth();
+  const { track } = useAnalytics();
   const [verified, setVerifiedState] = useState<boolean | null>(null);
   const [denied, setDenied] = useState(false);
   const [year, setYear] = useState("");
@@ -133,7 +135,8 @@ export function AgeGate({ children }: AgeGateProps) {
 
     void setVerified();
     setVerifiedState(true);
-  }, [year, month, day, accessToken, t]);
+    track("age_gate_passed");
+  }, [year, month, day, accessToken, t, track]);
 
   if (verified === null) return null; // loading
   if (verified) return <>{children}</>;
