@@ -45,6 +45,7 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import type { ThemeColors } from "@/lib/theme";
 import { getConfig } from "@/lib/config";
+import { useAnalytics } from "@/lib/analytics";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -498,6 +499,31 @@ function DayCard({
 }
 
 // ---------------------------------------------------------------------------
+// Watermark Badge — subtle "Planned with Toqui" branding
+// ---------------------------------------------------------------------------
+
+function WatermarkBadge({ colors }: { colors: ThemeColors }) {
+  const styles = makeStyles(colors);
+  return (
+    <View style={styles.watermarkContainer}>
+      <Pressable
+        style={styles.watermarkBadge}
+        onPress={() => {
+          if (Platform.OS === "web" && typeof window !== "undefined") {
+            window.open("https://toqui.travel", "_blank");
+          }
+        }}
+        accessibilityRole="link"
+        accessibilityLabel="Planned with Toqui"
+      >
+        <Text style={styles.watermarkIcon}>&#9992;</Text>
+        <Text style={styles.watermarkText}>Planned with Toqui</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CTA Section
 // ---------------------------------------------------------------------------
 
@@ -505,17 +531,20 @@ function CtaSection({
   colors,
   isLoggedIn,
   onPress,
+  onSignupClick,
   token,
 }: {
   colors: ThemeColors;
   isLoggedIn: boolean;
   onPress: () => void;
+  onSignupClick: () => void;
   token?: string;
 }) {
   const { t } = useTranslation();
   const styles = makeStyles(colors);
 
   const handleGoogleSignIn = () => {
+    onSignupClick();
     if (Platform.OS === "web" && typeof window !== "undefined") {
       // Store the shared trip token so we can redirect back after login
       sessionStorage.setItem("toqui_post_login_redirect", `/shared/${token}`);
@@ -524,16 +553,47 @@ function CtaSection({
     }
   };
 
+  const handleCtaPress = () => {
+    onSignupClick();
+    onPress();
+  };
+
   return (
     <View style={[styles.ctaSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text style={[styles.ctaHeading, { color: colors.textPrimary }]}>
-        {isLoggedIn ? "Like this itinerary?" : "Plan your own dream trip"}
+        {isLoggedIn
+          ? t("share.ctaHeadingLoggedIn")
+          : t("share.ctaHeading")}
       </Text>
       <Text style={[styles.ctaBody, { color: colors.textSecondary }]}>
         {isLoggedIn
-          ? "Start a similar trip in your account and customize it with AI."
-          : "Toqui's AI builds personalized itineraries in minutes. Free to try."}
+          ? t("share.ctaBodyLoggedIn")
+          : t("share.ctaBody")}
       </Text>
+
+      {/* Value props for unauthenticated visitors */}
+      {!isLoggedIn && (
+        <View style={styles.ctaValueProps}>
+          <View style={styles.ctaValuePropRow}>
+            <Compass color={colors.accent} size={16} />
+            <Text style={[styles.ctaValuePropText, { color: colors.textSecondary }]}>
+              {t("share.valuePropExperts")}
+            </Text>
+          </View>
+          <View style={styles.ctaValuePropRow}>
+            <Calendar color={colors.accent} size={16} />
+            <Text style={[styles.ctaValuePropText, { color: colors.textSecondary }]}>
+              {t("share.valuePropItineraries")}
+            </Text>
+          </View>
+          <View style={styles.ctaValuePropRow}>
+            <Clock color={colors.accent} size={16} />
+            <Text style={[styles.ctaValuePropText, { color: colors.textSecondary }]}>
+              {t("share.valuePropMinutes")}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Inline Google sign-in for unauthenticated viewers */}
       {!isLoggedIn && (
@@ -567,18 +627,18 @@ function CtaSection({
           styles.ctaButton,
           { backgroundColor: colors.accent, opacity: pressed ? 0.9 : 1 },
         ]}
-        onPress={onPress}
+        onPress={handleCtaPress}
         accessibilityRole="button"
-        accessibilityLabel={isLoggedIn ? "Plan a Similar Trip" : "Start Planning for Free"}
+        accessibilityLabel={isLoggedIn ? t("share.ctaButtonLoggedIn") : t("share.ctaButtonSignup")}
       >
         <Text style={styles.ctaButtonText}>
-          {isLoggedIn ? "Plan a Similar Trip" : "Start Planning for Free"}
+          {isLoggedIn ? t("share.ctaButtonLoggedIn") : t("share.ctaButtonSignup")}
         </Text>
         <ChevronRight color="#fff" size={18} />
       </Pressable>
       {!isLoggedIn && (
         <Text style={[styles.ctaSocialProof, { color: colors.textTertiary }]}>
-          Join 10,000+ travelers already using Toqui
+          {t("share.socialProof")}
         </Text>
       )}
     </View>
@@ -618,12 +678,15 @@ function Footer({ colors }: { colors: ThemeColors }) {
 function StickyCta({
   colors,
   onPress,
+  onSignupClick,
   isLoggedIn,
 }: {
   colors: ThemeColors;
   onPress: () => void;
+  onSignupClick: () => void;
   isLoggedIn: boolean;
 }) {
+  const { t } = useTranslation();
   const styles = makeStyles(colors);
   return (
     <View style={[styles.stickyCta, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
@@ -632,12 +695,15 @@ function StickyCta({
           styles.stickyCtaButton,
           { backgroundColor: colors.accent, opacity: pressed ? 0.9 : 1 },
         ]}
-        onPress={onPress}
+        onPress={() => {
+          onSignupClick();
+          onPress();
+        }}
         accessibilityRole="button"
-        accessibilityLabel={isLoggedIn ? "Plan a Similar Trip" : "Start Planning for Free"}
+        accessibilityLabel={isLoggedIn ? t("share.ctaButtonLoggedIn") : t("share.ctaButtonSignup")}
       >
         <Text style={styles.stickyCtaText}>
-          {isLoggedIn ? "Plan a Similar Trip" : "Start Planning for Free"}
+          {isLoggedIn ? t("share.ctaButtonLoggedIn") : t("share.ctaButtonSignup")}
         </Text>
       </Pressable>
     </View>
@@ -653,6 +719,7 @@ export default function SharedTripScreen() {
   const { colors } = useTheme();
   const { accessToken } = useAuth();
   const router = useRouter();
+  const { track } = useAnalytics();
   const refCode = getPendingRef();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
@@ -671,6 +738,13 @@ export default function SharedTripScreen() {
 
   const tripTitle = data?.trip?.title;
 
+  // Track shared trip view (behavior only — no destination or content)
+  useEffect(() => {
+    if (data) {
+      track("shared_trip_viewed", { source: refCode ? "referral" : "direct" });
+    }
+  }, [data, track, refCode]);
+
   useEffect(() => {
     if (tripTitle && typeof document !== "undefined") {
       document.title = `${tripTitle} — Toqui`;
@@ -678,6 +752,10 @@ export default function SharedTripScreen() {
   }, [tripTitle]);
 
   const styles = makeStyles(colors);
+
+  const handleSignupClick = () => {
+    track("shared_trip_signup_clicked", { source: refCode ? "referral" : "direct" });
+  };
 
   const handleCta = () => {
     if (accessToken) {
@@ -771,10 +849,19 @@ export default function SharedTripScreen() {
           </View>
         )}
 
-        {/* 5. CTA Section */}
-        <CtaSection colors={colors} isLoggedIn={!!accessToken} onPress={handleCta} token={token} />
+        {/* 5. Watermark */}
+        <WatermarkBadge colors={colors} />
 
-        {/* 6. Footer */}
+        {/* 6. CTA Section */}
+        <CtaSection
+          colors={colors}
+          isLoggedIn={!!accessToken}
+          onPress={handleCta}
+          onSignupClick={handleSignupClick}
+          token={token}
+        />
+
+        {/* 7. Footer */}
         <Footer colors={colors} />
 
         {/* Bottom padding for sticky CTA */}
@@ -782,7 +869,14 @@ export default function SharedTripScreen() {
       </ScrollView>
 
       {/* Sticky CTA for mobile */}
-      {!isWide && <StickyCta colors={colors} onPress={handleCta} isLoggedIn={!!accessToken} />}
+      {!isWide && (
+        <StickyCta
+          colors={colors}
+          onPress={handleCta}
+          onSignupClick={handleSignupClick}
+          isLoggedIn={!!accessToken}
+        />
+      )}
     </View>
   );
 }
@@ -1060,6 +1154,31 @@ function createStyles(colors: ThemeColors) {
       textAlign: "center",
     },
 
+    // ----- Watermark -----
+    watermarkContainer: {
+      alignItems: "flex-end",
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    watermarkBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(166, 53, 32, 0.08)",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+    },
+    watermarkIcon: {
+      fontSize: 12,
+    },
+    watermarkText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: "rgba(166, 53, 32, 0.7)",
+      letterSpacing: 0.3,
+    },
+
     // ----- CTA -----
     ctaSection: {
       marginHorizontal: 16,
@@ -1081,6 +1200,20 @@ function createStyles(colors: ThemeColors) {
       lineHeight: 22,
       textAlign: "center",
       marginBottom: 20,
+    },
+    ctaValueProps: {
+      alignSelf: "stretch",
+      marginBottom: 20,
+      gap: 10,
+    },
+    ctaValuePropRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    ctaValuePropText: {
+      fontSize: 14,
+      lineHeight: 20,
     },
     googleButton: {
       flexDirection: "row",

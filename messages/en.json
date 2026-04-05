@@ -255,8 +255,10 @@
     "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again.",
-    "expertLimitReached": "You've used your free expert consultations for this trip.",
+    "expertLimitReached": "You've used your 3 free persona switches for this trip.",
     "expertLimitCta": "Unlock unlimited experts for $19 CAD",
+    "personaLimitReached": "You've reached the 3 persona switch limit for free trips.",
+    "personaLimitCta": "Upgrade to unlock all 800+ expert personas",
     "dailyLimitReset": "Your messages reset at midnight UTC.",
     "suggestions": {
       "itinerary": "Build my day 1 itinerary",
@@ -321,7 +323,17 @@
     "viewCountOne": "Viewed by 1 person",
     "signInToSave": "Sign in to plan a trip like this",
     "signInWithGoogle": "Continue with Google",
-    "orContinue": "or"
+    "orContinue": "or",
+    "ctaHeading": "Plan your own trip in minutes",
+    "ctaHeadingLoggedIn": "Like this itinerary?",
+    "ctaBody": "Chat with AI travel experts and get a personalized itinerary. Free to try, no credit card required.",
+    "ctaBodyLoggedIn": "Start a similar trip in your account and customize it with AI.",
+    "ctaButtonSignup": "Start Planning for Free",
+    "ctaButtonLoggedIn": "Plan a Similar Trip",
+    "socialProof": "Join thousands of travelers already using Toqui",
+    "valuePropExperts": "800+ expert personas for every destination",
+    "valuePropItineraries": "Day-by-day itineraries built from conversation",
+    "valuePropMinutes": "Plan your perfect trip in minutes, not hours"
   },
   "collaborators": {
     "title": "Team",
