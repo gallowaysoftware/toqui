@@ -106,12 +106,14 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	}
 
 	// Create session if needed
+	isNewSession := false
 	if sessionID == "" {
 		session, err := s.chatStore.CreateSession(ctx, params.UserID.String(), storeTripID, params.Mode)
 		if err != nil {
 			return nil, "", fmt.Errorf("create session: %w", err)
 		}
 		sessionID = session.ID
+		isNewSession = true
 	}
 
 	// Resolve persona: explicit ID > trip context resolution > default (Toqui)
@@ -251,6 +253,22 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	go func() {
 		defer close(outCh)
 		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
+
+		// Clean up orphaned sessions: if we created a new session but the AI
+		// produced no response (e.g., 429, timeout, provider error), delete
+		// the empty session to avoid cluttering the user's session list.
+		if isNewSession && responseText == "" {
+			slog.Warn("cleaning up orphaned session with no AI response",
+				"session_id", sessionID,
+				"user_id", params.UserID.String(),
+			)
+			// Use a background context since the request context may be cancelled.
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.chatStore.DeleteSession(cleanupCtx, params.UserID.String(), storeTripID, sessionID); err != nil {
+				slog.Error("failed to delete orphaned session", "session_id", sessionID, "error", err)
+			}
+		}
 
 		// Cache the response after streaming completes (only for eligible requests).
 		if s.cache != nil && s.cache.Eligible(aiReq) && responseText != "" {
