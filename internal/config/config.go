@@ -74,7 +74,14 @@ type Config struct {
 
 	// Capacity + usage limits
 	MaxFreeUsers      int
-	DailyMessageLimit int
+	DailyMessageLimit int // Deprecated: kept for backward compat; use tier-specific limits
+
+	// Tier-specific daily message limits (0 = unlimited)
+	DailyMessageLimitFree int
+	DailyMessageLimitPro  int
+
+	// AI provider priority: "gemini" (default) or "claude"
+	AIProvider string
 
 	// LLM response caching
 	LLMCacheEnabled bool
@@ -82,7 +89,7 @@ type Config struct {
 
 	// Helcim payment processing
 	HelcimAPIToken    string
-	TripProPriceCents int // Default 1200 ($12.00 CAD)
+	TripProPriceCents int // Default 1900 ($19.00 CAD)
 
 	// Email (Resend) for transactional emails
 	ResendAPIKey string
@@ -142,6 +149,9 @@ func Load() (*Config, error) {
 		SafetyWingReferenceID:    os.Getenv("SAFETYWING_REFERENCE_ID"),
 		MaxFreeUsers:             getEnvInt("MAX_FREE_USERS", 500),
 		DailyMessageLimit:        getEnvInt("DAILY_MESSAGE_LIMIT", 30),
+		DailyMessageLimitFree:    getEnvInt("DAILY_MESSAGE_LIMIT_FREE", 10),
+		DailyMessageLimitPro:     getEnvInt("DAILY_MESSAGE_LIMIT_PRO", 50),
+		AIProvider:               getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
 		PostHogAPIKey:            os.Getenv("POSTHOG_API_KEY"),
@@ -152,7 +162,7 @@ func Load() (*Config, error) {
 		ResendAPIKey:             os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		HelcimAPIToken:           os.Getenv("HELCIM_API_TOKEN"),
-		TripProPriceCents:        getEnvInt("TRIP_PRO_PRICE_CENTS", 1200),
+		TripProPriceCents:        getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
 		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
 	}
 

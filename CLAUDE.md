@@ -228,7 +228,7 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | Env Var | Default | Description |
 |---------|---------|-------------|
 | `HELCIM_API_TOKEN` | (none) | Helcim payment gateway API token |
-| `TRIP_PRO_PRICE_CENTS` | `1200` | Trip Pro price in cents ($12.00) |
+| `TRIP_PRO_PRICE_CENTS` | `1900` | Trip Pro price in cents ($19.00) |
 | `RESEND_API_KEY` | (none) | Resend transactional email API key |
 | `EMAIL_FROM` | `Toqui <hello@toqui.travel>` | From address for outbound emails |
 | `ADMIN_EMAILS` | (none) | Comma-separated list of admin email addresses |
@@ -764,7 +764,7 @@ Waitlist signups now require email verification:
 ## Additional Features
 
 ### Payment & Trip Pro
-The `internal/payment/` package handles Helcim payment integration for Trip Pro ($12/trip):
+The `internal/payment/` package handles Helcim payment integration for Trip Pro ($19/trip):
 - `POST /api/checkout` initializes a Helcim checkout session
 - After payment, `POST /api/checkout/validate` unlocks the trip in the database
 - `GET /api/checkout/status` lets the frontend poll unlock status

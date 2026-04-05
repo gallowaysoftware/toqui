@@ -32,7 +32,7 @@ func (g *expertTeaserGate) Execute(ctx context.Context, args json.RawMessage) (j
 	if count > maxFreeExpertCalls {
 		return json.Marshal(map[string]string{
 			"error":   "trip_pro_required",
-			"message": "This trip has used all 3 free expert consultations. Upgrade to Trip Pro ($12) to unlock unlimited access to all 800+ expert personas for this trip. Tell the user about Trip Pro and suggest they upgrade.",
+			"message": "This trip has used all 3 free expert consultations. Upgrade to Trip Pro ($19) to unlock unlimited access to all 800+ expert personas for this trip. Tell the user about Trip Pro and suggest they upgrade.",
 		})
 	}
 

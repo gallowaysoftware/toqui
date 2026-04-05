@@ -18,6 +18,15 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 )
 
+// allowedPriceVariants maps A/B test variant strings to validated price-in-cents.
+// Only these values are accepted from the client; anything else falls back to the
+// configured default price.
+var allowedPriceVariants = map[string]int{
+	"15": 1500,
+	"19": 1900,
+	"24": 2400,
+}
+
 // CheckoutHandler handles Trip Pro purchase endpoints.
 type CheckoutHandler struct {
 	paymentSvc      *payment.Service
@@ -66,7 +75,8 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
-		TripID string `json:"trip_id"`
+		TripID       string `json:"trip_id"`
+		PriceVariant string `json:"price_variant"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -79,7 +89,22 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	result, err := h.paymentSvc.InitializeCheckout(r.Context(), userID, tripID)
+	// Resolve price from A/B variant (server-validated) or fall back to configured default.
+	priceCents := h.paymentSvc.PriceCents()
+	variant := "default"
+	if v, ok := allowedPriceVariants[req.PriceVariant]; ok {
+		priceCents = v
+		variant = req.PriceVariant
+	}
+
+	slog.Info("checkout initiated",
+		"user_id", userID,
+		"trip_id", tripID,
+		"price_variant", variant,
+		"price_cents", priceCents,
+	)
+
+	result, err := h.paymentSvc.InitializeCheckoutWithPrice(r.Context(), userID, tripID, priceCents)
 	if err != nil {
 		if strings.Contains(err.Error(), "already unlocked") {
 			w.Header().Set("Content-Type", "application/json")
@@ -92,11 +117,19 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Track variant for analytics (async, non-blocking)
+	if h.analyticsClient != nil {
+		h.analyticsClient.Track(userID.String(), "checkout_initiated", map[string]any{
+			"price_variant": variant,
+			"price_cents":   priceCents,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"checkout_token": result.CheckoutToken,
 		"secret_token":   result.SecretToken,
-		"price_cents":    h.paymentSvc.PriceCents(),
+		"price_cents":    priceCents,
 		"currency":       "CAD",
 	})
 }

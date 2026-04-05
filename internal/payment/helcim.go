@@ -53,8 +53,15 @@ type CheckoutResult struct {
 	SecretToken   string
 }
 
-// InitializeCheckout creates a Helcim checkout session for a trip purchase.
+// InitializeCheckout creates a Helcim checkout session for a trip purchase
+// using the configured default price.
 func (s *Service) InitializeCheckout(ctx context.Context, userID, tripID uuid.UUID) (*CheckoutResult, error) {
+	return s.InitializeCheckoutWithPrice(ctx, userID, tripID, s.priceCents)
+}
+
+// InitializeCheckoutWithPrice creates a Helcim checkout session for a trip purchase
+// at the specified price in cents. Used for A/B price testing.
+func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripID uuid.UUID, priceCents int) (*CheckoutResult, error) {
 	// Check if trip is already unlocked
 	unlocked, err := s.queries.IsTripUnlocked(ctx, dbgen.IsTripUnlockedParams{
 		UserID: userID,
@@ -68,7 +75,7 @@ func (s *Service) InitializeCheckout(ctx context.Context, userID, tripID uuid.UU
 	}
 
 	// Amount in dollars (Helcim expects decimal)
-	amount := float64(s.priceCents) / 100.0
+	amount := float64(priceCents) / 100.0
 
 	body := map[string]any{
 		"paymentType": "purchase",
@@ -125,7 +132,7 @@ func (s *Service) InitializeCheckout(ctx context.Context, userID, tripID uuid.UU
 		TripID:        tripID,
 		CheckoutToken: result.CheckoutToken,
 		SecretToken:   result.SecretToken,
-		AmountCents:   int32(s.priceCents),
+		AmountCents:   int32(priceCents),
 		Currency:      "CAD",
 	})
 	if err != nil {
@@ -135,7 +142,7 @@ func (s *Service) InitializeCheckout(ctx context.Context, userID, tripID uuid.UU
 	slog.Info("helcim checkout session created",
 		"user_id", userID,
 		"trip_id", tripID,
-		"amount_cents", s.priceCents,
+		"amount_cents", priceCents,
 	)
 
 	return &CheckoutResult{
