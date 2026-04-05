@@ -95,6 +95,9 @@ type Config struct {
 	AllowedEmailDomains []string // Empty = allow all
 	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
 	AdminEmails         []string // Emails allowed to access /admin/* endpoints
+
+	// Staging overrides
+	StagingProAll bool // When true, all trips are treated as unlocked (staging only)
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -145,6 +148,7 @@ func Load() (*Config, error) {
 		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		AllowedEmails:            parseCSVEnv("ALLOWED_EMAILS"),
 		AdminEmails:              parseCSVEnv("ADMIN_EMAILS"),
+		StagingProAll:            getEnvBool("STAGING_PRO_ALL", false),
 		ResendAPIKey:             os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		HelcimAPIToken:           os.Getenv("HELCIM_API_TOKEN"),

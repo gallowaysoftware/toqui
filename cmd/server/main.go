@@ -214,6 +214,14 @@ func main() {
 	defer authLimiter.Stop()
 
 	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
+	if cfg.StagingProAll {
+		if cfg.TargetEnv != "staging" {
+			slog.Error("STAGING_PRO_ALL=true is only allowed in staging environment, ignoring", "env", cfg.TargetEnv)
+		} else {
+			paymentSvc.SetAlwaysUnlocked(true)
+			slog.Info("staging mode: all trips treated as unlocked (pro)")
+		}
+	}
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).

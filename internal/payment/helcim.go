@@ -26,10 +26,11 @@ const (
 
 // Service handles Helcim payment operations.
 type Service struct {
-	apiToken   string
-	priceCents int
-	queries    *dbgen.Queries
-	client     *http.Client
+	apiToken       string
+	priceCents     int
+	queries        *dbgen.Queries
+	client         *http.Client
+	alwaysUnlocked bool
 }
 
 // NewService creates a new payment service.
@@ -41,6 +42,10 @@ func NewService(apiToken string, priceCents int, queries *dbgen.Queries) *Servic
 		client:     &http.Client{Timeout: 30 * time.Second},
 	}
 }
+
+// SetAlwaysUnlocked configures the service to treat all trips as unlocked.
+// Used in staging to give all users permanent pro access.
+func (s *Service) SetAlwaysUnlocked(v bool) { s.alwaysUnlocked = v }
 
 // CheckoutResult is returned after initializing a checkout session.
 type CheckoutResult struct {
@@ -263,7 +268,11 @@ func (s *Service) ValidateAndRecordPayment(ctx context.Context, userID uuid.UUID
 }
 
 // IsTripUnlocked checks if a user has access to Trip Pro features for a given trip.
+// When alwaysUnlocked is set (staging), all trips are treated as unlocked.
 func (s *Service) IsTripUnlocked(ctx context.Context, userID, tripID uuid.UUID) (bool, error) {
+	if s.alwaysUnlocked {
+		return true, nil
+	}
 	return s.queries.IsTripUnlocked(ctx, dbgen.IsTripUnlockedParams{
 		UserID: userID,
 		TripID: tripID,
