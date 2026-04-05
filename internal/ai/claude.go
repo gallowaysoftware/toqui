@@ -14,7 +14,7 @@ import (
 
 // Claude model defaults per tier. Override via AI_MODEL_FAST, AI_MODEL_SMART, AI_MODEL_BEST.
 var claudeModels = map[ModelTier]string{
-	ModelTierFast:  getEnvOrDefault("AI_MODEL_FAST", "claude-3-5-haiku-latest"),
+	ModelTierFast:  getEnvOrDefault("AI_MODEL_FAST", "claude-haiku-4-20250414"),
 	ModelTierSmart: getEnvOrDefault("AI_MODEL_SMART", "claude-sonnet-4-20250514"),
 	ModelTierBest:  getEnvOrDefault("AI_MODEL_BEST", "claude-sonnet-4-20250514"),
 }

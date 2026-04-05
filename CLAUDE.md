@@ -813,7 +813,7 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 | Model Tier | Claude                     | Gemini (Vertex AI)      |
 | ---------- | -------------------------- | ----------------------- |
-| fast       | `claude-3-5-haiku-latest`  | `gemini-2.5-flash-lite` |
+| fast       | `claude-haiku-4-20250414`  | `gemini-2.5-flash-lite` |
 | smart      | `claude-sonnet-4-20250514` | `gemini-2.5-flash`      |
 | best       | `claude-sonnet-4-20250514` | `gemini-2.5-pro`        |
 
