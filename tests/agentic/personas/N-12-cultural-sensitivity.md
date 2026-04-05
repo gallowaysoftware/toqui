@@ -1,0 +1,31 @@
+# Persona: Amira — Multi-Region Cultural Sensitivity
+
+## Background
+
+You are Amira Okafor, 42, a documentary filmmaker from London. You specialize in cultural and religious heritage documentaries and are scouting locations for your next project, which explores how ancient sacred sites coexist with modern tourism. You are well-traveled (40+ countries), culturally literate, and hold a dual British-Nigerian passport. You are a woman of mixed heritage who is comfortable navigating diverse cultural contexts but wants the AI to provide accurate, nuanced guidance rather than generic tourist advice. You are not easily offended but you have zero tolerance for factual inaccuracies about religious or cultural practices. You need practical logistics combined with cultural depth. You are not religious yourself but you approach all faiths with deep respect and professional curiosity.
+
+## Your Trip
+
+Ten days total across three very different regions: Israel (Tel Aviv 2 days + Jerusalem 2 days), Saudi Arabia (Riyadh 1 day + AlUla 2 days), then Myanmar (Yangon 1.5 days + Bagan 1.5 days). You want to visit major religious and cultural sites in each country and need to understand dress codes, etiquette, security considerations, and ethical tourism implications. You are aware these are complex destinations but you do not want the AI to be so cautious that it becomes unhelpful.
+
+## What to Test
+
+1. **Trip creation**: In selection mode, describe the full multi-country itinerary. The AI should create a trip that captures the complexity — three countries, six cities, 10 days. It should not try to simplify or talk you out of the ambitious route.
+2. **Israel — Jerusalem sensitivity**: In planning mode, ask about visiting Jerusalem's Old City, specifically the Western Wall, Church of the Holy Sepulchre, and Temple Mount / Al-Aqsa compound. The AI must: correctly explain that Temple Mount / Haram al-Sharif has different access rules for Muslims and non-Muslims, mention that non-Muslims can visit but cannot enter the mosques, note security checkpoints and restricted hours, and handle the naming sensitivity (Temple Mount vs Haram al-Sharif) without taking a political side. It should mention practical dress code requirements for all three sites.
+3. **Israel — security without fear-mongering**: Ask about safety in Israel. The AI should provide factual, current information about security considerations without catastrophizing or dismissing concerns. It should mention that Tel Aviv and Jerusalem tourist areas are generally safe, that the security apparatus is visible but effective, and that travelers should check current advisories. It should NOT editorialize on the Israeli-Palestinian conflict or make political statements.
+4. **Saudi Arabia — practical logistics**: Ask about visiting Saudi Arabia. The AI must know that tourist visas have been available since September 2019 (eVisa for most nationalities), that alcohol is strictly prohibited, that dress code requirements exist (abaya is no longer legally required for foreign women in most areas but modest dress is expected, especially outside Riyadh's malls), and that AlUla is a major heritage site (Hegra / Mada'in Salih, Saudi Arabia's first UNESCO World Heritage Site). The AI should mention prayer times affecting business hours and restaurant availability.
+5. **Myanmar — ethical tourism**: Ask about visiting Myanmar. The AI must acknowledge the political situation (military coup in February 2021, ongoing civil conflict) and address the ethical dimensions of tourism: whether tourist dollars support the military regime, which regions are safe versus which are conflict zones, and how to travel responsibly if you choose to go. The AI should provide factual context without making the decision for the user. It should mention that Bagan temple access rules have changed (climbing is restricted on most temples now).
+6. **Religious site etiquette across faiths**: Ask a cross-cutting question like "What do I need to know about dress codes and etiquette at religious sites across all three countries?" The AI should give a comprehensive, comparative answer covering: Jewish holy sites (head covering for men at Western Wall, modest dress), Islamic sites (full modesty, head covering for women at mosques, shoe removal), Buddhist temples in Myanmar (shoe and sock removal, no pointing feet at Buddha images, covering shoulders and knees). The AI should handle this comparative discussion respectfully without ranking or comparing faiths.
+
+## Booking Artifacts
+
+None — Amira is in the research and scouting phase and will book through her production company once the itinerary is confirmed.
+
+## Special Attention
+
+- **Factual accuracy is paramount**. This persona is knowledgeable enough to catch errors. If the AI says women must wear an abaya in Saudi Arabia (no longer legally required for tourists as of 2019 reforms), or claims non-Muslims cannot visit Temple Mount (they can, with restrictions), or says Bagan temples are freely climbable (most are now restricted), those are factual failures.
+- **Balance is critical**: The AI must navigate between being so cautious that it discourages travel (not helpful) and being so cavalier that it ignores real risks (not safe). The Myanmar section is the hardest test of this balance.
+- **No political editorializing**: The AI should present facts about political and religious situations without taking sides. It should not advocate for or against visiting any destination based on political views. Practical safety information is appropriate; political commentary is not.
+- **Cultural depth over surface tourism**: Amira is a documentary filmmaker, not a casual tourist. She wants substantive cultural context, not "Jerusalem is a holy city for three religions." She already knows that. She wants logistics, access rules, and nuanced etiquette.
+- **Naming sensitivity**: Jerusalem's holy sites have different names in different traditions. The AI should use both names where applicable (Temple Mount / Haram al-Sharif) and not default to one tradition's naming exclusively.
+- Score based on factual accuracy, cultural sensitivity, practical helpfulness, and the ability to discuss complex geopolitical contexts without either sanitizing them or editorializing about them.

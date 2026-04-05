@@ -372,7 +372,6 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 **MANDATORY**: Before every commit/push, update all relevant documentation:
 
 1. **CLAUDE.md** — Update this file and any other repo CLAUDE.md files affected by the changes (architecture, deployment, security patterns, new packages)
-2. **MEMORY.md** — Update the shared memory file at `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md` with completed work, status changes, and any new patterns
 3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 5 repos
 
 ### Adversarial Review
@@ -469,30 +468,37 @@ go run ./cmd/testctl create-user --name "Alice" --email "alice@toqui-test.local"
 go run ./cmd/testctl cleanup-user --user-id "uuid"
 ```
 
-### Persona Catalog (20 personas)
+### Persona Catalog (20 personas: 8 regression + 12 edge cases)
+
+**Regression suite (R-*)** — Core features, proven stable, catch regressions:
 
 | # | Persona | Destination | Key Test Vectors |
 |---|---------|-------------|------------------|
-| 01 | Solo backpacker | Vietnam 3wk | Full lifecycle, budget, hostel booking, food expert |
-| 02 | Family w/ kids | Costa Rica 10d | Context injection, kid-friendly, safety |
-| 03 | Returning user | Multi-trip | select_trip matching, trip switching |
-| 04 | Foodie itinerary | Tokyo 7d | create_itinerary_items, expert handoff |
-| 05 | Craft beer + hiker | CZ + Iceland | Expanded profiles, niche themes |
-| 06 | Booking-heavy | Barcelona 5d | IngestBooking, ExtractBookingField, FTC |
-| 07 | Update regression | Structural | COALESCE partial updates (no AI) |
-| 08 | Retired couple | Mediterranean | Accessibility, pace, medical |
-| 09 | Honeymoon | Bali + Japan | Multi-destination, luxury, sharing |
-| 10 | Business traveler | Singapore 3d | Time-constrained, companion mode |
-| 11 | Food blogger | Mexico City | Food expert, tour booking, recommend_booking |
-| 12 | Adventure seeker | New Zealand | Extreme sports, safety, activity booking |
-| 13 | Digital nomad | Portugal + Spain | Long-stay, co-working, budget |
-| 14 | Solo female | Morocco | Safety, cultural sensitivity |
-| 15 | Group road trip | Iceland | Group logistics, car rental, photography |
-| 16 | History professor | Greece + Turkey | Academic depth, history expert |
-| 17 | Vegan traveler | Thailand + Vietnam | Dietary restrictions, food recs |
-| 18 | Parent with teen | Japan | Anime + culture balance, ryokan |
-| 19 | Ultra-budget | SE Asia 2mo | $15/day, border crossings |
-| 20 | Luxury traveler | Maldives + Dubai | Premium experiences, recommend_booking |
+| R-02 | Family w/ kids | Costa Rica 10d | Context injection, safety, accessibility, companion mode |
+| R-03 | Returning user | Multi-trip | select_trip matching, trip switching, multi-trip management |
+| R-05 | Craft beer + hiker | CZ + Iceland | Extended profiles, niche themes, 2 trips |
+| R-06 | Booking-heavy | Barcelona 5d | IngestBooking (3 types), ExtractBookingField, FTC disclosure |
+| R-07 | Update regression | Structural | COALESCE partial updates (no AI, deterministic) |
+| R-11 | Food blogger | Mexico City | Expert handoff (food), tour booking, recommend_booking |
+| R-16 | History professor | Greece + Turkey | Academic depth, 3 expert handoffs, multi-country |
+| R-20 | Luxury traveler | Maldives + Dubai | Luxury calibration, recommend_booking |
+
+**Edge case & gap coverage (N-*)** — Target untested features and boundaries:
+
+| # | Persona | Focus | Gap Targeted |
+|---|---------|-------|-------------|
+| N-01 | Companion power user | Bangkok, 5+ companion msgs | Companion mode (was 2/20) |
+| N-02 | Chat history verifier | Structural | ListChatSessions, GetChatHistory (was 0/20) |
+| N-03 | REST endpoint exerciser | Structural | /api/usage, /referral, /guides (was 0/20) |
+| N-04 | Booking field extractor | All 7 artifacts | ExtractBookingField coverage (was 1/20) |
+| N-05 | Trip sharing deep test | Share lifecycle | Sharing enable/disable/revoke/re-share (was 1/20) |
+| N-06 | Budget enforcement | India $10/day | Budget constraint strictness |
+| N-07 | Dietary stress test | Japan (vegan+GF+nut allergy) | Compound dietary restrictions |
+| N-08 | Adversarial edge cases | Structural | Error handling, validation, boundary conditions |
+| N-09 | Rapid fire conversation | Italy 10 msgs | Multi-turn context retention, modification handling |
+| N-10 | Last-minute traveler | Lisbon 2 days | Companion-first flow, urgency, brevity |
+| N-11 | Lifecycle stress test | Full CRUD | Create→update→activate→share→complete→delete |
+| N-12 | Cultural sensitivity | Israel+Saudi+Myanmar | Political sensitivity, religious etiquette, ethical tourism |
 
 ### Booking Artifacts (`tests/agentic/artifacts/`)
 
@@ -604,6 +610,8 @@ HTTP routes (outside ConnectRPC):
 ### Auth routes
 - `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
 - `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
+- `GET /auth/facebook/login` — Initiates Facebook OAuth, sets state cookie, redirects to Facebook
+- `GET /auth/facebook/callback` — Exchanges code, checks capacity cap, sets OAuth result cookie, redirects to frontend
 - `POST /auth/exchange` — Reads OAuth cookie, returns `{user, expires_at}`, sets `toqui_access`/`toqui_refresh` HttpOnly cookies
 - `POST /auth/refresh` — Cookie-based token refresh. Rotates tokens (JTI/family), sets new cookies, returns `{user, expires_at}`
 - `POST /auth/logout` — Revokes refresh token, clears auth cookies, returns 204
@@ -614,15 +622,17 @@ HTTP routes (outside ConnectRPC):
 - `GET /waitlist/verify?token=TOKEN` — Public. Verifies email, completes waitlist signup, shows position.
 - `GET /waitlist/status?email=...` — Public. Returns `{"position":N,"total":M}`
 
-### Usage & guides (public/authenticated)
+### Usage, feedback & guides (public/authenticated)
 - `GET /api/usage` — Authenticated. Returns `{"used":N,"limit":M,"resets_at":"..."}`
+- `POST /api/feedback` — Authenticated. Submit user feedback.
 - `GET /api/guides` — Public. Lists all destination guides (slug, title, destination).
 - `GET /api/guides/{slug}` — Public. Returns full destination guide content.
 
-### Trip sharing
+### Trip sharing & collaboration
 - `POST /api/trips/share` — Authenticated. Enables trip sharing, returns share token.
 - `POST /api/trips/unshare` — Authenticated. Disables trip sharing.
 - `GET /shared/{token}` — Public. Returns shared trip view (no auth required).
+- `POST /api/trips/accept-invite` — Authenticated. Accept a collaboration invite.
 
 ### Referral
 - `GET /api/referral` — Authenticated. Returns user's referral code and stats.
@@ -643,6 +653,8 @@ HTTP routes (outside ConnectRPC):
 - `POST /admin/delete-waitlist` — Delete waitlist entry
 - `POST /admin/unlock-trip` — Admin unlock a trip (grant Pro access)
 - `POST /admin/grant-pro` — Grant Pro status to a user
+- `POST /admin/delete-user` — Delete a user and all associated data
+- `GET /admin/feedback` — List user feedback submissions
 - `GET /admin/metrics` — System metrics
 
 ### Webhooks
@@ -857,7 +869,6 @@ Token counts are accumulated across tool loop iterations. Usage is parsed from C
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
 - `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-admin/CLAUDE.md`
 
-Also update the shared memory file: `/Users/pequalsnp/.claude/projects/-Users-pequalsnp-src-github-com-pequalsnp-travelchat-backend/memory/MEMORY.md`
 
 ## Data Lifecycle
 
