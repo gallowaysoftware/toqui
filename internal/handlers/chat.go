@@ -500,6 +500,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			if len(localItinerary) > 0 {
 				if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 					if allItems, err := h.tripSvc.GetItinerary(ctx, tripID); err == nil {
+						slog.Info("itinerary update: sending items to client",
+							"trip_id", tripID, "callback_count", len(localItinerary), "db_count", len(allItems))
 						// Best-effort: fetch coordinates; empty map is fine (map pins
 						// may appear after next itinerary fetch once geocoding completes).
 						coordsMap := make(map[uuid.UUID]trip.ItineraryItemCoords)

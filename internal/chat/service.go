@@ -318,6 +318,15 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 		// Process this turn's events
 		turnText, toolCalls, toolResults, stopReason, turnUsage, streamErr := s.processOneTurn(ctx, eventCh, outCh, extraTools)
+		// Add separator between tool loop turns to avoid run-on text
+		// (e.g., "...some text!More text" → "...some text! More text")
+		if fullResponse.Len() > 0 && len(turnText) > 0 {
+			last := fullResponse.String()[fullResponse.Len()-1]
+			first := turnText[0]
+			if last != ' ' && last != '\n' && first != ' ' && first != '\n' {
+				fullResponse.WriteByte(' ')
+			}
+		}
 		fullResponse.WriteString(turnText)
 
 		// Accumulate token usage across tool loop iterations.

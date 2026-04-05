@@ -141,7 +141,13 @@ func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string
 
 	batch := s.client.Batch()
 	batch.Set(s.messagesCol(userID, tripID, sessionID).Doc(msg.ID), msg)
-	batch.Set(s.sessionsCol(userID, tripID).Doc(sessionID), map[string]interface{}{
+	// Upsert session with core identity fields. MergeAll ensures existing
+	// fields (like the original createdAt from CreateSession) are preserved,
+	// while new fields are added if the doc was created implicitly.
+	sessionRef := s.sessionsCol(userID, tripID).Doc(sessionID)
+	batch.Set(sessionRef, map[string]interface{}{
+		"id":            sessionID,
+		"tripId":        tripID,
 		"lastMessageAt": msg.CreatedAt,
 	}, firestore.MergeAll)
 

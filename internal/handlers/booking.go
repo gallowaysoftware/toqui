@@ -159,9 +159,15 @@ func (h *BookingHandler) ExtractBookingField(ctx context.Context, req *connect.R
 		return nil, aiAwareError(ctx, "booking extract field", err)
 	}
 
+	// Convert map[string]any to map[string]string for proto compatibility
+	fields := make(map[string]string, len(result.ExtractedFields))
+	for k, v := range result.ExtractedFields {
+		fields[k] = fmt.Sprintf("%v", v)
+	}
+
 	return connect.NewResponse(&toquiv1.ExtractBookingFieldResponse{
 		Answer:          result.Answer,
-		ExtractedFields: result.ExtractedFields,
+		ExtractedFields: fields,
 	}), nil
 }
 

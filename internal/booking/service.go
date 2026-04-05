@@ -250,8 +250,8 @@ func (s *Service) LinkToTrip(ctx context.Context, userID, bookingID, tripID uuid
 }
 
 type ExtractFieldResult struct {
-	Answer          string            `json:"answer"`
-	ExtractedFields map[string]string `json:"extracted_fields,omitempty"`
+	Answer          string         `json:"answer"`
+	ExtractedFields map[string]any `json:"extracted_fields,omitempty"`
 }
 
 func (s *Service) ExtractField(ctx context.Context, userID, bookingID uuid.UUID, question string) (*ExtractFieldResult, error) {
@@ -304,7 +304,10 @@ Return ONLY valid JSON, no other text.`,
 
 	var result ExtractFieldResult
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
-		return nil, fmt.Errorf("unmarshal AI response: %w", err)
+		// If JSON parsing fails, treat the entire response as the answer
+		slog.Warn("failed to parse AI extract response as JSON, using raw text",
+			"booking_id", bookingID, "error", err)
+		return &ExtractFieldResult{Answer: raw}, nil
 	}
 
 	return &result, nil
