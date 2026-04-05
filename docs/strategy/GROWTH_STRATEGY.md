@@ -20,7 +20,7 @@ Last updated: 2026-04-02
 
 **Tagline options for PH:**
 - "Your AI travel companion that charges per trip, not per month"
-- "Plan, book, and navigate trips with 800+ expert AI personas -- pay $12 only when you actually travel"
+- "Plan, book, and navigate trips with 800+ expert AI personas -- pay $19 only when you actually travel"
 
 ### Social Media Presence
 
@@ -58,7 +58,7 @@ Last updated: 2026-04-02
 
 **Angle: "The anti-subscription travel AI"**
 
-The pitch: Every other AI travel tool either locks you into a monthly subscription you forget about, or is "free" because they take affiliate cuts on bad hotel recommendations. Toqui charges $12 per trip -- only when you actually have a real trip to plan. No recurring charges, no affiliate-driven recommendations.
+The pitch: Every other AI travel tool either locks you into a monthly subscription you forget about, or is "free" because they take affiliate cuts on bad hotel recommendations. Toqui charges $19 per trip -- only when you actually have a real trip to plan. No recurring charges, no affiliate-driven recommendations.
 
 **Who to contact:**
 
@@ -74,7 +74,7 @@ The pitch: Every other AI travel tool either locks you into a monthly subscripti
 
 *Micro-influencers (1K-100K followers):*
 - Solo travel TikTokers who post "how I planned my trip" content
-- Budget travel YouTubers (the $12/trip angle resonates with budget travelers)
+- Budget travel YouTubers (the $19/trip angle resonates with budget travelers)
 - Digital nomad content creators on Instagram
 - Travel planning niche accounts on Twitter/X
 
@@ -96,7 +96,7 @@ Forget MAU, DAU, and download counts. At 3 users growing to 100, the only metric
 |--------|---------------|--------|
 | **Activation rate** | % of signups who send their first chat message within 24 hours | > 60% |
 | **Trip completion rate** | % of users who generate a full itinerary (not just chat) | > 40% |
-| **Pro conversion rate** | % of users who pay $12 for Pro on at least one trip | > 5% at launch, > 10% at scale |
+| **Pro conversion rate** | % of users who pay $19 for Pro on at least one trip | > 5% at launch, > 10% at scale |
 | **Referral rate** | % of users who share their referral code | > 15% |
 | **Referral conversion** | % of referred users who actually sign up | > 25% |
 | **Retention (trip-based)** | % of users who create a second trip within 90 days | > 30% |
@@ -145,7 +145,7 @@ map_viewed              { trip_id }
 For a travel app at launch (first 90 days):
 
 - **Signup-to-activation**: 60%+ is good (travel apps with chat interfaces tend to have high activation because the first action is obvious: describe your trip)
-- **Pro conversion at 5%**: This is realistic for a $12 one-time purchase. Compare: most SaaS free-to-paid is 2-5%. You have an advantage because the ask is small and non-recurring.
+- **Pro conversion at 5%**: This is realistic for a $19 one-time purchase. Compare: most SaaS free-to-paid is 2-5%. You have an advantage because the ask is small and non-recurring.
 - **Week 1 retention**: Expect 20-30% (travel is inherently episodic -- people plan trips, then come back months later). This is fine. Do not optimize for daily engagement.
 - **Referral rate at 15%**: Dropbox achieved ~35% with a strong incentive. Without a strong incentive, 15% is ambitious but achievable if the product genuinely impresses.
 
@@ -158,7 +158,7 @@ For a travel app at launch (first 90 days):
 **Tier 1 (highest intent, go here first):**
 - **r/travel** (12M+ members) -- People actively asking "help me plan my X trip"
 - **r/solotravel** -- Solo travelers do more planning, more likely to try tools
-- **r/shoestring** -- Budget travelers love the $12 per-trip model (vs. $10/month subscriptions they might not use)
+- **r/shoestring** -- Budget travelers love the $19 per-trip model (vs. $10/month subscriptions they might not use)
 - **r/digitalnomad** -- Frequent travelers who plan multiple trips per year
 - **Facebook groups**: "Travel Planning," "Budget Travel," "Solo Female Travelers" (massive groups, 100K+ members each)
 
@@ -179,13 +179,13 @@ For a travel app at launch (first 90 days):
 
 **Instead, lead with the outcome and the pricing:**
 
-> "I planned a 10-day Italy trip in 3 minutes -- with restaurant recs from a local food critic AI, weather forecasts for each day, and a map I could actually follow. It cost $12. Not per month. Just $12 for the whole trip."
+> "I planned a 10-day Italy trip in 3 minutes -- with restaurant recs from a local food critic AI, weather forecasts for each day, and a map I could actually follow. It cost $19. Not per month. Just $19 for the whole trip."
 
 **Hooks that work for different audiences:**
 
 | Audience | Hook |
 |----------|------|
-| Budget travelers | "Every AI travel planner charges $10/month. Toqui charges $12 per trip. If you take 2 trips a year, you save $96." |
+| Budget travelers | "Every AI travel planner charges $10/month. Toqui charges $19 per trip. If you take 2 trips a year, you save $82." |
 | Solo travelers | "Planning solo trips is exhausting. I asked Toqui's nightlife expert persona where to go in Bangkok on a Tuesday, and it knew which spots are dead mid-week." |
 | Group trip planners | "We shared one Toqui trip with 4 friends. Everyone added their must-dos. The AI built an itinerary that actually worked for all of us." |
 | Reddit/forum users | Don't pitch. Answer someone's "help me plan" post thoroughly with a real itinerary. Add "I used Toqui to put this together" at the bottom. |
@@ -196,7 +196,7 @@ People share travel tools when:
 1. **The output is visually impressive** -- A beautiful itinerary with a map that they can show friends ("look what I planned")
 2. **It saved them real time** -- "I spent 3 minutes instead of 3 hours"
 3. **Group trips** -- The shared trip feature is inherently viral: one person signs up, invites 3-4 friends
-4. **The pricing surprises them** -- "$12 for all of this? Not per month?" is a genuinely shareable reaction
+4. **The pricing surprises them** -- "$19 for all of this? Not per month?" is a genuinely shareable reaction
 
 **Maximize sharing by:**
 - Making the shared trip view (the `/shared/[token]` page) look incredible even for non-users. This is your best viral loop. Every shared trip is a landing page.
@@ -209,7 +209,7 @@ Current state: referral system exists (`POST /api/referral/redeem`, share link `
 
 **Improvements to consider:**
 
-1. **Add a real incentive**: Give both referrer AND referred user a free Pro unlock on their next trip. Cost to you: $0 (it's digital). Value to user: $12. This is the single highest-leverage change.
+1. **Add a real incentive**: Give both referrer AND referred user a free Pro unlock on their next trip. Cost to you: $0 (it's digital). Value to user: $19. This is the single highest-leverage change.
 2. **Prompt at the right moment**: Ask users to share their referral code immediately after they finish an itinerary (moment of maximum delight), not on a settings page.
 3. **Make the referral link preview rich**: When someone shares a Toqui referral link on iMessage/WhatsApp/Slack, the Open Graph preview should show something compelling -- not just the Toqui logo, but "X invited you to plan your next trip with AI. Your first trip is on them."
 4. **Track referral attribution end-to-end**: Know exactly which users came from referrals and whether they convert to Pro at a higher rate than organic signups.
@@ -290,9 +290,9 @@ Each guide should include:
 **Primary message: "Pay per trip, not per month."**
 
 This is the single clearest differentiator. Frame it as:
-- $12 per trip vs. $120/year for Layla (if you take 2-3 trips/year, Toqui is 70% cheaper)
-- $12 per trip vs. "free" tools that push affiliate hotel bookings at you
-- $12 per trip vs. $240/year for ChatGPT Plus (which doesn't even have travel features)
+- $19 per trip vs. $120/year for Layla (if you take 2-3 trips/year, Toqui is 68% cheaper)
+- $19 per trip vs. "free" tools that push affiliate hotel bookings at you
+- $19 per trip vs. $240/year for ChatGPT Plus (which doesn't even have travel features)
 
 **Secondary differentiators:**
 
@@ -308,8 +308,8 @@ This is the single clearest differentiator. Frame it as:
 
 | Channel | Lead With |
 |---------|----------|
-| Product Hunt | "800+ expert AI travel personas. $12 per trip. No subscription." |
-| Reddit/forums | Helpfulness first. Pricing second. "I used this tool that costs $12 per trip (not monthly) and it planned my whole Japan trip." |
+| Product Hunt | "800+ expert AI travel personas. $19 per trip. No subscription." |
+| Reddit/forums | Helpfulness first. Pricing second. "I used this tool that costs $19 per trip (not monthly) and it planned my whole Japan trip." |
 | TikTok/Instagram | Visual output. "Watch me plan a 7-day Italy trip in 90 seconds." The persona switching is visually interesting content. |
 | Press/blogs | The anti-subscription angle. "While Layla charges $10/month and Mindtrip sells your attention to hotels, Toqui built a different model." |
 | App Store | "AI Travel Planner -- Expert Personas, Maps, Weather, Bookings. Pay per trip." |

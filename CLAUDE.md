@@ -243,7 +243,7 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 
 ## Payment & Trip Pro
 
-Trip Pro ($12/trip) is purchased via Helcim (web-only payment UI, native shows redirect link):
+Trip Pro ($19/trip) is purchased via Helcim (web-only payment UI, native shows redirect link):
 
 1. User taps "Upgrade" → `useCheckout.initCheckout(tripId)` → `POST /api/checkout` → backend creates Helcim session
 2. `ProUpgrade.tsx` renders Helcim's payment iframe (web) or a redirect link (native)

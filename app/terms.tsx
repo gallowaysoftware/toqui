@@ -109,7 +109,7 @@ export default function TermsScreen() {
 
       <Text style={styles.subsectionTitle}>Trip Pro</Text>
       <Text style={styles.text}>
-        Trip Pro is a per-trip upgrade priced at $12 per trip. Trip Pro unlocks
+        Trip Pro is a per-trip upgrade priced at $19 per trip. Trip Pro unlocks
         unlimited messages, all 800+ expert AI personas, email booking
         forwarding, itinerary export (PDF and calendar), and best-fit
         recommendations for the purchased trip. Trip Pro applies only to the
@@ -153,7 +153,7 @@ export default function TermsScreen() {
         these Terms.
       </Text>
       <Bullet>
-        Trip Pro purchases are one-time, per-trip payments of $12
+        Trip Pro purchases are one-time, per-trip payments of $19
       </Bullet>
       <Bullet>
         All purchases are final. We do not offer refunds unless required by

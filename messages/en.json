@@ -256,7 +256,7 @@
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again.",
     "expertLimitReached": "You've used your free expert consultations for this trip.",
-    "expertLimitCta": "Unlock unlimited experts for $12 CAD",
+    "expertLimitCta": "Unlock unlimited experts for $19 CAD",
     "dailyLimitReset": "Your messages reset at midnight UTC.",
     "suggestions": {
       "itinerary": "Build my day 1 itinerary",
@@ -286,7 +286,7 @@
   },
   "checkout": {
     "title": "Unlock Trip Pro",
-    "price": "$12 CAD",
+    "price": "$19 CAD",
     "priceDescription": "One-time payment per trip",
     "unlockButton": "Unlock This Trip",
     "benefits": {

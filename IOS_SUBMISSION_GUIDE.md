@@ -105,7 +105,7 @@ Fill these in App Store Connect:
 | Keywords | travel,itinerary,ai,trip planner,vacation,travel companion,booking,travel guide |
 | Age Rating | 17+ (has in-app purchases, web browsing) |
 | Price | Free |
-| In-App Purchases | Trip Pro — $12 CAD per trip |
+| In-App Purchases | Trip Pro — $19 CAD per trip |
 
 ### Screenshots Needed
 

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Toqui currently generates revenue through a single channel: a $12 CAD per-trip unlock (Trip Pro). This plan lays out a phased approach to diversifying revenue across 23 streams, moving from transactional pricing toward a layered model of subscriptions, affiliate commissions, B2B licensing, and marketplace fees. The overarching principle: **never compromise the AI planning experience for monetization**. Every revenue stream must either improve or be invisible to the user's core journey.
+Toqui currently generates revenue through a single channel: a $19 CAD per-trip unlock (Trip Pro). This plan lays out a phased approach to diversifying revenue across 23 streams, moving from transactional pricing toward a layered model of subscriptions, affiliate commissions, B2B licensing, and marketplace fees. The overarching principle: **never compromise the AI planning experience for monetization**. Every revenue stream must either improve or be invisible to the user's core journey.
 
 **Target revenue mix at scale:**
 
@@ -30,7 +30,7 @@ Toqui currently generates revenue through a single channel: a $12 CAD per-trip u
 
 ### 1. Trip Pro Per-Trip Unlock (CURRENT)
 
-**What it is:** $12 CAD one-time unlock per trip. Grants unlimited messages, all 800+ expert personas, email forwarding, export, and best-fit recommendations.
+**What it is:** $19 CAD one-time unlock per trip. Grants unlimited messages, all 800+ expert personas, email forwarding, export, and best-fit recommendations.
 
 | Metric            | Estimate                                                           |
 | ----------------- | ------------------------------------------------------------------ |
@@ -655,7 +655,7 @@ The free tier should be good enough that users tell their friends about Toqui. P
 
 ### 3. Per-trip pricing is a bridge, not the destination
 
-$12/trip is a great early signal of willingness to pay, but it caps revenue per user. The transition to subscriptions should happen in Phase 2 before per-trip pricing becomes an expectation that's hard to unwind.
+$19/trip is a great early signal of willingness to pay, but it caps revenue per user. The transition to subscriptions should happen in Phase 2 before per-trip pricing becomes an expectation that's hard to unwind.
 
 ### 4. B2B is the margin play
 
