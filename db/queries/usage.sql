@@ -22,3 +22,37 @@ WHERE user_id = sqlc.arg(user_id) AND date = CURRENT_DATE;
 
 -- name: CountDailyMessages :one
 SELECT COALESCE(SUM(message_count), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE;
+
+-- name: GetDailyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE;
+
+-- name: GetWeeklyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '7 days';
+
+-- name: GetMonthlyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '30 days';
+
+-- name: GetAICostByTier :many
+SELECT
+    COALESCE(u.subscription_tier, 'free') AS tier,
+    COUNT(DISTINCT du.user_id)::bigint AS user_count,
+    COALESCE(SUM(du.ai_cost_cents), 0)::bigint AS total_cents
+FROM daily_usage du
+JOIN users u ON u.id = du.user_id
+WHERE du.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND du.ai_cost_cents > 0
+GROUP BY COALESCE(u.subscription_tier, 'free');
+
+-- name: GetTopAICostUsers :many
+SELECT
+    du.user_id,
+    u.email,
+    COALESCE(SUM(du.ai_cost_cents), 0)::bigint AS total_cents,
+    COALESCE(SUM(du.message_count), 0)::bigint AS message_count
+FROM daily_usage du
+JOIN users u ON u.id = du.user_id
+WHERE du.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND du.ai_cost_cents > 0
+GROUP BY du.user_id, u.email
+ORDER BY total_cents DESC
+LIMIT 10;

@@ -28,6 +28,12 @@ type Service struct {
 	personas  *persona.Registry
 	cache     *ai.ResponseCache // nil when caching is disabled
 	budget    *ai.TokenBudget   // nil when budget is unlimited
+	usageSvc  usageCostRecorder // nil when cost tracking is disabled
+}
+
+// usageCostRecorder is the subset of usage.Service needed for cost recording.
+type usageCostRecorder interface {
+	RecordAICost(ctx context.Context, userID uuid.UUID, costCents int32) error
 }
 
 func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *tools.Registry, personas *persona.Registry) *Service {
@@ -47,6 +53,11 @@ func (s *Service) SetCache(cache *ai.ResponseCache) {
 // SetBudget enables daily token budget tracking. Pass nil to disable.
 func (s *Service) SetBudget(budget *ai.TokenBudget) {
 	s.budget = budget
+}
+
+// SetUsageService enables AI cost recording to the database. Pass nil to disable.
+func (s *Service) SetUsageService(svc usageCostRecorder) {
+	s.usageSvc = svc
 }
 
 type StreamEvent struct {
@@ -413,7 +424,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 
 		// Log usage with environment label for cost tracking.
-		s.logUsage(iteration+1, totalInputTokens, totalOutputTokens)
+		s.logUsage(ctx, userID, aiReq.ModelTier, iteration+1, totalInputTokens, totalOutputTokens)
 		return responseText
 	}
 
@@ -449,22 +460,42 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		MessageID: assistantMsg.ID,
 	}
 
-	s.logUsage(maxToolLoopIterations, totalInputTokens, totalOutputTokens)
+	s.logUsage(ctx, userID, aiReq.ModelTier, maxToolLoopIterations, totalInputTokens, totalOutputTokens)
 	return responseText
 }
 
 // estimateCostUSD returns the estimated cost in USD for a request based on
-// provider pricing. Rates are approximate and should be updated when pricing changes.
-func estimateCostUSD(provider string, inputTokens, outputTokens int) float64 {
-	// Per-million-token rates (as of March 2026)
+// provider and model tier pricing. Rates are approximate and should be updated
+// when pricing changes.
+func estimateCostUSD(provider string, tier ai.ModelTier, inputTokens, outputTokens int) float64 {
+	// Per-million-token rates (as of April 2026)
 	var inputRate, outputRate float64
 	switch provider {
 	case "claude":
-		// Haiku-class (fast tier — most common)
-		inputRate, outputRate = 0.25, 1.25
+		switch tier {
+		case ai.ModelTierFast:
+			// Claude Haiku 4.5
+			inputRate, outputRate = 0.80, 4.00
+		case ai.ModelTierSmart, ai.ModelTierBest:
+			// Claude Sonnet 4.6
+			inputRate, outputRate = 3.00, 15.00
+		default:
+			inputRate, outputRate = 0.80, 4.00
+		}
 	case "gemini":
-		// Flash-class (fast tier)
-		inputRate, outputRate = 0.075, 0.30
+		switch tier {
+		case ai.ModelTierFast:
+			// Gemini 2.5 Flash-Lite
+			inputRate, outputRate = 0.075, 0.30
+		case ai.ModelTierSmart:
+			// Gemini 2.5 Flash
+			inputRate, outputRate = 0.15, 0.60
+		case ai.ModelTierBest:
+			// Gemini 2.5 Pro
+			inputRate, outputRate = 1.25, 10.00
+		default:
+			inputRate, outputRate = 0.075, 0.30
+		}
 	default:
 		return 0
 	}
@@ -472,13 +503,14 @@ func estimateCostUSD(provider string, inputTokens, outputTokens int) float64 {
 }
 
 // logUsage logs token usage with provider and environment labels for cost tracking,
-// and records against the daily token budget if configured.
-func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
+// records against the daily token budget if configured, and persists the estimated
+// cost in the daily_usage table via the usage service.
+func (s *Service) logUsage(ctx context.Context, userID uuid.UUID, tier ai.ModelTier, iterations, inputTokens, outputTokens int) {
 	if inputTokens == 0 && outputTokens == 0 {
 		return
 	}
 	totalTokens := inputTokens + outputTokens
-	costUSD := estimateCostUSD(s.provider.Name(), inputTokens, outputTokens)
+	costUSD := estimateCostUSD(s.provider.Name(), tier, inputTokens, outputTokens)
 	slog.Info("ai_request_completed",
 		"provider", s.provider.Name(),
 		"env", os.Getenv("TARGET_ENV"),
@@ -487,10 +519,22 @@ func (s *Service) logUsage(iterations, inputTokens, outputTokens int) {
 		"total_tokens", totalTokens,
 		"estimated_cost_usd", costUSD,
 		"tool_loop_iterations", iterations,
+		"model_tier", string(tier),
 	)
 
 	if s.budget != nil {
 		s.budget.Record(totalTokens)
+	}
+
+	// Persist cost to database (convert USD to cents, round up to at least 1 cent
+	// if there was any usage to avoid losing sub-cent costs).
+	if s.usageSvc != nil {
+		costCents := int32(costUSD*100 + 0.5) // round to nearest cent
+		if costCents > 0 {
+			if err := s.usageSvc.RecordAICost(ctx, userID, costCents); err != nil {
+				slog.Error("failed to record AI cost", "error", err, "user_id", userID, "cost_cents", costCents)
+			}
+		}
 	}
 }
 

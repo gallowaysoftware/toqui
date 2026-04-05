@@ -33,6 +33,55 @@ func (q *Queries) DecrementDailyUsage(ctx context.Context, userID uuid.UUID) err
 	return err
 }
 
+const getAICostByTier = `-- name: GetAICostByTier :many
+SELECT
+    COALESCE(u.subscription_tier, 'free') AS tier,
+    COUNT(DISTINCT du.user_id)::bigint AS user_count,
+    COALESCE(SUM(du.ai_cost_cents), 0)::bigint AS total_cents
+FROM daily_usage du
+JOIN users u ON u.id = du.user_id
+WHERE du.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND du.ai_cost_cents > 0
+GROUP BY COALESCE(u.subscription_tier, 'free')
+`
+
+type GetAICostByTierRow struct {
+	Tier       string `json:"tier"`
+	UserCount  int64  `json:"user_count"`
+	TotalCents int64  `json:"total_cents"`
+}
+
+func (q *Queries) GetAICostByTier(ctx context.Context) ([]GetAICostByTierRow, error) {
+	rows, err := q.db.Query(ctx, getAICostByTier)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAICostByTierRow{}
+	for rows.Next() {
+		var i GetAICostByTierRow
+		if err := rows.Scan(&i.Tier, &i.UserCount, &i.TotalCents); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDailyAICostTotal = `-- name: GetDailyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE
+`
+
+func (q *Queries) GetDailyAICostTotal(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getDailyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getDailyUsage = `-- name: GetDailyUsage :one
 SELECT id, user_id, date, message_count, ai_cost_cents, created_at, updated_at FROM daily_usage
 WHERE user_id = $1 AND date = $2
@@ -56,6 +105,75 @@ func (q *Queries) GetDailyUsage(ctx context.Context, arg GetDailyUsageParams) (D
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getMonthlyAICostTotal = `-- name: GetMonthlyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) GetMonthlyAICostTotal(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getMonthlyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getTopAICostUsers = `-- name: GetTopAICostUsers :many
+SELECT
+    du.user_id,
+    u.email,
+    COALESCE(SUM(du.ai_cost_cents), 0)::bigint AS total_cents,
+    COALESCE(SUM(du.message_count), 0)::bigint AS message_count
+FROM daily_usage du
+JOIN users u ON u.id = du.user_id
+WHERE du.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND du.ai_cost_cents > 0
+GROUP BY du.user_id, u.email
+ORDER BY total_cents DESC
+LIMIT 10
+`
+
+type GetTopAICostUsersRow struct {
+	UserID       uuid.UUID `json:"user_id"`
+	Email        string    `json:"email"`
+	TotalCents   int64     `json:"total_cents"`
+	MessageCount int64     `json:"message_count"`
+}
+
+func (q *Queries) GetTopAICostUsers(ctx context.Context) ([]GetTopAICostUsersRow, error) {
+	rows, err := q.db.Query(ctx, getTopAICostUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTopAICostUsersRow{}
+	for rows.Next() {
+		var i GetTopAICostUsersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Email,
+			&i.TotalCents,
+			&i.MessageCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWeeklyAICostTotal = `-- name: GetWeeklyAICostTotal :one
+SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+`
+
+func (q *Queries) GetWeeklyAICostTotal(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getWeeklyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const incrementDailyUsage = `-- name: IncrementDailyUsage :one

@@ -231,6 +231,7 @@ func main() {
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
 	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).
 		WithTierLimits(cfg.DailyMessageLimitFree, cfg.DailyMessageLimitPro)
+	chatSvc.SetUsageService(usageSvc)
 
 	// Interceptors — handles both unary and streaming RPCs
 	rateLimiter := ratelimit.NewInterceptor(10, 60)
@@ -421,6 +422,7 @@ func main() {
 	mux.HandleFunc("/admin/delete-user", adminHandler.HandleDeleteUser)
 	mux.HandleFunc("/admin/metrics", adminHandler.HandleMetrics)
 	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
+	mux.HandleFunc("/admin/ai-costs", adminHandler.HandleAICosts)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)

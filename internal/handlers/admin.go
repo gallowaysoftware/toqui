@@ -641,6 +641,57 @@ func (h *AdminHandler) HandleDeleteWaitlistEntry(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
 
+// HandleAICosts handles GET /admin/ai-costs — AI cost dashboard.
+func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	ctx := r.Context()
+	dailyTotal, _ := h.queries.GetDailyAICostTotal(ctx)
+	weeklyTotal, _ := h.queries.GetWeeklyAICostTotal(ctx)
+	monthlyTotal, _ := h.queries.GetMonthlyAICostTotal(ctx)
+
+	tierRows, _ := h.queries.GetAICostByTier(ctx)
+	perTier := make(map[string]map[string]any)
+	for _, row := range tierRows {
+		avgCents := int64(0)
+		if row.UserCount > 0 {
+			avgCents = row.TotalCents / row.UserCount
+		}
+		perTier[row.Tier] = map[string]any{
+			"users":       row.UserCount,
+			"total_cents": row.TotalCents,
+			"avg_cents":   avgCents,
+		}
+	}
+
+	topUsers, _ := h.queries.GetTopAICostUsers(ctx)
+	topUsersOut := make([]map[string]any, 0, len(topUsers))
+	for _, u := range topUsers {
+		topUsersOut = append(topUsersOut, map[string]any{
+			"user_id":       u.UserID.String(),
+			"email":         u.Email,
+			"total_cents":   u.TotalCents,
+			"message_count": u.MessageCount,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"daily_total_cents":   dailyTotal,
+		"weekly_total_cents":  weeklyTotal,
+		"monthly_total_cents": monthlyTotal,
+		"per_tier":            perTier,
+		"top_users":           topUsersOut,
+	})
+}
+
 func parseInt(s string) int {
 	var n int
 	for _, c := range s {
