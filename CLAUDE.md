@@ -329,12 +329,14 @@ Both generate from the trip itinerary and are accessible from the trip settings 
 
 EU-hosted PostHog instance (`eu.i.posthog.com`). Privacy-first setup compliant with Core Principles:
 
-- **12 tracked events**: app_opened, trip_created, trip_shared, chat_message_sent, itinerary_exported, persona_switched, booking_added, pro_purchased, referral_shared, referral_redeemed, onboarding_completed, template_selected
+- **Tracked events (acquisition)**: session_start, return_visit, signup_started, signup_completed, age_gate_passed, onboarding_completed, template_selected
+- **Tracked events (engagement)**: app_opened, trip_created, first_trip_created, second_trip_created, trip_shared, shared_trip_viewed, shared_trip_signup_clicked, chat_message_sent, first_message_sent, first_itinerary_generated, itinerary_exported, persona_switched, booking_added
+- **Tracked events (monetization)**: upgrade_viewed, upgrade_prompt_shown, upgrade_started, checkout_initiated, payment_completed, payment_validation_failed, pro_purchased, referral_shared, referral_redeemed
 - All events track behavior patterns only — no destination names, chat content, or PII
 - User IDs are pseudonymized (SHA-256 hashed)
 - Session replay enabled with all text inputs and chat content masked
 - Autocapture disabled — only explicit events are tracked
-- `useAnalytics` hook provides `track()` and `identify()` across the app
+- `useAnalytics` hook provides `track()`, `identify()`, and `getFeatureFlag()` across the app
 
 ## Error Tracking (Sentry)
 

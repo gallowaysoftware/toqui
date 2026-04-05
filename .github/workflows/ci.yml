@@ -112,8 +112,7 @@ jobs:
             --project=toqui-staging \
             --port=8080 \
             --allow-unauthenticated \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel" \
-            --set-secrets="GOOGLE_CLIENT_ID=staging-google-client-id:latest"
+            --set-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
 
   deploy-prod:
     name: Deploy to Production
@@ -143,5 +142,4 @@ jobs:
             --project=toqui-prod \
             --port=8080 \
             --allow-unauthenticated \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel" \
-            --set-secrets="GOOGLE_CLIENT_ID=prod-google-client-id:latest"
+            --set-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"

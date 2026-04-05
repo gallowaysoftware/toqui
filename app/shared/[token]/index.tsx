@@ -516,7 +516,7 @@ function WatermarkBadge({ colors }: { colors: ThemeColors }) {
         accessibilityRole="link"
         accessibilityLabel="Planned with Toqui"
       >
-        <Text style={styles.watermarkIcon}>&#9992;</Text>
+        <Text style={styles.watermarkIcon}>✈</Text>
         <Text style={styles.watermarkText}>Planned with Toqui</Text>
       </Pressable>
     </View>

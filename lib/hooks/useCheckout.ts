@@ -25,6 +25,10 @@ export function useCheckout(tripId: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // NOTE: price_variant is sent for analytics/logging only.
+  // The backend MUST determine the actual charge amount server-side
+  // (e.g., by evaluating PostHog flags server-side or from its own config).
+  // Never trust this client-supplied value to set the payment amount.
   const initCheckout = useCallback(async (priceVariant?: string): Promise<CheckoutInitResponse> => {
     setIsLoading(true);
     setError(null);

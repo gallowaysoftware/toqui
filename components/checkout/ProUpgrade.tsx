@@ -49,8 +49,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
-  const { track } = useAnalytics();
-  const { getFeatureFlag } = useAnalytics();
+  const { track, getFeatureFlag } = useAnalytics();
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
@@ -111,7 +110,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
             onUnlocked?.();
           }
         } catch {
-          track("payment_abandoned");
+          track("payment_validation_failed");
         }
       };
 

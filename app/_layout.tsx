@@ -170,17 +170,17 @@ function AnalyticsBootstrap() {
       }
     } else {
       // Native: use dynamic import to avoid top-level dependency
-      void import("@react-native-async-storage/async-storage").then(
-        ({ default: AsyncStorage }) => {
+      void import("@react-native-async-storage/async-storage")
+        .then(({ default: AsyncStorage }) => {
           void AsyncStorage.getItem(VISITED_KEY).then((val) => {
             if (val === "true") {
               track("return_visit", { platform: Platform.OS });
             } else {
               void AsyncStorage.setItem(VISITED_KEY, "true");
             }
-          });
-        },
-      );
+          }).catch(() => {});
+        })
+        .catch(() => {});
     }
   }, [track]);
 

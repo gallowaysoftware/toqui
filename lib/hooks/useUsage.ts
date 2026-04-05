@@ -78,7 +78,7 @@ export function useUsage(): UsageData {
     tier,
     remainingMessages: remaining,
     isNearLimit: data.limit > 0 && data.used / data.limit > 0.8,
-    isAtLimit: data.used >= data.limit,
+    isAtLimit: data.limit > 0 && data.used >= data.limit,
   };
 }
 

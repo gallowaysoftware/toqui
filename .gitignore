@@ -27,4 +27,7 @@ Thumbs.db
 # misc
 *.tsbuildinfo
 
+# claude worktrees
+.claude/worktrees/
+
 .env.local
