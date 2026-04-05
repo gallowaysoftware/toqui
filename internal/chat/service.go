@@ -231,8 +231,9 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	}
 
 	// Check response cache before calling the LLM.
-	if s.cache != nil && s.cache.Eligible(aiReq) {
-		if cached, ok := s.cache.Get(aiReq); ok {
+	userIDStr := params.UserID.String()
+	if s.cache != nil && s.cache.Eligible(userIDStr, aiReq) {
+		if cached, ok := s.cache.Get(userIDStr, aiReq); ok {
 			slog.Info("llm cache hit, returning cached response",
 				"mode", params.Mode,
 				"msg_len", len(params.Content),
@@ -253,8 +254,8 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
 
 		// Cache the response after streaming completes (only for eligible requests).
-		if s.cache != nil && s.cache.Eligible(aiReq) && responseText != "" {
-			s.cache.Put(aiReq, responseText)
+		if s.cache != nil && s.cache.Eligible(userIDStr, aiReq) && responseText != "" {
+			s.cache.Put(userIDStr, aiReq, responseText)
 			slog.Debug("llm response cached",
 				"mode", params.Mode,
 				"response_len", len(responseText),

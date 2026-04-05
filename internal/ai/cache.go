@@ -14,7 +14,7 @@ import (
 // It is designed to cache short, repetitive queries in selection mode
 // (e.g., "tell me about Paris") to avoid redundant LLM calls.
 //
-// Cache key = SHA-256(system_prompt + last_user_message).
+// Cache key = SHA-256(user_id + system_prompt + last_user_message).
 // Only messages under maxMessageLen characters in selection mode are cached.
 //
 // The LRU is implemented with a doubly-linked list (container/list) and a map
@@ -79,10 +79,14 @@ func NewResponseCache(opts ...CacheOption) *ResponseCache {
 	return c
 }
 
-// cacheKey computes the cache key for a request. It hashes the system prompt
-// and the last user message content together.
-func cacheKey(systemPrompt, userMessage string) string {
+// cacheKey computes the cache key for a request. It hashes the user ID,
+// system prompt, and the last user message content together. Including the
+// user ID ensures different users never share cache entries even if they
+// have identical system prompts and messages (defense-in-depth).
+func cacheKey(userID, systemPrompt, userMessage string) string {
 	h := sha256.New()
+	h.Write([]byte(userID))
+	h.Write([]byte{0}) // separator
 	h.Write([]byte(systemPrompt))
 	h.Write([]byte{0}) // separator
 	h.Write([]byte(userMessage))
@@ -91,8 +95,9 @@ func cacheKey(systemPrompt, userMessage string) string {
 
 // Eligible returns true if the given ChatRequest is eligible for caching.
 // Only selection mode with short user messages (< maxMessageLen runes)
-// and no tool calls are cached.
-func (c *ResponseCache) Eligible(req *ChatRequest) bool {
+// and no tool calls are cached. The userID parameter is accepted for API
+// consistency but does not affect eligibility.
+func (c *ResponseCache) Eligible(userID string, req *ChatRequest) bool {
 	if req.Mode != "selection" {
 		return false
 	}
@@ -108,12 +113,13 @@ func (c *ResponseCache) Eligible(req *ChatRequest) bool {
 
 // Get looks up a cached response for the given request.
 // Returns the cached response and true on a hit, or empty string and false on a miss.
-func (c *ResponseCache) Get(req *ChatRequest) (string, bool) {
+// The userID is included in the cache key so different users never share entries.
+func (c *ResponseCache) Get(userID string, req *ChatRequest) (string, bool) {
 	msg := lastUserMessage(req)
 	if msg == "" {
 		return "", false
 	}
-	key := cacheKey(req.SystemPrompt, msg)
+	key := cacheKey(userID, req.SystemPrompt, msg)
 
 	c.mu.RLock()
 	elem, ok := c.store[key]
@@ -156,12 +162,13 @@ func (c *ResponseCache) Get(req *ChatRequest) (string, bool) {
 
 // Put stores a response in the cache for the given request.
 // If the cache is at capacity, the least recently used entry is evicted.
-func (c *ResponseCache) Put(req *ChatRequest, response string) {
+// The userID is included in the cache key so different users never share entries.
+func (c *ResponseCache) Put(userID string, req *ChatRequest, response string) {
 	msg := lastUserMessage(req)
 	if msg == "" {
 		return
 	}
-	key := cacheKey(req.SystemPrompt, msg)
+	key := cacheKey(userID, req.SystemPrompt, msg)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
