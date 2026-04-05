@@ -22,5 +22,12 @@ UPDATE bookings SET trip_id = $2
 WHERE id = $1 AND user_id = $3
 RETURNING *;
 
+-- name: FindBookingByConfirmationCode :one
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id) AND trip_id = sqlc.arg(trip_id)
+  AND confirmation_code = sqlc.arg(confirmation_code)
+  AND confirmation_code != ''
+LIMIT 1;
+
 -- name: DeleteBooking :exec
 DELETE FROM bookings WHERE id = $1 AND user_id = $2;

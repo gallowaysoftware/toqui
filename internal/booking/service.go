@@ -3,10 +3,13 @@ package booking
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -60,6 +63,24 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		id, err := uuid.Parse(tripID)
 		if err == nil {
 			tripUUID = pgtype.UUID{Bytes: id, Valid: true}
+		}
+	}
+
+	// Duplicate detection: if same user + same trip + same confirmation code, return existing booking.
+	if parsed.ConfirmationCode != "" && tripUUID.Valid {
+		existing, err := s.queries.FindBookingByConfirmationCode(ctx, dbgen.FindBookingByConfirmationCodeParams{
+			UserID:           userID,
+			TripID:           tripUUID,
+			ConfirmationCode: pgtype.Text{String: parsed.ConfirmationCode, Valid: true},
+		})
+		if err == nil {
+			slog.InfoContext(ctx, "duplicate booking detected, returning existing",
+				"booking_id", existing.ID,
+			)
+			return &existing, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("check duplicate booking: %w", err)
 		}
 	}
 
