@@ -770,6 +770,12 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 					}
 				}
 			}
+			// Include truncated raw source for bookings so AI can answer
+			// detailed questions (terminal, check-in time, etc.)
+			if b.RawSource.Valid && b.RawSource.String != "" {
+				raw := sanitizeForPrompt(b.RawSource.String, 500)
+				fmt.Fprintf(&sb, "\n    Raw details: %s", raw)
+			}
 			sb.WriteString("\n")
 		}
 	}
