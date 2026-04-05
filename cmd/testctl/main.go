@@ -13,12 +13,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/config"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
@@ -42,11 +43,10 @@ func main() {
 	defer pool.Close()
 
 	queries := dbgen.New(pool)
-	authSvc := auth.NewService(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURI, cfg.JWTSecret)
 
 	switch os.Args[1] {
 	case "create-user":
-		createUser(ctx, queries, authSvc, pool, os.Args[2:])
+		createUser(ctx, queries, cfg, pool, os.Args[2:])
 	case "cleanup-user":
 		cleanupUser(ctx, pool, os.Args[2:])
 	default:
@@ -60,10 +60,11 @@ type createUserResult struct {
 	Token  string `json:"token"`
 }
 
-func createUser(ctx context.Context, queries *dbgen.Queries, authSvc *auth.Service, pool *pgxpool.Pool, args []string) {
+func createUser(ctx context.Context, queries *dbgen.Queries, cfg *config.Config, pool *pgxpool.Pool, args []string) {
 	fs := flag.NewFlagSet("create-user", flag.ExitOnError)
 	name := fs.String("name", "Test User", "user display name")
 	email := fs.String("email", "", "user email (required)")
+	ttl := fs.Duration("ttl", 4*time.Hour, "token time-to-live (default 4h)")
 	if err := fs.Parse(args); err != nil {
 		log.Fatal(err)
 	}
@@ -88,7 +89,14 @@ func createUser(ctx context.Context, queries *dbgen.Queries, authSvc *auth.Servi
 		log.Fatalf("set age verification: %v", err)
 	}
 
-	token, err := authSvc.GenerateAccessToken(user.ID)
+	// Generate token with configurable TTL (default 4h for agentic tests)
+	claims := jwt.MapClaims{
+		"sub": user.ID.String(),
+		"exp": time.Now().Add(*ttl).Unix(),
+		"iat": time.Now().Unix(),
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token, err := tok.SignedString([]byte(cfg.JWTSecret))
 	if err != nil {
 		log.Fatalf("generate token: %v", err)
 	}
