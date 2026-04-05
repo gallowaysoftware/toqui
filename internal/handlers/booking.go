@@ -3,15 +3,19 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -36,7 +40,7 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 	}
 	b, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
 	if err != nil {
-		return nil, internalError(ctx, "booking operation", err)
+		return nil, aiAwareError(ctx, "booking ingest", err)
 	}
 
 	return connect.NewResponse(&toquiv1.IngestBookingResponse{
@@ -152,13 +156,38 @@ func (h *BookingHandler) ExtractBookingField(ctx context.Context, req *connect.R
 
 	result, err := h.bookingSvc.ExtractField(ctx, userID, bookingID, req.Msg.Question)
 	if err != nil {
-		return nil, internalError(ctx, "booking operation", err)
+		return nil, aiAwareError(ctx, "booking extract field", err)
 	}
 
 	return connect.NewResponse(&toquiv1.ExtractBookingFieldResponse{
 		Answer:          result.Answer,
 		ExtractedFields: result.ExtractedFields,
 	}), nil
+}
+
+// aiAwareError checks if an error originated from an AI provider (e.g., rate
+// limit) and returns an appropriate connect error code. Rate limit and provider
+// errors use CodeUnavailable; other errors use CodeInternal. The original error
+// is logged server-side; only a sanitized message reaches the client.
+func aiAwareError(ctx context.Context, operation string, err error) *connect.Error {
+	sanitized := ai.SanitizeProviderError(err)
+	reqID := requestid.FromContext(ctx)
+
+	// Log the original unsanitized error for debugging.
+	slog.Error(operation, "error", ai.OriginalError(err), "request_id", reqID)
+
+	if ai.IsProviderRateLimit(sanitized) {
+		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("%s", sanitized.Error()))
+	}
+
+	// Check if it was any provider error (SanitizedError) vs a non-AI error.
+	var se *ai.SanitizedError
+	if errors.As(sanitized, &se) {
+		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("%s", se.Error()))
+	}
+
+	// Non-AI error — use the standard internal error path.
+	return connect.NewError(connect.CodeInternal, fmt.Errorf("an internal error occurred"))
 }
 
 var bookingTypeMap = map[string]toquiv1.BookingType{
