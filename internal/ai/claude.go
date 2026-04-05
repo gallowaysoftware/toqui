@@ -237,7 +237,8 @@ func (c *ClaudeProvider) processStream(ctx context.Context, body io.Reader, ch c
 	for {
 		data, done, err := reader.Next(ctx)
 		if err != nil {
-			ch <- Event{Type: EventError, Error: err}
+			slog.Error("claude stream error", "error", err)
+			ch <- Event{Type: EventError, Error: SanitizeProviderError(err)}
 			return
 		}
 		if done {
