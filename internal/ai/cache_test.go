@@ -18,15 +18,15 @@ func TestResponseCache_HitAndMiss(t *testing.T) {
 	}
 
 	// Miss: nothing cached yet.
-	if resp, ok := cache.Get(req); ok {
+	if resp, ok := cache.Get("user-1", req); ok {
 		t.Fatalf("expected cache miss, got hit with response: %q", resp)
 	}
 
 	// Put a response.
-	cache.Put(req, "Paris is the capital of France!")
+	cache.Put("user-1", req, "Paris is the capital of France!")
 
 	// Hit: should return cached response.
-	resp, ok := cache.Get(req)
+	resp, ok := cache.Get("user-1", req)
 	if !ok {
 		t.Fatal("expected cache hit, got miss")
 	}
@@ -50,10 +50,10 @@ func TestResponseCache_TTLExpiration(t *testing.T) {
 		Mode:         "selection",
 	}
 
-	cache.Put(req, "Tokyo is the capital of Japan!")
+	cache.Put("user-1", req, "Tokyo is the capital of Japan!")
 
 	// Hit: within TTL.
-	if _, ok := cache.Get(req); !ok {
+	if _, ok := cache.Get("user-1", req); !ok {
 		t.Fatal("expected cache hit within TTL")
 	}
 
@@ -61,7 +61,7 @@ func TestResponseCache_TTLExpiration(t *testing.T) {
 	now = now.Add(11 * time.Minute)
 
 	// Miss: entry expired.
-	if _, ok := cache.Get(req); ok {
+	if _, ok := cache.Get("user-1", req); ok {
 		t.Fatal("expected cache miss after TTL expiration")
 	}
 
@@ -81,7 +81,7 @@ func TestResponseCache_LRUEviction(t *testing.T) {
 			Messages:     []Message{{Role: "user", Content: fmt.Sprintf("query %d", i)}},
 			Mode:         "selection",
 		}
-		cache.Put(req, fmt.Sprintf("response %d", i))
+		cache.Put("user-1", req, fmt.Sprintf("response %d", i))
 	}
 
 	if cache.Len() != 3 {
@@ -94,7 +94,7 @@ func TestResponseCache_LRUEviction(t *testing.T) {
 		Messages:     []Message{{Role: "user", Content: "query 0"}},
 		Mode:         "selection",
 	}
-	if _, ok := cache.Get(req0); !ok {
+	if _, ok := cache.Get("user-1", req0); !ok {
 		t.Fatal("expected hit for query 0")
 	}
 
@@ -104,14 +104,14 @@ func TestResponseCache_LRUEviction(t *testing.T) {
 		Messages:     []Message{{Role: "user", Content: "query 3"}},
 		Mode:         "selection",
 	}
-	cache.Put(req3, "response 3")
+	cache.Put("user-1", req3, "response 3")
 
 	if cache.Len() != 3 {
 		t.Fatalf("expected 3 entries after eviction, got %d", cache.Len())
 	}
 
 	// Entry 0 should still be present (was accessed recently).
-	if _, ok := cache.Get(req0); !ok {
+	if _, ok := cache.Get("user-1", req0); !ok {
 		t.Fatal("expected entry 0 to survive eviction")
 	}
 
@@ -121,7 +121,7 @@ func TestResponseCache_LRUEviction(t *testing.T) {
 		Messages:     []Message{{Role: "user", Content: "query 1"}},
 		Mode:         "selection",
 	}
-	if _, ok := cache.Get(req1); ok {
+	if _, ok := cache.Get("user-1", req1); ok {
 		t.Fatal("expected entry 1 to be evicted")
 	}
 
@@ -131,12 +131,12 @@ func TestResponseCache_LRUEviction(t *testing.T) {
 		Messages:     []Message{{Role: "user", Content: "query 2"}},
 		Mode:         "selection",
 	}
-	if _, ok := cache.Get(req2); !ok {
+	if _, ok := cache.Get("user-1", req2); !ok {
 		t.Fatal("expected entry 2 to survive eviction")
 	}
 
 	// Entry 3 should be present.
-	if _, ok := cache.Get(req3); !ok {
+	if _, ok := cache.Get("user-1", req3); !ok {
 		t.Fatal("expected entry 3 to be present")
 	}
 }
@@ -226,11 +226,39 @@ func TestResponseCache_Eligible(t *testing.T) {
 	cache := NewResponseCache()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := cache.Eligible(tt.req)
+			got := cache.Eligible("user-1", tt.req)
 			if got != tt.want {
 				t.Errorf("Eligible() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestResponseCache_DifferentUsersAreDifferentKeys(t *testing.T) {
+	cache := NewResponseCache()
+
+	req := &ChatRequest{
+		SystemPrompt: "You are a travel assistant.",
+		Messages:     []Message{{Role: "user", Content: "Tell me about Paris"}},
+		Mode:         "selection",
+	}
+
+	cache.Put("user-A", req, "Response for user A")
+	cache.Put("user-B", req, "Response for user B")
+
+	respA, ok := cache.Get("user-A", req)
+	if !ok || respA != "Response for user A" {
+		t.Fatalf("expected user A response, got ok=%v resp=%q", ok, respA)
+	}
+
+	respB, ok := cache.Get("user-B", req)
+	if !ok || respB != "Response for user B" {
+		t.Fatalf("expected user B response, got ok=%v resp=%q", ok, respB)
+	}
+
+	// A third user should get a cache miss.
+	if _, ok := cache.Get("user-C", req); ok {
+		t.Fatal("expected cache miss for user C")
 	}
 }
 
@@ -248,15 +276,15 @@ func TestResponseCache_DifferentPromptsAreDifferentKeys(t *testing.T) {
 		Mode:         "selection",
 	}
 
-	cache.Put(req1, "Response from Persona A")
-	cache.Put(req2, "Response from Persona B")
+	cache.Put("user-1", req1, "Response from Persona A")
+	cache.Put("user-1", req2, "Response from Persona B")
 
-	resp1, ok := cache.Get(req1)
+	resp1, ok := cache.Get("user-1", req1)
 	if !ok || resp1 != "Response from Persona A" {
 		t.Fatalf("expected Persona A response, got ok=%v resp=%q", ok, resp1)
 	}
 
-	resp2, ok := cache.Get(req2)
+	resp2, ok := cache.Get("user-1", req2)
 	if !ok || resp2 != "Response from Persona B" {
 		t.Fatalf("expected Persona B response, got ok=%v resp=%q", ok, resp2)
 	}
@@ -271,10 +299,10 @@ func TestResponseCache_UpdateExistingEntry(t *testing.T) {
 		Mode:         "selection",
 	}
 
-	cache.Put(req, "first response")
-	cache.Put(req, "updated response")
+	cache.Put("user-1", req, "first response")
+	cache.Put("user-1", req, "updated response")
 
-	resp, ok := cache.Get(req)
+	resp, ok := cache.Get("user-1", req)
 	if !ok {
 		t.Fatal("expected cache hit")
 	}
@@ -298,12 +326,12 @@ func TestResponseCache_EmptyUserMessage(t *testing.T) {
 	}
 
 	// Should not be eligible.
-	if cache.Eligible(req) {
+	if cache.Eligible("user-1", req) {
 		t.Fatal("empty user message should not be eligible")
 	}
 
 	// Put should be a no-op.
-	cache.Put(req, "should not be stored")
+	cache.Put("user-1", req, "should not be stored")
 	if cache.Len() != 0 {
 		t.Fatal("expected no entries after Put with empty user message")
 	}
@@ -322,8 +350,8 @@ func TestResponseCache_ConcurrentAccess(t *testing.T) {
 					Messages:     []Message{{Role: "user", Content: fmt.Sprintf("query %d-%d", id, j)}},
 					Mode:         "selection",
 				}
-				cache.Put(req, fmt.Sprintf("response %d-%d", id, j))
-				cache.Get(req)
+				cache.Put(fmt.Sprintf("user-%d", id), req, fmt.Sprintf("response %d-%d", id, j))
+				cache.Get(fmt.Sprintf("user-%d", id), req)
 			}
 		}(i)
 	}
@@ -339,14 +367,20 @@ func TestResponseCache_ConcurrentAccess(t *testing.T) {
 }
 
 func TestCacheKey_Deterministic(t *testing.T) {
-	k1 := cacheKey("system prompt", "user message")
-	k2 := cacheKey("system prompt", "user message")
+	k1 := cacheKey("user-1", "system prompt", "user message")
+	k2 := cacheKey("user-1", "system prompt", "user message")
 	if k1 != k2 {
 		t.Fatalf("same inputs produced different keys: %q vs %q", k1, k2)
 	}
 
-	k3 := cacheKey("system prompt", "different message")
+	k3 := cacheKey("user-1", "system prompt", "different message")
 	if k1 == k3 {
 		t.Fatal("different inputs produced same key")
+	}
+
+	// Different user IDs produce different keys even with identical prompt+message.
+	k4 := cacheKey("user-2", "system prompt", "user message")
+	if k1 == k4 {
+		t.Fatal("different user IDs produced same key")
 	}
 }
