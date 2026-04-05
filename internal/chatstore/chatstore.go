@@ -97,6 +97,16 @@ func (s *Store) GetSession(ctx context.Context, userID, tripID, sessionID string
 	return &session, nil
 }
 
+// DeleteSession deletes a single session document (no messages).
+// Used to clean up orphaned sessions that were created but never received messages.
+func (s *Store) DeleteSession(ctx context.Context, userID, tripID, sessionID string) error {
+	_, err := s.sessionsCol(userID, tripID).Doc(sessionID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit int) ([]*ChatSession, error) {
 	iter := s.sessionsCol(userID, tripID).OrderBy("lastMessageAt", firestore.Desc).Limit(limit).Documents(ctx)
 	defer iter.Stop()

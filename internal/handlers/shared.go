@@ -217,7 +217,11 @@ func (h *SharedHandler) HandleDisable(w http.ResponseWriter, r *http.Request) {
 
 	audit.Log(audit.EventTripUnshare, "user_id", userID.String(), "trip_id", tripID.String())
 
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		slog.Error("failed to encode disable sharing response", "error", err)
+	}
 }
 
 // authenticateRequest delegates to the shared authenticateRESTRequest helper.
