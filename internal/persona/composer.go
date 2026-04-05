@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -139,12 +140,18 @@ func (c *Composer) resolveIdentity(ctx context.Context, regionCode string, locat
 			archetypes[i] = tp.Archetype
 		}
 
-		return c.generateIdentity(ctx, &IdentityRequest{
+		result, err := c.generateIdentity(ctx, &IdentityRequest{
 			LocationName: locationName,
 			RegionCode:   regionCode,
 			Themes:       themeNames,
 			Archetypes:   archetypes,
 		})
+		if err != nil {
+			slog.Warn("AI identity generation failed, using template fallback",
+				"region", regionCode, "error", err)
+			return templateIdentity(location, themes), nil
+		}
+		return result, nil
 	}
 
 	// Fallback: template-based identity
