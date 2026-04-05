@@ -70,7 +70,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     needs: [typecheck, test, build]
-    if: false  # re-enable once GCP_WIF_PROVIDER and GCP_SERVICE_ACCOUNT secrets are added to the GitHub 'staging' environment
+    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
     runs-on: self-hosted
     environment: staging
     steps:
@@ -94,8 +94,8 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
       - name: Push Docker image
         run: |
@@ -121,39 +121,22 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: self-hosted
     environment: production
+    env:
+      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Build web (no secrets baked in — config.json is generated at runtime)
-      - name: Build web for production
-        run: npx expo export --platform web --output-dir dist/web --clear
-      # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
-      - name: Build Docker image
-        run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_PROD_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PROD_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Push Docker image
+      - name: Verify staging image exists
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
-          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
-      - name: Deploy to Cloud Run
+          gcloud artifacts docker images describe $IMAGE:${{ github.sha }} \
+            --project=toqui-staging || \
+            (echo "ERROR: Image $IMAGE:${{ github.sha }} not found. Run staging deploy first." && exit 1)
+      - name: Deploy to Cloud Run (promote staging image)
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
