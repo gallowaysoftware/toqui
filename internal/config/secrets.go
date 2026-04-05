@@ -13,6 +13,36 @@ import (
 
 const gcsmPrefix = "gcsm://"
 
+// ResolveSecretValue resolves a single value that may contain a gcsm:// prefix.
+// If the value does not start with gcsm://, it is returned as-is.
+// The projectID is used for short-form expansion (e.g. gcsm://secret-name).
+func ResolveSecretValue(value, projectID string) (string, error) {
+	if !strings.HasPrefix(value, gcsmPrefix) {
+		return value, nil
+	}
+
+	name := strings.TrimPrefix(value, gcsmPrefix)
+	if !strings.Contains(name, "/") {
+		name = fmt.Sprintf("projects/%s/secrets/%s/versions/latest", projectID, name)
+	}
+
+	ctx := context.Background()
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("create secret manager client: %w", err)
+	}
+	defer client.Close()
+
+	result, err := client.AccessSecretVersion(ctx, &smpb.AccessSecretVersionRequest{
+		Name: name,
+	})
+	if err != nil {
+		return "", fmt.Errorf("access secret %q: %w", name, err)
+	}
+
+	return string(result.Payload.Data), nil
+}
+
 // resolveSecrets scans all string fields on cfg for the gcsm:// prefix
 // and replaces them with the secret value fetched from GCP Secret Manager.
 //

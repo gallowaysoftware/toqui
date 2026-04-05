@@ -20,6 +20,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
@@ -44,6 +46,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
+	"github.com/gallowaysoftware/toqui-backend/internal/telemetry"
 	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 
 	toquiv1connect "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1/toquiv1connect"
@@ -58,6 +61,19 @@ func main() {
 		slog.Error("load config failed", "error", err)
 		os.Exit(1)
 	}
+
+	// OpenTelemetry tracing — must happen before any other SDK usage.
+	// Resolves gcsm:// in OTEL_EXPORTER_OTLP_HEADERS via GCP Secret Manager.
+	otelShutdown, err := telemetry.Init(ctx, "toqui-backend", cfg.FirestoreProjectID)
+	if err != nil {
+		slog.Error("failed to initialize OpenTelemetry", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := otelShutdown(context.Background()); err != nil {
+			slog.Error("OpenTelemetry shutdown error", "error", err)
+		}
+	}()
 
 	// Use JSON structured logging in non-local environments for Cloud Logging.
 	// Cloud Logging automatically parses JSON from stdout and indexes severity,
@@ -422,7 +438,11 @@ func main() {
 	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
 	// IP rate limiter runs after cookie auth so it can use Bearer token (set by
 	// CookieAuth for web browsers) as the rate limit key instead of spoofable X-Forwarded-For.
-	handler := recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins)))))
+	// otelhttp wraps the outermost layer to trace all incoming HTTP requests.
+	handler := otelhttp.NewHandler(
+		recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins))))),
+		"toqui-backend",
+	)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
