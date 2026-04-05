@@ -124,23 +124,48 @@ func main() {
 		}
 	}
 
-	// AI Provider — Claude primary, Gemini (Vertex AI) fallback
+	// AI Provider — Gemini primary (cost-effective), Claude fallback.
+	// Override with AI_PROVIDER=claude to reverse priority.
 	var aiProvider ai.Provider
-	if cfg.AnthropicAPIKey != "" {
-		aiProvider = ai.NewClaudeProvider(cfg.AnthropicAPIKey)
-		slog.Info("AI provider configured", "provider", "claude")
-	} else {
-		// Vertex AI fallback — uses Application Default Credentials, no API key needed.
-		projectID := cfg.VertexAIProjectID
-		if projectID == "" {
-			projectID = cfg.FirestoreProjectID // reasonable default — same GCP project
+	{
+		// Resolve Vertex AI project ID: explicit env > Firestore project (same GCP project).
+		vertexProjectID := cfg.VertexAIProjectID
+		if vertexProjectID == "" {
+			vertexProjectID = cfg.FirestoreProjectID
 		}
-		var err error
-		aiProvider, err = ai.NewGeminiProvider(projectID, cfg.VertexAILocation)
-		if err != nil {
-			slog.Warn("failed to initialize Gemini provider — chat will not work", "error", err)
+
+		var geminiProvider ai.Provider
+		var claudeProvider ai.Provider
+
+		if gp, err := ai.NewGeminiProvider(vertexProjectID, cfg.VertexAILocation); err != nil {
+			slog.Warn("failed to initialize Gemini provider", "error", err)
 		} else {
-			slog.Info("AI provider configured", "provider", "gemini", "project", projectID, "location", cfg.VertexAILocation)
+			geminiProvider = gp
+			slog.Info("AI provider initialized", "provider", "gemini", "project", vertexProjectID, "location", cfg.VertexAILocation)
+		}
+
+		if cfg.AnthropicAPIKey != "" {
+			claudeProvider = ai.NewClaudeProvider(cfg.AnthropicAPIKey)
+			slog.Info("AI provider initialized", "provider", "claude")
+		}
+
+		switch cfg.AIProvider {
+		case "claude":
+			if claudeProvider != nil {
+				aiProvider = ai.NewFallbackProvider(claudeProvider, geminiProvider)
+				slog.Info("AI provider priority", "primary", "claude", "fallback", "gemini")
+			} else if geminiProvider != nil {
+				aiProvider = geminiProvider
+				slog.Warn("AI_PROVIDER=claude but ANTHROPIC_API_KEY not set, using Gemini only")
+			}
+		default: // "gemini" or unset
+			if geminiProvider != nil {
+				aiProvider = ai.NewFallbackProvider(geminiProvider, claudeProvider)
+				slog.Info("AI provider priority", "primary", "gemini", "fallback", "claude")
+			} else if claudeProvider != nil {
+				aiProvider = claudeProvider
+				slog.Warn("Gemini unavailable, using Claude only")
+			}
 		}
 	}
 
