@@ -70,7 +70,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     needs: [typecheck, test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false  # re-enable once GCP_WIF_PROVIDER and GCP_SERVICE_ACCOUNT secrets are added to the GitHub 'staging' environment
     runs-on: self-hosted
     environment: staging
     steps:
