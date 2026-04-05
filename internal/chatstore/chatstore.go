@@ -131,9 +131,9 @@ func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string
 
 	batch := s.client.Batch()
 	batch.Set(s.messagesCol(userID, tripID, sessionID).Doc(msg.ID), msg)
-	batch.Update(s.sessionsCol(userID, tripID).Doc(sessionID), []firestore.Update{
-		{Path: "lastMessageAt", Value: time.Now()},
-	})
+	batch.Set(s.sessionsCol(userID, tripID).Doc(sessionID), map[string]interface{}{
+		"lastMessageAt": msg.CreatedAt,
+	}, firestore.MergeAll)
 
 	_, err := batch.Commit(ctx)
 	if err != nil {
