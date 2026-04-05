@@ -1,0 +1,39 @@
+Subject: Your Delta Air Lines Trip Confirmation - DL7829X
+
+DELTA AIR LINES - BOOKING CONFIRMATION
+=======================================
+Confirmation Code: DL7829X
+Booked: March 28, 2026
+Passenger: MARTINEZ/ELENA MS
+
+OUTBOUND - Monday, June 15, 2026
+  Flight DL 472
+  New York (JFK) Terminal 4 -> Barcelona (BCN) Terminal 1
+  Depart: 6:45 PM EDT  |  Arrive: 8:55 AM+1 CEST
+  Aircraft: Airbus A330-300
+  Class: Main Cabin (Economy)  |  Seat: 27F (Window)
+  Duration: 8h 10m  |  Nonstop
+  Meal: Dinner service included
+
+RETURN - Monday, June 22, 2026
+  Flight DL 149
+  Barcelona (BCN) Terminal 1 -> New York (JFK) Terminal 4
+  Depart: 11:30 AM CEST  |  Arrive: 2:50 PM EDT
+  Aircraft: Airbus A330-900neo
+  Class: Main Cabin (Economy)  |  Seat: 31A (Window)
+  Duration: 9h 20m  |  Nonstop
+  Meal: Lunch service included
+
+FARE SUMMARY
+  Base fare (1 adult):          $487.00
+  Carrier-imposed surcharge:     $98.50
+  U.S. Transportation Tax:       $36.53
+  September 11 Security Fee:      $5.60
+  International Departure Tax:   $18.70
+  Spain Passenger Service Charge: $32.40
+  TOTAL:                        $678.73
+
+BAGGAGE: 1 personal item + 1 carry-on included. Checked bag: $35 first, $45 second (each way). Purchase at delta.com/baggage.
+
+Manage your trip at delta.com/managebooking or the Fly Delta app.
+Need help? Call 1-800-221-1212 (SkyMiles members) or 1-800-325-1999.

@@ -1,7 +1,7 @@
 .PHONY: proto proto-lint build test run run-staging run-prod lint sqlc \
 	migrate-up migrate-down migrate-create \
 	docker-up docker-down integration-test \
-	ai-test ai-test-generative
+	agentic-test
 
 # Environment — override with TARGET_ENV=staging or TARGET_ENV=prod
 TARGET_ENV ?= local
@@ -68,15 +68,11 @@ integration-test:
 	go test -tags=integration -count=1 -v ./internal/integration/...
 	docker compose -f .devcontainer/docker-compose.yml down
 
-# AI integration tests — requires Docker infra + an AI provider key
-# Uses real LLM calls to test the chat system end-to-end.
-ai-test:
-	FIRESTORE_EMULATOR_HOST=localhost:8080 \
-	FIRESTORE_PROJECT_ID=toqui-test \
-	go test -tags=aitest -count=1 -v -timeout=30m ./internal/aitest/...
-
-# AI tests with LLM-generated exploratory scenarios
-ai-test-generative:
-	FIRESTORE_EMULATOR_HOST=localhost:8080 \
-	FIRESTORE_PROJECT_ID=toqui-test \
-	go test -tags=aitest -count=1 -v -timeout=30m ./internal/aitest/... -generative -gen-count=3
+# Agentic tests — 20 Claude agents test the running backend via grpcurl.
+# Requires: docker-up, migrate-up, server running on :8090.
+# See tests/agentic/README.md and .claude/skills/agentic-test/SKILL.md.
+agentic-test:
+	@echo "Agentic tests are run via Claude Code orchestration."
+	@echo "1. make docker-up && make migrate-up && make run"
+	@echo "2. In Claude Code: run the agentic test suite"
+	@echo "See tests/agentic/README.md for details."

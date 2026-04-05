@@ -100,7 +100,8 @@ graph TB
 | `internal/requestid/`   | HTTP middleware — generates unique request IDs, sets `X-Request-ID` response header         |
 | `internal/tier/`        | User subscription tier logic (Free / Pro) and feature gating                               |
 | `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
-| `internal/aitest/`      | AI integration test harness (build tag: `aitest`)                                         |
+| `tests/agentic/`        | Agentic test personas, booking artifacts, and orchestration                                |
+| `cmd/testctl/`          | Test user/token management CLI for agentic testing                                        |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
 | `internal/dbgen/`       | Generated sqlc query code (regenerate: `make sqlc`)                                       |
 | `proto/toqui/v1/`       | Protobuf service definitions (7 files, 6 services, 28 RPCs)                               |
@@ -321,9 +322,9 @@ Follow the pattern in `internal/handlers/tool_create_itinerary.go`:
 4. **Write tests**:
    - Unit tests in `internal/handlers/tool_<name>_test.go` (arg parsing, edge cases)
    - Integration test in `internal/integration/` (DB operations with real Postgres)
-   - AI scenario in `internal/aitest/` (end-to-end with real LLM)
+   - Add an agentic test persona in `tests/agentic/personas/` if the tool introduces new behavior worth testing
 5. **Update** system prompt in the relevant mode (e.g., `buildTripContext()` for planning)
-6. **Update** this CLAUDE.md doc and the aitest scenario table
+6. **Update** this CLAUDE.md doc
 
 ### Tool Injection Pattern
 
@@ -364,7 +365,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 - `workflow_dispatch` triggers `deploy-prod`. Run `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main` to deploy.
 - Always run `go build ./...` and `go test ./...` locally before pushing.
 - Run `gofmt -w <file>` on any Go files you edit — CI runs `gofmt` check and will fail if not formatted.
-- **AI/prompt changes**: Run `make ai-test` or use `buf curl` / `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles.
+- **AI/prompt changes**: Run the agentic test suite or use `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles. See "Agentic Testing" section below.
 
 ### Documentation Updates
 
@@ -408,49 +409,101 @@ Every new feature must include all of the following. Do not merge without comple
 1. **Implementation** — The feature code itself
 2. **Unit tests** — In the same package (`*_test.go`), test arg parsing, edge cases, error handling
 3. **Integration tests** — In `internal/integration/` (build tag `integration`), test DB operations with real Postgres via docker-compose
-4. **AI integration test enhancement** — In `internal/aitest/`, either:
-   - Add a new regression scenario (if the feature is significant enough)
-   - Or extend an existing scenario with new steps/assertions that exercise the feature
+4. **Agentic test persona** — If the feature introduces new user-facing behavior, add a persona prompt in `tests/agentic/personas/` or extend an existing one
 5. **Adversarial review** — Run the pre-commit adversarial review agent (see above)
-6. **Documentation** — Update CLAUDE.md with the feature (tool table, scenario table, any new patterns)
+6. **Documentation** — Update CLAUDE.md with the feature (tool table, any new patterns)
 7. **Commit + push** — All of the above in one commit
 
 ### Testing Approach
 
 - **Unit tests**: No DB required. Test JSON parsing, validation, error paths. Use `persona.NewComposer(nil)` for template-based persona tests.
 - **Integration tests**: Real Postgres via `docker compose up -d`. Build tag `integration`. Use `TestEnv.CleanDB()` for isolation.
-- **AI tests**: Real LLM calls via `docker compose up -d` + API key. Build tag `aitest`. Each scenario gets an isolated test user. Structural assertions are hard failures; LLM evaluations are informational.
+- **Agentic tests**: Claude agents test the running backend via grpcurl. See "Agentic Testing" section below.
 
-## AI Integration Tests
+## Agentic Testing
 
-End-to-end test harness that exercises the full trip lifecycle through the AI. Uses real LLM calls.
+Black-box testing where Claude agents adopt traveler personas and interact with a running backend via grpcurl/curl. Each agent tests the full trip lifecycle (selection → planning → bookings → companion → sharing → completion) and evaluates both correctness and real-world usefulness.
 
-```bash
-docker compose up -d                    # Start Postgres + Firestore emulator
-make ai-test                            # Run regression scenarios
-make ai-test-generative                 # Run regression + LLM-generated scenarios
-go test -tags=aitest -v -timeout=30m \
-  ./internal/aitest/... -run TestAIScenarios/alice  # Run specific scenario
+### Architecture
+
+```
+Orchestrator (Claude Code session)
+  ├── cmd/testctl create-user → {user_id, token}
+  ├── Agent(skill=agentic-test, persona + token)
+  │     ├── Acts as traveler persona via grpcurl
+  │     ├── Tests full flow against live API
+  │     ├── Verifies state with read calls after every write
+  │     └── Returns structured report (bugs + usefulness evaluation)
+  ├── ... × 20 agents in parallel
+  └── Collect reports → synthesize → gh issue create
 ```
 
-### Regression Scenarios
+### Running Agentic Tests
 
-| Scenario                        | What it tests                                                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `alice-backpacker-lifecycle`    | Full lifecycle: selection → planning → companion → complete                                                 |
-| `bob-family-planner`            | Planning context injection — AI must know destination without asking                                        |
-| `carol-returning-user`          | Multi-trip: select_trip matching, trip switching, new trip creation                                         |
-| `update-regression`             | UpdateTrip COALESCE — status change must not wipe title/description                                         |
-| `dave-itinerary-and-handoff`    | create_itinerary_items tool usage + suggest_expert persona handoff                                          |
-| `eve-expanded-profiles`         | Expanded location/theme profiles (CZ, IS) with craft-beer and hiking expert handoff                         |
-| `frank-booking-recommendations` | recommend_booking tool across all categories (flights, hotels, activities) + FTC disclosure + negative test |
+```bash
+# 1. Start infrastructure
+make docker-up          # Postgres + Firestore emulator
+make migrate-up         # Apply migrations
+make run &              # Start backend on :8090
 
-### Design
+# 2. In Claude Code, run the agentic test suite
+# The orchestrator creates users, launches agents, and synthesizes results.
+```
 
-- **Structural assertions are hard failures** (tool called, response contains, trip status) — these fail the test.
-- **LLM evaluations are informational** (response quality scored 1-5 by a judge LLM) — these log warnings but don't fail.
-- Each scenario gets its own isolated test user.
-- Reports written to `testdata/aitest-reports/` as JSON.
+### Test User Management (`cmd/testctl`)
+
+```bash
+# Create a test user with JWT token
+go run ./cmd/testctl create-user --name "Alice" --email "alice@toqui-test.local"
+# → {"user_id": "uuid", "token": "eyJ..."}
+
+# Clean up after testing
+go run ./cmd/testctl cleanup-user --user-id "uuid"
+```
+
+### Persona Catalog (20 personas)
+
+| # | Persona | Destination | Key Test Vectors |
+|---|---------|-------------|------------------|
+| 01 | Solo backpacker | Vietnam 3wk | Full lifecycle, budget, hostel booking, food expert |
+| 02 | Family w/ kids | Costa Rica 10d | Context injection, kid-friendly, safety |
+| 03 | Returning user | Multi-trip | select_trip matching, trip switching |
+| 04 | Foodie itinerary | Tokyo 7d | create_itinerary_items, expert handoff |
+| 05 | Craft beer + hiker | CZ + Iceland | Expanded profiles, niche themes |
+| 06 | Booking-heavy | Barcelona 5d | IngestBooking, ExtractBookingField, FTC |
+| 07 | Update regression | Structural | COALESCE partial updates (no AI) |
+| 08 | Retired couple | Mediterranean | Accessibility, pace, medical |
+| 09 | Honeymoon | Bali + Japan | Multi-destination, luxury, sharing |
+| 10 | Business traveler | Singapore 3d | Time-constrained, companion mode |
+| 11 | Food blogger | Mexico City | Food expert, tour booking, recommend_booking |
+| 12 | Adventure seeker | New Zealand | Extreme sports, safety, activity booking |
+| 13 | Digital nomad | Portugal + Spain | Long-stay, co-working, budget |
+| 14 | Solo female | Morocco | Safety, cultural sensitivity |
+| 15 | Group road trip | Iceland | Group logistics, car rental, photography |
+| 16 | History professor | Greece + Turkey | Academic depth, history expert |
+| 17 | Vegan traveler | Thailand + Vietnam | Dietary restrictions, food recs |
+| 18 | Parent with teen | Japan | Anime + culture balance, ryokan |
+| 19 | Ultra-budget | SE Asia 2mo | $15/day, border crossings |
+| 20 | Luxury traveler | Maldives + Dubai | Premium experiences, recommend_booking |
+
+### Booking Artifacts (`tests/agentic/artifacts/`)
+
+Fake booking confirmation texts for ingestion testing:
+- `flight-confirmation.txt` — Delta JFK→BCN round trip
+- `hotel-confirmation.txt` — Hotel Arts Barcelona
+- `activity-confirmation.txt` — Sagrada Familia tour
+- `car-rental-confirmation.txt` — Hertz BCN→LIS one-way
+- `hostel-booking.txt` — Vietnam 3-hostel chain
+- `ryokan-booking.txt` — Kyoto traditional inn
+- `tour-booking.txt` — Oaxaca food walking tour
+
+### Adding New Personas
+
+Create a new file in `tests/agentic/personas/NN-name.md` following the existing format (Background, Your Trip, What to Test, Booking Artifacts, Special Attention). The `agentic-test` skill (`.claude/skills/agentic-test/SKILL.md`) provides the testing framework.
+
+### Report Format
+
+Each agent returns a structured JSON report with: bugs (P0/P1/P2), UX issues, AI behavior issues, tool failures, and a usefulness evaluation (1-5 scores for trip creation, itinerary quality, persona handoff, booking parsing, companion mode, and overall). See the skill for the full schema.
 
 ## Infrastructure
 
@@ -730,7 +783,7 @@ The AI system prompt has been tuned for reliable tool usage. Key behaviors:
 - **Clarifying questions**: The AI asks about travel preferences (dates, budget, interests, dietary restrictions) before making recommendations, rather than assuming.
 - **Tool result confirmation**: After calling tools, the AI confirms what was created/updated in its response text.
 
-When modifying system prompts in `internal/chat/` or `internal/persona/`, always run `make ai-test` to verify the AI still calls tools correctly.
+When modifying system prompts in `internal/chat/` or `internal/persona/`, run the agentic test suite or use `grpcurl` to verify the AI still calls tools correctly.
 
 ### Deep Linking
 

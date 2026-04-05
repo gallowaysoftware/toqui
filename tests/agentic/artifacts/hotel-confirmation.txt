@@ -1,0 +1,42 @@
+Subject: Booking Confirmed - Hotel Arts Barcelona | Conf #HAB-2026-9831
+
+HOTEL ARTS BARCELONA
+====================
+Confirmation Number: HAB-2026-9831
+Booking Date: April 1, 2026
+
+GUEST INFORMATION
+  Name: Elena Martinez
+  Email: elena.martinez@email.com
+  Phone: +1 (347) 555-0182
+  Guests: 2 Adults
+
+RESERVATION DETAILS
+  Room Type: Superior Room - City View
+  Check-in:  Monday, June 15, 2026 | from 3:00 PM
+  Check-out: Saturday, June 20, 2026 | by 12:00 PM
+  Nights: 5
+  Bed Type: 1 King Bed
+  Floor: Non-smoking, high floor requested
+
+RATE BREAKDOWN
+  5 nights x EUR 289.00/night:  EUR 1,445.00
+  City tax (EUR 3.50/night):        EUR 17.50
+  VAT (10% included):              EUR 131.36
+  TOTAL:                        EUR 1,462.50
+  Payment: Visa ending in 4821 (charged at check-in)
+
+PROPERTY DETAILS
+  Address: Carrer de la Marina, 19-21, 08005 Barcelona, Spain
+  Phone: +34 93 221 1000
+  Email: reservations@hotelartsbarcelona.com
+  Nearest Metro: Ciutadella/Vila Olimpica (L4, Yellow Line) - 5 min walk
+
+CANCELLATION POLICY
+  Free cancellation until June 12, 2026 (11:59 PM CEST).
+  Cancellation after June 12: first night charged (EUR 289.00).
+  No-show: full stay charged.
+
+AMENITIES: Outdoor pool, spa, fitness center, free Wi-Fi, concierge. Breakfast buffet available at EUR 38/person (not included).
+
+We look forward to welcoming you. For modifications, call +34 93 221 1000 or email reservations@hotelartsbarcelona.com.
