@@ -43,10 +43,10 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
+	"github.com/gallowaysoftware/toqui-backend/internal/telemetry"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 	"github.com/gallowaysoftware/toqui-backend/internal/usage"
-	"github.com/gallowaysoftware/toqui-backend/internal/telemetry"
 	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 
 	toquiv1connect "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1/toquiv1connect"
