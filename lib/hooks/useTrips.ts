@@ -94,8 +94,10 @@ export function useDeleteTrip() {
   return useMutation({
     mutationFn: async (tripId: string) => {
       await client.deleteTrip({ id: tripId });
+      return tripId;
     },
-    onSuccess: () => {
+    onSuccess: (tripId) => {
+      void queryClient.removeQueries({ queryKey: ["trip", tripId] });
       void queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
   });

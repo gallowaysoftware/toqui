@@ -274,35 +274,23 @@ describe("useDeleteTrip", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["trips"] });
   });
 
-  // BUG: useDeleteTrip does NOT invalidate the individual trip query ["trip", tripId].
-  // After deletion, any component still mounted with useTrip("t1") will serve stale
-  // cached data instead of receiving a refetch (which would 404).
-  // This test documents the known bug from the QA audit.
-  it("BUG: does NOT invalidate the individual trip query (known QA issue)", async () => {
+  it("removes the individual trip cache entry on success", async () => {
     mockDeleteTrip.mockResolvedValue({});
     const { wrapper, queryClient } = createWrapper();
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
+    // Pre-populate the individual trip cache to simulate a previously viewed trip
+    queryClient.setQueryData(["trip", "t1"], { id: "t1", title: "Stale Trip" });
+    expect(queryClient.getQueryData(["trip", "t1"])).toBeDefined();
+
+    const removeSpy = vi.spyOn(queryClient, "removeQueries");
     const { result } = renderHook(() => useDeleteTrip(), { wrapper });
 
     await act(async () => {
       await result.current.mutateAsync("t1");
     });
 
-    // This assertion proves the bug exists: the individual trip cache is never invalidated.
-    // When this bug is fixed, this test should be updated to expect the invalidation.
-    const tripCalls = invalidateSpy.mock.calls.filter(
-      ([arg]) => {
-        const key = (arg as { queryKey: unknown[] }).queryKey;
-        return Array.isArray(key) && key[0] === "trip";
-      },
-    );
-    expect(tripCalls).toHaveLength(0);
-
-    // Also verify we can't find it via removeQueries either — the stale entry persists
-    const cachedState = queryClient.getQueryState(["trip", "t1"]);
-    // If data was previously cached, it would still be there after delete.
-    // This is the actual user-facing bug: navigating back shows the deleted trip.
-    expect(cachedState).toBeUndefined(); // no data was cached in this test, but the point is the hook never touches it
+    // Individual trip cache should be removed (not just invalidated — the trip no longer exists)
+    expect(removeSpy).toHaveBeenCalledWith({ queryKey: ["trip", "t1"] });
+    expect(queryClient.getQueryData(["trip", "t1"])).toBeUndefined();
   });
 });
