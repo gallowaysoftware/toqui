@@ -3,6 +3,8 @@ package usage
 import (
 	"testing"
 	"time"
+
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 func TestResetTime(t *testing.T) {
@@ -27,5 +29,43 @@ func TestErrDailyLimitExceeded(t *testing.T) {
 	}
 	if ErrDailyLimitExceeded.Error() != "daily message limit exceeded" {
 		t.Errorf("unexpected error message: %s", ErrDailyLimitExceeded.Error())
+	}
+}
+
+func TestLimitForTier(t *testing.T) {
+	svc := &Service{
+		limit:     30,
+		limitFree: 10,
+		limitPro:  50,
+	}
+
+	tests := []struct {
+		tier tier.UserTier
+		want int
+	}{
+		{tier.Free, 10},
+		{tier.Pro, 50},
+		{tier.Explorer, 0}, // unlimited
+		{tier.Voyager, 0},  // unlimited
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			if got := svc.LimitForTier(tt.tier); got != tt.want {
+				t.Errorf("LimitForTier(%q) = %d, want %d", tt.tier, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWithTierLimits(t *testing.T) {
+	svc := &Service{limit: 30, limitFree: 30, limitPro: 30}
+	svc.WithTierLimits(15, 75)
+
+	if svc.limitFree != 15 {
+		t.Errorf("expected limitFree=15, got %d", svc.limitFree)
+	}
+	if svc.limitPro != 75 {
+		t.Errorf("expected limitPro=75, got %d", svc.limitPro)
 	}
 }

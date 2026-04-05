@@ -204,7 +204,8 @@ func main() {
 	locationSvc := location.NewService()
 	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
-	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit)
+	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).
+		WithTierLimits(cfg.DailyMessageLimitFree, cfg.DailyMessageLimitPro)
 
 	// Interceptors — handles both unary and streaming RPCs
 	rateLimiter := ratelimit.NewInterceptor(10, 60)
@@ -266,7 +267,7 @@ func main() {
 		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
 		WithAnalytics(posthogClient)
 
-	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc)
+	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc, pool)
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).

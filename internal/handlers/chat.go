@@ -124,25 +124,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	// Admin users have unlimited AI interactions.
 	isAdmin := h.isAdmin(ctx, userID)
 
-	// Check daily message limit before processing (skip for admins)
-	if h.usageSvc != nil && !isAdmin {
-		remaining, err := h.usageSvc.IncrementAndCheck(ctx, userID)
-		if err != nil {
-			if errors.Is(err, usage.ErrDailyLimitExceeded) {
-				return connect.NewError(
-					connect.CodeResourceExhausted,
-					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s",
-						h.usageSvc.Limit(), usage.ResetTime().Format("2006-01-02T15:04:05Z")),
-				)
-			}
-			// Log but don't block on usage tracking errors
-			slog.Error("usage tracking failed", "user_id", userID, "error", err)
-		} else {
-			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining)
-		}
-	}
-
-	// Look up the user's subscription tier for booking recommendation gating.
+	// Look up the user's subscription tier for usage limits and booking recommendation gating.
 	// Default to free tier if the lookup fails so we never block the chat flow.
 	userTier := tier.Free
 	if h.queries != nil {
@@ -151,6 +133,25 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		} else {
 			slog.Warn("failed to look up user subscription tier, defaulting to free",
 				"user_id", userID, "error", err)
+		}
+	}
+
+	// Check daily message limit before processing (skip for admins)
+	if h.usageSvc != nil && !isAdmin {
+		limit := h.usageSvc.LimitForTier(userTier)
+		remaining, err := h.usageSvc.IncrementAndCheckTier(ctx, userID, userTier)
+		if err != nil {
+			if errors.Is(err, usage.ErrDailyLimitExceeded) {
+				return connect.NewError(
+					connect.CodeResourceExhausted,
+					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s",
+						limit, usage.ResetTime().Format("2006-01-02T15:04:05Z")),
+				)
+			}
+			// Log but don't block on usage tracking errors
+			slog.Error("usage tracking failed", "user_id", userID, "error", err)
+		} else {
+			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining, "tier", string(userTier))
 		}
 	}
 

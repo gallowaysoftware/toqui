@@ -9,6 +9,8 @@ func TestUserTier_Valid(t *testing.T) {
 	}{
 		{Free, true},
 		{Pro, true},
+		{Explorer, true},
+		{Voyager, true},
 		{UserTier(""), false},
 		{UserTier("enterprise"), false},
 		{UserTier("FREE"), false}, // case-sensitive
@@ -30,6 +32,8 @@ func TestUserTier_IsPro(t *testing.T) {
 	}{
 		{Free, false},
 		{Pro, true},
+		{Explorer, true},
+		{Voyager, true},
 		{UserTier(""), false},
 		{UserTier("unknown"), false},
 	}
@@ -43,6 +47,28 @@ func TestUserTier_IsPro(t *testing.T) {
 	}
 }
 
+func TestUserTier_IsUnlimited(t *testing.T) {
+	tests := []struct {
+		tier UserTier
+		want bool
+	}{
+		{Free, false},
+		{Pro, false},
+		{Explorer, true},
+		{Voyager, true},
+		{UserTier(""), false},
+		{UserTier("unknown"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			if got := tt.tier.IsUnlimited(); got != tt.want {
+				t.Errorf("UserTier(%q).IsUnlimited() = %v, want %v", tt.tier, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParse(t *testing.T) {
 	tests := []struct {
 		input string
@@ -50,6 +76,8 @@ func TestParse(t *testing.T) {
 	}{
 		{"free", Free},
 		{"pro", Pro},
+		{"explorer", Explorer},
+		{"voyager", Voyager},
 		{"", Free},        // empty defaults to free
 		{"premium", Free}, // unknown defaults to free
 		{"FREE", Free},    // wrong case defaults to free

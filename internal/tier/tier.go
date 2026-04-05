@@ -1,7 +1,7 @@
 // Package tier defines user subscription tiers and their capabilities.
 //
-// Currently all users are on the free tier. The Pro tier infrastructure
-// exists so gating logic can be enabled when monetisation launches.
+// Tier hierarchy: Free < Pro < Explorer < Voyager.
+// Explorer and Voyager are subscription tiers with unlimited messages.
 package tier
 
 // UserTier represents a user's subscription level.
@@ -15,21 +15,32 @@ const (
 	// Pro is the paid tier (per-trip unlock). Pro users receive unbiased
 	// recommendations from any source with no affiliate requirement.
 	Pro UserTier = "pro"
+
+	// Explorer is a subscription tier with expanded limits.
+	Explorer UserTier = "explorer"
+
+	// Voyager is the highest subscription tier with unlimited access.
+	Voyager UserTier = "voyager"
 )
 
 // Valid returns true if t is a recognised tier value.
 func (t UserTier) Valid() bool {
 	switch t {
-	case Free, Pro:
+	case Free, Pro, Explorer, Voyager:
 		return true
 	default:
 		return false
 	}
 }
 
-// IsPro returns true when the user has an active Pro subscription.
+// IsPro returns true when the user has at least Pro-level access.
 func (t UserTier) IsPro() bool {
-	return t == Pro
+	return t == Pro || t == Explorer || t == Voyager
+}
+
+// IsUnlimited returns true when the user has unlimited daily messages.
+func (t UserTier) IsUnlimited() bool {
+	return t == Explorer || t == Voyager
 }
 
 // Parse converts a raw string to a UserTier. Unrecognised values fall

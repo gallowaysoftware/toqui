@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 // ErrDailyLimitExceeded is returned when a user has exceeded their daily message limit.
@@ -19,37 +20,101 @@ var ErrDailyLimitExceeded = errors.New("daily message limit exceeded")
 
 // Service tracks per-user daily usage and enforces message limits.
 type Service struct {
-	queries *dbgen.Queries
-	limit   int
+	queries   *dbgen.Queries
+	limit     int // legacy single limit (fallback)
+	limitFree int // daily limit for free tier
+	limitPro  int // daily limit for pro tier
 }
 
 // NewService creates a new usage tracking service.
 func NewService(pool *pgxpool.Pool, dailyMessageLimit int) *Service {
 	return &Service{
-		queries: dbgen.New(pool),
-		limit:   dailyMessageLimit,
+		queries:   dbgen.New(pool),
+		limit:     dailyMessageLimit,
+		limitFree: dailyMessageLimit, // default: same as legacy
+		limitPro:  dailyMessageLimit, // default: same as legacy
 	}
 }
 
-// IncrementAndCheck atomically increments today's message count for the user
-// and checks whether the daily limit has been exceeded. The increment and
-// check happen in a single PostgreSQL INSERT ... ON CONFLICT ... DO UPDATE
-// ... WHERE count < limit ... RETURNING statement, preventing TOCTOU race
-// conditions and ensuring the counter is never incremented past the limit.
+// WithTierLimits configures tier-specific daily message limits.
+// A limit of 0 means unlimited for that tier.
+func (s *Service) WithTierLimits(free, pro int) *Service {
+	s.limitFree = free
+	s.limitPro = pro
+	return s
+}
+
+// LimitForTier returns the daily message limit for a given tier.
+// Returns 0 for unlimited tiers (Explorer, Voyager).
+func (s *Service) LimitForTier(t tier.UserTier) int {
+	if t.IsUnlimited() {
+		return 0 // unlimited
+	}
+	if t.IsPro() {
+		return s.limitPro
+	}
+	return s.limitFree
+}
+
+// IncrementAndCheckTier atomically increments today's message count for the user
+// and checks whether the tier-specific daily limit has been exceeded.
 //
 // Returns the number of messages remaining (0 if at or over limit).
 // Returns ErrDailyLimitExceeded if the limit was already reached (counter NOT incremented).
-func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (remaining int, err error) {
+// For unlimited tiers, always succeeds and returns a high remaining count.
+func (s *Service) IncrementAndCheckTier(ctx context.Context, userID uuid.UUID, t tier.UserTier) (remaining int, err error) {
+	limit := s.LimitForTier(t)
+
+	// Unlimited tier: always increment, never reject.
+	if limit == 0 {
+		// Still track usage for analytics, but with a very high max to never reject.
+		_, err := s.queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
+			UserID:   userID,
+			MaxCount: int32(999999),
+		})
+		if err != nil {
+			return 0, fmt.Errorf("increment daily usage (unlimited): %w", err)
+		}
+		return 999999, nil
+	}
+
 	// Guard: a limit of 0 means messaging is disabled (e.g., suspended user).
 	// The SQL WHERE clause (count < 0) would always be false, but the INSERT
 	// path would still create a row with count=1 — bypassing the intent.
+	if limit < 0 {
+		return 0, ErrDailyLimitExceeded
+	}
+
+	usage, err := s.queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
+		UserID:   userID,
+		MaxCount: int32(limit),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Info("daily message limit exceeded",
+				"user_id", userID,
+				"limit", limit,
+				"tier", string(t),
+			)
+			return 0, ErrDailyLimitExceeded
+		}
+		return 0, fmt.Errorf("increment daily usage: %w", err)
+	}
+
+	count := int(usage.MessageCount)
+	remaining = limit - count
+	return remaining, nil
+}
+
+// IncrementAndCheck atomically increments today's message count for the user
+// and checks whether the daily limit has been exceeded. Uses the legacy single limit.
+//
+// Deprecated: Use IncrementAndCheckTier for tier-aware enforcement.
+func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (remaining int, err error) {
 	if s.limit <= 0 {
 		return 0, ErrDailyLimitExceeded
 	}
 
-	// Atomic conditional increment: only bumps the counter if it is below the
-	// limit. If the user is already at the limit the WHERE clause prevents the
-	// UPDATE, PostgreSQL returns no rows, and pgx surfaces pgx.ErrNoRows.
 	usage, err := s.queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
 		UserID:   userID,
 		MaxCount: int32(s.limit),
@@ -89,7 +154,26 @@ func (s *Service) GetDailyUsage(ctx context.Context, userID uuid.UUID) (count, l
 	return int(usage.MessageCount), s.limit, nil
 }
 
-// Limit returns the configured daily message limit.
+// GetDailyUsageForTier returns the current day's message count and the tier-specific limit.
+// If no usage row exists for today, count is 0.
+func (s *Service) GetDailyUsageForTier(ctx context.Context, userID uuid.UUID, t tier.UserTier) (count, limit int, err error) {
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	usage, err := s.queries.GetDailyUsage(ctx, dbgen.GetDailyUsageParams{
+		UserID: userID,
+		Date:   &today,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, s.LimitForTier(t), nil
+		}
+		return 0, 0, fmt.Errorf("get daily usage: %w", err)
+	}
+
+	return int(usage.MessageCount), s.LimitForTier(t), nil
+}
+
+// Limit returns the configured daily message limit (legacy).
 func (s *Service) Limit() int {
 	return s.limit
 }
