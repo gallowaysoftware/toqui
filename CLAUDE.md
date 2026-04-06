@@ -181,7 +181,7 @@ API test collections live in `tests/bruno/`. These are Bruno HTTP client collect
 
 ### CI/CD
 
-GitHub Actions on push to `main` and all PRs (self-hosted runners on Unraid, 3 replicas):
+GitHub Actions on push to `main` and all PRs (GitHub-hosted runners):
 
 - **toqui-backend**: lint, test (with coverage), build run in parallel → **deploy to prod** (main only, Cloud Run)
 - **toqui**: lint+typecheck, test, build run in parallel → **deploy to prod** (main only, Cloud Run)
