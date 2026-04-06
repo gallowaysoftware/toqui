@@ -16,13 +16,13 @@ env:
 jobs:
   typecheck:
     name: Type Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -31,13 +31,13 @@ jobs:
 
   test:
     name: Test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -46,22 +46,22 @@ jobs:
 
   build:
     name: Build (${{ matrix.platform }})
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         platform: [web, ios, android]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npx expo export --platform ${{ matrix.platform }} --output-dir dist/${{ matrix.platform }} --clear
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: matrix.platform == 'web'
         with:
           name: web-build
@@ -71,14 +71,14 @@ jobs:
     name: Deploy to Staging
     needs: [typecheck, test, build]
     if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -92,11 +92,11 @@ jobs:
           IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Push Docker image
         run: |
           IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
@@ -119,17 +119,17 @@ jobs:
     name: Deploy to Production
     needs: [typecheck, test, build]
     if: github.event_name == 'workflow_dispatch'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     environment: production
     env:
       IMAGE: us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_PROD_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Verify staging image exists
         run: |
           gcloud artifacts docker images describe $IMAGE:${{ github.sha }} \
