@@ -20,9 +20,11 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
-// PriceConfig holds the Stripe Price IDs for each subscription tier and billing
-// interval. These are created in the Stripe Dashboard and provided via env vars.
-type PriceConfig struct {
+// ProductConfig holds the Stripe Product IDs for each subscription tier and
+// billing interval. These are created in the Stripe Dashboard and provided via
+// env vars. The checkout session uses PriceData to reference the product with
+// its default price, avoiding the need to separately manage Price IDs.
+type ProductConfig struct {
 	ExplorerMonthly string
 	ExplorerAnnual  string
 	VoyagerMonthly  string
@@ -44,7 +46,7 @@ type Subscription struct {
 type Service struct {
 	client  *stripe.Client
 	queries *dbgen.Queries
-	prices  PriceConfig
+	prices  ProductConfig
 	enabled bool
 
 	// frontendURL is used for Stripe Checkout success/cancel redirects.
@@ -58,7 +60,7 @@ type Service struct {
 // NewService creates a new subscription service. If stripeKey is empty, the
 // service operates in disabled mode — all methods return gracefully without
 // contacting Stripe.
-func NewService(stripeKey string, queries *dbgen.Queries, prices PriceConfig, frontendURL string) *Service {
+func NewService(stripeKey string, queries *dbgen.Queries, prices ProductConfig, frontendURL string) *Service {
 	s := &Service{
 		queries:     queries,
 		prices:      prices,

@@ -90,12 +90,12 @@ type Config struct {
 	// Stripe payment processing (Trip Pro + subscriptions)
 	StripeSecretKey              string
 	StripeWebhookSecret          string
-	StripeTripProPriceID         string // Stripe Price ID for Trip Pro one-time purchase
+	StripeTripProProductID         string // Stripe Product ID for Trip Pro one-time purchase
 	TripProPriceCents            int    // Default 1900 ($19.00 CAD)
-	StripeExplorerMonthlyPriceID string
-	StripeExplorerAnnualPriceID  string
-	StripeVoyagerMonthlyPriceID  string
-	StripeVoyagerAnnualPriceID   string
+	StripeExplorerMonthlyProductID string
+	StripeExplorerAnnualProductID  string
+	StripeVoyagerMonthlyProductID  string
+	StripeVoyagerAnnualProductID   string
 
 	// Email (Resend) for transactional emails
 	ResendAPIKey string
@@ -173,12 +173,12 @@ func Load() (*Config, error) {
 		EmailFrom:                    getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		StripeSecretKey:              os.Getenv("STRIPE_SECRET_KEY"),
 		StripeWebhookSecret:          os.Getenv("STRIPE_WEBHOOK_SECRET"),
-		StripeTripProPriceID:         os.Getenv("STRIPE_TRIP_PRO_PRICE_ID"),
-		TripProPriceCents:            getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
-		StripeExplorerMonthlyPriceID: os.Getenv("STRIPE_EXPLORER_MONTHLY_PRICE"),
-		StripeExplorerAnnualPriceID:  os.Getenv("STRIPE_EXPLORER_ANNUAL_PRICE"),
-		StripeVoyagerMonthlyPriceID:  os.Getenv("STRIPE_VOYAGER_MONTHLY_PRICE"),
-		StripeVoyagerAnnualPriceID:   os.Getenv("STRIPE_VOYAGER_ANNUAL_PRICE"),
+		StripeTripProProductID:         os.Getenv("STRIPE_TRIP_PRO_PRODUCT_ID"),
+		TripProPriceCents:              getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
+		StripeExplorerMonthlyProductID: os.Getenv("STRIPE_EXPLORER_MONTHLY_PRODUCT"),
+		StripeExplorerAnnualProductID:  os.Getenv("STRIPE_EXPLORER_ANNUAL_PRODUCT"),
+		StripeVoyagerMonthlyProductID:  os.Getenv("STRIPE_VOYAGER_MONTHLY_PRODUCT"),
+		StripeVoyagerAnnualProductID:   os.Getenv("STRIPE_VOYAGER_ANNUAL_PRODUCT"),
 		CORSAllowedOrigins:           parseCSVEnv("CORS_ALLOWED_ORIGINS"),
 	}
 

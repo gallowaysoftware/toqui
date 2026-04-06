@@ -258,7 +258,7 @@ func main() {
 	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
 	defer authLimiter.Stop()
 
-	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProPriceID, cfg.TripProPriceCents, queries, cfg.FrontendURL)
+	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProProductID, cfg.TripProPriceCents, queries, cfg.FrontendURL)
 	if cfg.StagingProAll {
 		if cfg.TargetEnv != "staging" {
 			slog.Error("STAGING_PRO_ALL=true is only allowed in staging environment, ignoring", "env", cfg.TargetEnv)
@@ -269,11 +269,11 @@ func main() {
 	}
 
 	// Stripe subscription service — no-ops gracefully when STRIPE_SECRET_KEY is empty.
-	subSvc := subscription.NewService(cfg.StripeSecretKey, queries, subscription.PriceConfig{
-		ExplorerMonthly: cfg.StripeExplorerMonthlyPriceID,
-		ExplorerAnnual:  cfg.StripeExplorerAnnualPriceID,
-		VoyagerMonthly:  cfg.StripeVoyagerMonthlyPriceID,
-		VoyagerAnnual:   cfg.StripeVoyagerAnnualPriceID,
+	subSvc := subscription.NewService(cfg.StripeSecretKey, queries, subscription.ProductConfig{
+		ExplorerMonthly: cfg.StripeExplorerMonthlyProductID,
+		ExplorerAnnual:  cfg.StripeExplorerAnnualProductID,
+		VoyagerMonthly:  cfg.StripeVoyagerMonthlyProductID,
+		VoyagerAnnual:   cfg.StripeVoyagerAnnualProductID,
 	}, cfg.FrontendURL)
 	subSvc.SetPaymentService(paymentSvc)
 

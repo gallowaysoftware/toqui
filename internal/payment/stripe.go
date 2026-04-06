@@ -16,7 +16,7 @@ import (
 // Service handles Stripe payment operations for Trip Pro one-time purchases.
 type Service struct {
 	client         *stripe.Client
-	priceID        string // Stripe Price ID for Trip Pro one-time purchase
+	productID      string // Stripe Product ID for Trip Pro one-time purchase
 	priceCents     int
 	queries        *dbgen.Queries
 	alwaysUnlocked bool
@@ -27,9 +27,9 @@ type Service struct {
 // NewService creates a new payment service. If stripeKey is empty, the service
 // operates in disabled mode — IsTripUnlocked still works (reads from DB), but
 // InitializeCheckout returns an error.
-func NewService(stripeKey string, priceID string, priceCents int, queries *dbgen.Queries, frontendURL string) *Service {
+func NewService(stripeKey string, productID string, priceCents int, queries *dbgen.Queries, frontendURL string) *Service {
 	s := &Service{
-		priceID:     priceID,
+		productID:   productID,
 		priceCents:  priceCents,
 		queries:     queries,
 		frontendURL: frontendURL,
@@ -66,8 +66,8 @@ func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripI
 		return nil, fmt.Errorf("stripe is not configured")
 	}
 
-	if s.priceID == "" {
-		return nil, fmt.Errorf("STRIPE_TRIP_PRO_PRICE_ID not configured")
+	if s.productID == "" {
+		return nil, fmt.Errorf("STRIPE_TRIP_PRO_PRODUCT_ID not configured")
 	}
 
 	// Check if trip is already unlocked
@@ -86,7 +86,11 @@ func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripI
 		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
 			{
-				Price:    stripe.String(s.priceID),
+				PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
+					Product:    stripe.String(s.productID),
+					Currency:   stripe.String("cad"),
+					UnitAmount: stripe.Int64(int64(priceCents)),
+				},
 				Quantity: stripe.Int64(1),
 			},
 		},
