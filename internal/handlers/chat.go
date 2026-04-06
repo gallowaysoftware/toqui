@@ -273,6 +273,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var itineraryItems []dbgen.ItineraryItem
 	var pendingSwitch *personaSwitchInfo
 	var recommendations []affiliate.Recommendation
+	var createdTripID string // first trip created this session (for session relinking, #153)
 	var mu sync.Mutex
 
 	// Check if this trip is unlocked (Trip Pro purchased or trial active)
@@ -324,6 +325,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		createTripTool := NewCreateTripTool(h.tripSvc, userID, func(tripID, title, description string) {
 			mu.Lock()
 			createdTrips = append(createdTrips, tripCreatedInfo{ID: tripID, Title: title, Description: description})
+			if createdTripID == "" {
+				createdTripID = tripID // save for session relinking after stream ends
+			}
 			mu.Unlock()
 		})
 		selectTripTool := NewSelectTripTool(h.tripSvc, userID, func(tripID, title, description string) {
@@ -344,15 +348,19 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
 
-		// Planning mode: inject itinerary creation tool
-		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
-			itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
-				mu.Lock()
-				itineraryItems = append(itineraryItems, items...)
-				mu.Unlock()
-			}).WithGeocoding(h.pool, h.placesAPIKey).
-				WithAnalytics(h.analytics, userID.String())
-			params.ExtraTools = append(params.ExtraTools, itineraryTool)
+		// Planning mode only: inject itinerary creation tool.
+		// Companion mode intentionally excludes this tool — the AI should not
+		// restructure an in-progress trip's itinerary without explicit user intent.
+		if mode == "planning" {
+			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
+				itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
+					mu.Lock()
+					itineraryItems = append(itineraryItems, items...)
+					mu.Unlock()
+				}).WithGeocoding(h.pool, h.placesAPIKey).
+					WithAnalytics(h.analytics, userID.String())
+				params.ExtraTools = append(params.ExtraTools, itineraryTool)
+			}
 		}
 
 		// Companion mode: inject nearby_places tool with user's cached location
@@ -556,6 +564,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 		if err := stream.Send(chatEvent); err != nil {
 			return err
+		}
+	}
+
+	// Retroactively link the selection session to the newly created trip (#153).
+	// This makes the initial conversation visible in ListSessions(tripID) and
+	// GetHistory. Runs after the stream so we don't block the client response.
+	if isSelection && createdTripID != "" && sessionID != "" {
+		if err := h.chatSvc.MoveSessionToTrip(ctx, userID, sessionID, createdTripID); err != nil {
+			slog.Error("failed to relink selection session to created trip",
+				"session_id", sessionID, "trip_id", createdTripID, "error", err)
 		}
 	}
 

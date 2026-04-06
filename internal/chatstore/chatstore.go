@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -107,6 +108,17 @@ func (s *Store) DeleteSession(ctx context.Context, userID, tripID, sessionID str
 	return nil
 }
 
+// DeleteMessage deletes a single message document.
+// Used to roll back a persisted user message when the AI response fails,
+// preventing orphaned messages from appearing in chat history.
+func (s *Store) DeleteMessage(ctx context.Context, userID, tripID, sessionID, messageID string) error {
+	_, err := s.messagesCol(userID, tripID, sessionID).Doc(messageID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("delete message: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit int) ([]*ChatSession, error) {
 	iter := s.sessionsCol(userID, tripID).OrderBy("lastMessageAt", firestore.Desc).Limit(limit).Documents(ctx)
 	defer iter.Stop()
@@ -179,6 +191,48 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 		messages = append(messages, &msg)
 	}
 	return messages, nil
+}
+
+// MoveSessionToTrip moves a session (and all its messages) from one trip path
+// to another. Used when a selection-mode session needs to be retroactively
+// linked to a trip that was created mid-conversation.
+//
+// The session is written to the new path first, then the old documents are
+// deleted. On partial failure (write succeeds, delete fails), the session
+// may exist at both paths — this is safe since the new path takes precedence
+// for ListSessions queries.
+func (s *Store) MoveSessionToTrip(ctx context.Context, userID, fromTripID, toTripID, sessionID string) error {
+	// Load the session and all its messages from the source path.
+	session, err := s.GetSession(ctx, userID, fromTripID, sessionID)
+	if err != nil {
+		return fmt.Errorf("get session for move: %w", err)
+	}
+	messages, err := s.GetMessages(ctx, userID, fromTripID, sessionID, 1000)
+	if err != nil {
+		return fmt.Errorf("get messages for move: %w", err)
+	}
+
+	// Write session + messages to the destination path in a batch.
+	session.TripID = toTripID
+	batch := s.client.Batch()
+	batch.Set(s.sessionsCol(userID, toTripID).Doc(sessionID), session)
+	for _, msg := range messages {
+		batch.Set(s.messagesCol(userID, toTripID, sessionID).Doc(msg.ID), msg)
+	}
+	if _, err := batch.Commit(ctx); err != nil {
+		return fmt.Errorf("write session to new trip path: %w", err)
+	}
+
+	// Delete messages from the old path, then the old session document.
+	if err := s.deleteCollection(ctx, s.messagesCol(userID, fromTripID, sessionID)); err != nil {
+		slog.Warn("failed to delete messages from old session path after move",
+			"from_trip", fromTripID, "session_id", sessionID, "error", err)
+	}
+	if _, err := s.sessionsCol(userID, fromTripID).Doc(sessionID).Delete(ctx); err != nil {
+		slog.Warn("failed to delete session from old path after move",
+			"from_trip", fromTripID, "session_id", sessionID, "error", err)
+	}
+	return nil
 }
 
 // SetTTL stamps an expireAt time on all sessions and messages for a trip.

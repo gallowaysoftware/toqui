@@ -145,7 +145,8 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		activePersona = s.personas.Default()
 	}
 
-	// Store user message
+	// Store user message. We save the ID so it can be rolled back if the AI
+	// response fails (preventing orphaned messages in chat history).
 	userMsg := &chatstore.ChatMessage{
 		Role:    "user",
 		Content: params.Content,
@@ -153,6 +154,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	if err := s.chatStore.AddMessage(ctx, params.UserID.String(), storeTripID, sessionID, userMsg); err != nil {
 		return nil, "", fmt.Errorf("store user message: %w", err)
 	}
+	userMsgID := userMsg.ID // populated by AddMessage
 
 	// Load history
 	history, err := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, 50)
@@ -266,19 +268,31 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		defer close(outCh)
 		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
 
-		// Clean up orphaned sessions: if we created a new session but the AI
-		// produced no response (e.g., 429, timeout, provider error), delete
-		// the empty session to avoid cluttering the user's session list.
-		if isNewSession && responseText == "" {
-			slog.Warn("cleaning up orphaned session with no AI response",
-				"session_id", sessionID,
-				"user_id", params.UserID.String(),
-			)
-			// Use a background context since the request context may be cancelled.
+		// Clean up on AI failure: if the AI produced no response (e.g., 429,
+		// timeout, provider error), roll back the user message and optionally
+		// the session so they don't appear as orphaned entries in history.
+		if responseText == "" {
 			cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			if err := s.chatStore.DeleteSession(cleanupCtx, params.UserID.String(), storeTripID, sessionID); err != nil {
-				slog.Error("failed to delete orphaned session", "session_id", sessionID, "error", err)
+
+			// Roll back the user message so history doesn't show a message
+			// with no AI response.
+			if userMsgID != "" {
+				if err := s.chatStore.DeleteMessage(cleanupCtx, params.UserID.String(), storeTripID, sessionID, userMsgID); err != nil {
+					slog.Error("failed to delete orphaned user message", "message_id", userMsgID, "error", err)
+				}
+			}
+
+			// Also delete the session itself if it was freshly created and is
+			// now empty, to keep the session list tidy.
+			if isNewSession {
+				slog.Warn("cleaning up orphaned session with no AI response",
+					"session_id", sessionID,
+					"user_id", params.UserID.String(),
+				)
+				if err := s.chatStore.DeleteSession(cleanupCtx, params.UserID.String(), storeTripID, sessionID); err != nil {
+					slog.Error("failed to delete orphaned session", "session_id", sessionID, "error", err)
+				}
 			}
 		}
 
@@ -320,7 +334,22 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			return fullResponse.String()
 		}
 
-		// Start (or continue) streaming
+		// Reset the text accumulator at the start of each iteration so that
+		// only the final turn's text is stored in the assistant message.
+		// Some providers (Gemini) re-send earlier text in continuation turns,
+		// which would otherwise cause duplicated content in chat history.
+		// Real-time text_delta events sent to outCh are unaffected.
+		fullResponse.Reset()
+
+		// Start (or continue) streaming.
+		// Log session_id on every iteration so cross-user contamination can be
+		// traced in Cloud Logging if it recurs (see toqui-backend#125).
+		slog.Debug("tool loop: starting AI stream",
+			"session_id", sessionID,
+			"user_id", userID,
+			"iteration", iteration,
+			"messages", len(aiReq.Messages),
+		)
 		eventCh, err := s.provider.ChatStream(ctx, aiReq)
 		if err != nil {
 			outCh <- StreamEvent{Type: "error", Error: fmt.Sprintf("start chat stream: %v", err)}
@@ -679,6 +708,13 @@ func (s *Service) Personas() *persona.Registry {
 	return s.personas
 }
 
+// MoveSessionToTrip retroactively links a selection-mode session (stored under
+// "_lobby") to the trip that was created during that conversation. This makes
+// the initial conversation visible via ListSessions(tripID) and GetHistory.
+func (s *Service) MoveSessionToTrip(ctx context.Context, userID uuid.UUID, sessionID, toTripID string) error {
+	return s.chatStore.MoveSessionToTrip(ctx, userID.String(), "_lobby", toTripID, sessionID)
+}
+
 func (s *Service) ListSessions(ctx context.Context, userID uuid.UUID, tripID string, limit int) ([]*chatstore.ChatSession, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -711,7 +747,21 @@ func (s *Service) GetHistory(ctx context.Context, userID uuid.UUID, tripID, sess
 	if err != nil {
 		return nil, fmt.Errorf("session not found: %w", err)
 	}
-	return s.chatStore.GetMessages(ctx, userID.String(), tripID, sessionID, limit)
+	all, err := s.chatStore.GetMessages(ctx, userID.String(), tripID, sessionID, limit)
+	if err != nil {
+		return nil, err
+	}
+	// Filter out synthetic tool-loop continuation messages: user messages with
+	// no text content that exist only to carry tool results back to the AI.
+	// These are internal protocol messages and should not appear in chat history.
+	filtered := all[:0]
+	for _, msg := range all {
+		if msg.Role == "user" && msg.Content == "" && len(msg.ToolResults) > 0 {
+			continue
+		}
+		filtered = append(filtered, msg)
+	}
+	return filtered, nil
 }
 
 // buildAttachmentBlocks converts the user's text content and attachments into
