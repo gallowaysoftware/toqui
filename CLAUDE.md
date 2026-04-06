@@ -46,7 +46,7 @@ This is a 5-repo project under `github.com/gallowaysoftware`:
 
 - **toqui** (this repo) — Expo React Native app (web + iOS + Android)
 - **toqui-backend** — Go backend, ConnectRPC API, AI orchestration
-- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure
+- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure (CI auto-plans on PR, auto-applies on merge)
 - **toqui-site** — Astro static marketing site (Cloudflare Pages)
 - **toqui-admin** — Vite React admin panel (Cloudflare Pages)
 
