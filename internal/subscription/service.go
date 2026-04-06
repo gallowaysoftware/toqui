@@ -210,10 +210,12 @@ func (s *Service) CancelSubscription(ctx context.Context, userID uuid.UUID) erro
 		return fmt.Errorf("cancel subscription: %w", err)
 	}
 
-	s.queries.SetSubscriptionCancelAtPeriodEnd(ctx, dbgen.SetSubscriptionCancelAtPeriodEndParams{
+	if err := s.queries.SetSubscriptionCancelAtPeriodEnd(ctx, dbgen.SetSubscriptionCancelAtPeriodEndParams{
 		CancelAtPeriodEnd:    pgtype.Bool{Bool: true, Valid: true},
 		StripeSubscriptionID: sub.StripeSubscriptionID,
-	})
+	}); err != nil {
+		slog.Warn("failed to set cancel_at_period_end in DB", "error", err, "user_id", userID)
+	}
 
 	audit.Log("subscription.cancel",
 		"user_id", userID,
@@ -227,7 +229,8 @@ func (s *Service) CancelSubscription(ctx context.Context, userID uuid.UUID) erro
 func (s *Service) GetSubscription(ctx context.Context, userID uuid.UUID) (*Subscription, error) {
 	sub, err := s.queries.GetSubscriptionByUserID(ctx, userID)
 	if err != nil {
-		return nil, nil // No subscription is not an error
+		// No subscription found is not an error — return nil to indicate absence.
+		return nil, nil //nolint:nilerr // pgx returns error when no rows; absence is valid
 	}
 
 	result := &Subscription{
@@ -289,7 +292,7 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		return fmt.Errorf("invalid user_id in metadata: %w", err)
 	}
 
-	tierStr, _ := session.Metadata["tier"]
+	tierStr := session.Metadata["tier"]
 	t := tier.Parse(tierStr)
 	if t != tier.Explorer && t != tier.Voyager {
 		return fmt.Errorf("unexpected tier in metadata: %s", tierStr)
@@ -368,35 +371,43 @@ func (s *Service) handleSubscriptionUpdated(ctx context.Context, event stripe.Ev
 	stripeSubID := pgtype.Text{String: sub.ID, Valid: true}
 
 	// Update status
-	s.queries.UpdateSubscriptionStatus(ctx, dbgen.UpdateSubscriptionStatusParams{
+	if err := s.queries.UpdateSubscriptionStatus(ctx, dbgen.UpdateSubscriptionStatusParams{
 		Status:               string(sub.Status),
 		StripeSubscriptionID: stripeSubID,
-	})
+	}); err != nil {
+		slog.Warn("failed to update subscription status", "error", err, "subscription_id", sub.ID)
+	}
 
 	// Update cancel_at_period_end
-	s.queries.SetSubscriptionCancelAtPeriodEnd(ctx, dbgen.SetSubscriptionCancelAtPeriodEndParams{
+	if err := s.queries.SetSubscriptionCancelAtPeriodEnd(ctx, dbgen.SetSubscriptionCancelAtPeriodEndParams{
 		CancelAtPeriodEnd:    pgtype.Bool{Bool: sub.CancelAtPeriodEnd, Valid: true},
 		StripeSubscriptionID: stripeSubID,
-	})
+	}); err != nil {
+		slog.Warn("failed to set cancel_at_period_end", "error", err, "subscription_id", sub.ID)
+	}
 
 	// Update period dates from items
 	if sub.Items != nil && len(sub.Items.Data) > 0 {
 		item := sub.Items.Data[0]
-		s.queries.UpdateSubscriptionPeriod(ctx, dbgen.UpdateSubscriptionPeriodParams{
+		if err := s.queries.UpdateSubscriptionPeriod(ctx, dbgen.UpdateSubscriptionPeriodParams{
 			CurrentPeriodStart:   pgtype.Timestamptz{Time: time.Unix(item.CurrentPeriodStart, 0), Valid: true},
 			CurrentPeriodEnd:     pgtype.Timestamptz{Time: time.Unix(item.CurrentPeriodEnd, 0), Valid: true},
 			StripeSubscriptionID: stripeSubID,
-		})
+		}); err != nil {
+			slog.Warn("failed to update subscription period", "error", err, "subscription_id", sub.ID)
+		}
 	}
 
 	// If the subscription is no longer active, revert user tier to free.
 	if sub.Status == stripe.SubscriptionStatusCanceled || sub.Status == stripe.SubscriptionStatusUnpaid {
 		dbSub, err := s.queries.GetSubscriptionByStripeSubscriptionID(ctx, stripeSubID)
 		if err == nil {
-			s.queries.SetUserSubscriptionTierByID(ctx, dbgen.SetUserSubscriptionTierByIDParams{
+			if err := s.queries.SetUserSubscriptionTierByID(ctx, dbgen.SetUserSubscriptionTierByIDParams{
 				Tier:   string(tier.Free),
 				UserID: dbSub.UserID,
-			})
+			}); err != nil {
+				slog.Warn("failed to revert user tier to free", "error", err, "user_id", dbSub.UserID)
+			}
 			audit.Log("subscription.tier_reverted",
 				"user_id", dbSub.UserID,
 				"stripe_subscription_id", sub.ID,
@@ -425,18 +436,22 @@ func (s *Service) handleSubscriptionDeleted(ctx context.Context, event stripe.Ev
 	stripeSubID := pgtype.Text{String: sub.ID, Valid: true}
 
 	// Mark as canceled in our database
-	s.queries.UpdateSubscriptionStatus(ctx, dbgen.UpdateSubscriptionStatusParams{
+	if err := s.queries.UpdateSubscriptionStatus(ctx, dbgen.UpdateSubscriptionStatusParams{
 		Status:               "canceled",
 		StripeSubscriptionID: stripeSubID,
-	})
+	}); err != nil {
+		slog.Warn("failed to mark subscription as canceled", "error", err, "subscription_id", sub.ID)
+	}
 
 	// Revert user tier to free
 	dbSub, err := s.queries.GetSubscriptionByStripeSubscriptionID(ctx, stripeSubID)
 	if err == nil {
-		s.queries.SetUserSubscriptionTierByID(ctx, dbgen.SetUserSubscriptionTierByIDParams{
+		if err := s.queries.SetUserSubscriptionTierByID(ctx, dbgen.SetUserSubscriptionTierByIDParams{
 			Tier:   string(tier.Free),
 			UserID: dbSub.UserID,
-		})
+		}); err != nil {
+			slog.Warn("failed to revert user tier to free on deletion", "error", err, "user_id", dbSub.UserID)
+		}
 		audit.Log("subscription.deleted",
 			"user_id", dbSub.UserID,
 			"stripe_subscription_id", sub.ID,

@@ -43,7 +43,7 @@ func (f *FallbackProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-
 
 	ch, fallbackErr := f.fallback.ChatStream(ctx, req)
 	if fallbackErr != nil {
-		return nil, fmt.Errorf("primary (%s): %w; fallback (%s): %v",
+		return nil, fmt.Errorf("primary (%s): %w; fallback (%s): %w",
 			f.primary.Name(), err, f.fallback.Name(), fallbackErr)
 	}
 	return ch, nil
