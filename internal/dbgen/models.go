@@ -141,6 +141,20 @@ type RefreshToken struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type Subscription struct {
+	ID                   uuid.UUID          `json:"id"`
+	UserID               uuid.UUID          `json:"user_id"`
+	StripeCustomerID     string             `json:"stripe_customer_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	Tier                 string             `json:"tier"`
+	Status               string             `json:"status"`
+	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	CancelAtPeriodEnd    pgtype.Bool        `json:"cancel_at_period_end"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Theme struct {
 	Slug        string      `json:"slug"`
 	DisplayName string      `json:"display_name"`

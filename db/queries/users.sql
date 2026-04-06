@@ -34,6 +34,9 @@ SELECT COALESCE(age_verified_at IS NOT NULL, false)::boolean AS verified FROM us
 -- name: SetUserSubscriptionTier :exec
 UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE email = $2;
 
+-- name: SetUserSubscriptionTierByID :exec
+UPDATE users SET subscription_tier = sqlc.arg(tier), updated_at = NOW() WHERE id = sqlc.arg(user_id);
+
 -- name: ListUsers :many
 SELECT * FROM users ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);

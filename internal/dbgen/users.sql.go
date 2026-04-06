@@ -313,6 +313,20 @@ func (q *Queries) SetUserSubscriptionTier(ctx context.Context, arg SetUserSubscr
 	return err
 }
 
+const setUserSubscriptionTierByID = `-- name: SetUserSubscriptionTierByID :exec
+UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE id = $2
+`
+
+type SetUserSubscriptionTierByIDParams struct {
+	Tier   string    `json:"tier"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) SetUserSubscriptionTierByID(ctx context.Context, arg SetUserSubscriptionTierByIDParams) error {
+	_, err := q.db.Exec(ctx, setUserSubscriptionTierByID, arg.Tier, arg.UserID)
+	return err
+}
+
 const updateUserFacebookID = `-- name: UpdateUserFacebookID :exec
 UPDATE users SET facebook_id = $2, updated_at = NOW() WHERE id = $1
 `

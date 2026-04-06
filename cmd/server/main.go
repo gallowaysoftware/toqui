@@ -43,6 +43,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
+	"github.com/gallowaysoftware/toqui-backend/internal/subscription"
 	"github.com/gallowaysoftware/toqui-backend/internal/telemetry"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
@@ -267,6 +268,14 @@ func main() {
 		}
 	}
 
+	// Stripe subscription service — no-ops gracefully when STRIPE_SECRET_KEY is empty.
+	subSvc := subscription.NewService(cfg.StripeSecretKey, queries, subscription.PriceConfig{
+		ExplorerMonthly: cfg.StripeExplorerMonthlyPriceID,
+		ExplorerAnnual:  cfg.StripeExplorerAnnualPriceID,
+		VoyagerMonthly:  cfg.StripeVoyagerMonthlyPriceID,
+		VoyagerAnnual:   cfg.StripeVoyagerAnnualPriceID,
+	}, cfg.FrontendURL)
+
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
 		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
@@ -362,6 +371,15 @@ func main() {
 	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
 	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
 	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)
+
+	// Subscription routes (authenticated, except webhook)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subSvc, authSvc, pool, cfg.StripeWebhookSecret).
+		WithAnalytics(posthogClient)
+	mux.HandleFunc("/api/subscription/checkout", subscriptionHandler.HandleCreateCheckout)
+	mux.HandleFunc("/api/subscription/cancel", subscriptionHandler.HandleCancelSubscription)
+	mux.HandleFunc("/api/subscription/webhook", subscriptionHandler.HandleWebhook)
+	mux.HandleFunc("/api/subscription/portal", subscriptionHandler.HandleCreatePortal)
+	mux.HandleFunc("/api/subscription", subscriptionHandler.HandleGetSubscription)
 
 	// Public destination guides (no auth required)
 	guidesHandler := handlers.NewGuidesHandler(cfg.FrontendURL)
@@ -462,7 +480,7 @@ func main() {
 
 	// CSRF protection — validate Origin/Referer on state-changing requests.
 	// Webhooks are exempt (they use ECDSA signature verification).
-	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/"})
+	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/", "/api/subscription/webhook"})
 
 	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
 	// IP rate limiter runs after cookie auth so it can use Bearer token (set by
