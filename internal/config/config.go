@@ -87,13 +87,11 @@ type Config struct {
 	LLMCacheEnabled bool
 	LLMCacheTTL     time.Duration
 
-	// Helcim payment processing
-	HelcimAPIToken    string
-	TripProPriceCents int // Default 1900 ($19.00 CAD)
-
-	// Stripe subscription processing
+	// Stripe payment processing (Trip Pro + subscriptions)
 	StripeSecretKey              string
 	StripeWebhookSecret          string
+	StripeTripProPriceID         string // Stripe Price ID for Trip Pro one-time purchase
+	TripProPriceCents            int    // Default 1900 ($19.00 CAD)
 	StripeExplorerMonthlyPriceID string
 	StripeExplorerAnnualPriceID  string
 	StripeVoyagerMonthlyPriceID  string
@@ -173,10 +171,10 @@ func Load() (*Config, error) {
 		StagingProAll:                getEnvBool("STAGING_PRO_ALL", false),
 		ResendAPIKey:                 os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                    getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
-		HelcimAPIToken:               os.Getenv("HELCIM_API_TOKEN"),
-		TripProPriceCents:            getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
 		StripeSecretKey:              os.Getenv("STRIPE_SECRET_KEY"),
 		StripeWebhookSecret:          os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		StripeTripProPriceID:         os.Getenv("STRIPE_TRIP_PRO_PRICE_ID"),
+		TripProPriceCents:            getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
 		StripeExplorerMonthlyPriceID: os.Getenv("STRIPE_EXPLORER_MONTHLY_PRICE"),
 		StripeExplorerAnnualPriceID:  os.Getenv("STRIPE_EXPLORER_ANNUAL_PRICE"),
 		StripeVoyagerMonthlyPriceID:  os.Getenv("STRIPE_VOYAGER_MONTHLY_PRICE"),
@@ -194,10 +192,6 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("JWT_SECRET must be set in %s environment (default dev secret is not allowed)", cfg.TargetEnv)
 		}
 		slog.Warn("using default JWT secret — set JWT_SECRET for non-local environments")
-	}
-
-	if cfg.HelcimAPIToken == "" && cfg.TargetEnv != "local" {
-		slog.Warn("HELCIM_API_TOKEN not set — payment processing will fail")
 	}
 
 	slog.Info("config loaded", "env", env, "port", cfg.Port)

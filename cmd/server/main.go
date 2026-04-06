@@ -258,7 +258,7 @@ func main() {
 	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
 	defer authLimiter.Stop()
 
-	paymentSvc := payment.NewService(cfg.HelcimAPIToken, cfg.TripProPriceCents, queries)
+	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProPriceID, cfg.TripProPriceCents, queries, cfg.FrontendURL)
 	if cfg.StagingProAll {
 		if cfg.TargetEnv != "staging" {
 			slog.Error("STAGING_PRO_ALL=true is only allowed in staging environment, ignoring", "env", cfg.TargetEnv)
@@ -275,6 +275,7 @@ func main() {
 		VoyagerMonthly:  cfg.StripeVoyagerMonthlyPriceID,
 		VoyagerAnnual:   cfg.StripeVoyagerAnnualPriceID,
 	}, cfg.FrontendURL)
+	subSvc.SetPaymentService(paymentSvc)
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
@@ -369,7 +370,6 @@ func main() {
 	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc, pool).
 		WithAnalytics(posthogClient)
 	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
-	mux.HandleFunc("/api/checkout/validate", checkoutHandler.HandleValidatePayment)
 	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)
 
 	// Subscription routes (authenticated, except webhook)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
@@ -48,6 +49,10 @@ type Service struct {
 
 	// frontendURL is used for Stripe Checkout success/cancel redirects.
 	frontendURL string
+
+	// paymentSvc handles Trip Pro one-time payment webhook processing.
+	// Set via SetPaymentService after construction to avoid circular deps.
+	paymentSvc *payment.Service
 }
 
 // NewService creates a new subscription service. If stripeKey is empty, the
@@ -68,6 +73,10 @@ func NewService(stripeKey string, queries *dbgen.Queries, prices PriceConfig, fr
 	}
 	return s
 }
+
+// SetPaymentService configures the payment service for handling Trip Pro
+// one-time payment webhooks. Called after construction in main.go.
+func (s *Service) SetPaymentService(ps *payment.Service) { s.paymentSvc = ps }
 
 // Enabled returns true when Stripe is configured and the service is operational.
 func (s *Service) Enabled() bool { return s.enabled }
@@ -259,8 +268,14 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		return fmt.Errorf("unmarshal checkout session: %w", err)
 	}
 
+	// Handle Trip Pro one-time payments (mode=payment).
+	if string(session.Mode) == string(stripe.CheckoutSessionModePayment) {
+		return s.handlePaymentCheckoutCompleted(ctx, session)
+	}
+
 	if string(session.Mode) != string(stripe.CheckoutSessionModeSubscription) {
-		return nil // Not a subscription checkout, ignore
+		slog.Debug("ignoring checkout session with unexpected mode", "mode", session.Mode)
+		return nil
 	}
 
 	userIDStr, ok := session.Metadata["user_id"]
@@ -431,6 +446,41 @@ func (s *Service) handleSubscriptionDeleted(ctx context.Context, event stripe.Ev
 	)
 
 	return nil
+}
+
+// handlePaymentCheckoutCompleted processes a Stripe checkout.session.completed
+// event where mode=payment (Trip Pro one-time purchase). It delegates to the
+// payment service to unlock the trip.
+func (s *Service) handlePaymentCheckoutCompleted(ctx context.Context, session stripe.CheckoutSession) error {
+	if s.paymentSvc == nil {
+		return fmt.Errorf("payment service not configured for Trip Pro webhook handling")
+	}
+
+	userIDStr, ok := session.Metadata["user_id"]
+	if !ok || userIDStr == "" {
+		return fmt.Errorf("missing user_id in payment checkout session metadata")
+	}
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return fmt.Errorf("invalid user_id in payment metadata: %w", err)
+	}
+
+	tripIDStr, ok := session.Metadata["trip_id"]
+	if !ok || tripIDStr == "" {
+		return fmt.Errorf("missing trip_id in payment checkout session metadata")
+	}
+	tripID, err := uuid.Parse(tripIDStr)
+	if err != nil {
+		return fmt.Errorf("invalid trip_id in payment metadata: %w", err)
+	}
+
+	// Extract amount from session (Stripe returns amount in smallest currency unit)
+	var amountCents int32
+	if session.AmountTotal > 0 {
+		amountCents = int32(session.AmountTotal)
+	}
+
+	return s.paymentSvc.HandlePaymentWebhook(ctx, userID, tripID, session.ID, amountCents)
 }
 
 // getOrCreateCustomer looks up the user's Stripe customer ID from the
