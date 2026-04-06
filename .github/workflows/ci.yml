@@ -89,7 +89,7 @@ jobs:
       # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
       - name: Build Docker image
         run: |
-          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
       - id: auth
         uses: google-github-actions/auth@v2
@@ -99,13 +99,13 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Push Docker image
         run: |
-          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
       - name: Deploy to Cloud Run
         run: |
-          IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+          IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
             --region=us-central1 \
@@ -122,7 +122,7 @@ jobs:
     runs-on: self-hosted
     environment: production
     env:
-      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-frontend/toqui-frontend
+      IMAGE: us-central1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
       - id: auth
         uses: google-github-actions/auth@v2
@@ -133,7 +133,7 @@ jobs:
       - name: Verify staging image exists
         run: |
           gcloud artifacts docker images describe $IMAGE:${{ github.sha }} \
-            --project=toqui-staging || \
+            --project=toqui-infra || \
             (echo "ERROR: Image $IMAGE:${{ github.sha }} not found. Run staging deploy first." && exit 1)
       - name: Deploy to Cloud Run (promote staging image)
         run: |
