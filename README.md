@@ -138,7 +138,7 @@ Uses **Workload Identity Federation** for keyless GCP auth — no service accoun
 **Manual deploy** (if CI is broken):
 
 ```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
 
 # Build and push
 docker build --platform linux/amd64 -t $IMAGE:latest .
@@ -158,11 +158,11 @@ gcloud compute ssh toqui-staging-vm \
 ### Rolling Back
 
 ```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
 
 # List available image tags
 gcloud artifacts docker tags list \
-  us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend \
+  us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend \
   --project=toqui-staging
 
 # Redeploy to a previous version

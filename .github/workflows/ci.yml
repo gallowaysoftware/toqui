@@ -119,7 +119,7 @@ jobs:
     runs-on: self-hosted
 
     env:
-      IMAGE: us-central1-docker.pkg.dev/toqui-staging/toqui-backend/toqui-backend
+      IMAGE: us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
 
     steps:
       - uses: actions/checkout@v4

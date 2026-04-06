@@ -190,7 +190,7 @@ GitHub Actions on push to `main` and all PRs (self-hosted runners on Unraid, 3 r
 
 **Prod auto-deploy**: Push to `main` triggers `deploy-prod` job: Docker build → push to Artifact Registry → run migrations via Cloud Run Jobs → deploy to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). Migrations run BEFORE deploy to avoid schema mismatch.
 
-**Staging**: Torn down to save costs. `staging-ci/` Terraform environment keeps WIF + Artifact Registry alive for CI builds. Runtime can be recreated on demand via `terraform apply` in `environments/staging/`.
+**Staging**: Torn down to save costs. Shared infra (WIF, Artifact Registry) lives in `toqui-infra` GCP project, managed by `environments/infra/` in toqui-terraform. Runtime can be recreated on demand via `terraform apply` in `environments/staging/`.
 
 ### Task Tracking
 
@@ -550,12 +550,13 @@ Each agent returns a structured JSON report with: bugs (P0/P1/P2), UX issues, AI
 
 GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) repo.
 
-**Two GCP projects** under the Toqui folder in the `thegalloways.ca` org:
+**Three GCP projects** under the Toqui folder in the `thegalloways.ca` org:
 
-- **toqui-staging** — CI infrastructure only (WIF + Artifact Registry). Runtime torn down to save ~$32/mo.
+- **toqui-infra** — Shared singleton infra: Artifact Registry, WIF, GitHub branch protection. Managed by `environments/infra/` in toqui-terraform.
+- **toqui-staging** — Runtime torn down to save ~$32/mo. Pulls images from `toqui-infra` AR.
 - **toqui-prod** — LIVE. Cloud Run (backend + frontend) + Global HTTPS LB + Cloud Armor WAF + Certificate Manager SSL. Cloud SQL `db-g1-small` (private IP, HA, backups). Domains: `api.toqui.travel`, `app.toqui.travel`. Marketing site + admin on Cloudflare Pages.
 
-Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Artifact Registry, Resend (email), Stripe (payments).
+Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Resend (email), Stripe (payments). Images pulled from `toqui-infra` Artifact Registry.
 
 **Company**: Galloway Software Inc., Prince Edward Island, Canada.
 
