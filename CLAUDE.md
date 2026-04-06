@@ -57,7 +57,7 @@ graph TB
     FE[Frontend - Expo React Native] -->|ConnectRPC| BE[Backend - Go :8090]
     BE --> PG[(PostgreSQL + PostGIS)]
     BE --> FS[(Firestore)]
-    BE --> AI[Claude API]
+    BE --> AI[Gemini / Claude API]
 
     subgraph Backend Services
         BE --> Auth[AuthService]
@@ -78,7 +78,7 @@ graph TB
 | `internal/handlers/`    | ConnectRPC service handlers (auth, trip, chat, booking, location, persona)                |
 | `internal/chat/`        | Chat service — AI streaming, tool execution, persona resolution                           |
 | `internal/persona/`     | Persona composition — 40 locations × 20 themes = 800 expert combos                        |
-| `internal/ai/`          | AI provider abstraction (Claude primary, Gemini/Vertex AI fallback)                       |
+| `internal/ai/`          | AI provider abstraction (Gemini primary, Claude fallback)                                 |
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
 | `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
@@ -96,9 +96,10 @@ graph TB
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
 | `internal/email/`       | Transactional email via Resend API (waitlist verification, invite emails)                   |
-| `internal/payment/`     | Helcim payment processing (Trip Pro checkout sessions, validation)                          |
+| `internal/payment/`     | Stripe payment processing (Trip Pro checkout sessions, one-time purchases)                  |
+| `internal/subscription/` | Stripe subscription management (Explorer/Voyager tiers, checkout, webhooks, portal)        |
 | `internal/requestid/`   | HTTP middleware — generates unique request IDs, sets `X-Request-ID` response header         |
-| `internal/tier/`        | User subscription tier logic (Free / Pro) and feature gating                               |
+| `internal/tier/`        | User subscription tier logic (Free / Pro / Explorer / Voyager) and feature gating          |
 | `internal/usage/`       | Daily usage tracking + message limit enforcement per user                                 |
 | `tests/agentic/`        | Agentic test personas, booking artifacts, and orchestration                                |
 | `cmd/testctl/`          | Test user/token management CLI for agentic testing                                        |
@@ -227,7 +228,13 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `HELCIM_API_TOKEN` | (none) | Helcim payment gateway API token |
+| `STRIPE_SECRET_KEY` | (none) | Stripe API secret key |
+| `STRIPE_WEBHOOK_SECRET` | (none) | Stripe webhook signing secret |
+| `STRIPE_TRIP_PRO_PRODUCT_ID` | (none) | Stripe product ID for Trip Pro one-time purchase |
+| `STRIPE_EXPLORER_MONTHLY_PRODUCT` | (none) | Stripe product ID for Explorer monthly subscription |
+| `STRIPE_EXPLORER_ANNUAL_PRODUCT` | (none) | Stripe product ID for Explorer annual subscription |
+| `STRIPE_VOYAGER_MONTHLY_PRODUCT` | (none) | Stripe product ID for Voyager monthly subscription |
+| `STRIPE_VOYAGER_ANNUAL_PRODUCT` | (none) | Stripe product ID for Voyager annual subscription |
 | `TRIP_PRO_PRICE_CENTS` | `1900` | Trip Pro price in cents ($19.00) |
 | `RESEND_API_KEY` | (none) | Resend transactional email API key |
 | `EMAIL_FROM` | `Toqui <hello@toqui.travel>` | From address for outbound emails |
@@ -528,7 +535,7 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 - **toqui-staging** — CI infrastructure only (WIF + Artifact Registry). Runtime torn down to save ~$32/mo.
 - **toqui-prod** — LIVE. Cloud Run (backend + frontend) + Global HTTPS LB + Cloud Armor WAF + Certificate Manager SSL. Cloud SQL `db-g1-small` (private IP, HA, backups). Domains: `api.toqui.travel`, `app.toqui.travel`. Marketing site + admin on Cloudflare Pages.
 
-Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Artifact Registry, Resend (email), Helcim (payments).
+Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Artifact Registry, Resend (email), Stripe (payments).
 
 **Company**: Galloway Software Inc., Prince Edward Island, Canada.
 
@@ -639,9 +646,15 @@ HTTP routes (outside ConnectRPC):
 - `POST /api/referral/redeem` — Authenticated. Redeems a referral code.
 
 ### Payment / checkout
-- `POST /api/checkout` — Authenticated. Creates Helcim checkout session for Trip Pro purchase (`{"trip_id":"..."}`). Returns Helcim checkout URL/token.
-- `POST /api/checkout/validate` — Authenticated. Validates payment after Helcim callback. Unlocks trip if successful.
+- `POST /api/checkout` — Authenticated. Creates Stripe checkout session for Trip Pro purchase (`{"trip_id":"..."}`). Returns Stripe checkout URL.
 - `GET /api/checkout/status?trip_id=...` — Authenticated. Returns `{"unlocked":true/false}`.
+
+### Subscription
+- `POST /api/subscription/checkout` — Authenticated. Creates Stripe checkout session for Explorer/Voyager subscription.
+- `GET /api/subscription` — Authenticated. Returns current subscription tier and status.
+- `POST /api/subscription/cancel` — Authenticated. Cancels active subscription at period end.
+- `POST /api/subscription/portal` — Authenticated. Creates Stripe billing portal session URL.
+- `POST /api/subscription/webhook` — Stripe webhook endpoint (signature verified). Processes subscription lifecycle events.
 
 ### Admin (requires admin auth: Bearer + email in ADMIN_EMAILS)
 - `GET /admin/stats` — Dashboard stats (users, waitlist, trips, messages)
@@ -720,7 +733,7 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 - `auth.logout`, `auth.account_delete`, `auth.data_export`
 - `trip.share`, `trip.unshare`
 - `security.csrf_rejected`
-- `payment.trip_pro_purchase`, `payment.validation_failed` — Helcim payment audit trail
+- `payment.trip_pro_purchase`, `payment.validation_failed` — Stripe payment audit trail
 - `admin.invite`, `admin.trip_unlock`, `admin.grant_pro` — Admin action audit trail
 - `referral.redeem` — Referral code redemption
 
@@ -764,17 +777,16 @@ Waitlist signups now require email verification:
 ## Additional Features
 
 ### Payment & Trip Pro
-The `internal/payment/` package handles Helcim payment integration for Trip Pro ($19/trip):
-- `POST /api/checkout` initializes a Helcim checkout session
-- After payment, `POST /api/checkout/validate` unlocks the trip in the database
+The `internal/payment/` package handles Stripe payment integration for Trip Pro ($19/trip):
+- `POST /api/checkout` creates a Stripe checkout session
+- Stripe sends webhook on successful payment → backend unlocks the trip
 - `GET /api/checkout/status` lets the frontend poll unlock status
 - Unlocked trips have access to unlimited messages, all personas, and export features
-- Stale checkout sessions have a TTL check at validation time
 
 ### Referral System
 Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POST /api/referral/redeem`. Redemption is audit-logged. Referral stats (count of referred users) are returned with the code.
 
-**Referral Rewards**: When a referred user signs up and creates their first trip, both the referrer and referee receive a free trip unlock (Trip Pro). The reward is granted automatically via the referral redemption flow.
+**Referral Rewards**: When a referred user signs up and creates their first trip, both the referrer and referee receive a free trip unlock (Trip Pro). The reward is granted automatically via the referral redemption flow. Rewards are capped at 10 per user.
 
 ### Destination Guides API
 Static destination guide content served at `/api/guides` (list) and `/api/guides/{slug}` (detail). Used by the marketing site's guide pages. Public endpoints — no auth required.
@@ -819,7 +831,7 @@ These enable deep linking from `toqui.travel` URLs directly into the native app.
 
 ## Daily Usage Limits
 
-Each user is limited to `DAILY_MESSAGE_LIMIT` (default: 30) messages per day across all chat modes. The limit is enforced at the start of `SendMessage` in the chat handler. When exceeded, a `ResourceExhausted` error is returned with the reset time (midnight UTC).
+Daily message limits are tier-specific: free=10, pro=50, explorer/voyager=unlimited. Configurable via `DAILY_MESSAGE_LIMIT_FREE` and `DAILY_MESSAGE_LIMIT_PRO` env vars. The limit is enforced at the start of `SendMessage` in the chat handler. When exceeded, a `ResourceExhausted` error is returned with the reset time (midnight UTC).
 
 Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
@@ -827,9 +839,9 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 ### AI Provider Architecture
 
-**Claude (primary)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
+**Gemini (primary, default)** — Google Vertex AI with Application Default Credentials (ADC). No API key needed — uses the same `gcloud auth application-default login` as Secret Manager. Billing is per-GCP-project, providing natural environment separation. Requires `aiplatform.googleapis.com` API enabled and `roles/aiplatform.user` IAM role on the calling identity.
 
-**Gemini (fallback)** — Google Vertex AI with Application Default Credentials (ADC). No API key needed — uses the same `gcloud auth application-default login` as Secret Manager. Billing is per-GCP-project, providing natural environment separation. Requires `aiplatform.googleapis.com` API enabled and `roles/aiplatform.user` IAM role on the calling identity.
+**Claude (fallback)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
 
 | Model Tier | Claude                     | Gemini (Vertex AI)      |
 | ---------- | -------------------------- | ----------------------- |
