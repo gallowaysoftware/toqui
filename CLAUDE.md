@@ -364,17 +364,35 @@ Native iOS builds use `expo prebuild` + Xcode:
 
 ## Pre-Commit Requirements
 
+### Never Push Directly to Main — Use PRs
+
+**MANDATORY**: All changes go through pull requests. Never push commits directly to `main`. This protects CI, enables review, and prevents broken deploys.
+
+**Workflow:**
+1. **Create a feature branch**: `git checkout -b feat/description` (or `fix/`, `chore/`, `docs/`)
+2. **Run all checks locally before pushing**:
+   ```bash
+   pnpm typecheck && pnpm test
+   ```
+3. **Push the branch and open a PR**:
+   ```bash
+   git push -u origin feat/description
+   gh pr create --title "feat: description" --body "## Summary\n..."
+   ```
+4. **Wait for CI to pass on the PR** — typecheck, tests, and builds must all be green
+5. **Run adversarial review** on the PR branch (spawn a review agent against the diff)
+6. **Merge via squash**: `gh pr merge --squash`
+7. **After merge, verify CI passes on `main`** — if it breaks, fix immediately with another PR
+
 ### Keep CI Green — This Is Critical
 
-**MANDATORY**: CI must stay green at all times on `main`. Every push triggers tests, typecheck, and builds. If a change breaks CI, fix it immediately before doing anything else.
+**MANDATORY**: CI must stay green at all times on `main`. If a merge breaks CI, fix it immediately with a new PR before doing anything else.
 
 Common failure causes in this repo:
 - Adding new icons/exports used in components without updating the `vi.mock("lucide-react-native", ...)` in `components/chat/__tests__/ChatInput.test.tsx`
 - Adding new hooks (`useAuth`, etc.) to components that have tests rendering them without the provider — mock the hook instead
 - Test assertions that check message counts or button roles when the UI structure has changed (e.g., adding a new button)
 - TypeScript: `PressableStateCallbackType` only has `pressed` — not `focused` or `hovered`
-
-Always run `pnpm typecheck` locally before pushing. After pushing, watch the CI run and fix failures immediately.
 
 ### QA Testing for AI/Chat Changes
 
@@ -386,7 +404,7 @@ When modifying chat-related components, hooks, or AI behavior, test against the 
 
 ### Adversarial Review
 
-**MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes.
+**MANDATORY**: Before merging any PR, spawn a parallel adversarial review agent to audit all changes in the PR.
 
 ## Cross-Repo Consistency
 
