@@ -48,8 +48,8 @@ describe("useReferral", () => {
     const data = {
       code: "ABC123",
       link: "https://toqui.travel?ref=ABC123",
-      successfulReferrals: 3,
-      rewardsEarned: 1,
+      successful_referrals: 3,
+      rewards_earned: 1,
     };
     mockAuthFetch.mockResolvedValue(mockJsonResponse(data));
 
@@ -64,7 +64,7 @@ describe("useReferral", () => {
 
   it("calls the correct API endpoint", async () => {
     mockAuthFetch.mockResolvedValue(
-      mockJsonResponse({ code: "X", link: "", successfulReferrals: 0, rewardsEarned: 0 }),
+      mockJsonResponse({ code: "X", link: "", successful_referrals: 0, rewards_earned: 0 }),
     );
 
     renderHook(() => useReferral());
@@ -121,7 +121,7 @@ describe("useReferral", () => {
   it("provides a redeemCode function that posts to the correct endpoint", async () => {
     mockAuthFetch
       .mockResolvedValueOnce(
-        mockJsonResponse({ code: "ABC", link: "", successfulReferrals: 0, rewardsEarned: 0 }),
+        mockJsonResponse({ code: "ABC", link: "", successful_referrals: 0, rewards_earned: 0 }),
       )
       .mockResolvedValueOnce(mockJsonResponse({}, true));
 
@@ -146,7 +146,7 @@ describe("useReferral", () => {
   it("redeemCode throws when API returns non-ok response", async () => {
     mockAuthFetch
       .mockResolvedValueOnce(
-        mockJsonResponse({ code: "ABC", link: "", successfulReferrals: 0, rewardsEarned: 0 }),
+        mockJsonResponse({ code: "ABC", link: "", successful_referrals: 0, rewards_earned: 0 }),
       )
       .mockResolvedValueOnce(mockJsonResponse(null, false));
 

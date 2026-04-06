@@ -3,13 +3,17 @@ import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
+/** Raw JSON from POST /api/checkout (Go uses snake_case keys). */
 interface CheckoutInitResponse {
   url: string;
+  price_cents: number;
+  currency: string;
 }
 
+/** Raw JSON from GET /api/checkout/status (Go uses snake_case keys). */
 interface CheckoutStatusResponse {
   unlocked: boolean;
-  priceCents: number;
+  price_cents: number;
   currency: string;
 }
 

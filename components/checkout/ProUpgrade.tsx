@@ -35,10 +35,21 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
 
-  // A/B price test: read PostHog feature flag with $19 default
+  // A/B price test: PostHog flag provides the initial display value, but
+  // the backend is the source of truth for the actual charge amount.
+  // Once checkStatus returns, we use the backend-reported price.
   const rawFlag = getFeatureFlag("trip-pro-price");
-  const priceVariant = typeof rawFlag === "string" ? rawFlag : "19";
-  const priceDisplay = `$${priceVariant} CAD`;
+  const VALID_PRICES = ["15", "19", "24"] as const;
+  const flagValue = typeof rawFlag === "string" ? rawFlag : "19";
+  const priceVariant = VALID_PRICES.includes(flagValue as typeof VALID_PRICES[number])
+    ? flagValue
+    : "19";
+
+  // Backend-authoritative price (set after status check)
+  const [serverPriceCents, setServerPriceCents] = useState<number | null>(null);
+  const priceDisplay = serverPriceCents
+    ? `$${Math.round(serverPriceCents / 100)} CAD`
+    : `$${priceVariant} CAD`;
 
   useEffect(() => {
     if (statusChecked.current) return;
@@ -46,7 +57,10 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     let cancelled = false;
     checkStatus()
       .then((status) => {
-        if (!cancelled) setUnlocked(status.unlocked);
+        if (!cancelled) {
+          setUnlocked(status.unlocked);
+          if (status.price_cents) setServerPriceCents(status.price_cents);
+        }
       })
       .catch(() => {
         if (!cancelled) setUnlocked(false);
@@ -67,8 +81,12 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     }
   }, [checkingStatus, unlocked, track, compact, priceVariant]);
 
+  // Whether payment was initiated but unlock not yet confirmed
+  const [paymentPending, setPaymentPending] = useState(false);
+
   // Poll for unlock status after returning from Stripe checkout
   const pollForUnlock = useCallback(async () => {
+    setPaymentPending(true);
     const maxAttempts = 10;
     const intervalMs = 2000;
     for (let i = 0; i < maxAttempts; i++) {
@@ -77,6 +95,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
         if (status.unlocked) {
           track("payment_completed");
           setUnlocked(true);
+          setPaymentPending(false);
           onUnlocked?.();
           return;
         }
@@ -85,6 +104,8 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
+    // Polling exhausted — payment may still be processing on Stripe's side
+    setPaymentPending(true);
   }, [checkStatus, onUnlocked, track]);
 
   const handleCheckout = useCallback(async () => {
@@ -235,6 +256,31 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       fontWeight: "600",
       color: colors.accent,
     },
+    pendingContainer: {
+      backgroundColor: colors.accentSoft,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 12,
+      alignItems: "center",
+      gap: 8,
+    },
+    pendingText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    retryButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    retryButtonText: {
+      fontSize: 13,
+      color: colors.accent,
+      fontWeight: "600",
+    },
   });
 
   if (checkingStatus) {
@@ -339,10 +385,26 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
 
       {error && <Text style={styles.error}>{t("checkout.error")}</Text>}
 
+      {paymentPending && !unlocked && (
+        <View style={styles.pendingContainer}>
+          <ActivityIndicator size="small" color={colors.accent} />
+          <Text style={styles.pendingText}>
+            {t("checkout.paymentProcessing")}
+          </Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void pollForUnlock()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+          </Pressable>
+        </View>
+      )}
+
       <Pressable
-        style={[styles.unlockButton, isLoading && styles.unlockButtonDisabled]}
+        style={[styles.unlockButton, (isLoading || paymentPending) && styles.unlockButtonDisabled]}
         onPress={handleCheckout}
-        disabled={isLoading}
+        disabled={isLoading || paymentPending}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="#fff" />
