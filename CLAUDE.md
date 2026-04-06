@@ -105,6 +105,8 @@ components/                   Shared UI components
     ReferralCard.tsx          Referral code sharing with stats
   share/
     ShareNudgeBanner.tsx      Contextual nudge to share trip
+  subscription/
+    SubscriptionCard.tsx      Subscription tier selection and management
   trips/
     TemplateBrowser.tsx       Browse and select trip templates
   weather/
@@ -272,13 +274,14 @@ Unlocked trips get: unlimited messages, all 800+ expert personas, email forwardi
 Providers wrap the entire app in `app/_layout.tsx`:
 
 ```
-ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → TransportProvider → AgeGate → {children}
+ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → {children}
 ```
 
 - **ThemeProvider** — Light/dark/system theme management with persistence (`lib/theme.tsx`). Provides `ThemeColors` interface to all components.
 - **I18nProvider** — i18next initialization with English translations
 - **QueryClientProvider** — TanStack Query client for server state caching and mutations
 - **AuthProvider** — JWT token management, SecureStore/localStorage persistence
+- **AnalyticsProvider** — PostHog initialization, user identification, feature flags (`lib/analytics.tsx`)
 - **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401
 - **AgeGate** — Wraps the app to enforce age verification (18+). Users who haven't verified age are redirected to the age gate screen.
 
@@ -304,6 +307,7 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useFeedback` | REST | Submit user feedback (`POST /api/feedback`) |
 | `useDestinationGuide` | REST | Fetch destination guides (`GET /api/guides`) |
 | `useUsage` | REST | Daily message usage tracking (`GET /api/usage`) |
+| `useSubscription` | REST | Subscription management (tier, status, checkout, cancel, portal) via REST |
 
 ## Security
 
