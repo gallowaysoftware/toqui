@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
-export type UsageTier = "free" | "pro" | "explorer";
+export type UsageTier = "free" | "pro" | "explorer" | "voyager";
 
 export interface UsageData {
   used: number;
@@ -28,7 +28,7 @@ interface UsageResponse {
 }
 
 function parseTier(raw?: string): UsageTier {
-  if (raw === "pro" || raw === "explorer") return raw;
+  if (raw === "pro" || raw === "explorer" || raw === "voyager") return raw;
   return "free";
 }
 

@@ -9,7 +9,8 @@ import { useTheme } from "@/lib/theme";
 export default function ReferralCard() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { code, successfulReferrals, rewardsEarned, isLoading, error } = useReferral();
+  const { code, successfulReferrals, rewardsEarned, rewardsRemaining, maxRewards, isLoading, error } = useReferral();
+  const isCapped = rewardsRemaining <= 0 && rewardsEarned > 0;
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -95,6 +96,19 @@ export default function ReferralCard() {
       fontSize: 13,
       color: colors.textSecondary,
     },
+    remainingText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      textAlign: "center",
+      marginTop: 10,
+    },
+    cappedText: {
+      fontSize: 12,
+      color: colors.success,
+      textAlign: "center",
+      marginTop: 10,
+      fontWeight: "600",
+    },
   });
 
   if (isLoading) {
@@ -145,6 +159,14 @@ export default function ReferralCard() {
           </Text>
         </View>
       </View>
+
+      {isCapped ? (
+        <Text style={styles.cappedText}>{t("referral.rewardsCapped")}</Text>
+      ) : rewardsEarned > 0 ? (
+        <Text style={styles.remainingText}>
+          {t("referral.rewardsRemaining", { count: rewardsRemaining })}
+        </Text>
+      ) : null}
     </View>
   );
 }

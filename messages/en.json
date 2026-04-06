@@ -306,18 +306,21 @@
     "success": "Trip Unlocked!",
     "successDescription": "You now have full Pro access for this trip.",
     "error": "Payment failed. Please try again.",
+    "paymentProcessing": "Your payment is being processed. This can take a moment — tap retry if it doesn't update.",
     "unlockInline": "Unlock Pro features"
   },
   "referral": {
     "title": "Refer a Friend",
-    "description": "Invite friends to Toqui. You both get a free Trip Pro unlock!",
+    "description": "Share Toqui with friends. When they sign up, you get a free Trip Pro unlock and they get 50% off their first trip. You can earn up to 10 free unlocks.",
     "yourCode": "Your referral code",
     "copyLink": "Copy Link",
     "share": "Share",
     "copied": "Copied!",
     "friendsInvited": "{{count}} friends invited",
-    "rewardsEarned": "{{count}} rewards earned",
-    "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for a free Trip Pro unlock! {{link}}"
+    "rewardsEarned": "{{count}} free trip unlocks earned",
+    "rewardsRemaining": "{{count}} free unlocks remaining",
+    "rewardsCapped": "Maximum rewards earned — thanks for sharing!",
+    "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for 50% off your first Trip Pro unlock! {{link}}"
   },
   "share": {
     "promptTitle": "Your itinerary is ready!",
