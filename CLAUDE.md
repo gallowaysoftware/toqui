@@ -364,40 +364,60 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 ## Pre-Commit Requirements
 
+### Never Push Directly to Main — Use PRs
+
+**MANDATORY**: All changes go through pull requests. Never push commits directly to `main`. This protects CI, enables review, and prevents broken deploys.
+
+**Workflow:**
+1. **Create a feature branch**: `git checkout -b feat/description` (or `fix/`, `chore/`, `docs/`)
+2. **Run all checks locally before pushing**:
+   ```bash
+   go build ./... && go vet ./... && golangci-lint run ./... && go test ./...
+   gofmt -w <edited files>
+   ```
+3. **Push the branch and open a PR**:
+   ```bash
+   git push -u origin feat/description
+   gh pr create --title "feat: description" --body "## Summary\n..."
+   ```
+4. **Wait for CI to pass on the PR** — lint, tests, and build must all be green
+5. **Run adversarial review** on the PR branch (spawn a review agent against the diff)
+6. **Merge via squash**: `gh pr merge --squash`
+7. **After merge, verify CI passes on `main`** — if it breaks, fix immediately with another PR
+8. **Deploy to prod** (when ready): `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main`
+
 ### Keep CI Green — This Is Critical
 
-**MANDATORY**: CI must stay green at all times on `main`. Every push triggers lint, tests, build, and deploy-prod (workflow_dispatch only). If a change breaks CI, fix it immediately.
+**MANDATORY**: CI must stay green at all times on `main`. If a merge breaks CI, fix it immediately with a new PR before doing anything else.
 
-- Push triggers `deploy-staging` (which fails — staging is torn down). That's expected.
-- `workflow_dispatch` triggers `deploy-prod`. Run `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main` to deploy.
-- Always run `go build ./...` and `go test ./...` locally before pushing.
-- Run `gofmt -w <file>` on any Go files you edit — CI runs `gofmt` check and will fail if not formatted.
+- Push to `main` triggers `deploy-staging` (which may fail if staging is torn down — that's expected).
+- `workflow_dispatch` triggers `deploy-prod`.
 - **AI/prompt changes**: Run the agentic test suite or use `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles. See "Agentic Testing" section below.
 
 ### Documentation Updates
 
-**MANDATORY**: Before every commit/push, update all relevant documentation:
+**MANDATORY**: Before opening a PR, update all relevant documentation:
 
 1. **CLAUDE.md** — Update this file and any other repo CLAUDE.md files affected by the changes (architecture, deployment, security patterns, new packages)
-3. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 5 repos
+2. **Cross-repo consistency** — If changes affect shared documentation topics (deployment, CI/CD, staging/prod status, security), update CLAUDE.md in ALL 5 repos
 
 ### Adversarial Review
 
-**MANDATORY**: Before every commit, spawn a parallel adversarial review agent to audit all staged changes. This catches bugs, security issues, and logic errors before they reach the repo.
+**MANDATORY**: Before merging any PR, spawn a parallel adversarial review agent to audit all changes. This catches bugs, security issues, and logic errors before they reach `main`.
 
 ### How It Works
 
-1. After all implementation and tests are passing, spawn a `general-purpose` Task agent with a prompt like:
+1. After all implementation and tests are passing on the PR branch, spawn a `general-purpose` Task agent with a prompt like:
 
    > You are an adversarial code reviewer. Your job is to find bugs, security issues, logic errors, and missing edge cases. Review all changes in these files: [list files]. For each issue found, classify as BLOCKING (must fix before commit) or WARNING (note but can ship). Be thorough and skeptical.
 
 2. The agent reviews all changed files and returns findings classified as:
-   - **BLOCKING** — Must fix before commit (bugs, security holes, logic errors, missing validation)
+   - **BLOCKING** — Must fix before merge (bugs, security holes, logic errors, missing validation)
    - **WARNING** — Worth noting but acceptable to ship (style, minor improvements, future work)
 
-3. Fix all BLOCKING issues, then re-run the adversarial review to verify fixes pass.
+3. Fix all BLOCKING issues, push to the PR branch, and re-run the adversarial review.
 
-4. Only commit after the adversarial review returns zero BLOCKING issues.
+4. Only merge the PR after the adversarial review returns zero BLOCKING issues.
 
 ### What to Review
 
@@ -410,15 +430,15 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 ## Feature Implementation Checklist
 
-Every new feature must include all of the following. Do not merge without completing each item:
+Every new feature must include all of the following. Do not merge the PR without completing each item:
 
 1. **Implementation** — The feature code itself
 2. **Unit tests** — In the same package (`*_test.go`), test arg parsing, edge cases, error handling
 3. **Integration tests** — In `internal/integration/` (build tag `integration`), test DB operations with real Postgres via docker-compose
 4. **Agentic test persona** — If the feature introduces new user-facing behavior, add a persona prompt in `tests/agentic/personas/` or extend an existing one
-5. **Adversarial review** — Run the pre-commit adversarial review agent (see above)
+5. **Adversarial review** — Run the adversarial review agent on the PR (see above)
 6. **Documentation** — Update CLAUDE.md with the feature (tool table, any new patterns)
-7. **Commit + push** — All of the above in one commit
+7. **Open PR + merge** — All of the above in one PR, squash-merged to `main`
 
 ### Testing Approach
 
