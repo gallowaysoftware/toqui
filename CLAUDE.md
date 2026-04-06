@@ -94,7 +94,7 @@ components/                   Shared UI components
     SuggestionChips.tsx       Quick suggestion chips in chat
     TypingIndicator.tsx       Animated typing indicator while AI responds
   checkout/
-    ProUpgrade.tsx            Helcim payment iframe (web) or redirect (native)
+    ProUpgrade.tsx            Stripe hosted checkout redirect (all platforms)
   feedback/
     FeedbackModal.tsx         User feedback submission modal
   itinerary/
@@ -123,7 +123,7 @@ lib/                          Shared utilities
     useChat.ts                SSE streaming chat — tool activity, personas, recommendations
     useBookings.ts            Booking CRUD via ConnectRPC BookingService
     useItinerary.ts           Itinerary fetch via ConnectRPC TripService
-    useCheckout.ts            Helcim checkout init/validate/status via REST
+    useCheckout.ts            Stripe checkout init/status via REST
     useTrialStatus.ts         Trial expiration tracking via REST
     useReferral.ts            Referral code, stats, redemption via REST
     useFeedback.ts            Submit user feedback via REST
@@ -243,12 +243,12 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 
 ## Payment & Trip Pro
 
-Trip Pro ($19/trip) is purchased via Helcim (web-only payment UI, native shows redirect link):
+Trip Pro ($19/trip) is purchased via Stripe hosted checkout (all platforms):
 
-1. User taps "Upgrade" → `useCheckout.initCheckout(tripId)` → `POST /api/checkout` → backend creates Helcim session
-2. `ProUpgrade.tsx` renders Helcim's payment iframe (web) or a redirect link (native)
-3. After payment, Helcim redirects back → `useCheckout.validatePayment()` → `POST /api/checkout/validate`
-4. Backend verifies with Helcim API and unlocks the trip in the database
+1. User taps "Upgrade" → `useCheckout.initCheckout(tripId)` → `POST /api/checkout` → backend creates Stripe checkout session
+2. `ProUpgrade.tsx` redirects to Stripe via `Linking.openURL(url)` (works on web and native)
+3. User completes payment on Stripe's hosted page
+4. Stripe sends webhook to backend → backend verifies and unlocks the trip in the database
 5. `useCheckout.checkStatus(tripId)` polls `GET /api/checkout/status` to confirm unlock
 
 Unlocked trips get: unlimited messages, all 800+ expert personas, email forwarding, export, best-fit recommendations.

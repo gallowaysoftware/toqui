@@ -4,14 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
 interface CheckoutInitResponse {
-  checkoutToken: string;
-  secretToken: string;
-  priceCents: number;
-  currency: string;
-}
-
-interface CheckoutValidateResponse {
-  unlocked: boolean;
+  url: string;
 }
 
 interface CheckoutStatusResponse {
@@ -56,34 +49,6 @@ export function useCheckout(tripId: string) {
     }
   }, [tripId, accessToken]);
 
-  const validatePayment = useCallback(
-    async (response: string, hash: string): Promise<CheckoutValidateResponse> => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await authFetch(
-          `${getConfig().apiUrl}/api/checkout/validate`,
-          accessToken,
-          {
-            method: "POST",
-            body: JSON.stringify({ trip_id: tripId, response, hash }),
-          },
-        );
-        if (!res.ok) {
-          throw new Error(`Payment validation failed: ${res.status}`);
-        }
-        return (await res.json()) as CheckoutValidateResponse;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Validation failed";
-        setError(message);
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [tripId, accessToken],
-  );
-
   const checkStatus = useCallback(async (): Promise<CheckoutStatusResponse> => {
     setIsLoading(true);
     setError(null);
@@ -105,5 +70,5 @@ export function useCheckout(tripId: string) {
     }
   }, [tripId, accessToken]);
 
-  return { initCheckout, validatePayment, checkStatus, isLoading, error };
+  return { initCheckout, checkStatus, isLoading, error };
 }

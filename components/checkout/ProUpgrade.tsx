@@ -4,12 +4,11 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Platform,
   ActivityIndicator,
   Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Star, Mail, BookOpen, ExternalLink, ChevronRight, X } from "lucide-react-native";
+import { CheckCircle, Star, Mail, BookOpen, ChevronRight, X } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 import { useTheme } from "@/lib/theme";
@@ -24,32 +23,10 @@ interface ProUpgradeProps {
   onDismiss?: () => void;
 }
 
-declare global {
-  interface Window {
-    appendHelcimPayIframe?: (token: string) => void;
-    helcimPaySuccess?: () => void;
-  }
-}
-
-function loadHelcimJS(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.getElementById("helcim-pay-js")) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = "helcim-pay-js";
-    script.src = "https://secure.helcim.com/helcim-pay/services/start.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Helcim.js"));
-    document.head.appendChild(script);
-  });
-}
-
 export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgradeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { initCheckout, validatePayment, checkStatus, isLoading, error } = useCheckout(tripId);
+  const { initCheckout, checkStatus, isLoading, error } = useCheckout(tripId);
   const { subscription } = useSubscription();
   const { track, getFeatureFlag } = useAnalytics();
   const isSubscriber =
@@ -90,41 +67,42 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     }
   }, [checkingStatus, unlocked, track, compact, priceVariant]);
 
-  const handleCheckout = useCallback(async () => {
-    if (Platform.OS !== "web") return;
+  // Poll for unlock status after returning from Stripe checkout
+  const pollForUnlock = useCallback(async () => {
+    const maxAttempts = 10;
+    const intervalMs = 2000;
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const status = await checkStatus();
+        if (status.unlocked) {
+          track("payment_completed");
+          setUnlocked(true);
+          onUnlocked?.();
+          return;
+        }
+      } catch {
+        // Keep polling on transient errors
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }, [checkStatus, onUnlocked, track]);
 
+  const handleCheckout = useCallback(async () => {
     track("upgrade_started");
 
     try {
       const checkout = await initCheckout(priceVariant);
       track("checkout_initiated");
-      await loadHelcimJS();
 
-      window.helcimPaySuccess = async () => {
-        try {
-          const responseElement = document.getElementById("helcimPayJsIdentityToken") as HTMLInputElement | null;
-          const hashElement = document.getElementById("helcimPayJsHash") as HTMLInputElement | null;
-          const response = responseElement?.value ?? "";
-          const hash = hashElement?.value ?? "";
+      // Redirect to Stripe hosted checkout
+      await Linking.openURL(checkout.url);
 
-          const result = await validatePayment(response, hash);
-          if (result.unlocked) {
-            track("payment_completed");
-            setUnlocked(true);
-            onUnlocked?.();
-          }
-        } catch {
-          track("payment_validation_failed");
-        }
-      };
-
-      if (window.appendHelcimPayIframe) {
-        window.appendHelcimPayIframe(checkout.checkoutToken);
-      }
+      // Poll for unlock after user completes payment and returns
+      void pollForUnlock();
     } catch {
       // Error is already captured in the hook
     }
-  }, [initCheckout, validatePayment, onUnlocked, track, priceVariant]);
+  }, [initCheckout, pollForUnlock, track, priceVariant]);
 
   const styles = StyleSheet.create({
     container: {
@@ -190,25 +168,6 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       fontSize: 13,
       marginBottom: 12,
       textAlign: "center",
-    },
-    webOnly: {
-      alignItems: "center",
-      gap: 8,
-    },
-    webOnlyText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      textAlign: "center",
-    },
-    webOnlyLink: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    webOnlyLinkText: {
-      fontSize: 14,
-      color: colors.accent,
-      fontWeight: "500",
     },
     successContainer: {
       backgroundColor: colors.successBg,
@@ -329,12 +288,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
         <Star color={colors.accent} size={16} />
         <Pressable
           style={{ flex: 1 }}
-          onPress={() => {
-            // In compact mode, trigger full checkout flow on web
-            if (Platform.OS === "web") {
-              void handleCheckout();
-            }
-          }}
+          onPress={() => void handleCheckout()}
           accessibilityRole="button"
         >
           <Text style={styles.compactText}>
@@ -385,34 +339,19 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
 
       {error && <Text style={styles.error}>{t("checkout.error")}</Text>}
 
-      {Platform.OS === "web" ? (
-        <Pressable
-          style={[styles.unlockButton, isLoading && styles.unlockButtonDisabled]}
-          onPress={handleCheckout}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.unlockButtonText}>
-              {t("checkout.unlockButton")}
-            </Text>
-          )}
-        </Pressable>
-      ) : (
-        <View style={styles.webOnly}>
-          <Text style={styles.webOnlyText}>{t("checkout.webOnly")}</Text>
-          <Pressable
-            style={styles.webOnlyLink}
-            onPress={() => Linking.openURL("https://toqui.app")}
-          >
-            <ExternalLink color={colors.accent} size={14} />
-            <Text style={styles.webOnlyLinkText}>
-              {t("checkout.webOnlyLink")}
-            </Text>
-          </Pressable>
-        </View>
-      )}
+      <Pressable
+        style={[styles.unlockButton, isLoading && styles.unlockButtonDisabled]}
+        onPress={handleCheckout}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.unlockButtonText}>
+            {t("checkout.unlockButton")}
+          </Text>
+        )}
+      </Pressable>
     </View>
   );
 }

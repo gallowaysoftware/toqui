@@ -306,8 +306,6 @@
     "success": "Trip Unlocked!",
     "successDescription": "You now have full Pro access for this trip.",
     "error": "Payment failed. Please try again.",
-    "webOnly": "Payments are currently available on the web version.",
-    "webOnlyLink": "Open in browser to upgrade",
     "unlockInline": "Unlock Pro features"
   },
   "referral": {

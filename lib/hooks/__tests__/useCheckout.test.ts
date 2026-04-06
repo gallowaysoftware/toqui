@@ -45,13 +45,8 @@ describe("useCheckout", () => {
   // ---- initCheckout ----
 
   describe("initCheckout", () => {
-    it("POSTs to /api/checkout with trip_id and returns checkout data", async () => {
-      const body = {
-        checkoutToken: "tok_123",
-        secretToken: "sec_456",
-        priceCents: 1200,
-        currency: "USD",
-      };
+    it("POSTs to /api/checkout with trip_id and returns Stripe checkout URL", async () => {
+      const body = { url: "https://checkout.stripe.com/c/pay/cs_test_123" };
       mockAuthFetch.mockResolvedValue(jsonResponse(body));
 
       const { result } = renderHook(() => useCheckout("trip-1"));
@@ -129,55 +124,12 @@ describe("useCheckout", () => {
 
       // Second call succeeds — error should be cleared
       mockAuthFetch.mockResolvedValueOnce(
-        jsonResponse({ checkoutToken: "tok", secretToken: "sec", priceCents: 1200, currency: "USD" }),
+        jsonResponse({ url: "https://checkout.stripe.com/c/pay/cs_test_456" }),
       );
       await act(async () => {
         await result.current.initCheckout();
       });
       expect(result.current.error).toBeNull();
-    });
-  });
-
-  // ---- validatePayment ----
-
-  describe("validatePayment", () => {
-    it("POSTs response and hash to /api/checkout/validate", async () => {
-      mockAuthFetch.mockResolvedValue(jsonResponse({ unlocked: true }));
-
-      const { result } = renderHook(() => useCheckout("trip-1"));
-
-      let response: unknown;
-      await act(async () => {
-        response = await result.current.validatePayment("resp_abc", "hash_def");
-      });
-
-      expect(response).toEqual({ unlocked: true });
-      expect(mockAuthFetch).toHaveBeenCalledWith(
-        "https://api.test/api/checkout/validate",
-        "test-token",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            trip_id: "trip-1",
-            response: "resp_abc",
-            hash: "hash_def",
-          }),
-        },
-      );
-    });
-
-    it("sets error on validation failure", async () => {
-      mockAuthFetch.mockResolvedValue(jsonResponse({}, 400));
-
-      const { result } = renderHook(() => useCheckout("trip-1"));
-
-      await act(async () => {
-        await expect(
-          result.current.validatePayment("resp", "hash"),
-        ).rejects.toThrow("Payment validation failed: 400");
-      });
-
-      expect(result.current.error).toBe("Payment validation failed: 400");
     });
   });
 
@@ -258,7 +210,7 @@ describe("useCheckout", () => {
 
       // Resolve the request
       await act(async () => {
-        resolve!(jsonResponse({ checkoutToken: "t", secretToken: "s", priceCents: 0, currency: "USD" }));
+        resolve!(jsonResponse({ url: "https://checkout.stripe.com/c/pay/cs_test_789" }));
         await promise;
       });
 

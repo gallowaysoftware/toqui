@@ -11,7 +11,6 @@ vi.mock("lucide-react-native", () => ({
   Star: () => <span data-testid="star-icon" />,
   Mail: () => <span data-testid="mail-icon" />,
   BookOpen: () => <span data-testid="book-open-icon" />,
-  ExternalLink: () => <span data-testid="external-link-icon" />,
   ChevronRight: () => <span data-testid="chevron-right-icon" />,
   X: () => <span data-testid="x-icon" />,
 }));
@@ -39,11 +38,9 @@ vi.mock("react-i18next", () => ({
 }));
 
 const mockInitCheckout = vi.fn();
-const mockValidatePayment = vi.fn();
 const mockCheckStatus = vi.fn();
 const mockCheckout = {
   initCheckout: mockInitCheckout,
-  validatePayment: mockValidatePayment,
   checkStatus: mockCheckStatus,
   isLoading: false,
   error: null as string | null,
@@ -136,7 +133,7 @@ describe("ProUpgrade", () => {
     });
   });
 
-  it("shows unlock button on web platform", async () => {
+  it("shows unlock button", async () => {
     mockCheckStatus.mockResolvedValue({ unlocked: false });
     render(<ProUpgrade tripId="t1" />);
 
