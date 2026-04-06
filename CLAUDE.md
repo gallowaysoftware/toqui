@@ -190,7 +190,7 @@ GitHub Actions on push to `main` and all PRs (self-hosted runners on Unraid, 3 r
 
 **Prod auto-deploy**: Push to `main` triggers `deploy-prod` job: Docker build → push to Artifact Registry → run migrations via Cloud Run Jobs → deploy to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). Migrations run BEFORE deploy to avoid schema mismatch.
 
-**Staging**: Torn down to save costs. Shared infra (WIF, Artifact Registry) lives in `toqui-infra` GCP project, managed by `environments/infra/` in toqui-terraform. Runtime can be recreated on demand via `terraform apply` in `environments/staging/`.
+**Staging**: Kept running (~$32/mo) for continuous testing. Can be torn down via `terraform destroy` in `environments/staging/` if needed. Shared infra (WIF, Artifact Registry) lives in `toqui-infra` GCP project, managed by `environments/infra/` in toqui-terraform.
 
 ### Task Tracking
 
@@ -390,7 +390,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 **MANDATORY**: CI must stay green at all times on `main`. If a merge breaks CI, fix it immediately with a new PR before doing anything else.
 
-- Push to `main` triggers `deploy-staging` (which may fail if staging is torn down — that's expected).
+- Push to `main` triggers `deploy-staging` (staging is kept running; if it was torn down, this will fail until `terraform apply` recreates it).
 - `workflow_dispatch` triggers `deploy-prod`.
 - **AI/prompt changes**: Run the agentic test suite or use `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles. See "Agentic Testing" section below.
 
@@ -553,7 +553,7 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 **Three GCP projects** under the Toqui folder in the `thegalloways.ca` org:
 
 - **toqui-infra** — Shared singleton infra: Artifact Registry, WIF, GitHub branch protection. Managed by `environments/infra/` in toqui-terraform.
-- **toqui-staging** — Runtime torn down to save ~$32/mo. Pulls images from `toqui-infra` AR.
+- **toqui-staging** — Runtime kept running (~$32/mo) for continuous testing. Can be torn down if needed. Pulls images from `toqui-infra` AR.
 - **toqui-prod** — LIVE. Cloud Run (backend + frontend) + Global HTTPS LB + Cloud Armor WAF + Certificate Manager SSL. Cloud SQL `db-g1-small` (private IP, HA, backups). Domains: `api.toqui.travel`, `app.toqui.travel`. Marketing site + admin on Cloudflare Pages.
 
 Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Resend (email), Stripe (payments). Images pulled from `toqui-infra` Artifact Registry.

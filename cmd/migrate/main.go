@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	"github.com/gallowaysoftware/toqui-backend/internal/config"
 )
 
 func main() {
@@ -20,6 +23,21 @@ func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		databaseURL = "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"
+	}
+
+	// Resolve gcsm:// secret references (e.g. gcsm://staging-database-url).
+	if strings.HasPrefix(databaseURL, "gcsm://") {
+		projectID := os.Getenv("FIRESTORE_PROJECT_ID")
+		if projectID == "" {
+			// Fall back to GCP project from Cloud Run metadata.
+			projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
+		}
+		resolved, err := config.ResolveSecretValue(databaseURL, projectID)
+		if err != nil {
+			log.Fatalf("resolve DATABASE_URL secret: %v", err)
+		}
+		databaseURL = resolved
+		log.Println("resolved DATABASE_URL from GCP Secret Manager")
 	}
 
 	// Docker image has migrations at /migrations; local dev at db/migrations.

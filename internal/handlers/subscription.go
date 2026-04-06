@@ -226,7 +226,9 @@ func (h *SubscriptionHandler) HandleWebhook(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Verify the webhook signature.
-	event, err := stripe.ConstructEvent(payload, sigHeader, h.webhookSecret)
+	// WithIgnoreAPIVersionMismatch allows events from newer Stripe API versions
+	// to be processed without upgrading stripe-go (fields are best-effort deserialized).
+	event, err := stripe.ConstructEvent(payload, sigHeader, h.webhookSecret, stripe.WithIgnoreAPIVersionMismatch())
 	if err != nil {
 		slog.Warn("stripe webhook signature verification failed", "error", err)
 		http.Error(w, "invalid signature", http.StatusBadRequest)
