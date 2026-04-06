@@ -390,7 +390,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 
 **MANDATORY**: CI must stay green at all times on `main`. If a merge breaks CI, fix it immediately with a new PR before doing anything else.
 
-- Push to `main` triggers `deploy-staging` (staging is kept running; if it was torn down, this will fail until `terraform apply` recreates it).
+- Push to `main` triggers `deploy-staging` (staging is kept running; infrastructure changes auto-apply via CI in toqui-terraform).
 - `workflow_dispatch` triggers `deploy-prod`.
 - **AI/prompt changes**: Run the agentic test suite or use `grpcurl` to verify AI behavior before merging any changes to system prompts, tool definitions, or persona profiles. See "Agentic Testing" section below.
 
@@ -548,7 +548,7 @@ Each agent returns a structured JSON report with: bugs (P0/P1/P2), UX issues, AI
 
 ## Infrastructure
 
-GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) repo.
+GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) repo. Infrastructure changes go through PRs — CI auto-plans and posts the plan as a PR comment, then auto-applies on merge to `main`.
 
 **Three GCP projects** under the Toqui folder in the `thegalloways.ca` org:
 
