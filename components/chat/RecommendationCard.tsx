@@ -53,7 +53,17 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       gap: 6,
     },
     ctaText: { fontSize: 13, fontWeight: "600", color: colors.accent },
-    disclosure: { fontSize: 10, color: colors.textTertiary, marginTop: 8, lineHeight: 14 },
+    disclosureBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    disclosureLabel: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      fontWeight: "500",
+      lineHeight: 14,
+    },
   });
 
   return (
@@ -81,13 +91,15 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       {recommendation.price ? (
         <Text style={styles.price}>{recommendation.price}</Text>
       ) : null}
+      <View style={styles.disclosureBadge}>
+        <Text style={styles.disclosureLabel}>
+          {recommendation.disclosure ?? "Partner link — booking supports Toqui at no cost to you."}
+        </Text>
+      </View>
       <View style={styles.cta}>
         <Text style={styles.ctaText}>View on {partnerLabel}</Text>
         <ExternalLink color={colors.accent} size={14} />
       </View>
-      {recommendation.disclosure ? (
-        <Text style={styles.disclosure}>{recommendation.disclosure}</Text>
-      ) : null}
     </Pressable>
   );
 }

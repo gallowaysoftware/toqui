@@ -81,6 +81,9 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     }
   }, [checkingStatus, unlocked, track, compact, priceVariant]);
 
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [consentTimestamp, setConsentTimestamp] = useState<string | null>(null);
+
   // Whether payment was initiated but unlock not yet confirmed
   const [paymentPending, setPaymentPending] = useState(false);
 
@@ -109,7 +112,13 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
   }, [checkStatus, onUnlocked, track]);
 
   const handleCheckout = useCallback(async () => {
-    track("upgrade_started");
+    if (!withdrawalConsent) return;
+
+    if (!consentTimestamp) {
+      setConsentTimestamp(new Date().toISOString());
+    }
+
+    track("upgrade_started", { withdrawal_consent: true });
 
     try {
       const checkout = await initCheckout(priceVariant);
@@ -123,7 +132,7 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
     } catch {
       // Error is already captured in the hook
     }
-  }, [initCheckout, pollForUnlock, track, priceVariant]);
+  }, [initCheckout, withdrawalConsent, consentTimestamp, pollForUnlock, track, priceVariant]);
 
   const styles = StyleSheet.create({
     container: {
@@ -281,6 +290,43 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       color: colors.accent,
       fontWeight: "600",
     },
+    euConsentRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginBottom: 16,
+      padding: 12,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    euCheckbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      borderColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+      flexShrink: 0,
+    },
+    euCheckboxChecked: {
+      backgroundColor: colors.accent,
+    },
+    euCheckboxMark: {
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 14,
+    },
+    euConsentText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
   });
 
   if (checkingStatus) {
@@ -383,6 +429,22 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
         </View>
       </View>
 
+      <Pressable
+        style={styles.euConsentRow}
+        onPress={() => setWithdrawalConsent((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: withdrawalConsent }}
+        accessibilityLabel="Digital content consent"
+      >
+        <View style={[styles.euCheckbox, withdrawalConsent && styles.euCheckboxChecked]}>
+          {withdrawalConsent ? <Text style={styles.euCheckboxMark}>✓</Text> : null}
+        </View>
+        <Text style={styles.euConsentText}>
+          I consent to immediate access to digital content and acknowledge that I waive
+          my 14-day right of withdrawal once I begin using the service.
+        </Text>
+      </Pressable>
+
       {error && <Text style={styles.error}>{t("checkout.error")}</Text>}
 
       {paymentPending && !unlocked && (
@@ -402,9 +464,12 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       )}
 
       <Pressable
-        style={[styles.unlockButton, (isLoading || paymentPending) && styles.unlockButtonDisabled]}
+        style={[
+          styles.unlockButton,
+          (isLoading || paymentPending || !withdrawalConsent) && styles.unlockButtonDisabled,
+        ]}
         onPress={handleCheckout}
-        disabled={isLoading || paymentPending}
+        disabled={isLoading || paymentPending || !withdrawalConsent}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="#fff" />
