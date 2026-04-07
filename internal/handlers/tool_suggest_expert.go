@@ -104,13 +104,22 @@ func (t *SuggestExpertTool) Execute(ctx context.Context, args json.RawMessage) (
 		t.onSwitch(t.registry.Default(), expert, handoffMessage)
 	}
 
+	// The directive is the most important field — it tells the expert (whose
+	// system prompt becomes active in the next tool-loop iteration) to
+	// actually answer the user's question instead of just introducing
+	// themselves and deferring back. Without this, Gemini treats the handoff
+	// as the final action of the turn and the expert's first response is
+	// often a one-line intro with no substantive answer (#193).
 	result := map[string]any{
 		"expert_id":       expert.ID,
 		"expert_name":     expert.Name,
 		"expert_greeting": expert.Greeting,
 		"handoff_message": handoffMessage,
 		"specialties":     expert.Specialties,
-		"message":         fmt.Sprintf("Expert %s has been introduced. The user will now be chatting with them.", expert.Name),
+		"directive": fmt.Sprintf(
+			"You are now %s. The handoff is complete — do NOT introduce yourself again, do NOT defer back to anyone, and do NOT say 'let me bring in...'. Answer the user's most recent message DIRECTLY and substantively using your expertise as %s. Treat this as your first turn answering them.",
+			expert.Name, expert.Name,
+		),
 	}
 	return json.Marshal(result)
 }

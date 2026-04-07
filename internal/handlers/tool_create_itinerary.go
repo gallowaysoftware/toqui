@@ -27,9 +27,15 @@ type itineraryItemWithLocation struct {
 // CreateItineraryTool is a chat tool that lets the AI add structured itinerary items
 // to the current trip. It's injected into planning mode chat so the AI can say
 // "Let me add that to your itinerary" and actually create the items.
+//
+// In selection mode the tool is instantiated with a deferred trip-ID provider
+// that resolves to the trip created earlier in the same turn (#181). When
+// neither tripID nor a provider yields a UUID, Execute returns an error so
+// the AI can recover gracefully.
 type CreateItineraryTool struct {
 	tripSvc         *trip.Service
 	tripID          uuid.UUID
+	tripIDProvider  func() (uuid.UUID, bool)
 	userID          string // for analytics only (hashed before sending)
 	onCreated       func(items []dbgen.ItineraryItem)
 	pool            *pgxpool.Pool
@@ -52,6 +58,16 @@ type createItineraryItemArg struct {
 
 func NewCreateItineraryTool(tripSvc *trip.Service, tripID uuid.UUID, onCreated func(items []dbgen.ItineraryItem)) *CreateItineraryTool {
 	return &CreateItineraryTool{tripSvc: tripSvc, tripID: tripID, onCreated: onCreated}
+}
+
+// WithDeferredTripID returns a copy of the tool that resolves the target trip
+// ID lazily at execution time via the provided function. Used in selection
+// mode where the trip is created earlier in the same turn by create_trip and
+// the resulting UUID isn't known when the tool is constructed (#181).
+func (t *CreateItineraryTool) WithDeferredTripID(provider func() (uuid.UUID, bool)) *CreateItineraryTool {
+	cp := *t
+	cp.tripIDProvider = provider
+	return &cp
 }
 
 // WithGeocoding returns a copy of the tool configured to geocode location_name
@@ -129,10 +145,27 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		return nil, fmt.Errorf("at least one item is required")
 	}
 
+	// Resolve target trip: prefer the static tripID; fall back to the deferred
+	// provider used by selection mode (#181). When neither is set, surface a
+	// clear error so the AI can recover instead of getting an unknown-tool
+	// confusion that triggers retry loops.
+	tripID := t.tripID
+	if tripID == uuid.Nil && t.tripIDProvider != nil {
+		if id, ok := t.tripIDProvider(); ok {
+			tripID = id
+		}
+	}
+	if tripID == uuid.Nil {
+		return json.Marshal(map[string]any{
+			"error":   "no_trip_selected",
+			"message": "Cannot add itinerary items: no trip is currently selected. Create a trip first using create_trip, then call this tool again.",
+		})
+	}
+
 	// Load existing items for deduplication.
-	existing, err := t.tripSvc.GetItinerary(ctx, t.tripID)
+	existing, err := t.tripSvc.GetItinerary(ctx, tripID)
 	if err != nil {
-		slog.Warn("failed to load existing itinerary for dedup, proceeding without dedup", "trip_id", t.tripID, "error", err)
+		slog.Warn("failed to load existing itinerary for dedup, proceeding without dedup", "trip_id", tripID, "error", err)
 		existing = nil
 	}
 
@@ -148,7 +181,7 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 			skipped++
 			continue
 		}
-		dbItem, err := t.tripSvc.CreateItineraryItem(ctx, t.tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description)
+		dbItem, err := t.tripSvc.CreateItineraryItem(ctx, tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description)
 		if err != nil {
 			slog.Error("create itinerary item", "title", item.Title, "error", err)
 			failed = append(failed, item.Title)
@@ -158,10 +191,27 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 	}
 
 	if len(created) == 0 {
-		return json.Marshal(map[string]any{
-			"error":        "failed to create any itinerary items",
-			"failed_items": failed,
-		})
+		// Differentiate the failure modes so the AI can recover instead of
+		// blindly retrying with the same payload (#183).
+		switch {
+		case skipped > 0 && len(failed) == 0:
+			return json.Marshal(map[string]any{
+				"error":         "all_duplicates",
+				"message":       fmt.Sprintf("All %d items already exist on the requested days. No new items were added — the user already has these. Tell them the items are already in their itinerary; do NOT call this tool again with the same items.", skipped),
+				"skipped_count": skipped,
+			})
+		case len(failed) > 0:
+			return json.Marshal(map[string]any{
+				"error":        "all_failed",
+				"message":      "Every item failed to persist. Check that day_number is a positive integer and that title is non-empty, then call the tool again with corrected items.",
+				"failed_items": failed,
+			})
+		default:
+			return json.Marshal(map[string]any{
+				"error":   "no_valid_items",
+				"message": "No valid items were provided. Each item needs a non-empty title and a positive day_number. Retry with at least one item.",
+			})
+		}
 	}
 
 	dbItems := make([]dbgen.ItineraryItem, len(created))

@@ -26,6 +26,19 @@ func NewWebSearch(apiKey, cx string) *WebSearch {
 	}
 }
 
+// NewWebSearchStub returns a registered tool that responds with a graceful
+// "feature unavailable" message. Used in environments where the Google Custom
+// Search API key isn't configured so the AI gets a clear signal instead of
+// the registry returning "unknown tool" — which Gemini interprets as a real
+// failure and retries pointlessly (#194).
+func NewWebSearchStub() *WebSearch {
+	return &WebSearch{}
+}
+
+func (w *WebSearch) configured() bool {
+	return w.apiKey != "" && w.cx != ""
+}
+
 func (w *WebSearch) Definition() ai.ToolDefinition {
 	return ai.ToolDefinition{
 		Name:        "web_search",
@@ -44,6 +57,13 @@ func (w *WebSearch) Definition() ai.ToolDefinition {
 }
 
 func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	if !w.configured() {
+		return json.Marshal(map[string]any{
+			"error":   "unavailable",
+			"message": "Real-time web search is not configured in this environment. Use your existing knowledge to answer the user, and tell them you cannot verify time-sensitive details (current opening hours, prices, closures) without web access.",
+		})
+	}
+
 	var input struct {
 		Query string `json:"query"`
 	}

@@ -136,8 +136,24 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
-	// Check daily message limit before processing (skip for admins)
-	if h.usageSvc != nil && !isAdmin {
+	// Companion mode can work without a trip (standalone), so don't force it to selection.
+	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION ||
+		(req.Msg.TripId == "" && req.Msg.Mode != toquiv1.ChatMode_CHAT_MODE_COMPANION)
+
+	mode := "planning"
+	switch {
+	case isSelection:
+		mode = "selection"
+	case req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_COMPANION:
+		mode = "companion"
+	}
+
+	// Check daily message limit before processing (skip for admins).
+	// Selection-mode messages are exempt from the quota — they're orientation
+	// interactions before any trip exists, and counting them against the
+	// daily cap meant first-time users could be blocked mid-planning by
+	// throwaway "where should I go?" turns (#191).
+	if h.usageSvc != nil && !isAdmin && !isSelection {
 		limit := h.usageSvc.LimitForTier(userTier)
 		remaining, err := h.usageSvc.IncrementAndCheckTier(ctx, userID, userTier)
 		if err != nil {
@@ -153,18 +169,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		} else {
 			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining, "tier", string(userTier))
 		}
-	}
-
-	// Companion mode can work without a trip (standalone), so don't force it to selection.
-	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION ||
-		(req.Msg.TripId == "" && req.Msg.Mode != toquiv1.ChatMode_CHAT_MODE_COMPANION)
-
-	mode := "planning"
-	switch {
-	case isSelection:
-		mode = "selection"
-	case req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_COMPANION:
-		mode = "companion"
 	}
 
 	// Track chat message (async, non-blocking, privacy-safe — no message content)
@@ -358,7 +362,36 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			selectedTrips = append(selectedTrips, tripCreatedInfo{ID: tripID, Title: title, Description: description})
 			mu.Unlock()
 		})
-		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, expertTool}
+
+		// Inject create_itinerary_items into selection mode with a deferred
+		// trip-ID provider. The provider returns the trip created earlier in
+		// the same turn (or, failing that, the most recently selected trip),
+		// so an expert handed off after create_trip can immediately persist
+		// itinerary items in the same turn (#181).
+		deferredItineraryTool := NewCreateItineraryTool(h.tripSvc, uuid.Nil, func(items []dbgen.ItineraryItem) {
+			mu.Lock()
+			itineraryItems = append(itineraryItems, items...)
+			mu.Unlock()
+		}).
+			WithGeocoding(h.pool, h.placesAPIKey).
+			WithAnalytics(h.analytics, userID.String()).
+			WithDeferredTripID(func() (uuid.UUID, bool) {
+				mu.Lock()
+				defer mu.Unlock()
+				if createdTripID != "" {
+					if id, err := uuid.Parse(createdTripID); err == nil {
+						return id, true
+					}
+				}
+				if len(selectedTrips) > 0 {
+					if id, err := uuid.Parse(selectedTrips[len(selectedTrips)-1].ID); err == nil {
+						return id, true
+					}
+				}
+				return uuid.Nil, false
+			})
+
+		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, expertTool, deferredItineraryTool}
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
@@ -621,8 +654,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
-	// Refund daily usage if the AI produced no content (e.g., 429 rate limit killed the stream).
-	if !hadContent && h.usageSvc != nil && !isAdmin {
+	// Refund daily usage if the AI produced no content (e.g., 429 rate limit
+	// killed the stream). Selection-mode messages were never counted, so
+	// nothing to refund (#191).
+	if !hadContent && h.usageSvc != nil && !isAdmin && !isSelection {
 		if err := h.queries.DecrementDailyUsage(ctx, userID); err != nil {
 			slog.Error("failed to decrement daily usage after empty AI response", "user_id", userID, "error", err)
 		}

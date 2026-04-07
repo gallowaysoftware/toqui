@@ -17,9 +17,17 @@ service ChatService {
 }
 
 message SendMessageRequest {
-  string session_id = 1;
-  // Optional: empty for selection mode (no trip selected)
-  string trip_id = 2;
+  // Optional: empty starts a new session. When set, must be a valid UUID.
+  string session_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Optional: empty for selection mode (no trip selected). When set, must be
+  // a valid UUID.
+  string trip_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
   string content = 3 [(buf.validate.field).string = {min_len: 1, max_len: 10000}];
   ChatMode mode = 4;
   LatLng user_location = 5;
@@ -129,8 +137,11 @@ message ChatMessage {
 }
 
 message GetChatHistoryRequest {
-  // Optional: empty means "get latest session"
-  string session_id = 1;
+  // Optional: empty means "get latest session". When set, must be a valid UUID.
+  string session_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
   string trip_id = 2 [(buf.validate.field).string.uuid = true];
   PaginationRequest pagination = 3;
 }

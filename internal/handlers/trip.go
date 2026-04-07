@@ -213,6 +213,14 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// Verify the trip exists and belongs to the caller before deleting.
+	// Returning NotFound for missing trips makes the API behave correctly
+	// against concurrent deletes and double-clicks instead of silently
+	// succeeding (#188).
+	if _, err := h.tripSvc.GetByID(ctx, userID, tripID); err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
+	}
+
 	// Use lifecycle service to purge Firestore chat data + Postgres
 	if err := h.lifecycleSvc.DeleteTrip(ctx, userID, tripID); err != nil {
 		return nil, internalError(ctx, "trip operation", err)

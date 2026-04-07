@@ -171,12 +171,17 @@ func main() {
 	}
 
 	// Tool registry — register global tools available in all chat modes.
+	// web_search is ALWAYS registered: when configured it hits Google Custom
+	// Search; when keys are missing it returns a graceful "unavailable"
+	// stub so the AI never sees "unknown tool" errors and can fall back to
+	// parametric knowledge with a clear caveat (#194).
 	toolRegistry := tools.NewRegistry()
 	if cfg.GoogleCustomSearchAPIKey != "" && cfg.GoogleCustomSearchCX != "" {
 		toolRegistry.Register(tools.NewWebSearch(cfg.GoogleCustomSearchAPIKey, cfg.GoogleCustomSearchCX))
-		slog.Info("web_search tool registered")
+		slog.Info("web_search tool registered (Google Custom Search backend)")
 	} else {
-		slog.Warn("web_search tool not registered — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set")
+		toolRegistry.Register(tools.NewWebSearchStub())
+		slog.Warn("web_search tool registered as stub — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set; tool will return 'unavailable' to the AI")
 	}
 
 	// Chat store
@@ -335,6 +340,58 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// Readiness probe (no auth) — Kubernetes/Cloud Run uses this to gate
+	// traffic during rollout. Returns 503 until the database is reachable
+	// (#185).
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if err := pool.Ping(r.Context()); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"status":"not_ready","reason":"database"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ready"}`))
+	})
+
+	// Public waitlist status (no auth) — looks up an email's position in the
+	// waitlist queue. Documented in CLAUDE.md but was previously unregistered
+	// (#186). Returns {"position":N,"total":M} when the email is on the
+	// waitlist (1-indexed; position 0 means already accepted), or 404 when
+	// not found. Total is the count of verified, not-yet-accepted entries.
+	mux.HandleFunc("/waitlist/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		email := strings.TrimSpace(r.URL.Query().Get("email"))
+		if email == "" {
+			http.Error(w, "email query parameter required", http.StatusBadRequest)
+			return
+		}
+		entry, err := queries.GetWaitlistByEmail(r.Context(), email)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error":"not_found"}`))
+			return
+		}
+		total, _ := queries.CountWaitlist(r.Context())
+		var position int64
+		if entry.AcceptedAt.Valid {
+			position = 0
+		} else if entry.VerifiedAt.Valid {
+			ahead, _ := queries.CountWaitlistAhead(r.Context(), entry.SignedUpAt)
+			position = ahead + 1
+		} else {
+			position = -1 // unverified
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"position":%d,"total":%d}`, position, total)
 	})
 
 	// Debug/profiling endpoints — local only, never exposed in staging/prod.

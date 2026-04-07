@@ -10,6 +10,13 @@ var okHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 })
 
+// addAuthCookie attaches a fake toqui_access cookie so the CSRF middleware
+// treats the request as a cookie-based session and applies the Origin/Referer
+// checks. Bearer-token (cookie-less) requests bypass CSRF entirely (#179).
+func addAuthCookie(req *http.Request) {
+	req.AddCookie(&http.Cookie{Name: "toqui_access", Value: "test-token"})
+}
+
 func TestSafeMethodsPassThrough(t *testing.T) {
 	h := Middleware(okHandler, []string{"https://app.example.com"}, nil)
 
@@ -53,6 +60,7 @@ func TestUntrustedOriginRejected(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/exchange", nil)
 	req.Header.Set("Origin", "https://evil.example.com")
+	addAuthCookie(req)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
@@ -65,6 +73,7 @@ func TestNullOriginRejected(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/waitlist", nil)
 	req.Header.Set("Origin", "null")
+	addAuthCookie(req)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
@@ -90,6 +99,7 @@ func TestUntrustedRefererRejected(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/waitlist", nil)
 	req.Header.Set("Referer", "https://evil.example.com/attack")
+	addAuthCookie(req)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
@@ -97,15 +107,48 @@ func TestUntrustedRefererRejected(t *testing.T) {
 	}
 }
 
-func TestNoOriginNoRefererRejected(t *testing.T) {
+func TestNoOriginNoRefererWithCookieRejected(t *testing.T) {
 	h := Middleware(okHandler, []string{"https://app.example.com"}, nil)
 
-	// No Origin, no Referer — reject to strengthen CSRF protection.
+	// Cookie-authenticated request with no Origin/Referer is still rejected
+	// because the browser would normally send Origin on POST/PUT/DELETE.
 	req := httptest.NewRequest(http.MethodPost, "/waitlist", nil)
+	addAuthCookie(req)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for no-origin request, got %d", rec.Code)
+		t.Errorf("expected 403 for cookie-auth no-origin request, got %d", rec.Code)
+	}
+}
+
+// Bearer-token clients (no auth cookie) bypass CSRF entirely. CSRF only
+// applies to cookie-based sessions where the browser auto-attaches cookies
+// to cross-origin POSTs (#179).
+func TestBearerClientNoCookieBypassesCSRF(t *testing.T) {
+	h := Middleware(okHandler, []string{"https://app.example.com"}, nil)
+
+	// No auth cookie, no Origin, no Referer — should pass through.
+	req := httptest.NewRequest(http.MethodPost, "/toqui.v1.TripService/ListTrips", nil)
+	req.Header.Set("Authorization", "Bearer fake-token")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for bearer-only client, got %d", rec.Code)
+	}
+}
+
+func TestBearerClientUntrustedOriginBypassesCSRF(t *testing.T) {
+	h := Middleware(okHandler, []string{"https://app.example.com"}, nil)
+
+	// No auth cookie even with an "untrusted" origin (e.g. a curl test that
+	// fakes Origin) — bypass, because there's no cookie for an attacker to
+	// hijack.
+	req := httptest.NewRequest(http.MethodPost, "/toqui.v1.TripService/ListTrips", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for bearer-only client even with untrusted origin, got %d", rec.Code)
 	}
 }
 
@@ -145,6 +188,7 @@ func TestDeleteAndPutProtected(t *testing.T) {
 	for _, method := range []string{http.MethodPut, http.MethodDelete, "PATCH"} {
 		req := httptest.NewRequest(method, "/api/data", nil)
 		req.Header.Set("Origin", "https://evil.example.com")
+		addAuthCookie(req)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusForbidden {

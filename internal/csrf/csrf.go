@@ -47,6 +47,24 @@ func Middleware(next http.Handler, allowedOrigins []string, exemptPrefixes []str
 			}
 		}
 
+		// CSRF only applies to cookie-based sessions: a cross-origin attack
+		// works because the browser auto-attaches the session cookie. Bearer
+		// token clients (native mobile apps, grpcurl, server-to-server) can
+		// never be CSRF'd because the attacker has no way to read the token
+		// from another origin. If neither auth cookie is present on the
+		// request, treat it as a direct Bearer client and bypass the
+		// Origin/Referer check entirely (#179).
+		hasAuthCookie := false
+		if c, err := r.Cookie("toqui_access"); err == nil && c.Value != "" {
+			hasAuthCookie = true
+		} else if c, err := r.Cookie("toqui_refresh"); err == nil && c.Value != "" {
+			hasAuthCookie = true
+		}
+		if !hasAuthCookie {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Check Origin header (preferred — all modern browsers send it on
 		// cross-origin and same-origin POST requests).
 		origin := r.Header.Get("Origin")

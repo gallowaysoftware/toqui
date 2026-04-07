@@ -402,11 +402,17 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			// Mid-loop persona swap: if suggest_expert fired, drain the channel
 			// and rebuild the system prompt so the expert answers in the same
 			// turn instead of requiring a follow-up user message (#175).
+			var swappedPersona *persona.Persona
 			if personaSwitchCh != nil && buildPrompt != nil {
 				select {
 				case newPersona := <-personaSwitchCh:
 					if newPersona != nil {
 						aiReq.SystemPrompt = buildPrompt(newPersona)
+						swappedPersona = newPersona
+						// Reset fabrication guard so the expert gets a fresh
+						// chance to call its own tools without being treated
+						// as a continuation of the previous persona's turn.
+						fabricationRetried = false
 						slog.Info("tool loop: persona swapped mid-turn",
 							"session_id", sessionID,
 							"new_persona_id", newPersona.ID,
@@ -432,6 +438,21 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				ToolResults: toolResults,
 			}
 			aiReq.Messages = append(aiReq.Messages, toolResultMsg)
+
+			// After a persona swap, append a non-persisted nudge so the new
+			// expert is forced to substantively answer the user's most recent
+			// message instead of just introducing themselves and ending the
+			// turn (#193). This message exists only in the AI request — it
+			// is NOT written to chat history.
+			if swappedPersona != nil {
+				aiReq.Messages = append(aiReq.Messages, ai.Message{
+					Role: "user",
+					Content: fmt.Sprintf(
+						"(System note: you are now responding as %s. The handoff is complete. Answer my most recent question DIRECTLY and substantively using your specialised expertise. Do NOT introduce yourself, do NOT defer to anyone else, and do NOT call suggest_expert again.)",
+						swappedPersona.Name,
+					),
+				})
+			}
 
 			// Persist intermediate messages so history reconstruction includes tool data
 			storedAssistant := &chatstore.ChatMessage{
