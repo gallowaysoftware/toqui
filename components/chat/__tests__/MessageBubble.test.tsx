@@ -96,14 +96,13 @@ describe("MessageBubble", () => {
 
     it("renders user avatar with initials when showAvatar is true", () => {
       render(<MessageBubble message={makeMessage({ role: "user", content: "hi" })} showAvatar />);
-      // "Test User" -> initial "T"
-      expect(screen.getByText("T")).toBeInTheDocument();
+      // "Test User" -> initials "TU" via MemberAvatar (first + last initial)
+      expect(screen.getByText("TU")).toBeInTheDocument();
     });
 
     it("does not render avatar initial when showAvatar is false", () => {
       render(<MessageBubble message={makeMessage({ role: "user", content: "hi" })} showAvatar={false} />);
-      // No "T" initial should appear
-      expect(screen.queryByText("T")).toBeNull();
+      expect(screen.queryByText("TU")).toBeNull();
     });
   });
 

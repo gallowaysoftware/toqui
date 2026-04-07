@@ -4,6 +4,7 @@ import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { PersonaIntroCard } from "./PersonaIntroCard";
+import { MemberAvatar } from "@/components/collaborators/MemberAvatar";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -46,12 +47,6 @@ function SpeakerAvatar({ initial, color, imageUri, size = 28 }: {
   );
 }
 
-function getUserInitial(user: { name?: string | null; email?: string | null } | null): string {
-  if (user?.name) return user.name.trim()[0].toUpperCase();
-  if (user?.email) return user.email[0].toUpperCase();
-  return "U";
-}
-
 export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps) {
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -86,18 +81,34 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
   };
 
   if (isUser) {
-    const userInitial = getUserInitial(user);
+    // Resolve sender for the avatar. In single-user chat the current user
+    // sent every "user" message. In a shared (group trip) chat the message
+    // carries explicit sender metadata so each collaborator gets their own
+    // colored avatar (#14).
+    const senderIdentity =
+      message.senderEmail ?? user?.email ?? user?.name ?? "user";
+    const senderName = message.senderName ?? user?.name ?? null;
+    const isOtherUser =
+      message.senderUserId != null && user != null && message.senderUserId !== user.id;
     return (
-      <View style={styles.rowUser} accessibilityLabel="Your message">
+      <View
+        style={styles.rowUser}
+        accessibilityLabel={isOtherUser ? `${senderName ?? senderIdentity} says` : "Your message"}
+      >
         <View style={[
           styles.bubble,
           styles.userBubble,
           { backgroundColor: colors.userBubble, marginRight: AVATAR_GAP },
         ]}>
+          {isOtherUser && (
+            <Text style={[styles.collaboratorLabel, { color: colors.userBubbleText }]}>
+              {senderName ?? senderIdentity}
+            </Text>
+          )}
           <Text style={[styles.userText, { color: colors.userBubbleText }]}>{message.content}</Text>
         </View>
         {showAvatar ? (
-          <SpeakerAvatar initial={userInitial} color={colors.accent} size={AVATAR_SIZE} />
+          <MemberAvatar identity={senderIdentity} name={senderName} size={AVATAR_SIZE} />
         ) : (
           <View style={styles.avatarSpacer} />
         )}
@@ -186,4 +197,5 @@ const styles = StyleSheet.create({
   },
   systemText: { fontSize: 13, fontStyle: "italic", textAlign: "center" },
   userText: { fontSize: 15, lineHeight: 22 },
+  collaboratorLabel: { fontSize: 11, fontWeight: "700", marginBottom: 4, opacity: 0.8 },
 });

@@ -37,6 +37,12 @@ export interface ChatMessage {
   personaAccentColor?: string;
   recommendation?: Recommendation;
   personaIntro?: PersonaIntroData;
+  // Optional sender metadata for shared (multi-user) chat sessions on group
+  // trips. When unset, the message is attributed to the current authenticated
+  // user. Populated by the backend once shared chat ships (#14).
+  senderUserId?: string;
+  senderEmail?: string;
+  senderName?: string;
 }
 
 export interface ToolActivity {

@@ -10,6 +10,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "delete": "Delete",
+    "remove": "Remove",
     "confirm": "Confirm",
     "back": "Back",
     "retry": "Try Again",
@@ -357,7 +358,12 @@
     "inviteError": "Failed to send invite. Please try again.",
     "removeTitle": "Remove Collaborator",
     "removeConfirm": "Remove {{email}} from this trip?",
-    "maxReached": "Maximum of 10 collaborators reached."
+    "maxReached": "Maximum of 10 collaborators reached.",
+    "membersButton": "Members",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "emptyState": "No members yet. Invite someone to start planning together.",
+    "proAppliesAll": "Trip Pro is unlocked for all members of this trip — every collaborator gets unlimited messages and full expert access."
   },
   "invite": {
     "title": "You're Invited!",
