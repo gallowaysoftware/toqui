@@ -138,7 +138,13 @@ Only include fields that are present in the source text. Return ONLY valid JSON,
 		Messages: []ai.Message{
 			{Role: "user", Content: prompt},
 		},
-		MaxTokens:   2048,
+		// 2048 was getting truncated on round-trip flight confirmations where
+		// the JSON payload includes two flight legs plus passengers (see
+		// toqui-backend#150 R-06 re-run — "unexpected end of JSON input" on
+		// 4 consecutive attempts). 4096 gives comfortable headroom for the
+		// biggest artifacts we currently parse without incurring meaningful
+		// extra cost.
+		MaxTokens:   4096,
 		Temperature: 0,
 	}
 
@@ -281,7 +287,10 @@ Return ONLY valid JSON, no other text.`,
 		Messages: []ai.Message{
 			{Role: "user", Content: fmt.Sprintf("Source:\n%s\n\nQuestion: %s", rawSource, question)},
 		},
-		MaxTokens:   1024,
+		// Bumped from 1024 alongside the parser bump (#150) to give multi-field
+		// extractions room to breathe, since Gemini can produce chattier JSON
+		// than Claude for the same prompt.
+		MaxTokens:   2048,
 		Temperature: 0,
 	}
 
