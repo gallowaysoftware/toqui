@@ -20,12 +20,12 @@ func TestDefaultModelConfigs(t *testing.T) {
 		},
 		{
 			tier:       ModelTierSmart,
-			wantMaxTok: 8192,
+			wantMaxTok: 16384,
 			wantTemp:   0.7,
 		},
 		{
 			tier:       ModelTierBest,
-			wantMaxTok: 8192,
+			wantMaxTok: 32768,
 			wantTemp:   0.7,
 		},
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 )
@@ -33,7 +34,17 @@ func (r *Registry) Register(tool Tool) {
 
 func (r *Registry) Get(name string) (Tool, bool) {
 	t, ok := r.tools[name]
-	return t, ok
+	if ok {
+		return t, true
+	}
+	// Fall back to fuzzy lookup for provider name mangling.
+	canon := CanonicalToolName(name)
+	for registered, tool := range r.tools {
+		if CanonicalToolName(registered) == canon {
+			return tool, true
+		}
+	}
+	return nil, false
 }
 
 func (r *Registry) Definitions() []ai.ToolDefinition {
@@ -45,9 +56,40 @@ func (r *Registry) Definitions() []ai.ToolDefinition {
 }
 
 func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessage) (json.RawMessage, error) {
-	tool, ok := r.tools[name]
+	tool, ok := r.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
 	return tool.Execute(ctx, args)
+}
+
+// CanonicalToolName normalizes a tool name so that provider-side name
+// mangling (camelCase conversion, duplicated suffixes, etc.) still resolves to
+// our canonical snake_case names.
+//
+// Examples (all collapse to the same canonical form "createitineraryitems"):
+//   - create_itinerary_items
+//   - createItineraryItems
+//   - CreateItineraryItems
+//   - CreateItineraryItemsItems (Gemini occasionally duplicates the last segment)
+//
+// This is a forgiving lookup — we never rename registered tools, we only
+// widen the set of incoming names that match them.
+func CanonicalToolName(name string) string {
+	// Lowercase and strip separators.
+	s := strings.ToLower(name)
+	s = strings.ReplaceAll(s, "_", "")
+	s = strings.ReplaceAll(s, "-", "")
+	s = strings.ReplaceAll(s, " ", "")
+
+	// Collapse an immediately-repeated trailing word (e.g. "...itemsitems").
+	// We only collapse one duplicate so benign names like "search" stay intact.
+	for _, suffix := range []string{"items", "item", "tool", "trip", "expert", "booking"} {
+		doubled := suffix + suffix
+		if strings.HasSuffix(s, doubled) {
+			s = strings.TrimSuffix(s, suffix)
+			break
+		}
+	}
+	return s
 }

@@ -621,10 +621,13 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 					// Track this tool call for the continuation message
 					toolCalls = append(toolCalls, *event.Tool)
 
-					// Execute tool — check extra tools first, then global registry
+					// Execute tool — check extra tools first, then global registry.
+					// We tolerate provider name mangling (e.g. Gemini emitting
+					// "createItineraryItemsItems" for "create_itinerary_items") via
+					// the canonicalized fallback; see tools.canonicalizeToolName.
 					var result json.RawMessage
 					var execErr error
-					if extra, ok := extraTools[event.Tool.Name]; ok {
+					if extra, ok := lookupExtraTool(extraTools, event.Tool.Name); ok {
 						result, execErr = extra.Execute(ctx, json.RawMessage(event.Tool.Arguments))
 					} else {
 						result, execErr = s.tools.Execute(ctx, event.Tool.Name, []byte(event.Tool.Arguments))
@@ -672,6 +675,26 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 			}
 		}
 	}
+}
+
+// lookupExtraTool resolves a per-request tool by name, falling back to a
+// canonicalized match so provider-side name mangling (e.g. Gemini returning
+// "createItineraryItemsItems" for "create_itinerary_items") still finds the
+// right tool.
+func lookupExtraTool(extras map[string]tools.Tool, name string) (tools.Tool, bool) {
+	if t, ok := extras[name]; ok {
+		return t, true
+	}
+	if len(extras) == 0 {
+		return nil, false
+	}
+	canon := tools.CanonicalToolName(name)
+	for registered, t := range extras {
+		if tools.CanonicalToolName(registered) == canon {
+			return t, true
+		}
+	}
+	return nil, false
 }
 
 // syntheticCacheResponse creates a channel that emits a cached response as if it

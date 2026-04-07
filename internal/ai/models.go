@@ -28,6 +28,12 @@ type ModelConfig struct {
 }
 
 // defaultModelConfigs returns the default configuration for each model tier.
+//
+// Token budgets are sized to let the smart/best tiers comfortably emit a
+// narrative plus a large create_itinerary_items tool call (10-20 items with
+// descriptions) in a single turn. Gemini tends to produce more preamble text
+// than Claude before calling tools, so 8192 was getting truncated before the
+// tool call fired (see toqui-backend#151).
 func defaultModelConfigs() map[ModelTier]ModelConfig {
 	configs := map[ModelTier]ModelConfig{
 		ModelTierFast: {
@@ -35,11 +41,11 @@ func defaultModelConfigs() map[ModelTier]ModelConfig {
 			Temperature: 0.7,
 		},
 		ModelTierSmart: {
-			MaxTokens:   8192,
+			MaxTokens:   16384,
 			Temperature: 0.7,
 		},
 		ModelTierBest: {
-			MaxTokens:   8192,
+			MaxTokens:   32768,
 			Temperature: 0.7,
 		},
 	}
