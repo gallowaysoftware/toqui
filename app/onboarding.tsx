@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ export default function OnboardingScreen() {
   const createTrip = useCreateTrip();
   const { track } = useAnalytics();
   const [destination, setDestination] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const handleStartPlanning = useCallback(async () => {
     if (!destination.trim()) return;
@@ -145,9 +147,47 @@ export default function OnboardingScreen() {
       fontSize: 15,
       fontWeight: "500",
     },
+    termsRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      width: "100%",
+      maxWidth: 360,
+      marginBottom: 16,
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      borderColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+      flexShrink: 0,
+    },
+    checkboxChecked: {
+      backgroundColor: colors.accent,
+    },
+    checkboxMark: {
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 14,
+    },
+    termsText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 19,
+    },
+    termsLink: {
+      color: colors.accent,
+      textDecorationLine: "underline",
+    },
   });
 
-  const isDisabled = !destination.trim() || createTrip.isPending;
+  const isDisabled = !destination.trim() || !termsAccepted || createTrip.isPending;
 
   return (
     <KeyboardAvoidingView
@@ -179,6 +219,34 @@ export default function OnboardingScreen() {
         />
 
         <Pressable
+          style={styles.termsRow}
+          onPress={() => setTermsAccepted((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: termsAccepted }}
+          testID="onboarding-terms-checkbox"
+        >
+          <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+            {termsAccepted ? <Text style={styles.checkboxMark}>✓</Text> : null}
+          </View>
+          <Text style={styles.termsText}>
+            {"I agree to the "}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL("https://toqui.travel/privacy")}
+            >
+              Privacy Policy
+            </Text>
+            {" and "}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL("https://toqui.travel/terms")}
+            >
+              Terms of Service
+            </Text>
+          </Text>
+        </Pressable>
+
+        <Pressable
           style={[styles.primaryButton, isDisabled && styles.primaryButtonDisabled]}
           onPress={handleStartPlanning}
           disabled={isDisabled}
@@ -196,8 +264,8 @@ export default function OnboardingScreen() {
         </Pressable>
 
         <Pressable
-          style={styles.secondaryButton}
-          onPress={handleBrowseIdeas}
+          style={[styles.secondaryButton, !termsAccepted && { opacity: 0.4 }]}
+          onPress={termsAccepted ? handleBrowseIdeas : undefined}
           accessibilityRole="button"
           accessibilityLabel={t("onboarding.welcome.browseIdeas")}
           testID="onboarding-browse-ideas"

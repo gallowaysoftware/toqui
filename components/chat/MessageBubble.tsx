@@ -149,6 +149,11 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
         ]}>
           <Markdown style={mdStyles}>{message.content}</Markdown>
         </View>
+        {!message.isError ? (
+          <Text style={[styles.aiDisclaimer, { color: colors.textTertiary }]}>
+            AI-generated · verify details independently
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -198,4 +203,5 @@ const styles = StyleSheet.create({
   systemText: { fontSize: 13, fontStyle: "italic", textAlign: "center" },
   userText: { fontSize: 15, lineHeight: 22 },
   collaboratorLabel: { fontSize: 11, fontWeight: "700", marginBottom: 4, opacity: 0.8 },
+  aiDisclaimer: { fontSize: 10, marginTop: 3, opacity: 0.6 },
 });
