@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Crown } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,6 +21,8 @@ import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
 import { ShareNudgeBanner } from "@/components/share/ShareNudgeBanner";
+import { useCollaborators } from "@/lib/hooks/useCollaborators";
+import { MemberAvatar } from "@/components/collaborators/MemberAvatar";
 import { useQueryClient } from "@tanstack/react-query";
 
 function formatTripDate(dateStr: string): string {
@@ -43,6 +45,7 @@ export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, isLoading, error: tripError } = useTrip(tripId!);
+  const { collaborators } = useCollaborators(tripId!);
   const queryClient = useQueryClient();
   const { itinerary, coveredDays, isLoading: isItineraryLoading } = useItinerary(tripId!);
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
@@ -143,6 +146,32 @@ export default function TripDetailScreen() {
       borderColor: colors.border,
     },
     actionText: { fontSize: 14, fontWeight: "500", color: colors.textPrimary },
+    memberStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 16,
+    },
+    memberStripAvatars: { flexDirection: "row" },
+    memberStripAvatar: { marginRight: -10 },
+    memberStripText: { flex: 1, fontSize: 14, color: colors.textPrimary, fontWeight: "600" },
+    memberStripSubtext: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    memberStripBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.accentSoft,
+    },
+    memberStripBadgeText: { fontSize: 11, fontWeight: "700", color: colors.accent },
     statusButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -433,6 +462,77 @@ export default function TripDetailScreen() {
         {showShareNudge && (
           <ShareNudgeBanner onShare={handleShare} onDismiss={handleDismissShareNudge} />
         )}
+
+        {(() => {
+          // Always show the member strip so the entry point is discoverable.
+          // Owner is implicit on the trip object — fold them into the preview
+          // when they're not yet listed in the collaborators array.
+          const ownerEmail = trip?.userId ? trip.userId : "owner";
+          const previewMembers = collaborators.length > 0
+            ? collaborators
+            : [{ id: "owner", email: ownerEmail, role: "owner" as const }];
+          const memberCount = collaborators.length || 1;
+          const visible = previewMembers.slice(0, 4);
+          const overflow = Math.max(0, previewMembers.length - visible.length);
+          const isUnlocked = trip?.isUnlocked ?? false;
+          return (
+            <Pressable
+              style={styles.memberStrip}
+              onPress={() => router.push(`/trips/${tripId}/members` as never)}
+              accessibilityRole="button"
+              accessibilityLabel={t("collaborators.membersButton")}
+            >
+              <View style={styles.memberStripAvatars}>
+                {visible.map((m, idx) => (
+                  <View
+                    key={m.id}
+                    style={idx < visible.length - 1 ? styles.memberStripAvatar : undefined}
+                  >
+                    <MemberAvatar identity={m.email} size={32} withRing />
+                  </View>
+                ))}
+                {overflow > 0 && (
+                  <View
+                    style={[
+                      styles.memberStripAvatar,
+                      {
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: colors.surfaceTertiary,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 2,
+                        borderColor: colors.surface,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textSecondary }}>
+                      +{overflow}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.memberStripText}>
+                  {t("collaborators.memberCount", { count: memberCount })}
+                </Text>
+                {isUnlocked && memberCount > 1 && (
+                  <Text style={styles.memberStripSubtext}>
+                    {t("collaborators.proAppliesAll")}
+                  </Text>
+                )}
+              </View>
+              {isUnlocked && memberCount > 1 && (
+                <View style={styles.memberStripBadge}>
+                  <Crown size={11} color={colors.accent} />
+                  <Text style={styles.memberStripBadgeText}>PRO</Text>
+                </View>
+              )}
+              <Users size={18} color={colors.textTertiary} />
+            </Pressable>
+          );
+        })()}
 
         <View style={styles.actions}>
           <Pressable

@@ -16,6 +16,7 @@ export default function TripDetailLayout() {
       <Stack.Screen name="index" options={{ title: "Trip" }} />
       <Stack.Screen name="chat" options={{ title: "Chat" }} />
       <Stack.Screen name="bookings" options={{ title: "Bookings" }} />
+      <Stack.Screen name="members" options={{ title: "Trip Members" }} />
       <Stack.Screen name="settings" options={{ title: "Trip Settings" }} />
     </Stack>
   );
