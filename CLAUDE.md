@@ -567,7 +567,7 @@ Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret 
 **Manual** (if needed):
 
 ```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
+IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
 
 # Build and push
 docker build --platform linux/amd64 -t $IMAGE:latest .
@@ -575,26 +575,26 @@ docker push $IMAGE:latest
 
 # Run migrations FIRST
 gcloud run jobs deploy toqui-migrate --image=$IMAGE:latest \
-  --region=us-central1 --project=toqui-prod \
+  --region=northamerica-northeast1 --project=toqui-prod \
   --command=/migrate --args="-direction,up" --execute-now
 
 # Then deploy
-gcloud run deploy toqui-backend --image=$IMAGE:latest --region=us-central1 --project=toqui-prod
+gcloud run deploy toqui-backend --image=$IMAGE:latest --region=northamerica-northeast1 --project=toqui-prod
 ```
 
 ### Rolling Back
 
 ```bash
 # List available revisions
-gcloud run revisions list --service=toqui-backend --region=us-central1 --project=toqui-prod
+gcloud run revisions list --service=toqui-backend --region=northamerica-northeast1 --project=toqui-prod
 
 # Route traffic to previous revision
 gcloud run services update-traffic toqui-backend \
-  --to-revisions=<previous-revision>=100 --region=us-central1 --project=toqui-prod
+  --to-revisions=<previous-revision>=100 --region=northamerica-northeast1 --project=toqui-prod
 
 # Roll back one database migration
 gcloud run jobs deploy toqui-migrate --image=$IMAGE:<previous-sha> \
-  --region=us-central1 --project=toqui-prod \
+  --region=northamerica-northeast1 --project=toqui-prod \
   --command=/migrate --args="-direction,down,-steps,1" --execute-now
 ```
 
@@ -602,7 +602,7 @@ gcloud run jobs deploy toqui-migrate --image=$IMAGE:<previous-sha> \
 
 ```bash
 # Cloud Run logs (real-time)
-gcloud run services logs read toqui-backend --region=us-central1 --project=toqui-prod --limit=100
+gcloud run services logs read toqui-backend --region=northamerica-northeast1 --project=toqui-prod --limit=100
 
 # Or via Cloud Logging
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="toqui-backend"' \
