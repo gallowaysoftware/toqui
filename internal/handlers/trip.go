@@ -284,6 +284,13 @@ func tripToProto(t *dbgen.Trip) *toquiv1.Trip {
 	if t.DestinationCountry.Valid {
 		proto.DestinationCountry = t.DestinationCountry.String
 	}
+	// Multi-country trips: prefer the array column, falling back to the legacy
+	// single-country field so old trips still surface their destination (#133).
+	if len(t.DestinationCountries) > 0 {
+		proto.DestinationCountries = t.DestinationCountries
+	} else if t.DestinationCountry.Valid && t.DestinationCountry.String != "" {
+		proto.DestinationCountries = []string{t.DestinationCountry.String}
+	}
 	return proto
 }
 
@@ -332,9 +339,14 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem, coordsMap map[
 
 		day, ok := dayMap[dayNum]
 		if !ok {
+			summary := fmt.Sprintf("Day %d", dayNum)
+			if dayNum == 0 {
+				summary = "Unscheduled"
+			}
 			day = &toquiv1.ItineraryDay{
 				Id:        uuid.New().String(),
 				DayNumber: dayNum,
+				Summary:   summary,
 			}
 			dayMap[dayNum] = day
 		}

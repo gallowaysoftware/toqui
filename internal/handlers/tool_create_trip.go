@@ -22,9 +22,10 @@ type CreateTripTool struct {
 }
 
 type createTripArgs struct {
-	Title              string `json:"title"`
-	Description        string `json:"description"`
-	DestinationCountry string `json:"destination_country"`
+	Title                string   `json:"title"`
+	Description          string   `json:"description"`
+	DestinationCountry   string   `json:"destination_country"`
+	DestinationCountries []string `json:"destination_countries"`
 }
 
 func NewCreateTripTool(tripSvc *trip.Service, userID uuid.UUID, onCreated func(tripID, title, description string)) *CreateTripTool {
@@ -48,7 +49,12 @@ func (t *CreateTripTool) Definition() ai.ToolDefinition {
 				},
 				"destination_country": {
 					"type": "string",
-					"description": "ISO 3166-1 alpha-2 country code for the primary destination, e.g. 'JP', 'FR', 'CR'. Set this when the destination is clear."
+					"description": "ISO 3166-1 alpha-2 country code for the primary destination, e.g. 'JP', 'FR', 'CR'. Set this for single-country trips."
+				},
+				"destination_countries": {
+					"type": "array",
+					"items": {"type": "string"},
+					"description": "ISO 3166-1 alpha-2 codes for ALL destination countries on multi-country trips, e.g. ['GR','TR'] for a Greece + Turkey trip. Use this in addition to (or instead of) destination_country whenever the trip spans more than one country."
 				}
 			},
 			"required": ["title"]
@@ -71,12 +77,18 @@ func (t *CreateTripTool) Execute(ctx context.Context, args json.RawMessage) (jso
 		return nil, fmt.Errorf("create trip: %w", err)
 	}
 
-	// Set destination country immediately if the AI provided one (avoids async tagger race condition)
-	if params.DestinationCountry != "" {
-		if err := t.tripSvc.SetDestination(ctx, t.userID, created.ID, params.DestinationCountry); err != nil {
-			slog.Warn("failed to set trip destination on create",
+	// Set destinations immediately if the AI provided any (avoids async tagger race condition).
+	// Multi-country trips populate destination_countries; single-country trips also set the
+	// legacy destination_country field via SetDestinations for backward compat (#133).
+	countries := params.DestinationCountries
+	if len(countries) == 0 && params.DestinationCountry != "" {
+		countries = []string{params.DestinationCountry}
+	}
+	if len(countries) > 0 {
+		if err := t.tripSvc.SetDestinations(ctx, t.userID, created.ID, countries); err != nil {
+			slog.Warn("failed to set trip destinations on create",
 				"trip_id", created.ID,
-				"country", params.DestinationCountry,
+				"countries", countries,
 				"error", err,
 			)
 		}

@@ -170,9 +170,14 @@ func main() {
 		}
 	}
 
-	// Tool registry
+	// Tool registry — register global tools available in all chat modes.
 	toolRegistry := tools.NewRegistry()
-	// Tools will be registered when API keys are configured
+	if cfg.GoogleCustomSearchAPIKey != "" && cfg.GoogleCustomSearchCX != "" {
+		toolRegistry.Register(tools.NewWebSearch(cfg.GoogleCustomSearchAPIKey, cfg.GoogleCustomSearchCX))
+		slog.Info("web_search tool registered")
+	} else {
+		slog.Warn("web_search tool not registered — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set")
+	}
 
 	// Chat store
 	chatStr := chatstore.New(firestoreClient)

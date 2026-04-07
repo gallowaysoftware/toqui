@@ -21,12 +21,13 @@ type RecommendBookingTool struct {
 }
 
 type recommendBookingArgs struct {
-	Category    string `json:"category"`
-	Query       string `json:"query"`
-	Origin      string `json:"origin"`
-	Destination string `json:"destination"`
-	DateFrom    string `json:"date_from"`
-	DateTo      string `json:"date_to"`
+	Category     string `json:"category"`
+	Query        string `json:"query"`
+	Origin       string `json:"origin"`
+	Destination  string `json:"destination"`
+	PropertyName string `json:"property_name"`
+	DateFrom     string `json:"date_from"`
+	DateTo       string `json:"date_to"`
 }
 
 // NewRecommendBookingTool creates a recommend_booking tool with the given
@@ -68,6 +69,10 @@ func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
 				"destination": {
 					"type": "string",
 					"description": "Destination city or airport code"
+				},
+				"property_name": {
+					"type": "string",
+					"description": "For hotels: the specific property name if the user mentioned one (e.g. 'St. Regis Vommuli'). Leave empty for generic destination searches."
 				},
 				"date_from": {
 					"type": "string",
@@ -149,9 +154,14 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if city == "" {
 			city = "your destination"
 		}
-		searchURL = t.linkBuilder.HotelSearchURL(city, params.DateFrom, params.DateTo)
-		title = fmt.Sprintf("Search hotels in %s", city)
-		description = fmt.Sprintf("Browse and compare hotel options in %s", city)
+		searchURL = t.linkBuilder.HotelSearchURL(params.PropertyName, city, params.DateFrom, params.DateTo)
+		if params.PropertyName != "" {
+			title = fmt.Sprintf("Book %s", params.PropertyName)
+			description = fmt.Sprintf("View rates and availability for %s in %s", params.PropertyName, city)
+		} else {
+			title = fmt.Sprintf("Search hotels in %s", city)
+			description = fmt.Sprintf("Browse and compare hotel options in %s", city)
+		}
 		if params.DateFrom != "" && params.DateTo != "" {
 			description += fmt.Sprintf(" from %s to %s", params.DateFrom, params.DateTo)
 		}

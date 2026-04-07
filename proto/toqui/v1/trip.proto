@@ -30,9 +30,14 @@ message Trip {
   google.protobuf.Timestamp updated_at = 9;
   // Auto-tagged by AI from trip description and chat conversations
   repeated string themes = 10;
-  // Primary destination country (ISO 3166-1 alpha-2) for persona matching
+  // Primary destination country (ISO 3166-1 alpha-2) for persona matching.
+  // Retained for backward compatibility — for multi-country trips this is the
+  // first entry of destination_countries.
   string destination_country = 11;
   bool is_unlocked = 12;
+  // All destination countries for multi-country trips (e.g. ["GR", "TR"]).
+  // ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
+  repeated string destination_countries = 13;
 }
 
 enum TripStatus {

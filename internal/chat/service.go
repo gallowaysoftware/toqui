@@ -98,6 +98,13 @@ type SendMessageParams struct {
 	ExtraTools []tools.Tool
 	// ExtraSystemContext is appended to the system prompt (e.g., trip list for selection mode)
 	ExtraSystemContext string
+
+	// PersonaSwitchCh is an optional buffered channel (size 1) that signals
+	// a mid-turn persona handoff. When suggest_expert fires, the handler
+	// writes the new expert to this channel; the chat service drains it
+	// between tool loop iterations and rebuilds the system prompt so the
+	// expert answers in the same turn (#175).
+	PersonaSwitchCh chan *persona.Persona
 }
 
 // Attachment represents a file attached to a chat message.
@@ -196,17 +203,21 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		}
 	}
 
-	systemPrompt := activePersona.SystemPrompt(params.Mode)
-
-	// Inject ephemeral location context — NEVER stored
-	if params.LocationLat != 0 && params.LocationLng != 0 {
-		systemPrompt += fmt.Sprintf("\n\nThe user's current location is approximately: %.4f, %.4f. Use this to provide relevant nearby recommendations. Do NOT repeat these coordinates back to the user.", params.LocationLat, params.LocationLng)
+	// buildPrompt assembles the full system prompt for a given persona,
+	// including ephemeral location context and extra trip context. Captured
+	// as a closure so the tool loop can rebuild the prompt when an expert
+	// hands off mid-turn (#175).
+	buildPrompt := func(p *persona.Persona) string {
+		sp := p.SystemPrompt(params.Mode)
+		if params.LocationLat != 0 && params.LocationLng != 0 {
+			sp += fmt.Sprintf("\n\nThe user's current location is approximately: %.4f, %.4f. Use this to provide relevant nearby recommendations. Do NOT repeat these coordinates back to the user.", params.LocationLat, params.LocationLng)
+		}
+		if params.ExtraSystemContext != "" {
+			sp += "\n\n" + params.ExtraSystemContext
+		}
+		return sp
 	}
-
-	// Inject extra system context (e.g., trip list for selection mode)
-	if params.ExtraSystemContext != "" {
-		systemPrompt += "\n\n" + params.ExtraSystemContext
-	}
+	systemPrompt := buildPrompt(activePersona)
 
 	// Merge tool definitions
 	toolDefs := s.tools.Definitions()
@@ -266,7 +277,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	outCh := make(chan StreamEvent, 64)
 	go func() {
 		defer close(outCh)
-		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID)
+		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID, params.PersonaSwitchCh, buildPrompt)
 
 		// Clean up on AI failure: if the AI produced no response (e.g., 429,
 		// timeout, provider error), roll back the user message and optionally
@@ -323,9 +334,10 @@ const (
 // continuation loop. When the AI stops for tool use, tool results are sent back
 // and the AI continues generating. This loops until the AI produces a final
 // response (stop_reason=end_turn) or the iteration limit is reached.
-func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string) string {
+func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string) string {
 	var fullResponse strings.Builder
 	var totalInputTokens, totalOutputTokens int
+	var fabricationRetried bool // one-shot guard against fabricated tool success (#171)
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
 		// Stop if the client disconnected.
@@ -387,6 +399,25 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				"tools_called", len(toolCalls),
 			)
 
+			// Mid-loop persona swap: if suggest_expert fired, drain the channel
+			// and rebuild the system prompt so the expert answers in the same
+			// turn instead of requiring a follow-up user message (#175).
+			if personaSwitchCh != nil && buildPrompt != nil {
+				select {
+				case newPersona := <-personaSwitchCh:
+					if newPersona != nil {
+						aiReq.SystemPrompt = buildPrompt(newPersona)
+						slog.Info("tool loop: persona swapped mid-turn",
+							"session_id", sessionID,
+							"new_persona_id", newPersona.ID,
+							"new_persona_name", newPersona.Name,
+						)
+					}
+				default:
+					// no swap pending
+				}
+			}
+
 			// Append the assistant message (with text + tool_use blocks) to the request
 			assistantMsg := ai.Message{
 				Role:      "assistant",
@@ -435,8 +466,44 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			continue // Next iteration of the tool loop
 		}
 
-		// AI finished (end_turn) — store and emit the final response
+		// AI finished (end_turn) — store and emit the final response.
+		// If the response is empty (no text, no tool calls), suppress the
+		// assistant message to avoid blank bubbles in chat history, and emit
+		// an error event so the frontend can show a retry prompt. This is the
+		// symmetric fix to the user-message rollback on AI failure (#167).
 		responseText := fullResponse.String()
+		if responseText == "" && len(toolCalls) == 0 {
+			slog.Warn("suppressing empty assistant turn — no content and no tool calls",
+				"session_id", sessionID,
+				"iteration", iteration,
+			)
+			select {
+			case outCh <- StreamEvent{Type: "error", Error: "no response from AI — please try again"}:
+			case <-ctx.Done():
+			}
+			return ""
+		}
+
+		// Detect fabricated tool success: in planning mode the AI sometimes
+		// claims it has added items to the itinerary without ever calling
+		// create_itinerary_items. Inject a one-shot silent correction so the
+		// AI actually calls the tool. The fabricated text is added to the AI
+		// context for continuity but is NOT persisted to chat history (#171).
+		if aiReq.Mode == "planning" && !fabricationRetried && len(toolCalls) == 0 && impliesItineraryCreation(responseText) {
+			fabricationRetried = true
+			slog.Warn("tool loop: fabricated tool success detected — re-prompting",
+				"session_id", sessionID,
+				"iteration", iteration,
+				"response_preview", responseText[:min(len(responseText), 120)],
+			)
+			aiReq.Messages = append(aiReq.Messages,
+				ai.Message{Role: "assistant", Content: responseText},
+				ai.Message{Role: "user", Content: "You described adding items to the itinerary but did not call create_itinerary_items. Call it now with the items you just described."},
+			)
+			fullResponse.Reset()
+			continue
+		}
+
 		assistantMsg := &chatstore.ChatMessage{
 			Role:    "assistant",
 			Content: responseText,
@@ -675,6 +742,41 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 			}
 		}
 	}
+}
+
+// impliesItineraryCreation returns true when the text contains confident
+// past-tense assertions that itinerary items were persisted. Used to detect
+// fabricated tool success: Gemini sometimes claims to have called
+// create_itinerary_items without actually doing so (#171).
+//
+// The phrases are intentionally narrow — they must assert a completed
+// add/save action on "the itinerary" to avoid false positives on normal
+// planning prose ("here are some items you could add…").
+func impliesItineraryCreation(text string) bool {
+	lower := strings.ToLower(text)
+	for _, phrase := range []string{
+		"added to your itinerary",
+		"added to the itinerary",
+		"added them to your itinerary",
+		"added those to your itinerary",
+		"added these to your itinerary",
+		"have been added to your itinerary",
+		"have been added to the itinerary",
+		"saved to your itinerary",
+		"saved to the itinerary",
+		"saved them to your itinerary",
+		"saved those to your itinerary",
+		"saved these to your itinerary",
+		"created your itinerary",
+		"i've already added",
+		"i've put together a",
+		"already been added to your itinerary",
+	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 // lookupExtraTool resolves a per-request tool by name, falling back to a

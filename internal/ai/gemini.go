@@ -344,6 +344,22 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 		// Check finish reason. Gemini uses "STOP" for both normal completion
 		// and tool calls — we distinguish by whether a functionCall was present.
 		if candidate.FinishReason != "" && candidate.FinishReason != "FINISH_REASON_UNSPECIFIED" {
+			slog.Info("gemini stream finished",
+				"finish_reason", candidate.FinishReason,
+				"had_function_call", hadFunctionCall,
+			)
+
+			// MAX_TOKENS means the model was truncated mid-generation. Treat this
+			// as an error so the caller can surface a retry prompt rather than
+			// silently returning an incomplete (possibly empty) response.
+			if candidate.FinishReason == "MAX_TOKENS" {
+				ch <- Event{
+					Type:  EventError,
+					Error: fmt.Errorf("response truncated (MAX_TOKENS) — try a more specific request"),
+				}
+				return
+			}
+
 			stopReason := "end_turn"
 			if hadFunctionCall {
 				stopReason = "tool_use"

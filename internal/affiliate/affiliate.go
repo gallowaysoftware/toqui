@@ -82,10 +82,17 @@ func (b *LinkBuilder) FlightSearchURL(origin, dest, date string) string {
 }
 
 // HotelSearchURL returns a Booking.com hotel search URL with affiliate tracking.
-// city is the destination city name. checkin and checkout are YYYY-MM-DD format.
-func (b *LinkBuilder) HotelSearchURL(city, checkin, checkout string) string {
+// propertyName, if provided, is used as the search string and takes precedence
+// over city — this produces a property-specific deep link for known hotels
+// (#176). When propertyName is empty, the destination city is used instead.
+// checkin and checkout are YYYY-MM-DD format.
+func (b *LinkBuilder) HotelSearchURL(propertyName, city, checkin, checkout string) string {
 	params := url.Values{}
-	params.Set("ss", city)
+	searchStr := propertyName
+	if searchStr == "" {
+		searchStr = city
+	}
+	params.Set("ss", searchStr)
 	if checkin != "" {
 		params.Set("checkin", checkin)
 	}

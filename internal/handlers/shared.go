@@ -49,12 +49,13 @@ type sharedTripResponse struct {
 }
 
 type sharedTripInfo struct {
-	Title              string `json:"title"`
-	Description        string `json:"description,omitempty"`
-	DestinationCountry string `json:"destination_country,omitempty"`
-	Status             string `json:"status"`
-	StartDate          string `json:"start_date,omitempty"`
-	EndDate            string `json:"end_date,omitempty"`
+	Title                string   `json:"title"`
+	Description          string   `json:"description,omitempty"`
+	DestinationCountry   string   `json:"destination_country,omitempty"`
+	DestinationCountries []string `json:"destination_countries,omitempty"`
+	Status               string   `json:"status"`
+	StartDate            string   `json:"start_date,omitempty"`
+	EndDate              string   `json:"end_date,omitempty"`
 }
 
 type sharedItineraryDay struct {
@@ -240,6 +241,9 @@ func buildSharedTripInfo(t *dbgen.Trip) sharedTripInfo {
 	}
 	if t.DestinationCountry.Valid {
 		info.DestinationCountry = t.DestinationCountry.String
+	}
+	if len(t.DestinationCountries) > 0 {
+		info.DestinationCountries = t.DestinationCountries
 	}
 	if t.StartDate.Valid {
 		info.StartDate = t.StartDate.Time.Format("2006-01-02")

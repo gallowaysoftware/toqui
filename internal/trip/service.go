@@ -147,6 +147,31 @@ func (s *Service) SetDestination(ctx context.Context, userID, tripID uuid.UUID, 
 	return nil
 }
 
+// SetDestinations updates the full set of destination countries for a trip
+// (multi-country support, #133). The first entry of countryCodes is also
+// stored as the primary destination_country for backward compatibility with
+// single-country persona resolution. Pass a single-element slice for the
+// usual single-country case.
+func (s *Service) SetDestinations(ctx context.Context, userID, tripID uuid.UUID, countryCodes []string) error {
+	if len(countryCodes) == 0 {
+		return nil
+	}
+	primary := countryCodes[0]
+	result, err := s.queries.UpdateTripDestinations(ctx, dbgen.UpdateTripDestinationsParams{
+		ID:                   tripID,
+		UserID:               userID,
+		DestinationCountries: countryCodes,
+		PrimaryCountry:       primary,
+	})
+	if err != nil {
+		return fmt.Errorf("set destinations: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("trip not found or access denied")
+	}
+	return nil
+}
+
 func (s *Service) Delete(ctx context.Context, userID, tripID uuid.UUID) error {
 	if err := s.queries.DeleteTrip(ctx, dbgen.DeleteTripParams{
 		ID:     tripID,

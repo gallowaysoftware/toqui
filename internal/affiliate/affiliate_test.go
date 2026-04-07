@@ -60,7 +60,7 @@ func TestFlightSearchURL_WithoutAffiliateID(t *testing.T) {
 
 func TestHotelSearchURL_WithAffiliateID(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
-	u := b.HotelSearchURL("Prague", "2026-06-15", "2026-06-20")
+	u := b.HotelSearchURL("", "Prague", "2026-06-15", "2026-06-20")
 
 	if !strings.Contains(u, "booking.com/searchresults.html") {
 		t.Errorf("unexpected URL structure: %s", u)
@@ -81,7 +81,7 @@ func TestHotelSearchURL_WithAffiliateID(t *testing.T) {
 
 func TestHotelSearchURL_WithoutAffiliateID(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	u := b.HotelSearchURL("Prague", "2026-06-15", "2026-06-20")
+	u := b.HotelSearchURL("", "Prague", "2026-06-15", "2026-06-20")
 
 	if !strings.Contains(u, "booking.com/searchresults.html") {
 		t.Errorf("unexpected URL structure: %s", u)
@@ -93,7 +93,7 @@ func TestHotelSearchURL_WithoutAffiliateID(t *testing.T) {
 
 func TestHotelSearchURL_NoDates(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
-	u := b.HotelSearchURL("Tokyo", "", "")
+	u := b.HotelSearchURL("", "Tokyo", "", "")
 
 	if !strings.Contains(u, "ss=Tokyo") {
 		t.Errorf("expected city in URL: %s", u)
@@ -103,6 +103,27 @@ func TestHotelSearchURL_NoDates(t *testing.T) {
 	}
 	if strings.Contains(u, "checkout=") {
 		t.Errorf("should not contain checkout when empty: %s", u)
+	}
+}
+
+func TestHotelSearchURL_WithPropertyName(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
+	u := b.HotelSearchURL("St. Regis Vommuli", "Maldives", "", "")
+
+	// Property name should take precedence over city.
+	if !strings.Contains(u, "ss=St.+Regis+Vommuli") {
+		t.Errorf("expected property name in ss param, got: %s", u)
+	}
+	if strings.Contains(u, "ss=Maldives") {
+		t.Errorf("city should not appear when property name is set: %s", u)
+	}
+}
+
+func TestHotelSearchURL_PropertyNameEmptyFallsBackToCity(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.HotelSearchURL("", "Lisbon", "", "")
+	if !strings.Contains(u, "ss=Lisbon") {
+		t.Errorf("expected city fallback in URL: %s", u)
 	}
 }
 

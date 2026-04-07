@@ -88,11 +88,16 @@ type Trip struct {
 	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Auto-tagged by AI from trip description and chat conversations
 	Themes []string `protobuf:"bytes,10,rep,name=themes,proto3" json:"themes,omitempty"`
-	// Primary destination country (ISO 3166-1 alpha-2) for persona matching
+	// Primary destination country (ISO 3166-1 alpha-2) for persona matching.
+	// Retained for backward compatibility — for multi-country trips this is the
+	// first entry of destination_countries.
 	DestinationCountry string `protobuf:"bytes,11,opt,name=destination_country,json=destinationCountry,proto3" json:"destination_country,omitempty"`
 	IsUnlocked         bool   `protobuf:"varint,12,opt,name=is_unlocked,json=isUnlocked,proto3" json:"is_unlocked,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// All destination countries for multi-country trips (e.g. ["GR", "TR"]).
+	// ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
+	DestinationCountries []string `protobuf:"bytes,13,rep,name=destination_countries,json=destinationCountries,proto3" json:"destination_countries,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Trip) Reset() {
@@ -207,6 +212,13 @@ func (x *Trip) GetIsUnlocked() bool {
 		return x.IsUnlocked
 	}
 	return false
+}
+
+func (x *Trip) GetDestinationCountries() []string {
+	if x != nil {
+		return x.DestinationCountries
+	}
+	return nil
 }
 
 type Itinerary struct {
@@ -1145,7 +1157,7 @@ var File_toqui_v1_trip_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xaf\x03\n" +
+	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xe4\x03\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
@@ -1163,7 +1175,8 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	" \x03(\tR\x06themes\x12/\n" +
 	"\x13destination_country\x18\v \x01(\tR\x12destinationCountry\x12\x1f\n" +
 	"\vis_unlocked\x18\f \x01(\bR\n" +
-	"isUnlocked\"P\n" +
+	"isUnlocked\x123\n" +
+	"\x15destination_countries\x18\r \x03(\tR\x14destinationCountries\"P\n" +
 	"\tItinerary\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12*\n" +
 	"\x04days\x18\x02 \x03(\v2\x16.toqui.v1.ItineraryDayR\x04days\"\x9a\x01\n" +

@@ -176,6 +176,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 	// Look up trip context for persona resolution and system prompt injection
 	var destinationCountry string
+	var destinationCountries []string
 	var tripThemes []string
 	var tripTitle, tripDescription string
 	var tripStartDate, tripEndDate string
@@ -193,6 +194,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				if t.DestinationCountry.Valid {
 					destinationCountry = t.DestinationCountry.String
+				}
+				// Multi-country trips: load all destinations for the system prompt (#133)
+				if len(t.DestinationCountries) > 0 {
+					destinationCountries = t.DestinationCountries
+				} else if destinationCountry != "" {
+					destinationCountries = []string{destinationCountry}
 				}
 				if t.StartDate.Valid {
 					tripStartDate = t.StartDate.Time.Format(dateFormatLong)
@@ -289,6 +296,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		}
 	}
 
+	// personaSwitchCh signals a mid-turn handoff to the chat service so the
+	// expert can answer in the same turn (#175). Buffered so the suggest_expert
+	// callback never blocks; only the most recent switch wins per turn.
+	personaSwitchCh := make(chan *persona.Persona, 1)
+	params.PersonaSwitchCh = personaSwitchCh
+
 	// Suggest expert tool — free users get 3 teaser messages, then upgrade prompt
 	suggestExpertTool := NewSuggestExpertTool(h.chatSvc.Personas(), destinationCountry,
 		func(previous, expert *persona.Persona, handoffMessage string) {
@@ -299,6 +312,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				HandoffMessage: handoffMessage,
 			}
 			mu.Unlock()
+
+			// Notify the chat service to swap the system prompt for the next
+			// tool loop iteration. Non-blocking — if the channel is already
+			// full, the previous switch is overwritten by draining first.
+			select {
+			case personaSwitchCh <- expert:
+			default:
+				<-personaSwitchCh
+				personaSwitchCh <- expert
+			}
 		},
 	)
 
@@ -342,7 +365,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier)
 		params.ExtraTools = append(params.ExtraTools, expertTool)
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
@@ -661,8 +684,8 @@ func sanitizeForPrompt(s string, maxLen int) string {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier) string {
-	if title == "" && description == "" && destinationCountry == "" {
+func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier) string {
+	if title == "" && description == "" && destinationCountry == "" && len(destinationCountries) == 0 {
 		return ""
 	}
 
@@ -679,8 +702,18 @@ func buildTripContext(title, description, destinationCountry, startDate, endDate
 	if description != "" {
 		fmt.Fprintf(&sb, "- Description: %s\n", sanitizeForPrompt(description, 500))
 	}
-	if destinationCountry != "" {
+	// Multi-country trips: list all destinations. Single-country trips fall
+	// back to the legacy single field for the same display (#133).
+	if len(destinationCountries) > 1 {
+		sanitized := make([]string, len(destinationCountries))
+		for i, c := range destinationCountries {
+			sanitized[i] = sanitizeForPrompt(c, 10)
+		}
+		fmt.Fprintf(&sb, "- Destinations: %s\n", strings.Join(sanitized, ", "))
+	} else if destinationCountry != "" {
 		fmt.Fprintf(&sb, "- Destination: %s\n", sanitizeForPrompt(destinationCountry, 100))
+	} else if len(destinationCountries) == 1 {
+		fmt.Fprintf(&sb, "- Destination: %s\n", sanitizeForPrompt(destinationCountries[0], 100))
 	}
 	if startDate != "" && endDate != "" {
 		fmt.Fprintf(&sb, "- Travel dates: %s to %s\n", startDate, endDate)

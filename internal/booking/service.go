@@ -128,6 +128,7 @@ Return a JSON object with these fields:
 
 flight: {"airline":"","flight_number":"","departure_airport":"","arrival_airport":"","departure_terminal":"","arrival_terminal":"","seat":"","cabin_class":"","passengers":[]}
 hotel: {"hotel_name":"","check_in_date":"","check_out_date":"","room_type":"","num_guests":0,"address":"","phone":""}
+  For multi-property bookings (hostels, chains): use a "properties" array instead: {"properties":[{"hotel_name":"","address":"","check_in_date":"","check_out_date":"","room_type":"","nights":0,"rate_per_night":0}]}
 car_rental: {"company":"","pickup_location":"","dropoff_location":"","pickup_time":"","dropoff_time":"","car_type":"","driver_name":""}
 train: {"operator":"","train_number":"","departure_station":"","arrival_station":"","seat":"","car_number":"","class":""}
 tour: {"tour_operator":"","tour_name":"","num_participants":0,"meeting_point":"","stops":[{"name":"","location":"","duration":"","notes":""}]}
@@ -138,13 +139,11 @@ Only include fields that are present in the source text. Return ONLY valid JSON,
 		Messages: []ai.Message{
 			{Role: "user", Content: prompt},
 		},
-		// 2048 was getting truncated on round-trip flight confirmations where
-		// the JSON payload includes two flight legs plus passengers (see
-		// toqui-backend#150 R-06 re-run — "unexpected end of JSON input" on
-		// 4 consecutive attempts). 4096 gives comfortable headroom for the
-		// biggest artifacts we currently parse without incurring meaningful
-		// extra cost.
-		MaxTokens:   4096,
+		// 4096 handled most single-property artifacts, but multi-stop hostel
+		// bookings (3+ properties) produce larger JSON and were hitting MAX_TOKENS
+		// (see toqui-backend#169). 16384 gives headroom for the largest multi-
+		// property artifacts without breaking single-property cost economics.
+		MaxTokens:   16384,
 		Temperature: 0,
 	}
 

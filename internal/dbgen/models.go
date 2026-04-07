@@ -164,22 +164,23 @@ type Theme struct {
 }
 
 type Trip struct {
-	ID                 uuid.UUID          `json:"id"`
-	UserID             uuid.UUID          `json:"user_id"`
-	Title              string             `json:"title"`
-	Description        pgtype.Text        `json:"description"`
-	Status             string             `json:"status"`
-	StartDate          pgtype.Date        `json:"start_date"`
-	EndDate            pgtype.Date        `json:"end_date"`
-	CreatedAt          time.Time          `json:"created_at"`
-	UpdatedAt          time.Time          `json:"updated_at"`
-	DestinationCountry pgtype.Text        `json:"destination_country"`
-	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
-	ArchiveAfter       pgtype.Timestamptz `json:"archive_after"`
-	ArchivedAt         pgtype.Timestamptz `json:"archived_at"`
-	ShareToken         pgtype.Text        `json:"share_token"`
-	TrialStartedAt     pgtype.Timestamptz `json:"trial_started_at"`
-	TrialEndsAt        pgtype.Timestamptz `json:"trial_ends_at"`
+	ID                   uuid.UUID          `json:"id"`
+	UserID               uuid.UUID          `json:"user_id"`
+	Title                string             `json:"title"`
+	Description          pgtype.Text        `json:"description"`
+	Status               string             `json:"status"`
+	StartDate            pgtype.Date        `json:"start_date"`
+	EndDate              pgtype.Date        `json:"end_date"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
+	DestinationCountry   pgtype.Text        `json:"destination_country"`
+	CompletedAt          pgtype.Timestamptz `json:"completed_at"`
+	ArchiveAfter         pgtype.Timestamptz `json:"archive_after"`
+	ArchivedAt           pgtype.Timestamptz `json:"archived_at"`
+	ShareToken           pgtype.Text        `json:"share_token"`
+	TrialStartedAt       pgtype.Timestamptz `json:"trial_started_at"`
+	TrialEndsAt          pgtype.Timestamptz `json:"trial_ends_at"`
+	DestinationCountries []string           `json:"destination_countries"`
 }
 
 type TripCollaborator struct {
