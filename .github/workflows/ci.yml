@@ -152,7 +152,7 @@ jobs:
             --region=northamerica-northeast1 \
             --project=toqui-staging \
             --service-account=toqui-run-toqui-backend@toqui-staging.iam.gserviceaccount.com \
-            --set-cloudsql-instances=toqui-staging:northamerica-northeast1:toqui-db \
+            --set-cloudsql-instances=toqui-staging:northamerica-northeast1:toqui-staging-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
             --command="/migrate" \
             --args="-direction,up" \
@@ -189,7 +189,7 @@ jobs:
 
       - name: Build and push
         run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
