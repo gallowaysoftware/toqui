@@ -173,7 +173,7 @@ jobs:
     environment: production
 
     env:
-      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
+      IMAGE: us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
 
     steps:
       - uses: actions/checkout@v5
@@ -189,7 +189,7 @@ jobs:
 
       - name: Build and push
         run: |
-          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
