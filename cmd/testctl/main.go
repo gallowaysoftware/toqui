@@ -1,9 +1,13 @@
-// testctl creates test users and generates JWT tokens for agentic testing.
+// testctl manages agentic test users and run artifacts.
 //
 // Usage:
 //
 //	go run ./cmd/testctl create-user --name "Alice" --email "alice@toqui-test.local"
 //	go run ./cmd/testctl cleanup-user --user-id "uuid"
+//	go run ./cmd/testctl diff-runs --from run-5.json --to run-6.json
+//	go run ./cmd/testctl baseline-compare --baselines tests/agentic/baselines --run run-6.json
+//	go run ./cmd/testctl validate-report --file report.json
+//	go run ./cmd/testctl run-persona --id R-02 --token "eyJ..." --expected-email "alice@..."
 package main
 
 import (
@@ -26,8 +30,25 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: testctl <create-user|cleanup-user> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: testctl <create-user|cleanup-user|diff-runs|baseline-compare|validate-report|run-persona> [flags]")
 		os.Exit(1)
+	}
+
+	// Pure-file commands that don't need a database connection run before
+	// config loading so they work offline without a DATABASE_URL.
+	switch os.Args[1] {
+	case "diff-runs":
+		diffRuns(os.Args[2:])
+		return
+	case "baseline-compare":
+		baselineCompare(os.Args[2:])
+		return
+	case "validate-report":
+		validateReport(os.Args[2:])
+		return
+	case "run-persona":
+		runPersonaPrompt(os.Args[2:])
+		return
 	}
 
 	cfg, err := config.Load()

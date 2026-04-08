@@ -294,8 +294,47 @@ curl -s http://$HOST/healthz
 
 Follow this sequence. **After EVERY write operation, do a read to verify state.**
 
-### Step 1: Verify Auth
-Call `GetCurrentUser`. Confirm your token works and note user details.
+### Step 1: Verify Auth AND Identity (MANDATORY FAIL-FAST)
+
+Call `GetCurrentUser` with your token. You MUST do this as the very first API call, BEFORE any other RPC.
+
+```bash
+curl -s -X POST http://$HOST/toqui.v1.AuthService/GetCurrentUser \
+  -H "Content-Type: application/json" -H "Origin: $ORIGIN" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{}'
+```
+
+**Identity assertion (critical — catches orchestrator mis-wiring):**
+
+If the orchestrator provided you with an `expected_email` in your task instructions, you MUST verify that the email returned by `GetCurrentUser` matches it exactly. If it does not match, immediately abort the run and return an error `json-report` with a single `bugs[]` entry of severity P0 and title `"IDENTITY_MISMATCH"`. Do NOT proceed with any further test steps — any bugs you'd find would be contaminated by wrong-user state.
+
+Example abort report:
+
+````
+```json-report
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake",
+  "status": "ABORTED_IDENTITY_MISMATCH",
+  "completed_steps": ["auth"],
+  "bugs": [{
+    "severity": "P0",
+    "title": "IDENTITY_MISMATCH",
+    "description": "Token resolved to email X but expected Y",
+    "expected": "Y",
+    "actual": "X"
+  }],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {"overall_score": 0, "trip_creation_score": 0, "itinerary_quality_score": 0, "persona_handoff_score": 0, "booking_parsing_score": 0, "companion_mode_score": 0, "would_use_again": false, "narrative": "Aborted at step 1 due to token/persona mismatch."},
+  "feature_coverage": []
+}
+```
+````
+
+If identity matches, record user details and proceed to step 2.
 
 ### Step 2: Selection Mode — Create Your Trip
 Send a message in `CHAT_MODE_SELECTION` describing the trip from your persona. Parse the stream for:
@@ -359,59 +398,74 @@ Note: companion responses should be more concise than planning responses.
 
 ## Report Format
 
-**CRITICAL**: At the end, return this exact JSON structure wrapped in a `json-report` code block.
+**CRITICAL**: At the end of your run you MUST emit a single `json-report` code block whose contents validate against `tests/agentic/report-schema.json`. The orchestrator rejects invalid reports and will re-prompt you to fix them, so get it right on the first pass.
+
+**Hard rules:**
+- Exactly one ` ```json-report ` fenced block per response. Do NOT wrap it in other code fences, do NOT prefix or suffix it with prose inside the fence.
+- `persona_id` MUST match the ID in your task instructions (e.g. `R-02`, `N-13`) and MUST satisfy the regex `^[RN]-[0-9]{2}$`.
+- `status` MUST be one of `COMPLETED`, `PARTIAL`, `ABORTED_IDENTITY_MISMATCH`, `ABORTED_SERVER_DOWN`, `ABORTED_BUDGET_EXHAUSTED`, `ABORTED_OTHER`.
+- All usefulness scores are integers `0..5`. Use `0` for dimensions the persona did not exercise (e.g. `booking_parsing_score: 0` for a persona that never ingested bookings) — do NOT use `null`, strings, or omit the field.
+- `would_use_again` is a boolean, not a string.
+- All required top-level keys MUST be present even when empty: `bugs`, `ux_issues`, `ai_behavior_issues`, `tool_failures`, `feature_coverage` are arrays that must be `[]` when you found nothing.
+
+**Schema location:** `tests/agentic/report-schema.json`. You can read it from disk if you need to cross-check field names.
+
+**Canonical empty-but-valid report:**
 
 ````
 ```json-report
 {
-  "persona": "Your persona name",
-  "trip_destination": "Where you planned to go",
-  "completed_steps": ["auth", "selection", "planning", "bookings", "activate", "companion", "sharing", "history", "usage", "complete"],
-  "bugs": [
-    {
-      "severity": "P0|P1|P2",
-      "title": "Short bug title",
-      "description": "What happened",
-      "steps_to_reproduce": "What you did",
-      "expected": "What should have happened",
-      "actual": "What actually happened",
-      "api_command": "The exact command that triggered the bug"
-    }
-  ],
-  "ux_issues": [
-    {
-      "description": "What felt wrong or confusing as a user",
-      "suggestion": "How it could be better"
-    }
-  ],
-  "ai_behavior_issues": [
-    {
-      "issue": "What the AI did wrong or poorly",
-      "context": "What you asked",
-      "severity": "P0|P1|P2"
-    }
-  ],
-  "tool_failures": [
-    {
-      "tool": "Tool name",
-      "input": "What was sent",
-      "error": "What went wrong"
-    }
-  ],
+  "persona_id": "R-02",
+  "persona_name": "The Chens — Family Costa Rica",
+  "status": "COMPLETED",
+  "trip_destination": "Costa Rica",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
   "usefulness_evaluation": {
-    "overall_score": 4,
-    "trip_creation_score": 4,
-    "itinerary_quality_score": 3,
-    "persona_handoff_score": 4,
-    "booking_parsing_score": 3,
-    "companion_mode_score": 3,
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
     "would_use_again": true,
-    "narrative": "2-3 sentences about your overall experience. Was the app useful for YOUR specific use case? Best part? Most frustrating?"
+    "narrative": "One-to-three sentences about the overall experience."
   },
-  "feature_coverage": ["selection", "planning", "companion", "bookings", "sharing", "history", "usage", "itinerary_verify", "personas"]
+  "feature_coverage": ["selection", "planning", "companion"]
 }
 ```
 ````
+
+**Populated field details:**
+
+```
+bugs[]:
+  severity: "P0" | "P1" | "P2"    (required)
+  title: short phrase              (required)
+  description: what happened       (required)
+  steps_to_reproduce: optional
+  expected: optional
+  actual: optional
+  api_command: optional
+
+ux_issues[]:
+  description: required
+  severity: optional
+  suggestion: optional
+
+ai_behavior_issues[]:
+  issue: required
+  context: optional
+  severity: "P0" | "P1" | "P2" (optional)
+
+tool_failures[]:
+  tool: required
+  input: optional
+  error: optional
+```
 
 **Severity guide:**
 - **P0** — Blocking: crashes, data loss, auth broken, can't complete core flow
