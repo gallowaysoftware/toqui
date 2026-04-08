@@ -85,17 +85,45 @@ func (s *Store) CreateSession(ctx context.Context, userID, tripID, mode string) 
 	return session, nil
 }
 
-func (s *Store) GetSession(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
+// getSessionRaw loads a session document without applying any read-time
+// fallbacks. Used internally by MoveSessionToTrip, which re-writes the
+// struct to a new Firestore path — if it used the public GetSession, the
+// backfill would persist the synthesised CreatedAt to the destination doc.
+func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
 	doc, err := s.sessionsCol(userID, tripID).Doc(sessionID).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get session: %w", err)
 	}
-
 	var session ChatSession
 	if err := doc.DataTo(&session); err != nil {
 		return nil, fmt.Errorf("decode session: %w", err)
 	}
 	return &session, nil
+}
+
+func (s *Store) GetSession(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
+	session, err := s.getSessionRaw(ctx, userID, tripID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	backfillCreatedAt(session)
+	return session, nil
+}
+
+// backfillCreatedAt replaces a zero-valued CreatedAt with LastMessageAt so
+// session docs that were created implicitly by AddMessage (without going
+// through CreateSession) don't return 0001-01-01T00:00:00Z to clients
+// (Run 5 R-03/R-16 P2). This is a read-time fallback applied by the public
+// GetSession and ListSessions functions. Code paths that write the struct
+// back to Firestore (MoveSessionToTrip) MUST use getSessionRaw instead so
+// the synthesised timestamp never reaches persistent storage.
+func backfillCreatedAt(session *ChatSession) {
+	if session == nil {
+		return
+	}
+	if session.CreatedAt.IsZero() && !session.LastMessageAt.IsZero() {
+		session.CreatedAt = session.LastMessageAt
+	}
 }
 
 // DeleteSession deletes a single session document (no messages).
@@ -137,6 +165,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 		if err := doc.DataTo(&session); err != nil {
 			return nil, fmt.Errorf("decode session: %w", err)
 		}
+		backfillCreatedAt(&session)
 		sessions = append(sessions, &session)
 	}
 	return sessions, nil
@@ -153,9 +182,14 @@ func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string
 
 	batch := s.client.Batch()
 	batch.Set(s.messagesCol(userID, tripID, sessionID).Doc(msg.ID), msg)
-	// Upsert session with core identity fields. MergeAll ensures existing
-	// fields (like the original createdAt from CreateSession) are preserved,
-	// while new fields are added if the doc was created implicitly.
+	// Upsert session with core identity fields. MergeAll preserves existing
+	// fields not named in the map, including createdAt from a prior
+	// CreateSession. We deliberately do NOT write createdAt here — if the
+	// session doc was created implicitly (client passed an unknown session
+	// ID), the persisted doc will have an absent createdAt and the read-side
+	// backfillCreatedAt() will substitute lastMessageAt for it. Writing
+	// createdAt on every AddMessage would silently clobber the real
+	// creation time on the happy path (Run 5 R-03/R-16 P2).
 	sessionRef := s.sessionsCol(userID, tripID).Doc(sessionID)
 	batch.Set(sessionRef, map[string]interface{}{
 		"id":            sessionID,
@@ -202,8 +236,9 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 // may exist at both paths — this is safe since the new path takes precedence
 // for ListSessions queries.
 func (s *Store) MoveSessionToTrip(ctx context.Context, userID, fromTripID, toTripID, sessionID string) error {
-	// Load the session and all its messages from the source path.
-	session, err := s.GetSession(ctx, userID, fromTripID, sessionID)
+	// Load the raw session (without read-time createdAt backfill) so we
+	// don't persist a synthesised timestamp to the destination doc.
+	session, err := s.getSessionRaw(ctx, userID, fromTripID, sessionID)
 	if err != nil {
 		return fmt.Errorf("get session for move: %w", err)
 	}

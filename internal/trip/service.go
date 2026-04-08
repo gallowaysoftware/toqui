@@ -3,6 +3,8 @@ package trip
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -13,6 +15,18 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
+
+// ErrInvalidStatusTransition is returned by Update and CreateWithStatus when
+// the requested status change is not allowed by the trip state machine.
+// Handlers should map this to connect.CodeFailedPrecondition so clients can
+// distinguish validation failures from server errors (Run 5 R-07/N-08 P2).
+var ErrInvalidStatusTransition = errors.New("invalid trip status transition")
+
+// ErrInvalidInitialStatus is returned by CreateWithStatus when the caller
+// requests an initial status that is not permitted at creation time (e.g.
+// TRIP_STATUS_COMPLETED). Handlers should map this to
+// connect.CodeInvalidArgument.
+var ErrInvalidInitialStatus = errors.New("invalid initial trip status")
 
 // shareTokenAlphabet is the character set for generating share tokens.
 const shareTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -57,7 +71,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title, descripti
 func (s *Service) CreateWithStatus(ctx context.Context, userID uuid.UUID, title, description string, startDate, endDate *time.Time, status string) (*dbgen.Trip, error) {
 	// Validate BEFORE doing any writes so a bad status never reaches the DB.
 	if status != "" && status != "planning" && !isValidInitialStatus(status) {
-		return nil, fmt.Errorf("invalid initial status: %q", status)
+		return nil, fmt.Errorf("%w: %q", ErrInvalidInitialStatus, status)
 	}
 
 	// Fast path: default status means no second write is needed.
@@ -192,7 +206,7 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 			return nil, fmt.Errorf("load trip for status check: %w", err)
 		}
 		if !isValidStatusTransition(current.Status, status) {
-			return nil, fmt.Errorf("invalid status transition: %s → %s", current.Status, status)
+			return nil, fmt.Errorf("%w: %s → %s", ErrInvalidStatusTransition, current.Status, status)
 		}
 	}
 	trip, err := s.queries.UpdateTrip(ctx, dbgen.UpdateTripParams{
@@ -360,12 +374,21 @@ func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.I
 // ReplaceItineraryItem describes a single item in a bulk itinerary rewrite.
 // This is a minimal projection of the proto ItineraryItem that only carries
 // the fields we actually persist through the sqlc query path.
+//
+// DaySummary and DayDate are day-level fields from the proto Itinerary.
+// The itinerary_items table has no dedicated day-level row, so these values
+// are stored in the items' metadata JSONB under the "day_summary" and
+// "day_date" keys and reconstructed by itineraryToProto() at read time.
+// This avoids a schema migration while making the UpdateItinerary RPC
+// round-trip day-level data correctly (Run 5 R-07/N-05 P2).
 type ReplaceItineraryItem struct {
 	DayNumber   int
 	OrderInDay  int
 	Type        string
 	Title       string
 	Description string
+	DaySummary  string
+	DayDate     string
 }
 
 // ReplaceItinerary deletes all existing itinerary items for a trip and
@@ -389,6 +412,22 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 	}
 
 	for _, item := range items {
+		// Encode day-level summary/date in the item metadata JSONB so
+		// UpdateItinerary round-trips them without requiring a new table
+		// (Run 5 R-07/N-05 P2). itineraryToProto reads them back.
+		var metadata []byte
+		if item.DaySummary != "" || item.DayDate != "" {
+			md := make(map[string]string, 2)
+			if item.DaySummary != "" {
+				md["day_summary"] = item.DaySummary
+			}
+			if item.DayDate != "" {
+				md["day_date"] = item.DayDate
+			}
+			if b, err := json.Marshal(md); err == nil {
+				metadata = b
+			}
+		}
 		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
 			TripID:      tripID,
 			DayNumber:   int4FromInt(item.DayNumber),
@@ -396,6 +435,7 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 			Type:        textFromString(item.Type),
 			Title:       textFromString(item.Title),
 			Description: textFromString(item.Description),
+			Metadata:    metadata,
 		}); err != nil {
 			return fmt.Errorf("insert item %q: %w", item.Title, err)
 		}

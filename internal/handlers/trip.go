@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -65,6 +66,9 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 	}
 	t, err := h.tripSvc.CreateWithStatus(ctx, userID, req.Msg.Title, req.Msg.Description, startDate, endDate, initialStatus)
 	if err != nil {
+		if errors.Is(err, trip.ErrInvalidInitialStatus) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, internalError(ctx, "trip operation", err)
 	}
 
@@ -199,6 +203,9 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 
 	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate)
 	if err != nil {
+		if errors.Is(err, trip.ErrInvalidStatusTransition) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
 		return nil, internalError(ctx, "trip operation", err)
 	}
 
@@ -312,6 +319,8 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 				Type:        item.GetType(),
 				Title:       item.GetTitle(),
 				Description: item.GetDescription(),
+				DaySummary:  day.GetSummary(),
+				DayDate:     day.GetDate(),
 			})
 		}
 	}
@@ -404,14 +413,45 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem, coordsMap map[
 
 		day, ok := dayMap[dayNum]
 		if !ok {
+			// Default summary is "Day N". If UpdateItinerary stashed a
+			// custom summary or date on the item's metadata JSONB we
+			// prefer those (Run 5 R-07/N-05 P2). The first item
+			// encountered for this day wins — all items for the same day
+			// should carry the same day-level metadata, and the sqlc
+			// ListItineraryItemsByTrip query orders by day_number so
+			// we're reading them grouped.
+			//
+			// Decode into json.RawMessage so sibling keys of non-string
+			// types (numbers, arrays, objects added by future metadata
+			// writers) don't kill the whole decode and blank out the
+			// summary for every item on this day.
 			summary := fmt.Sprintf("Day %d", dayNum)
 			if dayNum == 0 {
 				summary = "Unscheduled"
+			}
+			date := ""
+			if len(item.Metadata) > 0 {
+				var md map[string]json.RawMessage
+				if err := json.Unmarshal(item.Metadata, &md); err == nil {
+					if raw, ok := md["day_summary"]; ok {
+						var v string
+						if json.Unmarshal(raw, &v) == nil && v != "" {
+							summary = v
+						}
+					}
+					if raw, ok := md["day_date"]; ok {
+						var v string
+						if json.Unmarshal(raw, &v) == nil && v != "" {
+							date = v
+						}
+					}
+				}
 			}
 			day = &toquiv1.ItineraryDay{
 				Id:        uuid.New().String(),
 				DayNumber: dayNum,
 				Summary:   summary,
+				Date:      date,
 			}
 			dayMap[dayNum] = day
 		}

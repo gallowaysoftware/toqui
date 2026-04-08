@@ -405,12 +405,19 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
 
-		// Inject itinerary creation tool in both planning and companion mode.
-		// In companion mode the AI should only call this when the user explicitly
-		// asks to add something to their itinerary (covered by system prompt),
-		// but the tool MUST be registered so the call doesn't fail with
-		// "unknown tool" and trigger a retry/apology loop (Run 4 N-10 P1).
-		if mode == "planning" || mode == "companion" {
+		// Inject itinerary creation tool.
+		//
+		// Planning mode: the real tool that actually persists items. Only
+		// registered when tripID parses — the tool needs a target trip to
+		// write to.
+		//
+		// Companion mode: a STUB tool that always declines. This prevents
+		// the AI from hallucinating tool-name errors (Run 4 N-10) AND
+		// prevents the real tool from being called proactively on info
+		// queries (Run 5 N-01, N-10 — "what do I do first?" silently added
+		// items to the itinerary). The stub needs no tripID so we register
+		// it unconditionally for companion mode.
+		if mode == "planning" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 				itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()
@@ -420,6 +427,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					WithAnalytics(h.analytics, userID.String())
 				params.ExtraTools = append(params.ExtraTools, itineraryTool)
 			}
+		}
+		if mode == "companion" {
+			params.ExtraTools = append(params.ExtraTools, NewCompanionItineraryStub())
 		}
 
 		// Companion mode: inject nearby_places tool with user's cached location

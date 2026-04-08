@@ -280,6 +280,28 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	outCh := make(chan StreamEvent, 64)
 	go func() {
 		defer close(outCh)
+		// Panic recovery: any panic in the AI provider, tool execution, or
+		// downstream persistence must NOT crash the server goroutine silently.
+		// Without this recover, a panic terminates the goroutine without
+		// closing the stream cleanly, which surfaces to the client as a
+		// mid-stream RST_STREAM INTERNAL_ERROR (Run 5 N-05/N-06/N-10).
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("chat goroutine panic recovered",
+					"panic", fmt.Sprintf("%v", r),
+					"user_id", params.UserID.String(),
+					"session_id", sessionID,
+				)
+				// Best-effort: emit an error event so the handler's
+				// stream.Send can relay it to the client before the
+				// deferred close(outCh) fires.
+				select {
+				case outCh <- StreamEvent{Type: "error", Error: "internal server error — please try again"}:
+				default:
+					// Channel full or already closed; nothing to do.
+				}
+			}
+		}()
 		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID, params.PersonaSwitchCh, buildPrompt)
 
 		// Clean up on AI failure: if the AI produced no response (e.g., 429,
@@ -367,7 +389,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		)
 		eventCh, err := s.provider.ChatStream(ctx, aiReq)
 		if err != nil {
-			outCh <- StreamEvent{Type: "error", Error: fmt.Sprintf("start chat stream: %v", err)}
+			sendOrDrop(outCh, ctx, StreamEvent{Type: "error", Error: fmt.Sprintf("start chat stream: %v", err)})
 			return ""
 		}
 
@@ -391,7 +413,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 
 		if streamErr != nil {
-			outCh <- StreamEvent{Type: "error", Error: streamErr.Error()}
+			sendOrDrop(outCh, ctx, StreamEvent{Type: "error", Error: streamErr.Error()})
 			return ""
 		}
 
@@ -457,10 +479,27 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				})
 			}
 
-			// Persist intermediate messages so history reconstruction includes tool data
+			// Persist intermediate messages so history reconstruction includes
+			// the tool_call/tool_result pairing on subsequent turns.
+			//
+			// Content handling is provider-specific:
+			//  - Gemini re-emits the pre-tool text in the continuation turn,
+			//    so storing turnText here creates a duplicate in
+			//    GetChatHistory (Run 5 N-01 P2). We store empty content and
+			//    rely on the final message (via fullResponse) to carry the
+			//    combined text. isToolLoopIntermediate() then filters this
+			//    empty-content intermediate out of the user-facing history.
+			//  - Claude does NOT re-emit. The Reset() at the top of each
+			//    iteration wipes fullResponse, so the pre-tool text only
+			//    survives if we store it here. In that case we keep turnText
+			//    and let it render as a separate assistant turn.
+			intermediateContent := ""
+			if s.provider.Name() != "gemini" {
+				intermediateContent = turnText
+			}
 			storedAssistant := &chatstore.ChatMessage{
 				Role:    "assistant",
-				Content: turnText,
+				Content: intermediateContent,
 			}
 			for _, tc := range toolCalls {
 				storedAssistant.ToolCalls = append(storedAssistant.ToolCalls, chatstore.StoredToolCall{
@@ -510,19 +549,28 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 		// Detect fabricated tool success: in planning mode the AI sometimes
 		// claims it has added items to the itinerary without ever calling
-		// create_itinerary_items. Inject a one-shot silent correction so the
-		// AI actually calls the tool. The fabricated text is added to the AI
-		// context for continuity but is NOT persisted to chat history (#171).
-		if aiReq.Mode == "planning" && !fabricationRetried && len(toolCalls) == 0 && impliesItineraryCreation(responseText) {
+		// create_itinerary_items (#171, Run 5 R-02/R-11/N-06). Check whether
+		// create_itinerary_items specifically was called — the AI may have
+		// called OTHER tools (web_search, recommend_booking) in the same turn
+		// and still fabricated the itinerary-creation claim.
+		calledCreateItinerary := false
+		for _, tc := range toolCalls {
+			if strings.Contains(strings.ToLower(tc.Name), "itinerary") {
+				calledCreateItinerary = true
+				break
+			}
+		}
+		if aiReq.Mode == "planning" && !fabricationRetried && !calledCreateItinerary && impliesItineraryCreation(responseText) {
 			fabricationRetried = true
 			slog.Warn("tool loop: fabricated tool success detected — re-prompting",
 				"session_id", sessionID,
 				"iteration", iteration,
+				"other_tool_calls", len(toolCalls),
 				"response_preview", responseText[:min(len(responseText), 120)],
 			)
 			aiReq.Messages = append(aiReq.Messages,
 				ai.Message{Role: "assistant", Content: responseText},
-				ai.Message{Role: "user", Content: "You described adding items to the itinerary but did not call create_itinerary_items. Call it now with the items you just described."},
+				ai.Message{Role: "user", Content: "You described adding items to the itinerary but did not call create_itinerary_items. Call it now — pass the exact items you just described as a structured list. Do not reply with text; call the tool."},
 			)
 			fullResponse.Reset()
 			continue
@@ -536,12 +584,12 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			slog.Error("failed to store assistant message", "error", err)
 		}
 
-		outCh <- StreamEvent{
+		sendOrDrop(outCh, ctx, StreamEvent{
 			Type:      "message_complete",
 			Text:      responseText,
 			SessionID: sessionID,
 			MessageID: assistantMsg.ID,
-		}
+		})
 
 		// Log usage with environment label for cost tracking.
 		s.logUsage(ctx, userID, aiReq.ModelTier, iteration+1, totalInputTokens, totalOutputTokens)
@@ -573,15 +621,28 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		slog.Error("failed to store assistant message", "error", err)
 	}
 
-	outCh <- StreamEvent{
+	sendOrDrop(outCh, ctx, StreamEvent{
 		Type:      "message_complete",
 		Text:      responseText,
 		SessionID: sessionID,
 		MessageID: assistantMsg.ID,
-	}
+	})
 
 	s.logUsage(ctx, userID, aiReq.ModelTier, maxToolLoopIterations, totalInputTokens, totalOutputTokens)
 	return responseText
+}
+
+// sendOrDrop sends a stream event without ever blocking on a dead channel.
+// If the handler has already returned (ctx cancelled) the event is silently
+// dropped — the client has disconnected and won't see it anyway. This
+// prevents the goroutine from hanging indefinitely on `outCh <- ...` when
+// the buffer is full and no one is reading, which was a suspected cause of
+// the Run 5 RST_STREAM INTERNAL_ERROR reports.
+func sendOrDrop(outCh chan<- StreamEvent, ctx context.Context, event StreamEvent) {
+	select {
+	case outCh <- event:
+	case <-ctx.Done():
+	}
 }
 
 // estimateCostUSD returns the estimated cost in USD for a request based on
@@ -771,30 +832,71 @@ func (s *Service) processOneTurn(ctx context.Context, eventCh <-chan ai.Event, o
 // impliesItineraryCreation returns true when the text contains confident
 // past-tense assertions that itinerary items were persisted. Used to detect
 // fabricated tool success: Gemini sometimes claims to have called
-// create_itinerary_items without actually doing so (#171).
+// create_itinerary_items without actually doing so (#171, Run 5 R-02/R-11/N-06).
 //
-// The phrases are intentionally narrow — they must assert a completed
-// add/save action on "the itinerary" to avoid false positives on normal
-// planning prose ("here are some items you could add…").
+// The phrase list is intentionally broad: any future-proof, past-tense, or
+// confident claim that the itinerary was updated must be caught. Prefer false
+// positives (which harmlessly nudge the AI to actually call the tool) over
+// false negatives (which leak "hallucinated success" to the user).
 func impliesItineraryCreation(text string) bool {
 	lower := strings.ToLower(text)
 	for _, phrase := range []string{
+		// Explicit past-tense "added" claims
 		"added to your itinerary",
 		"added to the itinerary",
 		"added them to your itinerary",
 		"added those to your itinerary",
 		"added these to your itinerary",
+		"added it to your itinerary",
 		"have been added to your itinerary",
 		"have been added to the itinerary",
+		"has been added to your itinerary",
+		"already been added to your itinerary",
+		"now added to your itinerary",
+		"now in your itinerary",
+		"now on your itinerary",
+
+		// "saved" variants
 		"saved to your itinerary",
 		"saved to the itinerary",
 		"saved them to your itinerary",
 		"saved those to your itinerary",
 		"saved these to your itinerary",
+		"saved it to your itinerary",
+
+		// "officially" / "properly" framing (Run 5 R-02/R-11 phrasings)
+		"officially added to your",
+		"officially in your itinerary",
+		"officially on your itinerary",
+		"officially part of your",
+		"properly added to your",
+		"properly in your itinerary",
+		"locked in for your trip",
+		"locked into your itinerary",
+		"locked into your trip",
+
+		// "created" / "built" claims
 		"created your itinerary",
+		"built your itinerary",
+		"built out your itinerary",
 		"i've already added",
 		"i've put together a",
-		"already been added to your itinerary",
+		"i've added",
+		"i've saved",
+		"i've added them",
+		"i've added these",
+		"i've added those",
+
+		// "updated" claims
+		"updated your itinerary",
+		"updated the itinerary with",
+
+		// Generic "your itinerary now has/includes" assertions
+		"your itinerary now has",
+		"your itinerary now includes",
+		"your itinerary now contains",
+		"your trip plan now has",
+		"your trip plan now includes",
 	} {
 		if strings.Contains(lower, phrase) {
 			return true
@@ -829,9 +931,17 @@ func (s *Service) syntheticCacheResponse(ctx context.Context, cachedText string,
 	outCh := make(chan StreamEvent, 4)
 	go func() {
 		defer close(outCh)
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("cache response goroutine panic recovered",
+					"panic", fmt.Sprintf("%v", r),
+					"session_id", sessionID,
+				)
+			}
+		}()
 
 		// Emit the full text as a single delta (no need to chunk for cached responses).
-		outCh <- StreamEvent{Type: "text_delta", Text: cachedText}
+		sendOrDrop(outCh, ctx, StreamEvent{Type: "text_delta", Text: cachedText})
 
 		// Store the assistant message.
 		assistantMsg := &chatstore.ChatMessage{
@@ -842,12 +952,12 @@ func (s *Service) syntheticCacheResponse(ctx context.Context, cachedText string,
 			slog.Error("failed to store cached assistant message", "error", err)
 		}
 
-		outCh <- StreamEvent{
+		sendOrDrop(outCh, ctx, StreamEvent{
 			Type:      "message_complete",
 			Text:      cachedText,
 			SessionID: sessionID,
 			MessageID: assistantMsg.ID,
-		}
+		})
 	}()
 	return outCh
 }

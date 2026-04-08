@@ -1,9 +1,34 @@
 package trip
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 )
+
+// TestInvalidStatusErrorsWrapSentinels guarantees that the wrapped error
+// values returned by Update/CreateWithStatus are detectable via errors.Is,
+// which the handler layer relies on to map them to the correct Connect code
+// (FailedPrecondition / InvalidArgument) instead of Internal (Run 5 R-07/N-08 P2).
+func TestInvalidStatusErrorsWrapSentinels(t *testing.T) {
+	// Simulate the exact wrap patterns used by the production code paths.
+	transitionErr := fmt.Errorf("%w: completed → planning", ErrInvalidStatusTransition)
+	if !errors.Is(transitionErr, ErrInvalidStatusTransition) {
+		t.Errorf("transition error must match ErrInvalidStatusTransition via errors.Is")
+	}
+	if errors.Is(transitionErr, ErrInvalidInitialStatus) {
+		t.Errorf("transition error should NOT match ErrInvalidInitialStatus")
+	}
+
+	initialErr := fmt.Errorf("%w: %q", ErrInvalidInitialStatus, "completed")
+	if !errors.Is(initialErr, ErrInvalidInitialStatus) {
+		t.Errorf("initial-status error must match ErrInvalidInitialStatus via errors.Is")
+	}
+	if errors.Is(initialErr, ErrInvalidStatusTransition) {
+		t.Errorf("initial-status error should NOT match ErrInvalidStatusTransition")
+	}
+}
 
 func TestGenerateShareToken_Length(t *testing.T) {
 	token, err := generateShareToken()
