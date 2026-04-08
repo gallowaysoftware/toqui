@@ -192,13 +192,20 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 
 	if len(created) == 0 {
 		// Differentiate the failure modes so the AI can recover instead of
-		// blindly retrying with the same payload (#183).
+		// blindly retrying with the same payload (#183, Run 4 R-20).
+		//
+		// For the all-duplicates case we specifically return a SUCCESS-shaped
+		// response (no "error" key, created_count: 0) because the AI interprets
+		// any JSON with an "error" field as a failure and retries — which
+		// produced the Run 4 retry-loop regression. Telling the AI "these
+		// items are already present" is a success outcome, not an error.
 		switch {
 		case skipped > 0 && len(failed) == 0:
 			return json.Marshal(map[string]any{
-				"error":         "all_duplicates",
-				"message":       fmt.Sprintf("All %d items already exist on the requested days. No new items were added — the user already has these. Tell them the items are already in their itinerary; do NOT call this tool again with the same items.", skipped),
+				"status":        "already_exists",
+				"created_count": 0,
 				"skipped_count": skipped,
+				"message":       fmt.Sprintf("All %d requested items are already in the user's itinerary on the specified days. No new items were needed — just confirm to the user that these items are already scheduled. Do NOT call this tool again with the same items.", skipped),
 			})
 		case len(failed) > 0:
 			return json.Marshal(map[string]any{

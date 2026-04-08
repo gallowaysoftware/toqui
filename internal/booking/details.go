@@ -55,11 +55,20 @@ type TourStop struct {
 }
 
 type TourDetails struct {
-	TourOperator    string     `json:"tour_operator,omitempty"`
-	TourName        string     `json:"tour_name,omitempty"`
-	NumParticipants int        `json:"num_participants,omitempty"`
-	MeetingPoint    string     `json:"meeting_point,omitempty"`
-	Stops           []TourStop `json:"stops,omitempty"`
+	TourOperator    string `json:"tour_operator,omitempty"`
+	TourName        string `json:"tour_name,omitempty"`
+	NumParticipants int    `json:"num_participants,omitempty"`
+	MeetingPoint    string `json:"meeting_point,omitempty"`
+	// Run 4 R-06/R-11 found the tour parser dropped date, time, price and
+	// guide. These fields cover the most common questions users ask about
+	// booked tours ("what time?", "what's my guide called?", "how much did
+	// I pay?").
+	Date      string     `json:"date,omitempty"`       // ISO YYYY-MM-DD
+	StartTime string     `json:"start_time,omitempty"` // local HH:MM or HH:MM-HH:MM window
+	Duration  string     `json:"duration,omitempty"`   // e.g. "3h 30m"
+	GuideName string     `json:"guide_name,omitempty"`
+	Price     string     `json:"price,omitempty"` // currency-prefixed string, e.g. "USD 85.00"
+	Stops     []TourStop `json:"stops,omitempty"`
 }
 
 type ActivityDetails struct {
@@ -67,6 +76,11 @@ type ActivityDetails struct {
 	ActivityName string `json:"activity_name,omitempty"`
 	Location     string `json:"location,omitempty"`
 	NumGuests    int    `json:"num_guests,omitempty"`
+	Date         string `json:"date,omitempty"`       // ISO YYYY-MM-DD
+	StartTime    string `json:"start_time,omitempty"` // local HH:MM
+	Duration     string `json:"duration,omitempty"`
+	GuideName    string `json:"guide_name,omitempty"`
+	Price        string `json:"price,omitempty"`
 	Notes        string `json:"notes,omitempty"`
 }
 

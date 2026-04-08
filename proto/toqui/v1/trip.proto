@@ -77,6 +77,11 @@ message CreateTripRequest {
   string description = 2 [(buf.validate.field).string.max_len = 5000];
   string start_date = 3;
   string end_date = 4;
+  // Optional initial status. Defaults to TRIP_STATUS_PLANNING when unset.
+  // Clients can set this to TRIP_STATUS_ACTIVE to skip the planning phase
+  // and enter companion mode directly (e.g. a traveller who is already on
+  // the ground when they create the trip).
+  TripStatus status = 5;
 }
 
 message CreateTripResponse {
@@ -130,6 +135,10 @@ message GetItineraryResponse {
 
 message UpdateItineraryRequest {
   string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  // Full rewrite semantics: the provided itinerary REPLACES all existing
+  // items for the trip. An empty Itinerary.days clears the itinerary.
+  // Clients that want to add a single item should call SendMessage with
+  // create_itinerary_items instead — this RPC is for bulk management.
   Itinerary itinerary = 2 [(buf.validate.field).required = true];
 }
 

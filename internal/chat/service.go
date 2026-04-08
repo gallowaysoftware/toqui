@@ -123,6 +123,16 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		storeTripID = "_lobby"
 	}
 
+	// Check daily token budget BEFORE creating any state. If the budget is
+	// exhausted we must bail out before touching Firestore — otherwise we'd
+	// leave an orphaned session and an orphaned user message behind (#N-01,
+	// #N-02 from Run 4).
+	if s.budget != nil {
+		if err := s.budget.Check(); err != nil {
+			return nil, "", err
+		}
+	}
+
 	// Create session if needed
 	isNewSession := false
 	if sessionID == "" {
@@ -248,13 +258,6 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		"provider", s.provider.Name(),
 		"has_tools", len(toolDefs) > 0,
 	)
-
-	// Check daily token budget before calling the LLM.
-	if s.budget != nil {
-		if err := s.budget.Check(); err != nil {
-			return nil, "", err
-		}
-	}
 
 	// Check response cache before calling the LLM.
 	userIDStr := params.UserID.String()

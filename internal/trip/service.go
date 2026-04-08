@@ -47,6 +47,70 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title, descripti
 	return &trip, nil
 }
 
+// CreateWithStatus is like Create but allows the caller to set the initial
+// trip status (e.g. "active" for travellers who are already on the ground
+// when they create the trip). When status is "" or "planning" the default
+// database value is used. Other values are applied atomically in the same
+// transaction as the INSERT so an invalid status or transient update
+// failure cannot leave an orphaned planning-state trip behind (Run 4
+// N-01 P1, addresses adversarial review WARNING #1).
+func (s *Service) CreateWithStatus(ctx context.Context, userID uuid.UUID, title, description string, startDate, endDate *time.Time, status string) (*dbgen.Trip, error) {
+	// Validate BEFORE doing any writes so a bad status never reaches the DB.
+	if status != "" && status != "planning" && !isValidInitialStatus(status) {
+		return nil, fmt.Errorf("invalid initial status: %q", status)
+	}
+
+	// Fast path: default status means no second write is needed.
+	if status == "" || status == "planning" {
+		return s.Create(ctx, userID, title, description, startDate, endDate)
+	}
+
+	// Non-default status: run INSERT + status UPDATE in one transaction so
+	// a failure on the second write rolls back the first.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
+	trip, err := qtx.CreateTrip(ctx, dbgen.CreateTripParams{
+		UserID:      userID,
+		Title:       title,
+		Description: textFromString(description),
+		StartDate:   dateFromTime(startDate),
+		EndDate:     dateFromTime(endDate),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create trip: %w", err)
+	}
+	updated, err := qtx.UpdateTrip(ctx, dbgen.UpdateTripParams{
+		ID:     trip.ID,
+		UserID: userID,
+		Status: status,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("set initial status: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return &updated, nil
+}
+
+// isValidInitialStatus reports whether status is a value a client is allowed
+// to specify at trip creation time. We deliberately refuse "completed" — a
+// trip cannot start in the completed state without first going through
+// planning or active (see the status machine in Update).
+func isValidInitialStatus(status string) bool {
+	switch status {
+	case "planning", "active":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *Service) GetByID(ctx context.Context, userID, tripID uuid.UUID) (*dbgen.Trip, error) {
 	trip, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
 		ID:     tripID,
@@ -117,6 +181,20 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID, status strin
 }
 
 func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time) (*dbgen.Trip, error) {
+	// Enforce the documented trip status machine: planning → active → completed
+	// is the canonical forward path, planning → completed is allowed as a
+	// shortcut ("this was a quick trip, mark it done"), and any transition
+	// back from completed is forbidden. Run 4 N-08 found that the server
+	// previously accepted arbitrary status transitions (P2).
+	if status != "" {
+		current, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{ID: tripID, UserID: userID})
+		if err != nil {
+			return nil, fmt.Errorf("load trip for status check: %w", err)
+		}
+		if !isValidStatusTransition(current.Status, status) {
+			return nil, fmt.Errorf("invalid status transition: %s → %s", current.Status, status)
+		}
+	}
 	trip, err := s.queries.UpdateTrip(ctx, dbgen.UpdateTripParams{
 		ID:          tripID,
 		UserID:      userID,
@@ -130,6 +208,29 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 		return nil, fmt.Errorf("update trip: %w", err)
 	}
 	return &trip, nil
+}
+
+// isValidStatusTransition reports whether moving from `current` to `next`
+// is a legal trip lifecycle step. A same-status "update" is always allowed
+// so that non-status UpdateTrip calls that happen to round-trip the current
+// status field aren't blocked.
+func isValidStatusTransition(current, next string) bool {
+	if current == next {
+		return true
+	}
+	switch current {
+	case "planning":
+		return next == "active" || next == "completed"
+	case "active":
+		return next == "completed"
+	case "completed":
+		// Terminal state.
+		return false
+	default:
+		// Unknown current status — allow the update so we don't lock out
+		// trips created before the state machine existed.
+		return true
+	}
 }
 
 func (s *Service) SetDestination(ctx context.Context, userID, tripID uuid.UUID, countryCode string) error {
@@ -254,6 +355,56 @@ func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.I
 		return nil, fmt.Errorf("get itinerary: %w", err)
 	}
 	return items, nil
+}
+
+// ReplaceItineraryItem describes a single item in a bulk itinerary rewrite.
+// This is a minimal projection of the proto ItineraryItem that only carries
+// the fields we actually persist through the sqlc query path.
+type ReplaceItineraryItem struct {
+	DayNumber   int
+	OrderInDay  int
+	Type        string
+	Title       string
+	Description string
+}
+
+// ReplaceItinerary deletes all existing itinerary items for a trip and
+// inserts the provided set in one transaction. Used by the public
+// TripService/UpdateItinerary RPC so clients have a non-AI path to manage
+// itinerary content (Run 4 N-05 P1). Handlers flatten their proto
+// Itinerary into []ReplaceItineraryItem before calling.
+func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
+	if err := qtx.DeleteItineraryItemsByTrip(ctx, dbgen.DeleteItineraryItemsByTripParams{
+		TripID: tripID,
+		UserID: userID,
+	}); err != nil {
+		return fmt.Errorf("delete existing: %w", err)
+	}
+
+	for _, item := range items {
+		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
+			TripID:      tripID,
+			DayNumber:   int4FromInt(item.DayNumber),
+			OrderInDay:  int4FromInt(item.OrderInDay),
+			Type:        textFromString(item.Type),
+			Title:       textFromString(item.Title),
+			Description: textFromString(item.Description),
+		}); err != nil {
+			return fmt.Errorf("insert item %q: %w", item.Title, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 // ItineraryItemCoords holds the lat/lng coordinates for a single itinerary item.

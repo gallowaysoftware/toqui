@@ -131,8 +131,8 @@ hotel: {"hotel_name":"","check_in_date":"","check_out_date":"","room_type":"","n
   For multi-property bookings (hostels, chains): use a "properties" array instead: {"properties":[{"hotel_name":"","address":"","check_in_date":"","check_out_date":"","room_type":"","nights":0,"rate_per_night":0}]}
 car_rental: {"company":"","pickup_location":"","dropoff_location":"","pickup_time":"","dropoff_time":"","car_type":"","driver_name":""}
 train: {"operator":"","train_number":"","departure_station":"","arrival_station":"","seat":"","car_number":"","class":""}
-tour: {"tour_operator":"","tour_name":"","num_participants":0,"meeting_point":"","stops":[{"name":"","location":"","duration":"","notes":""}]}
-activity: {"operator":"","activity_name":"","location":"","num_guests":0,"notes":""}
+tour: {"tour_operator":"","tour_name":"","num_participants":0,"meeting_point":"","date":"YYYY-MM-DD","start_time":"HH:MM","duration":"","guide_name":"","price":"","stops":[{"name":"","location":"","duration":"","notes":""}]}
+activity: {"operator":"","activity_name":"","location":"","num_guests":0,"date":"YYYY-MM-DD","start_time":"HH:MM","duration":"","guide_name":"","price":"","notes":""}
 restaurant: {"restaurant_name":"","cuisine":"","party_size":0,"notes":""}
 
 Only include fields that are present in the source text. Return ONLY valid JSON, no other text.`,

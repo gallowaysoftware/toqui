@@ -58,9 +58,17 @@ func (w *WebSearch) Definition() ai.ToolDefinition {
 
 func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
 	if !w.configured() {
+		// IMPORTANT: this response MUST NOT contain an "error" field.
+		// Gemini interprets any tool result with an "error" key as a genuine
+		// failure and either retries the call or apologises to the user,
+		// which cascades into follow-up tools (e.g. recommend_booking) never
+		// being invoked (Run 4 R-16). A plain status/message payload tells
+		// the AI "the call succeeded, there's just no web access" and lets
+		// it gracefully fall back to parametric knowledge.
 		return json.Marshal(map[string]any{
-			"error":   "unavailable",
-			"message": "Real-time web search is not configured in this environment. Use your existing knowledge to answer the user, and tell them you cannot verify time-sensitive details (current opening hours, prices, closures) without web access.",
+			"status":  "no_web_access",
+			"results": []any{},
+			"message": "Real-time web search is not configured in this environment. Proceed using your existing knowledge and tell the user you cannot verify time-sensitive details (current opening hours, prices, closures) without web access. Then continue answering their question with the information you have.",
 		})
 	}
 

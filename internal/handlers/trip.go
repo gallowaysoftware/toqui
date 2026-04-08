@@ -55,7 +55,15 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 		endDate = &t
 	}
 
-	t, err := h.tripSvc.Create(ctx, userID, req.Msg.Title, req.Msg.Description, startDate, endDate)
+	// Honour the optional initial status (Run 4 N-01 P1). When unset or
+	// TRIP_STATUS_PLANNING the default database value is used. Only PLANNING
+	// and ACTIVE are accepted as initial values — COMPLETED is rejected at
+	// the service layer because a trip cannot start in the terminal state.
+	initialStatus := ""
+	if req.Msg.Status != toquiv1.TripStatus_TRIP_STATUS_UNSPECIFIED {
+		initialStatus = tripStatusToString(req.Msg.Status)
+	}
+	t, err := h.tripSvc.CreateWithStatus(ctx, userID, req.Msg.Title, req.Msg.Description, startDate, endDate, initialStatus)
 	if err != nil {
 		return nil, internalError(ctx, "trip operation", err)
 	}
@@ -267,8 +275,57 @@ func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toq
 }
 
 func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[toquiv1.UpdateItineraryRequest]) (*connect.Response[toquiv1.UpdateItineraryResponse], error) {
-	// TODO: implement itinerary update
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	tripID, err := uuid.Parse(req.Msg.TripId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// Ownership check — collaborators can read itineraries but only owners
+	// can rewrite them.
+	if _, err := h.tripSvc.GetByID(ctx, userID, tripID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
+		}
+		return nil, internalError(ctx, "get trip", err)
+	}
+
+	itin := req.Msg.GetItinerary()
+	if itin == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("itinerary is required"))
+	}
+
+	// UpdateItinerary is a full rewrite: delete existing items for the trip,
+	// then insert the new items in order. Previously the RPC was an
+	// unimplemented stub (Run 4 N-05 P1) which meant clients had no
+	// non-AI path to manage itinerary content.
+	var flat []trip.ReplaceItineraryItem
+	for _, day := range itin.GetDays() {
+		for _, item := range day.GetItems() {
+			flat = append(flat, trip.ReplaceItineraryItem{
+				DayNumber:   int(day.GetDayNumber()),
+				OrderInDay:  int(item.GetOrderInDay()),
+				Type:        item.GetType(),
+				Title:       item.GetTitle(),
+				Description: item.GetDescription(),
+			})
+		}
+	}
+	if err := h.tripSvc.ReplaceItinerary(ctx, userID, tripID, flat); err != nil {
+		return nil, internalError(ctx, "replace itinerary", err)
+	}
+
+	items, err := h.tripSvc.GetItinerary(ctx, tripID)
+	if err != nil {
+		return nil, internalError(ctx, "reload itinerary", err)
+	}
+	return connect.NewResponse(&toquiv1.UpdateItineraryResponse{
+		Itinerary: itineraryToProto(req.Msg.TripId, items, nil),
+	}), nil
 }
 
 func tripToProto(t *dbgen.Trip) *toquiv1.Trip {

@@ -172,16 +172,17 @@ func main() {
 
 	// Tool registry — register global tools available in all chat modes.
 	// web_search is ALWAYS registered: when configured it hits Google Custom
-	// Search; when keys are missing it returns a graceful "unavailable"
-	// stub so the AI never sees "unknown tool" errors and can fall back to
-	// parametric knowledge with a clear caveat (#194).
+	// Search; when keys are missing it returns a success-shaped
+	// "no_web_access" response (NOT an error) so the AI never treats it as
+	// a failure, never retries, and falls back to parametric knowledge with
+	// a clear caveat (#194, Run 4 R-16).
 	toolRegistry := tools.NewRegistry()
 	if cfg.GoogleCustomSearchAPIKey != "" && cfg.GoogleCustomSearchCX != "" {
 		toolRegistry.Register(tools.NewWebSearch(cfg.GoogleCustomSearchAPIKey, cfg.GoogleCustomSearchCX))
 		slog.Info("web_search tool registered (Google Custom Search backend)")
 	} else {
 		toolRegistry.Register(tools.NewWebSearchStub())
-		slog.Warn("web_search tool registered as stub — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set; tool will return 'unavailable' to the AI")
+		slog.Warn("web_search tool registered as stub — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set; tool will return 'no_web_access' to the AI")
 	}
 
 	// Chat store

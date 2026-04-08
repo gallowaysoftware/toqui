@@ -23,6 +23,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
+	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/payment"
@@ -404,10 +405,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
 
-		// Planning mode only: inject itinerary creation tool.
-		// Companion mode intentionally excludes this tool — the AI should not
-		// restructure an in-progress trip's itinerary without explicit user intent.
-		if mode == "planning" {
+		// Inject itinerary creation tool in both planning and companion mode.
+		// In companion mode the AI should only call this when the user explicitly
+		// asks to add something to their itinerary (covered by system prompt),
+		// but the tool MUST be registered so the call doesn't fail with
+		// "unknown tool" and trigger a retry/apology loop (Run 4 N-10 P1).
+		if mode == "planning" || mode == "companion" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 				itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()
@@ -993,21 +996,47 @@ func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[t
 		return nil, internalError(ctx, "get chat history", err)
 	}
 
-	protoMessages := make([]*toquiv1.ChatMessage, len(messages))
-	for i, m := range messages {
-		protoMessages[i] = &toquiv1.ChatMessage{
+	// Filter out tool-loop intermediates so clients never see empty-content
+	// bubbles. These messages are retained in Firestore because they are
+	// required to reconstruct tool_call/tool_result context when the AI
+	// continues a conversation, but they must not leak into the user-facing
+	// history view (Run 4 #N-02 P0).
+	protoMessages := make([]*toquiv1.ChatMessage, 0, len(messages))
+	for _, m := range messages {
+		if isToolLoopIntermediate(m) {
+			continue
+		}
+		protoMessages = append(protoMessages, &toquiv1.ChatMessage{
 			Id:        m.ID,
 			SessionId: m.SessionID,
 			Role:      m.Role,
 			Content:   m.Content,
 			Metadata:  m.Metadata,
 			CreatedAt: timestamppb.New(m.CreatedAt),
-		}
+		})
 	}
 
 	return connect.NewResponse(&toquiv1.GetChatHistoryResponse{
 		Messages: protoMessages,
 	}), nil
+}
+
+// isToolLoopIntermediate reports whether a stored chat message is an
+// AI-internal tool-loop turn that should be hidden from the user-facing
+// history view. These are either:
+//   - assistant messages with empty content that carry only tool_calls, OR
+//   - user-role messages that carry only tool_results and no content.
+//
+// They are necessary for AI history reconstruction but render as blank
+// bubbles for end users.
+func isToolLoopIntermediate(m *chatstore.ChatMessage) bool {
+	if m == nil {
+		return false
+	}
+	if strings.TrimSpace(m.Content) != "" {
+		return false
+	}
+	return len(m.ToolCalls) > 0 || len(m.ToolResults) > 0
 }
 
 func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request[toquiv1.ListChatSessionsRequest]) (*connect.Response[toquiv1.ListChatSessionsResponse], error) {

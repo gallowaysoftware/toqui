@@ -458,11 +458,16 @@ func (x *ItineraryItem) GetMetadata() map[string]string {
 }
 
 type CreateTripRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	StartDate     string                 `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       string                 `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Title       string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	Description string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	StartDate   string                 `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate     string                 `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// Optional initial status. Defaults to TRIP_STATUS_PLANNING when unset.
+	// Clients can set this to TRIP_STATUS_ACTIVE to skip the planning phase
+	// and enter companion mode directly (e.g. a traveller who is already on
+	// the ground when they create the trip).
+	Status        TripStatus `protobuf:"varint,5,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -523,6 +528,13 @@ func (x *CreateTripRequest) GetEndDate() string {
 		return x.EndDate
 	}
 	return ""
+}
+
+func (x *CreateTripRequest) GetStatus() TripStatus {
+	if x != nil {
+		return x.Status
+	}
+	return TripStatus_TRIP_STATUS_UNSPECIFIED
 }
 
 type CreateTripResponse struct {
@@ -1058,9 +1070,13 @@ func (x *GetItineraryResponse) GetItinerary() *Itinerary {
 }
 
 type UpdateItineraryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TripId        string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	Itinerary     *Itinerary             `protobuf:"bytes,2,opt,name=itinerary,proto3" json:"itinerary,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TripId string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	// Full rewrite semantics: the provided itinerary REPLACES all existing
+	// items for the trip. An empty Itinerary.days clears the itinerary.
+	// Clients that want to add a single item should call SendMessage with
+	// create_itinerary_items instead — this RPC is for bulk management.
+	Itinerary     *Itinerary `protobuf:"bytes,2,opt,name=itinerary,proto3" json:"itinerary,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1201,14 +1217,15 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\bmetadata\x18\t \x03(\v2%.toqui.v1.ItineraryItem.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9b\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc9\x01\n" +
 	"\x11CreateTripRequest\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x04R\x05title\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x88'R\vdescription\x12\x1d\n" +
 	"\n" +
 	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
-	"\bend_date\x18\x04 \x01(\tR\aendDate\"8\n" +
+	"\bend_date\x18\x04 \x01(\tR\aendDate\x12,\n" +
+	"\x06status\x18\x05 \x01(\x0e2\x14.toqui.v1.TripStatusR\x06status\"8\n" +
 	"\x12CreateTripResponse\x12\"\n" +
 	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"*\n" +
 	"\x0eGetTripRequest\x12\x18\n" +
@@ -1315,36 +1332,37 @@ var file_toqui_v1_trip_proto_depIdxs = []int32{
 	20, // 6: toqui.v1.ItineraryItem.start_time:type_name -> google.protobuf.Timestamp
 	20, // 7: toqui.v1.ItineraryItem.end_time:type_name -> google.protobuf.Timestamp
 	19, // 8: toqui.v1.ItineraryItem.metadata:type_name -> toqui.v1.ItineraryItem.MetadataEntry
-	1,  // 9: toqui.v1.CreateTripResponse.trip:type_name -> toqui.v1.Trip
-	1,  // 10: toqui.v1.GetTripResponse.trip:type_name -> toqui.v1.Trip
-	0,  // 11: toqui.v1.ListTripsRequest.status:type_name -> toqui.v1.TripStatus
-	22, // 12: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
-	1,  // 13: toqui.v1.ListTripsResponse.trips:type_name -> toqui.v1.Trip
-	23, // 14: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
-	0,  // 15: toqui.v1.UpdateTripRequest.status:type_name -> toqui.v1.TripStatus
-	1,  // 16: toqui.v1.UpdateTripResponse.trip:type_name -> toqui.v1.Trip
-	2,  // 17: toqui.v1.GetItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
-	2,  // 18: toqui.v1.UpdateItineraryRequest.itinerary:type_name -> toqui.v1.Itinerary
-	2,  // 19: toqui.v1.UpdateItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
-	5,  // 20: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
-	7,  // 21: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
-	9,  // 22: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
-	11, // 23: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
-	13, // 24: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
-	15, // 25: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
-	17, // 26: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
-	6,  // 27: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
-	8,  // 28: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
-	10, // 29: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
-	12, // 30: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
-	14, // 31: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
-	16, // 32: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
-	18, // 33: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
-	27, // [27:34] is the sub-list for method output_type
-	20, // [20:27] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	0,  // 9: toqui.v1.CreateTripRequest.status:type_name -> toqui.v1.TripStatus
+	1,  // 10: toqui.v1.CreateTripResponse.trip:type_name -> toqui.v1.Trip
+	1,  // 11: toqui.v1.GetTripResponse.trip:type_name -> toqui.v1.Trip
+	0,  // 12: toqui.v1.ListTripsRequest.status:type_name -> toqui.v1.TripStatus
+	22, // 13: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	1,  // 14: toqui.v1.ListTripsResponse.trips:type_name -> toqui.v1.Trip
+	23, // 15: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	0,  // 16: toqui.v1.UpdateTripRequest.status:type_name -> toqui.v1.TripStatus
+	1,  // 17: toqui.v1.UpdateTripResponse.trip:type_name -> toqui.v1.Trip
+	2,  // 18: toqui.v1.GetItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
+	2,  // 19: toqui.v1.UpdateItineraryRequest.itinerary:type_name -> toqui.v1.Itinerary
+	2,  // 20: toqui.v1.UpdateItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
+	5,  // 21: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
+	7,  // 22: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
+	9,  // 23: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
+	11, // 24: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
+	13, // 25: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
+	15, // 26: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
+	17, // 27: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
+	6,  // 28: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
+	8,  // 29: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
+	10, // 30: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
+	12, // 31: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
+	14, // 32: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
+	16, // 33: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
+	18, // 34: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
+	28, // [28:35] is the sub-list for method output_type
+	21, // [21:28] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_trip_proto_init() }
