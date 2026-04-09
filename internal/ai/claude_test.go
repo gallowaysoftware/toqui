@@ -159,8 +159,8 @@ func TestResolveModel_DefaultFallback(t *testing.T) {
 	// No tier set — should use provider default (Sonnet).
 	req := &ChatRequest{}
 	model := provider.resolveModel(req)
-	if model != "claude-sonnet-4-20250514" {
-		t.Errorf("resolveModel with no tier = %q, want %q", model, "claude-sonnet-4-20250514")
+	if model != "claude-sonnet-4-6" {
+		t.Errorf("resolveModel with no tier = %q, want %q", model, "claude-sonnet-4-6")
 	}
 }
 
@@ -228,7 +228,7 @@ func TestBuildRequest_ModelTierSelectsCorrectModel(t *testing.T) {
 	}{
 		{"fast tier uses Haiku", ModelTierFast, claudeModels[ModelTierFast]},
 		{"smart tier uses Sonnet", ModelTierSmart, claudeModels[ModelTierSmart]},
-		{"no tier uses provider default", "", "claude-sonnet-4-20250514"},
+		{"no tier uses provider default", "", "claude-sonnet-4-6"},
 	}
 
 	for _, tt := range tests {

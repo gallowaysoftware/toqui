@@ -14,9 +14,9 @@ import (
 
 // Claude model defaults per tier. Override via AI_MODEL_FAST, AI_MODEL_SMART, AI_MODEL_BEST.
 var claudeModels = map[ModelTier]string{
-	ModelTierFast:  getEnvOrDefault("AI_MODEL_FAST", "claude-haiku-4-5-20251001"),
-	ModelTierSmart: getEnvOrDefault("AI_MODEL_SMART", "claude-sonnet-4-20250514"),
-	ModelTierBest:  getEnvOrDefault("AI_MODEL_BEST", "claude-sonnet-4-20250514"),
+	ModelTierFast:  getEnvOrDefault("AI_MODEL_FAST", "claude-haiku-4-5"),
+	ModelTierSmart: getEnvOrDefault("AI_MODEL_SMART", "claude-sonnet-4-6"),
+	ModelTierBest:  getEnvOrDefault("AI_MODEL_BEST", "claude-sonnet-4-6"),
 }
 
 type ClaudeProvider struct {
@@ -28,7 +28,7 @@ type ClaudeProvider struct {
 func NewClaudeProvider(apiKey string) *ClaudeProvider {
 	return &ClaudeProvider{
 		apiKey: apiKey,
-		model:  "claude-sonnet-4-20250514",
+		model:  "claude-sonnet-4-6",
 		client: &http.Client{Timeout: 5 * time.Minute},
 	}
 }

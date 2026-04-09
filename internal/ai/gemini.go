@@ -219,7 +219,7 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 	}
 	body["contents"] = contents
 
-	// Tools (function declarations).
+	// Tools (function declarations + optional grounding tools).
 	if len(req.Tools) > 0 {
 		funcDecls := make([]map[string]any, 0, len(req.Tools))
 		for _, t := range req.Tools {
@@ -234,9 +234,21 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 			}
 			funcDecls = append(funcDecls, funcDecl)
 		}
-		body["tools"] = []map[string]any{
+
+		toolsList := []map[string]any{
 			{"functionDeclarations": funcDecls},
 		}
+
+		// Gemini grounding: Google Search provides up-to-date web info
+		// (visa rules, weather, events, prices); Google Maps provides
+		// real place data (reviews, ratings, hours, addresses). Both
+		// dramatically improve travel recommendation quality.
+		toolsList = append(toolsList,
+			map[string]any{"googleSearch": map[string]any{}},
+			map[string]any{"googleMaps": map[string]any{}},
+		)
+
+		body["tools"] = toolsList
 		body["toolConfig"] = map[string]any{
 			"functionCallingConfig": map[string]any{
 				"mode": "AUTO",
