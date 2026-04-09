@@ -1,0 +1,50 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI duplicates itinerary items in tool call after already creating them",
+      "description": "During the Czech beer planning message, the AI first called create_itinerary_items to add 10 items (which succeeded), then at the end of the same response called create_itinerary_items AGAIN with the exact same 10 items. The backend correctly detected the duplicates and returned 'already_exists' with skipped_count=10, so no data corruption occurred, but this wastes a tool call and produces a confusing 'My apologies! It seems I got a bit ahead of myself' message to the user.",
+      "expected": "AI should not call create_itinerary_items a second time with items it already created in the same response",
+      "actual": "AI called create_itinerary_items twice with identical items. Backend dedup prevented data issues but UX was awkward.",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat session mode recorded as SELECTION for planning/companion messages",
+      "description": "ListChatSessions for the Iceland trip shows the session mode as CHAT_MODE_SELECTION even though we sent PLANNING and COMPANION mode messages on the same session. The session was originally created in SELECTION mode and its mode field was never updated when subsequent messages used different modes.",
+      "expected": "Session mode should reflect the latest mode used, or sessions should be separate per mode",
+      "actual": "Session shows CHAT_MODE_SELECTION despite containing planning and companion mode messages"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI duplicated itinerary items and the backend returned 'already_exists', the AI displayed a confusing apology message ('My apologies! It seems I got a bit ahead of myself') which could confuse users who did not see anything go wrong.",
+      "severity": "P2",
+      "suggestion": "The AI should handle the 'already_exists' response gracefully without apologizing, or better yet, not re-call the tool."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items twice with identical items in the same tool loop iteration",
+      "context": "During Czech beer itinerary planning, the AI first created 10 items successfully, then attempted to create the same 10 items again at the end of the response. The backend dedup prevented data issues.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Outstanding performance on extended location profiles and niche themes. The Czech expert 'Marek' demonstrated deep knowledge of Czech brewing culture including specific breweries (Zly Casy, BeerGeek Bar, U Fleku, Strahov Monastery Brewery, Lokal Dlouhaa), beer styles (tmave pivo, Czech dark lagers), neighborhoods (Vinohrady, Nusle), and regions beyond Prague (Pilsen, Ceske Budejovice). The Iceland expert 'Bjorn' provided excellent Laugavegur Trail details with specific hut names (Hrafntinnusker, Alftavatn, Emstrur/Botnar, Langidalur, Baldvinskali), km distances per day, elevation profiles, season window (mid-June to mid-September), hut booking urgency, river crossing warnings, and the Fimmvorduhals extension. The two-trip workflow was clean — creating Iceland did not interfere with the Czech trip. Both extended location profiles (CZ, IS) and extended themes (craft-beer, hiking) loaded correctly with location-specific depth."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "multi_trip", "expert_handoff", "itinerary_creation", "extended_profiles", "extended_themes", "chat_history", "usage_tracking", "trip_completion"]
+}

@@ -318,6 +318,7 @@ func main() {
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).
+		WithBookingService(bookingSvc).
 		WithAnalytics(posthogClient)
 
 	// Liveness probe (no auth, no external checks).

@@ -1,0 +1,44 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya — The Organized Barcelona Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": ["auth", "selection", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "ftc_disclosure", "restaurant_no_booking_tool", "itinerary", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The shared trip view (/shared/{token}) returns raw JSON rather than a rendered HTML page. For non-technical users like Priya sharing with friends, this is not useful.",
+      "severity": "P2",
+      "suggestion": "Return a rendered HTML page or redirect to the frontend app for the shared view."
+    },
+    {
+      "description": "The AI created a 6-day itinerary (days 1-6) when asked for 5 days (June 15-20). Day 6 covers June 20 checkout/departure, which is technically correct since checkout is at noon, but the user said '5 days'. Minor mismatch in how days are counted.",
+      "severity": "P2",
+      "suggestion": "Consider whether departure day should be a separate day or folded into the last full day."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "When asked 'When is my cooking class?', the AI correctly noted no cooking class was booked (only Sagrada Familia tour was ingested). However, the persona description mentions a pre-booked paella cooking class. This is a test design issue, not an AI issue — the artifact was not provided.",
+      "context": "The persona says 'a paella cooking class' is booked but only the Sagrada Familia activity artifact exists in tests/agentic/artifacts/.",
+      "severity": "P2"
+    },
+    {
+      "issue": "When the AI gave restaurant recommendations, it proactively called create_itinerary_items to add them to the itinerary without being explicitly asked to do so. While this is arguably helpful for an organized user, it was not requested.",
+      "context": "User asked 'Can you suggest some good restaurants near the Gothic Quarter?' and AI auto-added 3 restaurant items to the itinerary.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Booking ingestion and retrieval worked flawlessly — the AI accurately answered specific questions about terminals, check-in times, and tour details from ingested bookings. ExtractBookingField correctly returned structured data. The recommend_booking tool fired appropriately for bookable day trips and included FTC disclosure. Restaurant recommendations did not trigger recommend_booking, which is correct. The itinerary intelligently placed the Sagrada Familia tour on the correct day and built activities around existing bookings. Companion mode responses were concise and practical. Overall a strong booking-focused experience."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "ftc_disclosure", "itinerary", "activate", "companion", "sharing", "chat_history", "usage", "complete"]
+}

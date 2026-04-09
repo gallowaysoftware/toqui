@@ -121,8 +121,8 @@ Return a JSON object with these fields:
 - start_time: ISO 8601 datetime if available
 - end_time: ISO 8601 datetime if available
 - address: the location/address if available
-- departure_location: departure city/airport/station (for flights, trains, tours)
-- arrival_location: arrival city/airport/station (for flights, trains, tours)
+- departure_location: departure city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's departure.
+- arrival_location: arrival city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's arrival (the destination), NOT the return leg's arrival.
 - num_guests: number of guests/passengers if available
 - details: a type-specific JSON object with the following schema based on type:
 

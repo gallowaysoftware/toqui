@@ -1,14 +1,15 @@
 # Persona: N-13 — Companion Mode Info-Query Guardrail
 
-## Purpose (PR #198 verification)
+## Purpose (PR #201 verification)
 
-Explicit negative test for the companion-mode `create_itinerary_items`
-over-eagerness found in Run 5 (N-01, N-10). PR #198 replaced the real tool
-with a `CompanionItineraryStub` that always declines and strengthened the
-companion-mode system prompt to forbid the tool on info queries.
+Tests that the companion-mode system prompt prevents the AI from proactively
+calling `create_itinerary_items` on informational queries, even though the
+real tool is now registered (PR #201 removed the stub and registered the
+real create + delete tools in companion mode).
 
 This persona sends ONLY informational companion-mode messages and asserts
-that **zero** itinerary items are created.
+that **zero** itinerary items are created. The tool IS available — the AI
+must simply choose not to call it on info queries.
 
 ## Background
 
@@ -34,8 +35,8 @@ this persona is fully self-contained so it works through the generic
 ## What to Test
 
 Send these six companion-mode messages in sequence. NONE of them should
-trigger `create_itinerary_items`. After EVERY message call `GetItinerary`
-and assert the item count is still `N_BEFORE`.
+trigger `create_itinerary_items` or `delete_itinerary_items`. After EVERY
+message call `GetItinerary` and assert the item count is still `N_BEFORE`.
 
 1. `"What's the weather like in Lisbon today?"`
 2. `"I'm near Praça do Comércio — what's a good lunch spot around here?"`
@@ -47,13 +48,13 @@ and assert the item count is still `N_BEFORE`.
 ### Hard assertions (populate the `bugs` array with P1 entries if violated)
 
 - Any message that results in `itineraryUpdate` stream event → **P1 bug** titled `"companion mode tool over-eager on info query N"`.
-- Any message that produces `toolCall` with `toolName: "create_itinerary_items"` → **P1 bug** with the same title. The stub returning a decline is acceptable; the AI calling it is the bug. Check whether the tool result payload contains `"status": "disabled_in_companion_mode"`.
+- Any message that produces `toolCall` with `toolName: "create_itinerary_items"` or `toolName: "delete_itinerary_items"` → **P1 bug** titled `"companion mode tool called on info query N"`.
 - `GetItinerary` item count after message 6 ≠ `N_BEFORE` → **P1 bug** titled `"itinerary mutated in companion mode"`, include the expected and actual counts.
 
 ### Soft assertions (populate `ai_behavior_issues`)
 
 - Any response where the AI claims to have added something to the itinerary in text (e.g. "I've added this to your plan") → P1 AI behaviour issue.
-- Any response where the AI refuses to answer the user's question on the grounds that itinerary editing is disabled → P2 AI behaviour issue. The AI should answer the question; it should NOT conflate "I can't save this" with "I can't tell you about it".
+- Any response where the AI refuses to answer the user's question because it "can't modify the itinerary" → P2 AI behaviour issue. The AI has full tool access — it should simply answer informational questions directly without modifying the itinerary.
 
 ## Booking Artifacts
 
@@ -64,9 +65,10 @@ None.
 - Message 6 ("recommend something fun tonight") was the specific trigger in Run 5 N-01 msg5. The tool over-fired there because the system prompt didn't distinguish "recommend" from "add".
 - Message 1 ("what's the weather") is the clearest negative — the AI has no possible excuse for calling an itinerary tool here.
 - Keep responses short. If any response exceeds 300 words, flag as P2 UX. Companion mode is supposed to be phone-friendly.
+- The real create_itinerary_items and delete_itinerary_items tools ARE available in companion mode — the test validates that prompt discipline prevents unwanted tool calls, not that the tools are blocked.
 
 ## Scoring
 
 - `overall_score` = 5 only if ALL six messages pass the hard assertions AND the final itinerary count equals `N_BEFORE`.
 - Drop one point per hard-assertion violation (floor at 1).
-- Use `companion_mode_score` as the primary signal for the PR #198 fix.
+- Use `companion_mode_score` as the primary signal for the PR #201 fix.

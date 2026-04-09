@@ -176,6 +176,15 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 // msg.CreatedAt. Callers rely on msg.ID being populated after a successful call
 // (e.g., to include the message ID in stream events).
 func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string, msg *ChatMessage) error {
+	return s.AddMessageWithMode(ctx, userID, tripID, sessionID, msg, "")
+}
+
+// AddMessageWithMode stores a message and updates the session metadata.
+// If mode is non-empty, it also updates the session's mode field — this
+// ensures that a session originally created in "selection" mode gets
+// updated to "planning" or "companion" when subsequent messages use a
+// different mode (Run 8 R-05, N-12 P2).
+func (s *Store) AddMessageWithMode(ctx context.Context, userID, tripID, sessionID string, msg *ChatMessage, mode string) error {
 	msg.ID = uuid.New().String()
 	msg.SessionID = sessionID
 	msg.CreatedAt = time.Now()
@@ -191,11 +200,15 @@ func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string
 	// createdAt on every AddMessage would silently clobber the real
 	// creation time on the happy path (Run 5 R-03/R-16 P2).
 	sessionRef := s.sessionsCol(userID, tripID).Doc(sessionID)
-	batch.Set(sessionRef, map[string]interface{}{
+	sessionUpdate := map[string]interface{}{
 		"id":            sessionID,
 		"tripId":        tripID,
 		"lastMessageAt": msg.CreatedAt,
-	}, firestore.MergeAll)
+	}
+	if mode != "" {
+		sessionUpdate["mode"] = mode
+	}
+	batch.Set(sessionRef, sessionUpdate, firestore.MergeAll)
 
 	_, err := batch.Commit(ctx)
 	if err != nil {

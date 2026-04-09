@@ -1,0 +1,60 @@
+{
+  "persona_id": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "status": "COMPLETED",
+  "trip_destination": "Structural",
+  "completed_steps": [
+    "auth",
+    "phase1_create_default_status",
+    "phase1_create_active_status",
+    "phase1_planning_to_active",
+    "phase1_active_to_completed",
+    "phase1_trip2_active_to_completed",
+    "phase2_completed_to_planning_rejected",
+    "phase2_completed_to_active_rejected",
+    "phase2_trip2_completed_to_planning_rejected",
+    "phase3_create_completed_rejected",
+    "phase4_get_nonexistent_uuid",
+    "phase4_get_invalid_uuid"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 11 status machine enforcement tests passed. Phase 1: valid forward transitions (PLANNING->ACTIVE->COMPLETED) and create-with-ACTIVE all work correctly. Phase 2: all invalid backward transitions from COMPLETED return 'failed_precondition' (not 'internal'), confirming PR #198 fix is intact. Phase 3: CreateTrip with COMPLETED returns 'invalid_argument'. Phase 4: non-existent UUID returns 'not_found', invalid UUID returns 'invalid_argument' from buf.validate."
+  },
+  "feature_coverage": [
+    "status_machine_enforcement",
+    "create_trip_active_status",
+    "status_error_codes"
+  ],
+  "test_details": {
+    "phase1": {
+      "test1_create_no_status": {"result": "OK", "status_returned": "TRIP_STATUS_PLANNING"},
+      "test2_create_active": {"result": "OK", "status_returned": "TRIP_STATUS_ACTIVE"},
+      "test3_planning_to_active": {"result": "OK", "status_returned": "TRIP_STATUS_ACTIVE"},
+      "test4_active_to_completed": {"result": "OK", "status_returned": "TRIP_STATUS_COMPLETED"},
+      "test5_trip2_active_to_completed": {"result": "OK", "status_returned": "TRIP_STATUS_COMPLETED"}
+    },
+    "phase2": {
+      "test6_completed_to_planning": {"result": "REJECTED", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 planning"},
+      "test7_completed_to_active": {"result": "REJECTED", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 active"},
+      "test8_trip2_completed_to_planning": {"result": "REJECTED", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 planning"}
+    },
+    "phase3": {
+      "test9_create_completed": {"result": "REJECTED", "code": "invalid_argument", "message": "invalid initial trip status: \"completed\""}
+    },
+    "phase4": {
+      "test10_nonexistent_uuid": {"result": "REJECTED", "code": "not_found", "message": "trip not found"},
+      "test11_invalid_uuid": {"result": "REJECTED", "code": "invalid_argument", "message": "validation error: id: value must be a valid UUID"}
+    }
+  }
+}

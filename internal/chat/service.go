@@ -168,7 +168,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		Role:    "user",
 		Content: params.Content,
 	}
-	if err := s.chatStore.AddMessage(ctx, params.UserID.String(), storeTripID, sessionID, userMsg); err != nil {
+	if err := s.chatStore.AddMessageWithMode(ctx, params.UserID.String(), storeTripID, sessionID, userMsg, params.Mode); err != nil {
 		return nil, "", fmt.Errorf("store user message: %w", err)
 	}
 	userMsgID := userMsg.ID // populated by AddMessage
@@ -755,16 +755,16 @@ func estimateCostUSD(provider string, tier ai.ModelTier, inputTokens, outputToke
 	case "gemini":
 		switch tier {
 		case ai.ModelTierFast:
-			// Gemini 2.5 Flash-Lite
-			inputRate, outputRate = 0.075, 0.30
+			// Gemini 3.1 Flash-Lite
+			inputRate, outputRate = 0.25, 1.50
 		case ai.ModelTierSmart:
-			// Gemini 2.5 Flash
-			inputRate, outputRate = 0.15, 0.60
+			// Gemini 3 Flash
+			inputRate, outputRate = 0.50, 3.00
 		case ai.ModelTierBest:
-			// Gemini 2.5 Pro
-			inputRate, outputRate = 1.25, 10.00
+			// Gemini 3.1 Pro
+			inputRate, outputRate = 2.00, 12.00
 		default:
-			inputRate, outputRate = 0.075, 0.30
+			inputRate, outputRate = 0.25, 1.50
 		}
 	default:
 		return 0

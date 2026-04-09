@@ -81,9 +81,17 @@ func TestIsToolLoopIntermediate(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "empty assistant message with no tool calls is NOT hidden (safe path)",
+			name: "empty assistant message with no tool calls IS hidden (blank bubble)",
 			msg: &chatstore.ChatMessage{
 				Role:    "assistant",
+				Content: "",
+			},
+			want: true,
+		},
+		{
+			name: "empty user message with no tool results is NOT hidden",
+			msg: &chatstore.ChatMessage{
+				Role:    "user",
 				Content: "",
 			},
 			want: false,

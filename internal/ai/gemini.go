@@ -18,10 +18,14 @@ import (
 const vertexAIScope = "https://www.googleapis.com/auth/cloud-platform"
 
 // Gemini model defaults per tier. Override via AI_GEMINI_MODEL_FAST, AI_GEMINI_MODEL_SMART, AI_GEMINI_MODEL_BEST.
+//
+// Upgraded to Gemini 3 family (April 2026) to avoid customer-visible swap
+// during the Gemini 2.5 deprecation (Oct 2026). Gemini 3 models are in
+// Preview but offer significantly better reasoning and tool compliance.
 var geminiModels = map[ModelTier]string{
-	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-2.5-flash-lite"),
-	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-2.5-flash"),
-	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-2.5-pro"),
+	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-3.1-flash-lite"),
+	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-3-flash"),
+	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-3.1-pro"),
 }
 
 // GeminiProvider implements the Provider interface using Google Vertex AI.
@@ -56,7 +60,7 @@ func NewGeminiProvider(projectID, location string) (*GeminiProvider, error) {
 		projectID:   projectID,
 		location:    location,
 		tokenSource: creds.TokenSource,
-		model:       "gemini-2.5-flash",
+		model:       "gemini-3-flash",
 		client:      &http.Client{Timeout: 5 * time.Minute},
 	}, nil
 }

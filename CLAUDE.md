@@ -258,7 +258,6 @@ stateDiagram-v2
     [*] --> Selection: App starts / no trip selected
     Selection --> Planning: Create or select trip
     Planning --> Traveling: Start trip (status=active)
-    Traveling --> Planning: Pause trip
     Planning --> Selection: Close trip
     Traveling --> Selection: Complete trip
 ```
@@ -865,13 +864,15 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 **Claude (fallback)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
 
-| Model Tier | Claude                     | Gemini (Vertex AI)      |
-| ---------- | -------------------------- | ----------------------- |
-| fast       | `claude-haiku-4-20250414`  | `gemini-2.5-flash-lite` |
-| smart      | `claude-sonnet-4-20250514` | `gemini-2.5-flash`      |
-| best       | `claude-sonnet-4-20250514` | `gemini-2.5-pro`        |
+| Model Tier | Claude                     | Gemini (Vertex AI)        |
+| ---------- | -------------------------- | ------------------------- |
+| fast       | `claude-haiku-4-20250414`  | `gemini-3.1-flash-lite`   |
+| smart      | `claude-sonnet-4-20250514` | `gemini-3-flash`          |
+| best       | `claude-sonnet-4-20250514` | `gemini-3.1-pro`          |
 
 Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
+
+**Gemini 2.5 deprecation**: Google notified (April 2026) that Gemini 2.5 Pro/Flash/Flash-Lite on Vertex AI will be discontinued no earlier than October 16, 2026, with 6 months notice once a date is confirmed. Migration to Gemini 3 will be needed. Model swapping is a config-only change via env vars — no code changes required. Note: Gemini 3 requires "thought signature circulation" (capture thought signatures from responses and include in follow-ups). See Google's migration guide when ready.
 
 ### Token Usage Tracking
 

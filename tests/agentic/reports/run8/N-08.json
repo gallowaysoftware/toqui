@@ -1,0 +1,37 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Structural — Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_gettrip_nonexistent", "test2_gettrip_malformed", "test3_createtrip_empty_title", "test4_createtrip_oversized_title", "test5_invalid_status_transition", "test6_sendmessage_empty", "test7_sendmessage_oversized", "test8_deletebooking_nonexistent", "test9_ingestbooking_empty", "test10_listtrips_empty"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "CLAUDE.md state diagram shows active->planning transition but code rejects it",
+      "description": "The CLAUDE.md state diagram shows 'Traveling -> Planning: Pause trip' as a valid transition, but isValidStatusTransition() in internal/trip/service.go only allows active->completed. The code has a comment marking completed as 'Terminal state' and active only transitions to completed. This is a documentation-vs-implementation discrepancy. The code behavior seems intentional (code comment says active->completed only), so the state diagram in CLAUDE.md should be updated to remove the active->planning arrow.",
+      "expected": "Documentation and code agree on valid status transitions",
+      "actual": "CLAUDE.md shows active->planning as valid, code returns failed_precondition for that transition",
+      "api_command": "UpdateTrip with status TRIP_STATUS_PLANNING on an ACTIVE trip"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "DeleteBooking on non-existent ID returns empty success ({}) rather than NOT_FOUND. While idempotent delete is a valid design choice, it means clients cannot distinguish between 'successfully deleted' and 'never existed'. This could mask bugs where a client sends the wrong booking ID.",
+      "severity": "P2",
+      "suggestion": "Consider returning NOT_FOUND for non-existent booking IDs, or at least include a 'deleted' boolean in the response to indicate whether a record was actually removed."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This was a structural/adversarial test exercising error handling and validation, not a user experience test. All 10 test cases passed: buf.validate constraints correctly catch malformed IDs, empty strings, and oversized inputs; the status state machine properly rejects invalid transitions; ListTrips returns empty results rather than errors; and DeleteBooking is idempotent. The only findings are a P2 documentation discrepancy (CLAUDE.md state diagram vs code) and a P2 UX note about idempotent deletes."
+  },
+  "feature_coverage": ["validation", "error_handling", "status_transitions", "boundary_conditions", "idempotent_delete"]
+}

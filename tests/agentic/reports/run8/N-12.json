@@ -1,0 +1,74 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "run_id": "run-8",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Markdown table generates excessive whitespace in streaming response",
+      "description": "When the AI generated a comparative markdown table for religious site dress codes, the table cells contained massive whitespace padding (476K total chars, only 72K non-whitespace). This consumed the entire token budget and caused a MAX_TOKENS truncation error, leaving the response incomplete. The table only rendered the first two columns (Jewish and Islamic sites) before being cut off — Buddhist temple etiquette was never delivered.",
+      "steps_to_reproduce": "Ask for a comparative table-format guide across multiple religions/countries in planning mode",
+      "expected": "A compact, readable table or structured list covering all three faith traditions",
+      "actual": "Response truncated at MAX_TOKENS after generating 476KB of mostly whitespace. Error returned: 'response truncated (MAX_TOKENS) — try a more specific request'",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING asking for comparative dress code guide across all three countries"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat session mode incorrectly reported as CHAT_MODE_SELECTION for planning session",
+      "description": "ListChatSessions shows the planning/selection session as CHAT_MODE_SELECTION even though it was used for both selection and planning messages. This is technically correct since the session was created in selection mode, but may be confusing to users who continued using the same session for planning.",
+      "expected": "Session mode reflects the last mode used, or sessions are separated by mode",
+      "actual": "Session shows CHAT_MODE_SELECTION even after multiple CHAT_MODE_PLANNING messages"
+    },
+    {
+      "severity": "P2",
+      "title": "Empty assistant message in chat history",
+      "description": "GetChatHistory for the planning session returns 11 messages, with the last one being an assistant message with length 0 (empty content). This appears to be the truncated table response that hit MAX_TOKENS.",
+      "expected": "No empty messages in chat history, or truncated messages should contain the partial content that was delivered",
+      "actual": "Empty assistant message (content length 0) at the end of the session history"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The MAX_TOKENS error message 'response truncated (MAX_TOKENS) — try a more specific request' is generic and unhelpful for the user. It does not explain that the AI generated a very large response that exceeded limits.",
+      "severity": "P2",
+      "suggestion": "Provide a more descriptive error or automatically retry with a shorter response format when MAX_TOKENS is hit"
+    },
+    {
+      "description": "Saudi Arabia alcohol prohibition was not mentioned in the Saudi Arabia logistics response, which is a significant practical consideration for travelers",
+      "severity": "P2",
+      "suggestion": "Ensure the AI mentions alcohol prohibition when discussing Saudi Arabia logistics, as it is a major practical consideration"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Markdown table formatting caused token budget exhaustion due to excessive whitespace padding in table cells",
+      "context": "When asked for a comparative guide in table format, the AI attempted to create a wide markdown table with very long cell content. The markdown rendering padded each cell to match the widest cell, generating hundreds of KB of whitespace. This is a fundamental issue with using wide markdown tables in streaming responses.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Saudi Arabia response omitted alcohol prohibition",
+      "context": "When asked about practical logistics for Saudi Arabia, the AI covered visas, dress codes, AlUla, and prayer times but did not mention that alcohol is strictly prohibited — a key practical consideration especially for Western travelers",
+      "severity": "P2"
+    },
+    {
+      "issue": "No expert persona handoff triggered despite multi-country cultural topics",
+      "context": "Across 6 planning messages covering Israel, Saudi Arabia, and Myanmar in depth, the AI never called suggest_expert to hand off to a location/theme expert. The persona description covers history and culture topics that should trigger expert handoffs.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional cultural sensitivity and factual accuracy across three complex, politically sensitive destinations. Jerusalem coverage was outstanding — it correctly used dual naming (Temple Mount / Haram al-Sharif), explained differential access rules for Muslims and non-Muslims, mentioned Mughrabi Gate entry, and addressed filming permits without political editorializing. The Israel security response was balanced and practical, acknowledging the dual passport situation without fear-mongering. Saudi Arabia coverage correctly stated that the abaya is no longer legally mandatory for foreign women, knew about the September 2019 eVisa, and gave detailed AlUla information including Hegra as the first UNESCO World Heritage Site. The Myanmar response was the strongest — it presented both boycott and engagement arguments fairly, mentioned MEHL/MEC military conglomerates, confirmed Bagan climbing restrictions, and provided practical responsible travel tips without making the decision for the user. The main issues were: (1) a markdown table formatting bug that caused a response to be truncated, (2) omission of alcohol prohibition in the Saudi section, and (3) no expert handoffs were triggered. The 10-day itinerary was well-structured across all six cities. Companion mode responses were appropriately concise and situationally aware (Shabbat timing, Bagan temple etiquette)."
+  },
+  "feature_coverage": ["selection", "planning", "itinerary_creation", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

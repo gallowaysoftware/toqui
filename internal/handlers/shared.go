@@ -13,6 +13,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
+	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
@@ -21,6 +22,7 @@ import (
 // enable/disable sharing endpoints.
 type SharedHandler struct {
 	tripSvc         *trip.Service
+	bookingSvc      *booking.Service
 	authSvc         *auth.Service
 	frontendURL     string
 	analyticsClient *analytics.Client
@@ -35,6 +37,12 @@ func NewSharedHandler(tripSvc *trip.Service, authSvc *auth.Service, frontendURL 
 	}
 }
 
+// WithBookingService configures the shared handler to include bookings in shared views.
+func (h *SharedHandler) WithBookingService(svc *booking.Service) *SharedHandler {
+	h.bookingSvc = svc
+	return h
+}
+
 // WithAnalytics configures the shared handler to send events to PostHog.
 func (h *SharedHandler) WithAnalytics(client *analytics.Client) *SharedHandler {
 	h.analyticsClient = client
@@ -46,6 +54,17 @@ func (h *SharedHandler) WithAnalytics(client *analytics.Client) *SharedHandler {
 type sharedTripResponse struct {
 	Trip      sharedTripInfo       `json:"trip"`
 	Itinerary []sharedItineraryDay `json:"itinerary"`
+	Bookings  []sharedBooking      `json:"bookings,omitempty"`
+}
+
+type sharedBooking struct {
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Provider  string `json:"provider,omitempty"`
+	StartTime string `json:"start_time,omitempty"`
+	EndTime   string `json:"end_time,omitempty"`
+	// NOTE: ConfirmationCode deliberately excluded — it's sensitive
+	// (can be used to modify/cancel reservations with providers).
 }
 
 type sharedTripInfo struct {
@@ -116,6 +135,17 @@ func (h *SharedHandler) HandlePublicView(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Fetch bookings for the shared view (best-effort — omit on error).
+	var sharedBookings []sharedBooking
+	if h.bookingSvc != nil {
+		bookings, err := h.bookingSvc.ListByTrip(ctx, t.UserID, t.ID)
+		if err != nil {
+			slog.Warn("get bookings for shared trip failed", "trip_id", t.ID, "error", err)
+		} else {
+			sharedBookings = buildSharedBookings(bookings)
+		}
+	}
+
 	// Track shared trip view (async, non-blocking, no PII)
 	if h.analyticsClient != nil {
 		h.analyticsClient.Track("anonymous", "shared_trip_viewed", nil)
@@ -124,6 +154,7 @@ func (h *SharedHandler) HandlePublicView(w http.ResponseWriter, r *http.Request)
 	resp := sharedTripResponse{
 		Trip:      buildSharedTripInfo(t),
 		Itinerary: buildSharedItinerary(items),
+		Bookings:  sharedBookings,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -292,6 +323,29 @@ func buildSharedItinerary(items []dbgen.ItineraryItem) []sharedItineraryDay {
 	result := make([]sharedItineraryDay, 0, len(dayOrder))
 	for _, dayNum := range dayOrder {
 		result = append(result, *dayMap[dayNum])
+	}
+	return result
+}
+
+// buildSharedBookings converts DB bookings to the public-safe response format.
+// No raw_source, no user_id — just the essential booking info for display.
+func buildSharedBookings(bookings []dbgen.Booking) []sharedBooking {
+	result := make([]sharedBooking, 0, len(bookings))
+	for _, b := range bookings {
+		sb := sharedBooking{
+			Type:  b.Type,
+			Title: b.Title,
+		}
+		if b.Provider.Valid {
+			sb.Provider = b.Provider.String
+		}
+		if b.StartTime.Valid {
+			sb.StartTime = b.StartTime.Time.Format("2006-01-02T15:04:05Z")
+		}
+		if b.EndTime.Valid {
+			sb.EndTime = b.EndTime.Time.Format("2006-01-02T15:04:05Z")
+		}
+		result = append(result, sb)
 	}
 	return result
 }

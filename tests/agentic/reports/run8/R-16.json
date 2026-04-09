@@ -1,0 +1,54 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty JSON object",
+      "description": "GET /shared/{token} returned an empty JSON object {} instead of trip details (title, description, itinerary) for a valid share token. The share endpoint returned a valid token and URL, but the public view endpoint returned no data.",
+      "steps_to_reproduce": "1. POST /api/trips/share with valid trip_id. 2. GET /shared/{returned_token}. 3. Response is {}.",
+      "expected": "JSON with trip title, description, destination, itinerary summary",
+      "actual": "Empty JSON object {}",
+      "api_command": "curl -s http://localhost:8090/shared/VZqeTEbGR4bj7pqGN9yrpH"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Athens (Days 1-3) and Istanbul (Days 11-12) were never planned despite being core parts of the 12-day trip. The AI created itinerary for Delphi, Crete, and Ephesus but never proactively asked about or planned the remaining segments. An academic traveler would expect a complete itinerary.",
+      "severity": "P2",
+      "suggestion": "After creating partial itineraries, the AI should remind the user about unplanned segments and offer to create them."
+    },
+    {
+      "description": "Companion mode added itinerary items to Day 11 for the Acropolis Museum, but Athens was originally Days 1-3 in the user's plan. The day numbering does not match the user's stated itinerary structure.",
+      "severity": "P2",
+      "suggestion": "The AI should be aware of the user's stated day structure and assign items to correct days."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI retried create_itinerary_items twice after receiving 'already_exists' status during Crete itinerary planning",
+      "context": "After the first successful creation of Crete itinerary items (which were deduplicated), the AI called create_itinerary_items two more times with the same items, receiving 'already_exists' both times. This wastes tokens and tool loop iterations.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Expert persona (Eleni) mentioned 'pneuma theory' in Knossos itinerary description inappropriately",
+      "context": "The Knossos Palace itinerary item mentions discussing the 'pneuma theory' in relation to the site's layout, but the pneuma/ethylene gas theory is specific to Delphi, not Knossos. This is a factual error in the AI's historical knowledge application.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI performed well for an academic traveler persona. The expert handoff to Eleni (Greece history specialist) was appropriate and the subsequent responses demonstrated genuine historical depth -- discussing the Pythia, adyton, pneuma theory, Attalid bequest, Library of Celsus statues (Sophia, Episteme, Ennoia, Arete), Evans reconstruction controversy, and even recommending specific academic books (MacGillivray, Castleden, Oxford Handbook of the Bronze Age Aegean). The itinerary correctly allocated full days to major sites with realistic time estimates (5-6 hours at Knossos, 6-7 hours at Ephesus). However, the AI failed to proactively create Athens and Istanbul itinerary segments, and misapplied the pneuma theory to Knossos. The recommend_booking tool fired correctly for the archaeologist-led Delphi tour. Companion mode responses were appropriately concise while maintaining academic depth on the Evans reconstruction debate."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "recommend_booking", "activate", "companion", "sharing", "chat_history", "usage", "complete"]
+}

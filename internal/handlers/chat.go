@@ -405,32 +405,41 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
 
-		// Inject itinerary creation tool.
+		// Inject itinerary creation + deletion tools.
 		//
-		// Planning mode: the real tool that actually persists items. Only
-		// registered when tripID parses — the tool needs a target trip to
-		// write to.
+		// Planning mode: real tools that persist/delete items. Only
+		// registered when tripID parses.
 		//
-		// Companion mode: a STUB tool that always declines. This prevents
-		// the AI from hallucinating tool-name errors (Run 4 N-10) AND
-		// prevents the real tool from being called proactively on info
-		// queries (Run 5 N-01, N-10 — "what do I do first?" silently added
-		// items to the itinerary). The stub needs no tripID so we register
-		// it unconditionally for companion mode.
+		// Companion mode: same real tools but wrapped in CompanionGate
+		// which blocks calls unless the user explicitly asks to modify
+		// the itinerary. This prevents the Run 5/Run 8 over-eagerness
+		// regression where Gemini interprets "recommend a lunch spot"
+		// as "add a lunch spot to the itinerary".
 		if mode == "planning" || mode == "companion" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
-				itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
+				var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()
 					itineraryItems = append(itineraryItems, items...)
 					mu.Unlock()
 				}).WithGeocoding(h.pool, h.placesAPIKey).
 					WithAnalytics(h.analytics, userID.String())
-				params.ExtraTools = append(params.ExtraTools, itineraryTool)
 
-				deleteTool := NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
+				var deleteTool tools.Tool = NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
 					slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
 				})
-				params.ExtraTools = append(params.ExtraTools, deleteTool)
+
+				// In companion mode, wrap tools with an intent gate that
+				// only allows calls when the user explicitly requests
+				// itinerary changes ("add this to my plan", "remove the
+				// museum visit"). Info queries pass through ungated.
+				if mode == "companion" {
+					userMsg := req.Msg.Content
+					getUserMsg := func() string { return userMsg }
+					createTool = NewCompanionGate(createTool, getUserMsg)
+					deleteTool = NewCompanionGate(deleteTool, getUserMsg)
+				}
+
+				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool)
 			}
 		}
 
@@ -1037,7 +1046,8 @@ func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[t
 // AI-internal tool-loop turn that should be hidden from the user-facing
 // history view. These are either:
 //   - assistant messages with empty content that carry only tool_calls, OR
-//   - user-role messages that carry only tool_results and no content.
+//   - user-role messages that carry only tool_results and no content, OR
+//   - any message with empty content and no tool data (blank bubble).
 //
 // They are necessary for AI history reconstruction but render as blank
 // bubbles for end users.
@@ -1048,7 +1058,15 @@ func isToolLoopIntermediate(m *chatstore.ChatMessage) bool {
 	if strings.TrimSpace(m.Content) != "" {
 		return false
 	}
-	return len(m.ToolCalls) > 0 || len(m.ToolResults) > 0
+	// Never filter user-role messages — even empty ones may be meaningful
+	// (e.g., attachment-only messages).
+	if m.Role == "user" && len(m.ToolResults) == 0 {
+		return false
+	}
+	// Empty assistant content: filter if it has tool data (intermediate turn)
+	// or if it's completely blank (blank bubble from truncation/provider error).
+	// Empty user messages carrying only tool_results are also intermediates.
+	return true
 }
 
 func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request[toquiv1.ListChatSessionsRequest]) (*connect.Response[toquiv1.ListChatSessionsResponse], error) {
