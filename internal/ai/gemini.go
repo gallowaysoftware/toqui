@@ -236,20 +236,14 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 			funcDecls = append(funcDecls, funcDecl)
 		}
 
-		toolsList := []map[string]any{
+		// NOTE: Google Search and Maps grounding tools cannot be mixed
+		// with functionDeclarations in the same tools array on Gemini 2.5
+		// ("Multiple tools are supported only when they are all search
+		// tools"). Grounding will be enabled when we upgrade to Gemini 3
+		// or via a separate non-function-calling request path.
+		body["tools"] = []map[string]any{
 			{"functionDeclarations": funcDecls},
 		}
-
-		// Gemini grounding: Google Search provides up-to-date web info
-		// (visa rules, weather, events, prices); Google Maps provides
-		// real place data (reviews, ratings, hours, addresses). Both
-		// dramatically improve travel recommendation quality.
-		toolsList = append(toolsList,
-			map[string]any{"googleSearch": map[string]any{}},
-			map[string]any{"googleMaps": map[string]any{}},
-		)
-
-		body["tools"] = toolsList
 		body["toolConfig"] = map[string]any{
 			"functionCallingConfig": map[string]any{
 				"mode": "AUTO",
