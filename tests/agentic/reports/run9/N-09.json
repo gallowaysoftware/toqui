@@ -1,0 +1,96 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "PARTIAL",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "run_id": "run-9",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Day 3 has duplicate/conflicting lunch items after Pompeii swap",
+      "description": "After swapping Day 3 to a Pompeii day trip, the itinerary contained both 'Lunch in Testaccio neighborhood (vegetarian)' and 'Lunch near Pompeii ruins' on the same day. Testaccio is in Rome and wouldn't be accessible during a full-day Pompeii trip. The AI created the new Pompeii lunch but failed to remove the old Testaccio lunch.",
+      "expected": "Only one lunch item on Day 3: the Pompeii-area lunch",
+      "actual": "Two lunch items: Testaccio (Rome) and Pompeii ruins"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip description not updated when Venice was replaced by Cinque Terre",
+      "description": "After the critical message 7 modification (cut Venice, add Cinque Terre), the trip description still reads '10-day first trip to Italy covering Rome, Florence, and Venice' even though Venice was completely removed from the itinerary. The AI properly deleted Venice itinerary items and added Cinque Terre items, but did not call UpdateTrip to fix the description.",
+      "expected": "Trip description should mention Cinque Terre instead of Venice after the major itinerary revision",
+      "actual": "Description still says 'Rome, Florence, and Venice'"
+    },
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns no itinerary data",
+      "description": "When viewing the shared trip via GET /shared/{token}, the response includes the trip metadata (title, status) but the itinerary days/items are not included in the response. The python parser found no 'days' key in the response.",
+      "expected": "Shared trip view should include itinerary items so shared viewers can see the plan",
+      "actual": "Only trip metadata returned, no itinerary"
+    },
+    {
+      "severity": "P2",
+      "title": "itineraryUpdate stream event has 0 items despite 33 created",
+      "description": "On message 1, the create_itinerary_items tool successfully created 33 items (confirmed by toolResult with created_count:33 and GetItinerary), but the itineraryUpdate stream event contained 0 items. The frontend would not know items were created via the stream event alone.",
+      "steps_to_reproduce": "Send a planning message that triggers create_itinerary_items with many items. Check the itineraryUpdate stream event.",
+      "expected": "itineraryUpdate event should contain all created items",
+      "actual": "itineraryUpdate event has empty items array"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "AI asked 3 rounds of clarifying questions before executing the Pompeii day trip swap (messages 4, 4b, 4c, 4d). While the caution about scheduling conflicts is reasonable, the user had to explicitly tell the AI to 'just do it' multiple times. A rapid-fire planner like Marco would find this frustrating.",
+      "severity": "P2",
+      "suggestion": "When the user gives a clear instruction like 'add Pompeii on day 3', the AI should execute and note conflicts, rather than asking for permission repeatedly. One clarifying question is fine; three rounds is excessive."
+    },
+    {
+      "description": "Free tier daily message limit of 10 is too low for the rapid-fire conversation use case. This persona's test requires 10+ messages just for the planning phase, leaving no room for companion mode testing or error recovery.",
+      "severity": "P1",
+      "suggestion": "Consider increasing the free tier daily limit to at least 15-20 messages, or the rapid-fire planning use case is essentially impossible for free users."
+    },
+    {
+      "description": "ListChatSessions shows messageCount=0 despite 18 messages in the session history. This could confuse a frontend trying to show session previews.",
+      "severity": "P2",
+      "suggestion": "ListChatSessions should return accurate message counts"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Excessive clarification-seeking before executing modifications",
+      "context": "When asked to add Pompeii on Day 3, the AI asked 3 rounds of clarifying questions about scheduling conflicts instead of executing the swap and noting the trade-offs. The user had to say 'just do it' multiple times.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not suggest an expert persona handoff despite food-heavy conversation",
+      "context": "The user mentioned being vegetarian and discussed food recommendations across multiple cities, which should have triggered a suggest_expert call for an Italy food expert. No personaSwitch event was observed.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Budget presented in euros when user specified dollars",
+      "context": "User said '$150/day' but AI responded with euro-denominated prices throughout the budget breakdown without acknowledging the currency difference or providing a conversion.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "SendMessage (tool loop continuation)",
+      "input": "Message 7 (cut Venice, add Cinque Terre) - second tool loop iteration after delete_itinerary_items succeeded",
+      "error": "Gemini 404 (model not found: gemini-3-flash) + Claude 429 rate limit. The Venice deletion completed but the AI response was truncated. Cinque Terre items were created despite the error."
+    },
+    {
+      "tool": "SendMessage",
+      "input": "Message 8 (train pass question)",
+      "error": "Daily message limit of 10 reached: 'you have reached your daily message limit of 10 messages; it resets at 2026-04-10T00:00:00Z'. Could not complete messages 8-10."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip creation was instant and well-structured with 33 detailed itinerary items created in a single tool call. The AI handled the critical Venice-to-Cinque-Terre swap correctly, properly using delete_itinerary_items followed by create_itinerary_items. Vegetarian dietary preferences were retained across modifications. However, the AI was frustratingly slow to execute direct modifications (3 rounds of clarification for the Pompeii swap), and the free tier 10-message limit prevented completing the full rapid-fire test (messages 8-10 including the critical final summary). The itinerary quality was genuinely good with practical details, but the modification workflow needs to be more responsive for iterative planners."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "delete_itinerary_items", "vegetarian_dietary_context", "budget_awareness", "trip_sharing", "chat_history", "usage_tracking", "trip_lifecycle", "referral"]
+}

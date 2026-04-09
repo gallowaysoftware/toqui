@@ -1,0 +1,28 @@
+meta {
+  name: Share Trip
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://{{host}}/api/trips/share
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>"
+  }
+}
+
+docs {
+  Enables public sharing for a trip. Returns a share token.
+  The shared trip view is accessible at /shared/<token> without authentication.
+  Sharing can be revoked with POST /api/trips/unshare.
+  Audit-logged as trip.share.
+}

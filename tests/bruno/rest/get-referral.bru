@@ -1,0 +1,22 @@
+meta {
+  name: Get Referral
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://{{host}}/api/referral
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Returns the user's referral code and stats.
+  code: the user's unique referral code
+  referred_count: number of users who signed up via this code
+  Share link: https://toqui.travel?ref=<code>
+}

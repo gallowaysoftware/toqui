@@ -1,0 +1,51 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake (Last-Minute Lisbon)",
+  "status": "COMPLETED",
+  "run_id": "run-9",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Chat session mode field shows CHAT_MODE_COMPANION even though the first message was sent in CHAT_MODE_SELECTION. The session mode reflects the last mode used rather than tracking mode transitions.",
+      "suggestion": "Consider preserving the mode of the first message in the session, or tracking mode history per session."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI created a Day 3 itinerary with a 4-5 hour Sintra day trip, but Jake explicitly stated he has a 4pm airport departure on his last day. A Sintra day trip is unrealistic given a 10pm arrival (Day 1) and 4pm airport departure (Day 3). The AI did not account for the compressed timeline.",
+      "context": "Selection mode initial response. AI created 10 itinerary items across 3 days including 'Day trip to Sintra (4-5 hours)' on the departure day. Jake said he has 2 days and lands at 10pm with a return flight departure requiring 4pm airport arrival.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Initial selection-mode response was building into a lengthy text reply (trip essay format) on top of the 10 itinerary items already created via tool. For a user at the airport gate, the AI should have kept the text response short and pointed to the itinerary items instead of writing a narrative summary.",
+      "context": "First message in selection mode. The AI created the trip and 10 itinerary items (good), but then started writing a long text summary. The stream was truncated at 388 chars visible but the full response appeared to be heading toward a multi-paragraph format.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Companion mode photography response (2556 chars) was longer than ideal for a traveler on-the-go. While the photographer context justified more detail, companion mode responses should aim for brevity. The late-night arrival (871 chars) and airport logistics (851 chars) responses were appropriately concise.",
+      "context": "Second companion message asking about one-day must-dos as a photographer. The AI provided excellent content but was verbose compared to the other companion responses.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "{\"query\": \"best things to do in Lisbon 2 days 2025 2026 top highlights\"}",
+      "error": "Real-time web search is not configured in this environment. This is expected in local test environments."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI excelled at the urgent trip creation scenario -- it created the trip immediately without asking unnecessary clarifying questions, which is exactly what a last-minute traveler needs. Companion mode responses for late-night arrival guidance and airport logistics were concise and actionable with specific names, neighborhoods, and transit details. The expert handoff to a Portugal photography specialist was smooth and added value. The main weakness was the itinerary quality: the AI created a 3-day plan including a Sintra day trip on departure day, not accounting for the 10pm arrival and 4pm departure constraint that makes this effectively a 1.5-day trip. Despite this, the Lisbon-specific knowledge was strong (late dining culture, Tram 28, Pasteis de Belem, metro to airport, Alfama viewpoints)."
+  },
+  "feature_coverage": ["selection", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

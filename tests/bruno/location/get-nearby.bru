@@ -1,7 +1,7 @@
 meta {
   name: Get Nearby
   type: grpc
-  seq: 1
+  seq: 2
 }
 
 grpc {
@@ -14,15 +14,19 @@ auth:bearer {
 }
 
 docs {
-  Returns nearby points of interest based on the user's cached location.
-  The user must have called UpdateLocation first to set their position.
+  Returns nearby points of interest based on a lat/lng position.
+  location is a nested LatLng message (not flat fields).
+  Call UpdateLocation first to cache the user's position server-side,
+  or provide location here directly for a one-off lookup.
 }
 
 body:json {
   {
-    "latitude": 35.6762,
-    "longitude": 139.6503,
-    "radius_meters": 1000,
-    "category": "restaurant"
+    "location": {
+      "latitude": 35.6762,
+      "longitude": 139.6503
+    },
+    "category": "restaurant",
+    "radius_meters": 1000
   }
 }

@@ -1,0 +1,22 @@
+meta {
+  name: Get Usage
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://{{host}}/api/usage
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Returns the authenticated user's daily message usage.
+  used: messages sent today
+  limit: daily cap for the user's tier (free=10, pro=50, explorer/voyager=unlimited)
+  resets_at: ISO timestamp when the counter resets (midnight UTC)
+}

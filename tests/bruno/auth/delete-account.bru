@@ -1,0 +1,30 @@
+meta {
+  name: Delete Account
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{host}}/toqui.v1.AuthService/DeleteAccount
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  GDPR Article 17 — Right to erasure. Initiates async account deletion.
+  confirm must be true — validation enforces this to prevent accidental deletion.
+  Deletes: user record, all trips, all bookings, Firestore chat history.
+  Returns a request_id for tracking. Deletion completes within 30 days.
+
+  WARNING: This is irreversible. Do not use on test users you want to keep.
+  Use testctl cleanup-user instead for QA cleanup.
+}
+
+body:json {
+  {
+    "confirm": true
+  }
+}

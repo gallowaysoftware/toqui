@@ -1,0 +1,78 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Trip Sharing Lifecycle (Structural)",
+  "status": "COMPLETED",
+  "run_id": "run-9",
+  "trip_destination": "Japan",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingest",
+    "share_enable",
+    "shared_view_verify",
+    "share_disable",
+    "revocation_verify",
+    "re_share",
+    "new_token_verify",
+    "old_token_still_invalid",
+    "content_completeness",
+    "chat_history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "itineraryUpdate stream event returns 0 items despite 26 items created",
+      "description": "When create_itinerary_items tool runs during SendMessage, the toolResult confirms 26 items created with IDs, but the itineraryUpdate stream event contains an empty items array (0 items). The frontend would not receive the itinerary items via the stream event and would need to re-fetch via GetItinerary. This is a stream emission bug, not a data loss bug -- items are persisted correctly.",
+      "expected": "itineraryUpdate event should contain the 26 created items",
+      "actual": "itineraryUpdate event contains 0 items",
+      "api_command": "buf curl SendMessage with create_itinerary_items tool call"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage counter shows 1 after 2 SendMessage calls",
+      "description": "After sending 2 messages (one in CHAT_MODE_SELECTION, one in CHAT_MODE_PLANNING), GET /api/usage returns used:1. The selection mode message may not be counted, but the user did receive an AI response with tool calls for both messages. If selection mode messages are intentionally excluded from the daily limit, this is by design; otherwise it is an undercount.",
+      "expected": "used: 2 after 2 SendMessage calls",
+      "actual": "used: 1",
+      "api_command": "GET /api/usage"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared view bookings only expose type, title, and provider fields. Dates, confirmation codes, and other useful details are omitted. A shared trip viewer cannot see when the hotel stay is or the booking reference number, which limits the usefulness of sharing for travel companions.",
+      "severity": "P2",
+      "suggestion": "Include check-in/check-out dates and confirmation code in the shared booking view"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip creation and itinerary generation worked excellently -- 26 well-structured items across 7 days with good descriptions and practical tips. Booking parsing extracted all key fields from the ryokan confirmation correctly. The sharing lifecycle is solid: token revocation works, new tokens are unique, old tokens stay invalid after re-sharing, and shared views contain meaningful content without leaking private data. The only functional concern is the empty itineraryUpdate stream event."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "create_trip",
+    "create_itinerary_items",
+    "booking_ingest_hotel",
+    "trip_share_enable",
+    "shared_view_access",
+    "trip_unshare",
+    "token_revocation_verify",
+    "re_share_new_token",
+    "old_token_still_invalid_after_reshare",
+    "shared_view_content_completeness",
+    "chat_sessions",
+    "usage_tracking",
+    "trip_complete"
+  ]
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Get Persona
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{host}}/toqui.v1.PersonaService/GetPersona
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Returns details for a specific persona by ID.
+  Persona IDs are in the format "location_theme" e.g. "JP_food" or "IT_history".
+  Use ListPersonas first to discover available IDs.
+}
+
+body:json {
+  {
+    "persona_id": "JP_food"
+  }
+}

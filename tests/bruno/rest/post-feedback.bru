@@ -1,0 +1,22 @@
+meta {
+  name: Post Feedback
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://{{host}}/api/feedback
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "message": "The persona handoff is really smooth — love the expert introductions!",
+    "rating": 5
+  }
+}

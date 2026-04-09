@@ -14,14 +14,22 @@ auth:bearer {
 }
 
 docs {
-  Resolves a composed expert persona for a given location and theme.
+  Resolves a composed expert persona for a given trip and optional lat/lng.
   Returns the persona identity (name, description, greeting) for the
   specific location+theme combination (e.g., a food expert for Japan).
+
+  trip_id is required. latitude/longitude are optional (used to refine
+  location detection when the trip destination is ambiguous).
+  mode: planning | companion | selection
+  themes: auto-tagged by AI, stored as strings in DB (e.g. food, history, hiking)
 }
 
 body:json {
   {
-    "location_code": "JP",
+    "trip_id": "<trip-id>",
+    "latitude": 35.6762,
+    "longitude": 139.6503,
+    "mode": "CHAT_MODE_PLANNING",
     "themes": ["food", "history"]
   }
 }

@@ -1,0 +1,48 @@
+meta {
+  name: Update Itinerary
+  type: grpc
+  seq: 7
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/UpdateItinerary
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Full-rewrite semantics: the provided itinerary REPLACES all existing items.
+  An empty days array clears the itinerary entirely.
+  Prefer SendMessage with create_itinerary_items for single-item additions.
+  item_type values: ITINERARY_ITEM_TYPE_ACTIVITY, _ACCOMMODATION, _TRANSPORT, _MEAL, _NOTE
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>",
+    "itinerary": {
+      "days": [
+        {
+          "date": "2025-09-15",
+          "items": [
+            {
+              "title": "Arrive Narita, transfer to hotel",
+              "description": "Airport Limousine Bus to Shinjuku (~90 min)",
+              "item_type": "ITINERARY_ITEM_TYPE_TRANSPORT",
+              "start_time": "14:00"
+            },
+            {
+              "title": "Dinner at Ichiran Ramen",
+              "description": "Solo-booth ramen near Shinjuku station",
+              "item_type": "ITINERARY_ITEM_TYPE_MEAL",
+              "start_time": "19:00"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "persona": "R-02",
+  "name": "The Chens — Family Vacation",
+  "run": 9,
+  "timestamp": "2026-04-09T14:19:00Z",
+  "trip_id": "dd077cd6-6f31-4d58-a7ee-6035e0ade4c3",
+  "session_id": "9e2a9817-a14b-42bd-a645-44607988259f",
+  "status": "pass",
+  "summary": "All 7 test vectors passed. Trip creation, context retention, itinerary creation, safety advice, expert handoff, and driving logistics all performed excellently. The AI demonstrated strong family-awareness throughout, tailoring recommendations to both kids' ages and interests.",
+  "tests": [
+    {
+      "id": "T1",
+      "name": "Trip creation in selection mode",
+      "status": "pass",
+      "details": "AI called create_trip with title 'Costa Rica Family Adventure 2026', destination_country 'CR', and a relevant description. Trip transitioned to TRIP_STATUS_PLANNING. Trip persisted and verified via GetTrip."
+    },
+    {
+      "id": "T2",
+      "name": "Context retention post-creation",
+      "status": "pass",
+      "details": "In the follow-up planning message, AI immediately referenced 'Costa Rica' by name without being re-told the destination. No 'where are you going?' failure. AI referenced specific Costa Rican locations (Arenal, Manuel Antonio, Monteverde) demonstrating full context injection. CRITICAL TEST PASSED."
+    },
+    {
+      "id": "T3",
+      "name": "Family-specific recommendations",
+      "status": "pass",
+      "details": "AI tailored every activity to the kids' ages and interests. Noah's frog obsession was addressed with Rainmaker ('FROG HEAVEN'), Monteverde Frog Pond, Selvatura night walk. Emma's animal love was addressed with Manuel Antonio wildlife, Kids Saving The Rainforest sanctuary. Water safety for Noah (non-swimmer) was proactively addressed — shallow tide pools, PFD recommendations, specific beach warnings. Zip line minimum age (5) was verified for Noah's eligibility."
+    },
+    {
+      "id": "T4",
+      "name": "Itinerary creation via create_itinerary_items",
+      "status": "pass",
+      "details": "AI called create_itinerary_items 3 times (first attempt failed with JSON serialization error — items passed as string instead of array — then self-corrected on retry). Total: 21 items across 10 days. Itinerary covers Arenal (Days 1-3), Manuel Antonio (Days 4-6), Monteverde (Days 7-9), departure (Day 10). Sensible pace: 3-4 nights per location. Drive times noted (3.5-4hr between major stops). Itinerary persisted and verified via GetItinerary."
+    },
+    {
+      "id": "T5",
+      "name": "Safety questions — medical and water",
+      "status": "pass",
+      "details": "Medical: Named specific facilities per region (Hospital San Carlos for Arenal, Hospital de Quepos for Manuel Antonio, Clinica de Monteverde). Referenced CIMA Hospital as gold-standard with phone number. Recommended travel insurance with medical evacuation. Gave emergency number (911). Provided pediatrician-specific prep checklist (ORS, vaccination records, medications). Water safety: Recommended Coast Guard-approved PFD (Type III) for Noah. Identified Playa Manuel Antonio as safest beach (protected cove). Warned against Playa Espadilla Norte (rip currents). Specific waterfall/river warnings. Flag system explained. July rainy season wave conditions noted. Response was specific and practical, not vague."
+    },
+    {
+      "id": "T6",
+      "name": "Expert handoff for wildlife/nature",
+      "status": "pass",
+      "details": "AI called suggest_expert with themes=['nature','family'] and region_code='CR'. Persona 'Diego' was created as nature/family specialist. PersonaSwitch event emitted correctly with previous persona (Toqui) and new persona details. Diego's response was deeply knowledgeable: referenced specific species by Latin name (Agalychnis callidryas, Centrolenidae, Oophaga pumilio), ranked frog-spotting locations by probability, recommended private family night walks, SINAC-certified guides, ethical wildlife watching guidelines. All activities were guided/family-appropriate — no solo hiking or dangerous suggestions."
+    },
+    {
+      "id": "T7",
+      "name": "Driving logistics in Costa Rica",
+      "status": "pass",
+      "details": "Confirmed 4x4 is necessary (specifically for Monteverde unpaved roads). Provided realistic family drive times: SJO→Arenal 3.5-4hr, Arenal→MA 4.5-5hr, MA→Monteverde 5-5.5hr, Monteverde→SJO 3.5-4hr. All times include kid stops. Child car seat info: available from rental companies ($5-10/day), suggested bringing own travel seat (Wayb Pico, IMMI Go). Noted Costa Rican law (under 12 or 145cm requires restraint). Practical tips: offline maps, Waze, morning departures, gas station strategy, July road condition warnings, rental insurance covering unpaved roads."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "First create_itinerary_items call failed because the AI serialized the items array as a JSON string rather than a JSON array. The tool returned a parse error. The AI self-corrected on retry, but this wastes a tool loop iteration and adds latency. The tool's JSON schema or error message could be clearer to prevent this.",
+      "category": "tool_reliability"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "error": "json: cannot unmarshal string into Go struct field createItineraryArgs.items of type []handlers.createItineraryItemArg",
+      "recovered": true,
+      "details": "AI passed items as a JSON-encoded string rather than a native array on first attempt. Self-corrected on second attempt. This is a recurring pattern across runs — the AI sometimes double-serializes the items field."
+    },
+    {
+      "tool": "web_search",
+      "error": "Real-time web search is not configured in this environment",
+      "recovered": true,
+      "details": "Web search unavailable in test environment. AI gracefully fell back to existing knowledge and disclosed the limitation to the user. Three search attempts were made (hospitals Arenal, hospitals Manuel Antonio, water safety) before falling back."
+    }
+  ],
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "overall": 5
+  },
+  "usefulness_notes": {
+    "trip_creation": "Instant trip creation with correct destination, descriptive title, and immediate transition to planning mode. Zero friction.",
+    "itinerary_quality": "Exceptional 10-day itinerary with 21 items. Every activity tailored to family needs. Realistic pacing (3-4 nights per location). Activities matched to each child's interests. Drive times and logistics included. Restaurants are family-friendly. Night walks and frog-specific activities for Noah. Swimming and animal encounters for Emma. Safety considerations woven throughout.",
+    "persona_handoff": "Smooth handoff from Toqui to Diego (nature/family expert). Diego's response was genuinely expert-level with Latin species names, specific guide recommendations, and ethical wildlife watching guidelines. The handoff message was natural and the expert maintained the family context perfectly.",
+    "overall": "This is an outstanding planning session. A real family would walk away with a complete, actionable 10-day Costa Rica itinerary specifically designed for their children's ages and interests. Safety concerns were addressed comprehensively. The AI asked good clarifying questions and proactively included practical logistics (car seats, gas stations, rain gear). The only minor issue was the tool serialization error on first itinerary creation attempt, which was self-corrected."
+  }
+}

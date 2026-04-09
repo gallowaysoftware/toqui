@@ -1,0 +1,63 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila — Food Blogger Mexico City & Oaxaca",
+  "status": "COMPLETED",
+  "trip_destination": "Mexico City & Oaxaca, Mexico",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingestion", "booking_recommendations", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Turn timeout on expert handoff + large itinerary generation",
+      "description": "When requesting expert handoff (suggest_expert) and a full 10-day itinerary in the same message, the AI timed out after 90 seconds. The personaSwitch event fired but no itinerary items or text response were produced. Splitting the request into smaller chunks (5-day segments) worked fine.",
+      "steps_to_reproduce": "Send a planning mode message requesting both suggest_expert handoff AND create_itinerary_items for all 10 days simultaneously",
+      "expected": "AI completes the response within timeout, even if it needs multiple tool calls",
+      "actual": "Error: turn timeout: AI provider did not respond within 1m30s",
+      "api_command": "SendMessage with combined expert handoff + full itinerary request"
+    },
+    {
+      "severity": "P2",
+      "title": "Gemini 404 model not found (gemini-3-flash)",
+      "description": "Primary Gemini provider returned 404 for model 'gemini-3-flash'. This is a misconfigured model ID. The fallback to Claude worked but then hit rate limits. This caused one companion mode message to fail completely before retry.",
+      "expected": "Valid Gemini model ID configured",
+      "actual": "Publisher Model projects/toqui-staging/locations/us-central1/publishers/google/models/gemini-3-flash was not found",
+      "api_command": "SendMessage in companion mode"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "After expert handoff to Diego (personaSwitch event fired), the next message reverted to Toqui identity saying 'I think there might be a small mix-up! I'm Toqui, your travel companion. Diego hasn't joined us quite yet.' This contradicts the handoff event that was already sent to the frontend.",
+      "severity": "P1",
+      "suggestion": "The AI should maintain the expert persona identity after suggest_expert completes, especially when the handoff message and personaSwitch event have already been sent to the client."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert persona identity not maintained after handoff",
+      "context": "After suggest_expert tool call completed and personaSwitch event fired for Diego (Mexico food + distilleries expert), the AI responded as Toqui in the next turn, claiming Diego hadn't joined yet. The handoff was technically successful (tool result + personaSwitch event) but the AI did not adopt the new persona.",
+      "severity": "P1"
+    },
+    {
+      "issue": "nearby_places returned no_location in companion mode (expected for test)",
+      "context": "In companion mode, the AI tried to call nearby_places but got no_location error since no ephemeral location was cached. The AI handled this gracefully by falling back to its knowledge of Roma Norte. This is expected behavior for a test without location data but worth noting.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "nearby_places",
+      "input": "{\"query\": \"tacos open late night Roma Norte Mexico City\", \"radius\": 1000}",
+      "error": "no_location: The user's location is not available. Ask them to enable location sharing in the app."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 3,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional food-focused itinerary quality. The AI demonstrated deep knowledge of CDMX and Oaxacan food culture, correctly distinguishing regional cuisines (not treating Mexican food as monolithic). The Dia de Muertos cultural depth was outstanding — covering pan de yema vs CDMX pan de muerto, mole negro specifics (chilhuacle negro, mulato, pasilla chiles), tejate, and the Zapotec ceremonial context. Itinerary included 40 items across 10 days with practical details (market hours, budget, neighborhood names, reservation requirements). Booking ingestion parsed the tour perfectly. The recommend_booking tool fired correctly with FTC disclosure. The AI even flagged a booking date conflict proactively. One significant issue: persona handoff to Diego failed to stick — the AI reverted to Toqui identity despite the personaSwitch event firing. Companion mode was concise and practical but limited by lack of location data."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "booking_ingestion", "booking_field_extraction", "booking_recommendations", "affiliate_disclosure", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

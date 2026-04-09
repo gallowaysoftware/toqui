@@ -171,13 +171,42 @@ grpcurl -plaintext -H "Authorization: Bearer <token>" \
   -d '{"trip_id":"..."}' localhost:8090 toqui.v1.TripService/GetTrip
 ```
 
+### Manual QA
+
+For hands-on QA against the local stack (no Google OAuth required), use the setup script:
+
+```bash
+# Start infra + create a test user + print browser injection snippet
+./scripts/qa-start.sh
+
+# Options
+./scripts/qa-start.sh --user-only            # skip backend checks
+./scripts/qa-start.sh --ttl 2h               # short-lived token
+./scripts/qa-start.sh --name "Jane" --email "jane@toqui-test.local"
+```
+
+The script checks Docker, waits for the backend, creates a testctl user (with `age_verified_at` set in DB), and prints the ready-to-paste `localStorage` snippet for the browser.
+
+**Full runbook**: `docs/qa-manual.md` — covers infra setup, OAuth bypass pitfalls (refresh token trap, age gate), grpcurl examples for every RPC, Bruno collection guide, proto field-naming quirks, frontend QA checklist, and bug reporting.
+
 ### Bruno Test Collections
 
 API test collections live in `tests/bruno/`. These are Bruno HTTP client collections for manual and semi-automated API testing:
 
 - Import the collection into [Bruno](https://www.usebruno.com/)
-- Collections cover auth flows, trip CRUD, chat, bookings, and admin endpoints
-- Environment variables are configured per environment (local, staging, prod)
+- Set `auth_token` in the **local** environment to a token from `./scripts/qa-start.sh`
+- **Folders**: `auth/`, `trips/`, `bookings/`, `personas/`, `location/`, `chat/`, `rest/`
+- **Coverage**: all 28 RPCs + REST endpoints (usage, referral, feedback, share/unshare, guides)
+
+**Known field name quirks** (wrong names cause silent `InvalidArgument` errors):
+
+| RPC | Field to use |
+|-----|-------------|
+| GetTrip, UpdateTrip, DeleteTrip | `id` (NOT `trip_id`) |
+| GetBooking, DeleteBooking | `id` (NOT `booking_id`) |
+| GetItinerary, UpdateItinerary | `trip_id` ✓ |
+| UpdateLocation, GetNearby | `location: {latitude, longitude}` (nested LatLng, NOT flat fields) |
+| ResolvePersona | `trip_id`, `latitude`, `longitude`, `mode`, `themes` (NOT `location_code`) |
 
 ### CI/CD
 
@@ -472,7 +501,7 @@ Orchestrator (Claude Code session)
 # 1. Start infrastructure
 make docker-up          # Postgres + Firestore emulator
 make migrate-up         # Apply migrations
-make run &              # Start backend on :8090
+make run &              # Start backend on :8090 (env/.env.local sets CORS_ALLOWED_ORIGINS for :3000 and :8081)
 # Wait for: curl -s http://localhost:8090/healthz → {"status":"ok"}
 
 # 2. In Claude Code, run the agentic test suite
@@ -487,13 +516,18 @@ make run &              # Start backend on :8090
 ### Test User Management (`cmd/testctl`)
 
 ```bash
-# Create a test user with JWT token
-go run ./cmd/testctl create-user --name "Alice" --email "alice@toqui-test.local"
+# Preferred: use the setup script (checks infra, creates user, prints browser snippet)
+./scripts/qa-start.sh
+
+# Direct testctl usage
+go run ./cmd/testctl create-user --name "Alice" --email "alice@toqui-test.local" --ttl 8h
 # → {"user_id": "uuid", "token": "eyJ..."}
 
 # Clean up after testing
 go run ./cmd/testctl cleanup-user --user-id "uuid"
 ```
+
+**Critical**: `testctl` generates access tokens only (no refresh token). Do **not** set `toqui_refresh_token` in localStorage — any value causes `refreshTokens()` to call the backend, fail on an invalid token, and wipe all auth state. See `docs/qa-manual.md` for full pitfall list.
 
 ### Persona Catalog (20 personas: 8 regression + 12 edge cases)
 
@@ -866,9 +900,9 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 | Model Tier | Claude                     | Gemini (Vertex AI)        |
 | ---------- | -------------------------- | ------------------------- |
-| fast       | `claude-haiku-4-5`         | `gemini-3.1-flash-lite`   |
-| smart      | `claude-sonnet-4-6`        | `gemini-3-flash`          |
-| best       | `claude-sonnet-4-6`        | `gemini-3.1-pro`          |
+| fast       | `claude-haiku-4-5`         | `gemini-3.1-flash-lite-preview` |
+| smart      | `claude-sonnet-4-6`        | `gemini-3-flash-preview`        |
+| best       | `claude-sonnet-4-6`        | `gemini-3.1-pro-preview`        |
 
 Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
 

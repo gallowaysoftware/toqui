@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-15",
+  "persona_name": "UpdateItinerary Day-Metadata Round Trip",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon (structural test)",
+  "completed_steps": ["auth", "create_trip", "phase2_single_day", "phase3_multi_day", "phase4_partial_metadata", "phase5_truncate", "phase6_replacement"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Structural test with no AI. All 6 phases passed: single-day round-trip, multi-day round-trip, summary-only and date-only partial metadata, empty-days truncate semantics, and full replacement overwrites. Day summary and date fields round-trip correctly through UpdateItinerary/GetItinerary with no regressions from PR #198."
+  },
+  "feature_coverage": ["update_itinerary", "day_summary_roundtrip", "day_date_roundtrip", "replace_semantics"]
+}

@@ -1,0 +1,177 @@
+{
+  "persona": "R-06",
+  "name": "Priya — The Organized Barcelona Traveler",
+  "run": 9,
+  "timestamp": "2026-04-09T14:30:00Z",
+  "trip_id": "53f8fc53-fe13-4957-9f2a-184fad1aab30",
+  "session_id": "a1164291-ea6b-40dc-9a2e-244ff4438985",
+  "overall_result": "PASS",
+  "phases": {
+    "phase_1_trip_creation_and_booking_ingestion": {
+      "result": "PASS",
+      "tests": [
+        {
+          "test": "Trip creation via chat in selection mode",
+          "result": "PASS",
+          "details": "AI called create_trip tool immediately with title 'Barcelona Trip', destination_country 'ES'. Trip created and transitioned to planning mode."
+        },
+        {
+          "test": "Ingest flight booking (BOOKING_TYPE_FLIGHT)",
+          "result": "PASS",
+          "booking_id": "adaade03-16bb-4a5a-8dcf-e2ba4c522e8c",
+          "details": "Flight confirmation DL7829X ingested successfully. All fields parsed: terminals, seats, times, fare breakdown. Structured details_json includes outbound and return legs with correct airports, terminals, and times."
+        },
+        {
+          "test": "Ingest hotel booking (BOOKING_TYPE_HOTEL)",
+          "result": "PASS",
+          "booking_id": "9e9027d6-6823-4e9d-a269-f7a9a4bf3c9c",
+          "details": "Hotel Arts Barcelona confirmation HAB-2026-9831 ingested. Check-in/check-out dates, room type, address, phone all parsed. hotelDetails sub-object correctly populated."
+        },
+        {
+          "test": "Ingest activity booking (BOOKING_TYPE_ACTIVITY)",
+          "result": "PASS",
+          "booking_id": "e767b584-6ea0-42c0-813f-d17a1cacec56",
+          "details": "Sagrada Familia tour SF-44921 ingested. Date, time, duration, meeting point, dress code, cancellation policy all parsed into activityDetails sub-object."
+        }
+      ]
+    },
+    "phase_2_booking_data_retrieval": {
+      "result": "PASS",
+      "tests": [
+        {
+          "test": "AI answers 'What terminal do I fly out of?'",
+          "result": "PASS",
+          "expected": "JFK Terminal 4",
+          "actual": "JFK Terminal 4",
+          "details": "AI correctly answered 'JFK Terminal 4' with flight number DL 472, departure time 6:45 PM, and additional context about the terminal being Delta's main hub."
+        },
+        {
+          "test": "AI answers 'What time is hotel check-in?'",
+          "result": "PASS",
+          "expected": "3:00 PM",
+          "actual": "3:00 PM on June 15th",
+          "details": "AI correctly referenced 3:00 PM check-in and proactively noted the gap between flight arrival (8:55 AM) and check-in, suggesting exploring Barceloneta neighborhood in between."
+        },
+        {
+          "test": "AI answers 'When is my Sagrada Familia tour?'",
+          "result": "PASS",
+          "expected": "Wednesday, June 17 at 10:00 AM",
+          "actual": "Wednesday, June 17th at 10:00 AM",
+          "details": "AI provided comprehensive details: date, time, meeting point, arrive-by time (9:45 AM), duration, tower access info, dress code, and cancellation policy — all matching artifact data."
+        },
+        {
+          "test": "ExtractBookingField RPC — departure terminal",
+          "result": "PASS",
+          "details": "Returned structured answer with outbound_departure_terminal: Terminal 4 and return_departure_terminal: Terminal 1. Both correct per artifact."
+        },
+        {
+          "test": "ExtractBookingField RPC — hotel cancellation deadline",
+          "result": "PASS",
+          "details": "Returned June 12, 2026 at 11:59 PM CEST with correct late cancellation fee (EUR 289.00) and no-show fee. All match artifact data."
+        }
+      ]
+    },
+    "phase_3_ai_booking_recommendations": {
+      "result": "PASS",
+      "tests": [
+        {
+          "test": "recommend_booking triggered for day trip request",
+          "result": "PASS",
+          "details": "AI called recommend_booking with category 'activity' and query 'day trip from Barcelona with transport included'. Tool returned GetYourGuide partner link."
+        },
+        {
+          "test": "FTC affiliate disclosure present",
+          "result": "PASS",
+          "details": "Response included: 'Affiliate disclosure: I may earn a small commission if you book through this link, at no extra cost to you.' Compliance requirement met."
+        },
+        {
+          "test": "AI references free days from bookings in recommendations",
+          "result": "PASS",
+          "details": "AI correctly identified June 16th, 18th, and 19th as free days, demonstrating booking-aware scheduling intelligence."
+        },
+        {
+          "test": "recommend_booking NOT triggered for restaurant suggestions",
+          "result": "PASS",
+          "details": "When asked for restaurant recommendations, AI used web_search tool instead of recommend_booking. No affiliate links in restaurant response. Correct tool discrimination."
+        },
+        {
+          "test": "AI respects 'don't drink much' preference",
+          "result": "PASS",
+          "details": "Restaurant response included non-alcoholic drink suggestions (agua con gas, mosto, zumo de naranja natural) and explicitly acknowledged the preference. No bar or wine tour recommendations in restaurant response."
+        }
+      ]
+    },
+    "phase_4_itinerary_integration": {
+      "result": "PASS",
+      "tests": [
+        {
+          "test": "create_itinerary_items called with 5-day itinerary",
+          "result": "PASS",
+          "details": "AI called create_itinerary_items with 29 items across 5 days. All items stored successfully via GetItinerary verification."
+        },
+        {
+          "test": "Flight arrival correctly placed",
+          "result": "PASS",
+          "details": "Day 1, order 1: 'Arrive at Barcelona El Prat Airport (BCN)' with correct flight number (DL 472), terminal (T1), and arrival time (8:55 AM)."
+        },
+        {
+          "test": "Hotel check-in correctly placed",
+          "result": "PASS",
+          "details": "Day 1, order 5: 'Check in at Hotel Arts Barcelona' with correct check-in time (3:00 PM) and confirmation number (HAB-2026-9831). Activities before check-in fit the arrival-to-3PM gap."
+        },
+        {
+          "test": "Sagrada Familia tour correctly placed on Day 3 (June 17)",
+          "result": "PASS",
+          "details": "Day 3, order 1: 'Sagrada Familia Skip-the-Line Guided Tour with Tower Access' marked as BOOKED with confirmation SF-44921, correct meeting point, arrive-by time, and dress code."
+        },
+        {
+          "test": "No time conflicts with existing bookings",
+          "result": "PASS",
+          "details": "All booked activities placed at correct times. Free time filled with architecture (Casa Batllo, Park Guell, Palau de la Musica), food (multiple restaurants), beaches, and shopping — matching stated preferences."
+        },
+        {
+          "test": "Itinerary respects persona preferences",
+          "result": "PASS",
+          "details": "Architecture, food, beaches, shopping all represented. Non-alcoholic drink suggestions throughout (mosto, agua con gas). No wine tours or bar crawls. Itinerary descriptions reference non-alcoholic options at restaurants."
+        }
+      ]
+    }
+  },
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "low",
+      "description": "Day 4 itinerary item titled 'Dinner at La Cova Fumada' but the description itself notes La Cova Fumada is lunch-only and suggests Espai Mescladis as the actual dinner venue. Title and description are contradictory.",
+      "location": "create_itinerary_items Day 4 order 6"
+    },
+    {
+      "severity": "low",
+      "description": "In the day trip recommendation response, the AI suggested Penedes Wine Region despite the user stating they don't drink much. While the suggestion is hedged ('if you enjoy wine'), it could be more attentive to stated preferences. However, the AI did NOT recommend wine tours in the final itinerary, which is the correct behavior.",
+      "location": "recommend_booking response"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "severity": "info",
+      "description": "web_search returned 'no_web_access' status — expected in local/test environment without web search configured. AI gracefully handled by disclaiming it could not verify real-time details and proceeding with knowledge-based recommendations."
+    }
+  ],
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": "N/A",
+    "booking_parsing": 5,
+    "booking_data_retrieval": 5,
+    "companion_mode": "N/A",
+    "overall": 5
+  },
+  "usefulness_notes": {
+    "trip_creation": "Immediate create_trip call, correct destination, clean transition to planning mode.",
+    "itinerary_quality": "29 items across 5 days. Existing bookings placed at correct times. Excellent variety of architecture, food, beaches, shopping. Non-alcoholic options noted at every restaurant. Practical details (metro directions, timing tips, booking advice) throughout.",
+    "booking_parsing": "All 3 booking types (flight, hotel, activity) parsed with full structured data. Confirmation codes, dates, times, prices, addresses, cancellation policies all correctly extracted.",
+    "booking_data_retrieval": "AI answered all booking-specific questions accurately with exact data from artifacts. ExtractBookingField RPC returned structured fields matching artifact content.",
+    "overall": "Booking ingestion pipeline is robust. AI demonstrates strong booking-aware context — references specific confirmation codes, terminal numbers, check-in times, and meeting points. FTC disclosure compliance is solid. Itinerary intelligently builds around existing bookings. Persona preference handling (non-drinker) is excellent throughout the itinerary but slightly inconsistent in one-off recommendations."
+  }
+}

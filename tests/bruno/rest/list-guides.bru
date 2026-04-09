@@ -1,0 +1,17 @@
+meta {
+  name: List Guides
+  type: http
+  seq: 7
+}
+
+get {
+  url: http://{{host}}/api/guides
+  body: none
+  auth: none
+}
+
+docs {
+  Public endpoint — no auth required.
+  Returns all available destination guides (slug, title, destination).
+  Used by the marketing site's guide pages.
+}
