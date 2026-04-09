@@ -205,7 +205,7 @@ func TestMostRecentUserContent(t *testing.T) {
 			messages: []ai.Message{
 				{Role: "user", Content: "build me an itinerary for Peru"},
 				{Role: "assistant", Content: "Here's a plan..."},
-				{Role: "user", Content: "(System note: your last turn produced no output. Please answer my previous message.)"},
+				{Role: "user", Content: "(Automated follow-up: your last turn produced no output. Please answer my previous message.)"},
 			},
 			want: "build me an itinerary for Peru",
 		},

@@ -72,32 +72,18 @@ func userExplicitlyRequestsItineraryChange(msg string) bool {
 	}
 	lower := strings.ToLower(msg)
 
-	// Explicit add/save/remove signals. These are phrases a user would
-	// say when they want the itinerary modified, not just information.
+	// Exact phrase matches — strongest signals.
 	for _, phrase := range []string{
 		"add to my itinerary",
 		"add to my plan",
 		"add to the itinerary",
 		"add to the plan",
-		"add that to my",
-		"add this to my",
-		"add it to my",
 		"save to my itinerary",
 		"save to my plan",
 		"save this for later",
 		"save that for later",
-		"put it on my itinerary",
-		"put this on my itinerary",
-		"put that on my plan",
-		"add it for tomorrow",
-		"add it for today",
-		"add this for tomorrow",
-		"schedule this",
-		"schedule that",
-		"plan this for",
-		"plan that for",
-		"include this in my",
-		"include that in my",
+		"put on my itinerary",
+		"put on my plan",
 		"remove from my itinerary",
 		"remove from my plan",
 		"remove from the itinerary",
@@ -105,10 +91,37 @@ func userExplicitlyRequestsItineraryChange(msg string) bool {
 		"delete from my itinerary",
 		"drop from my plan",
 		"take off my itinerary",
-		"remove the ",
-		"cut the ",
-		"delete the ",
 	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+
+	// Pattern: "add [something] to my itinerary/plan" — catches phrases
+	// like "add that temple visit to my itinerary for tomorrow morning"
+	// that the exact matches above miss (Run 9 N-01 P1).
+	for _, verb := range []string{"add ", "save ", "put ", "include "} {
+		idx := strings.Index(lower, verb)
+		if idx == -1 {
+			continue
+		}
+		rest := lower[idx+len(verb):]
+		for _, dest := range []string{"to my itinerary", "to my plan", "to the itinerary", "to the plan", "on my itinerary", "on my plan", "in my itinerary", "in my plan", "for tomorrow", "for today", "for day "} {
+			if strings.Contains(rest, dest) {
+				return true
+			}
+		}
+	}
+
+	// Pattern: "remove/cut/delete [something]" — broader match for deletion.
+	for _, verb := range []string{"remove the ", "cut the ", "delete the ", "drop the ", "cancel the "} {
+		if strings.Contains(lower, verb) {
+			return true
+		}
+	}
+
+	// Scheduling patterns.
+	for _, phrase := range []string{"schedule this", "schedule that", "book this into"} {
 		if strings.Contains(lower, phrase) {
 			return true
 		}
