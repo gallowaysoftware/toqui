@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-04",
+  "persona_name": "Booking Field Extraction Gauntlet",
+  "status": "COMPLETED",
+  "trip_destination": "Multiple Destinations",
+  "completed_steps": ["auth", "create_trip", "ingest_bookings", "list_bookings", "extract_fields", "negative_test", "activate", "sharing", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 7 booking artifacts were ingested successfully with correct type classification, providers, and confirmation codes parsed. ExtractBookingField performed flawlessly across all 7 extractions, correctly identifying specific terminal/time from flights, cancellation terms from hotels, meeting points from activities, insurance/fuel from car rentals, disambiguating Hanoi check-in from multi-hostel bookings, extracting meal plans from ryokans, and counting tastings/dietary options from tours. The negative test (asking about hotel wifi on a flight booking) was correctly handled with no hallucination."
+  },
+  "feature_coverage": ["create_trip", "ingest_booking", "list_bookings", "get_booking", "extract_booking_field", "update_trip", "trip_sharing", "trip_unshare", "shared_view", "list_trips", "usage"]
+}

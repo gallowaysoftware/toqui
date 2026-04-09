@@ -85,7 +85,7 @@ func createUser(ctx context.Context, queries *dbgen.Queries, cfg *config.Config,
 	fs := flag.NewFlagSet("create-user", flag.ExitOnError)
 	name := fs.String("name", "Test User", "user display name")
 	email := fs.String("email", "", "user email (required)")
-	ttl := fs.Duration("ttl", 4*time.Hour, "token time-to-live (default 4h)")
+	ttl := fs.Duration("ttl", 8*time.Hour, "token time-to-live (default 8h)")
 	if err := fs.Parse(args); err != nil {
 		log.Fatal(err)
 	}

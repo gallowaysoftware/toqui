@@ -1,0 +1,60 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Trip Sharing Lifecycle (Structural)",
+  "status": "COMPLETED",
+  "run_id": "run11",
+  "trip_destination": "Japan",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingest",
+    "share_enable",
+    "share_access",
+    "share_disable",
+    "share_revocation_verify",
+    "share_re_enable",
+    "share_new_token_verify",
+    "share_old_token_still_dead",
+    "share_content_completeness",
+    "chat_history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Usage counter shows 'used: 1' after 2 SendMessage calls (selection + planning). The selection mode message that triggered create_trip may not be counted, or only AI-response messages count. Minor discrepancy but could confuse users checking their quota.",
+      "severity": "P2",
+      "suggestion": "Clarify whether selection-mode messages count toward the daily limit."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip sharing lifecycle works flawlessly. All security-critical behaviors pass: token revocation works, re-sharing generates a new token, old tokens stay dead after re-share, shared views contain no private data. The shared view includes full itinerary (7 days, 26 items) and booking info. AI created a comprehensive and well-structured Japan itinerary on the first request."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "booking_ingest",
+    "trip_sharing_enable",
+    "trip_sharing_access",
+    "trip_sharing_disable",
+    "trip_sharing_revocation",
+    "trip_sharing_re_enable",
+    "trip_sharing_token_rotation",
+    "trip_sharing_content_completeness",
+    "trip_sharing_privacy_check",
+    "chat_history",
+    "usage",
+    "trip_complete"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Chat History Data Integrity Verifier",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "session_listing", "history_verification", "cross_session_isolation", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage counter undercounts by 1",
+      "description": "Sent 4 SendMessage calls (1 selection + 2 planning + 1 companion) but /api/usage reports used=3. The selection-mode message may not be counted because no trip_id is set at send time, or there is an off-by-one in the usage tracking logic.",
+      "expected": "used=4 after 4 SendMessage calls",
+      "actual": "used=3",
+      "api_command": "GET /api/usage"
+    },
+    {
+      "severity": "P2",
+      "title": "AI re-called create_itinerary_items with duplicate items on second planning message",
+      "description": "When user said 'Add those to my itinerary please', the AI attempted to re-create all 18 itinerary items that were already added in the previous message. The backend correctly returned already_exists/skipped_count=18, but the AI should not have called the tool again with duplicate items. This wastes tokens and adds latency.",
+      "expected": "AI recognizes items were already created and confirms without re-calling the tool",
+      "actual": "AI called create_itinerary_items with all 18 duplicate items; backend rejected them gracefully"
+    },
+    {
+      "severity": "P2",
+      "title": "Companion mode AI unnecessarily called delete_itinerary_items and create_itinerary_items",
+      "description": "In companion mode, the user asked 'Where should I eat dinner tonight near Alfama?' — a pure informational query. The AI tried to call delete_itinerary_items and create_itinerary_items to modify the itinerary. The backend correctly rejected both calls with status=not_needed, but the AI should not have attempted to modify the itinerary for a simple dinner recommendation question in companion mode.",
+      "expected": "AI answers the question without calling itinerary modification tools",
+      "actual": "AI called delete_itinerary_items and create_itinerary_items before answering; backend returned not_needed for both"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions returns lastMessageAt instead of updated_at. The field naming is functional but inconsistent with typical CRUD patterns that use created_at/updated_at pairs.",
+      "severity": "P2",
+      "suggestion": "Consider adding an updated_at field to session metadata for consistency, or document the use of lastMessageAt in the API docs."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI re-creates already-existing itinerary items when user says 'add those to my itinerary' even though items were already added in the previous turn",
+      "context": "Planning mode, second message: 'Add those to my itinerary please.' AI called create_itinerary_items with all 18 items that were already created.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI tried to modify itinerary in companion mode for a simple informational query",
+      "context": "Companion mode: 'I just arrived in Lisbon. Where should I eat dinner tonight near Alfama?' AI called delete_itinerary_items and create_itinerary_items before answering.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Chat history persistence and session management work correctly. All messages round-tripped accurately through Firestore — no empty messages, no missing content, correct role alternation, and complete cross-session isolation. The AI's tendency to re-call tools with duplicate items is wasteful but the backend handles it gracefully. Session listing, history retrieval, and timestamp ordering all function as expected."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "ListChatSessions", "GetChatHistory", "cross_session_isolation", "usage", "trip_lifecycle"],
+  "session_message_counts": {
+    "selection": 2,
+    "planning": 4,
+    "companion": 2
+  },
+  "session_ids": {
+    "selection": "320397e0-29bb-413b-87c7-1c324e65d943",
+    "planning": "0947a609-b93b-47df-ae23-c594689cd5dc",
+    "companion": "65a74ee7-f398-4474-b28a-bb583297e335"
+  }
+}

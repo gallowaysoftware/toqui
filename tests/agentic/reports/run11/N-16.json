@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning_turn_1", "planning_turn_2", "planning_turn_3", "planning_turn_4", "planning_turn_5", "planning_turn_6", "itinerary_verification", "fabrication_analysis"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Day 7 is overloaded with both Chinchero (Sacred Valley) activities AND the full Machu Picchu day trip (early train + citadel + return train). This creates a physically impossible schedule. The AI should have placed Machu Picchu on a separate day (Day 8) after Ollantaytambo as requested.",
+      "severity": "P2",
+      "suggestion": "When appending itinerary items to an existing day that already has a full schedule, the AI should check for time conflicts or create a new day instead."
+    },
+    {
+      "description": "The two-week Peru trip only has 9 days of itinerary items. Lima (2 days at start + 2 days at end) was never prompted for in the 6 turns, but the AI also didn't proactively suggest filling those gaps when asked for a 'final complete summary' in Turn 6.",
+      "severity": "P2",
+      "suggestion": "When summarizing a trip that has unfilled days relative to the stated duration, the AI should note the gaps and offer to fill them."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Turn 1 had 4 create_itinerary_items tool calls — the AI called the tool multiple times with overlapping items, resulting in 3 calls being rejected as duplicates. This is wasteful but not harmful since the dedup guard caught it.",
+      "context": "First tool call created 16 items. Subsequent 3 calls attempted to re-add the same items and received 'already_exists' responses.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The fabrication detection system worked flawlessly across all 6 turns. Per-turn item counts: T1=16, T2=30, T3=32, T4=37, T5=47, T6=47 (no change on summary). All 5 content turns (1-5) correctly called create_itinerary_items. Turn 3 appended food items without overwriting (32 >= 30). Turn 6 correctly did NOT call create_itinerary_items for a summary request. No fabrication phrases appeared without a corresponding tool call. The AI was responsive to explicit tool-call instructions. Two fabrication phrases ('added to your itinerary') appeared in Turns 3 and 4, both legitimate since the tool was actually called. Final itinerary has 47 items across 9 days — well above the 15-item minimum. The only quality issue is Day 7 being overloaded with both Chinchero and Machu Picchu activities."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "fabrication_detection", "multi_turn_context", "fabrication_matches_2"]
+}

@@ -1,0 +1,44 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "verify_no_itinerary", "explicit_itinerary_request", "chat_history", "sharing", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Message 5 fullContent only contains the post-tool-result continuation (38 words) while the initial text about Asiatique The Riverfront was sent as textDelta events but lost from fullContent. If the frontend relies on fullContent for display, the first half of the response is missing.",
+      "severity": "P2",
+      "suggestion": "Ensure fullContent in messageComplete aggregates all textDelta chunks across tool loop iterations, not just the final iteration."
+    },
+    {
+      "description": "Shared trip view at GET /shared/{token} returned empty object on first call (before re-enabling sharing after unshare). The token from a previous share session was not properly invalidated — the endpoint returned {} instead of a 404 or error.",
+      "severity": "P2",
+      "suggestion": "Return a 404 or clear error when accessing a revoked share token."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI attempted to call create_itinerary_items on 3 out of 5 informational companion messages (messages 1, 2, and 5). The backend guard correctly rejected all 3 with status 'not_needed', preventing unsolicited itinerary creation. However, the AI should not be calling this tool unprompted in companion mode.",
+      "context": "Messages 1 (arrival advice), 2 (food near Khao San Road), and 5 (evening activity) all triggered unsolicited create_itinerary_items calls that were blocked by the backend.",
+      "severity": "P2"
+    },
+    {
+      "issue": "For the 'lost near big gold temple' message, the AI asked 3 clarifying questions instead of making an educated guess. The persona spec says the AI should make a reasonable guess (Wat Saket or Grand Palace area) rather than listing options. The response was helpful but overly cautious for a companion mode where the user needs quick answers.",
+      "context": "User said 'I think I'm lost, I'm near a big gold temple' — near Khao San Road this is most likely Grand Palace/Wat Phra Kaew area. AI listed 3 options (Wat Pho, Wat Arun, Grand Palace) instead of guessing the most likely one.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode works well overall. All 6 responses were under 200 words (range: 38-146). The AI gave specific, Thailand-relevant advice with concrete recommendations (Pad Thai Thip Samai, baht amounts for tipping, Airport Rail Link). The backend guard correctly blocked all 3 unsolicited create_itinerary_items calls while allowing the explicitly requested one. The main weakness is the AI's tendency to still attempt itinerary creation on informational queries (3/5 messages), which adds latency from the tool loop even though the guard catches it. The 'lost near temple' response was helpful but too cautious — a real companion should make a confident guess."
+  },
+  "feature_coverage": ["companion", "create_trip", "activate_trip", "complete_trip", "itinerary_guard", "explicit_itinerary_creation", "chat_history", "list_sessions", "trip_sharing", "unshare", "shared_view", "usage_stats"]
+}

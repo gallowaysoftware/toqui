@@ -1,0 +1,93 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "run_id": "run-11",
+  "trip_destination": "Czech Republic and Iceland",
+  "completed_steps": [
+    "auth",
+    "selection_cz",
+    "planning_cz",
+    "selection_is",
+    "planning_is",
+    "verify_two_trips",
+    "activate",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Duplicate create_itinerary_items tool calls",
+      "description": "The AI calls create_itinerary_items twice with identical payloads in the same tool loop iteration. Observed on both the CZ beer itinerary and the IS hiking itinerary. The second call appears to be a retry after the first succeeds, resulting in duplicate items or wasted API calls.",
+      "steps_to_reproduce": "Send a planning mode message requesting itinerary items. Observe the stream output for two identical create_itinerary_items toolCall events.",
+      "expected": "create_itinerary_items called once per response",
+      "actual": "create_itinerary_items called twice with identical input JSON"
+    },
+    {
+      "severity": "P2",
+      "title": "Stream ended without messageComplete after suggest_expert in step 2",
+      "description": "The initial selection mode message (CZ trip creation) triggered both create_trip and suggest_expert. After the suggest_expert tool result, the stream ended without a messageComplete event or any text from the new expert persona (Pavel). The user never got Pavel's initial substantive response in that stream.",
+      "steps_to_reproduce": "Send a selection mode message that triggers both create_trip and suggest_expert in the same turn. The stream ends after suggest_expert tool_result without the AI continuing as the new persona.",
+      "expected": "After suggest_expert, the AI should continue as the new persona and provide a substantive response, ending with messageComplete.",
+      "actual": "Stream ended after suggest_expert tool_result with no further text or messageComplete."
+    }
+  ],
+  "ux_issues": [
+    {
+      "severity": "minor",
+      "description": "CZ itinerary has unbalanced day distribution: Day 1 has 6 items while Days 2-4 have only 1 item each. The AI front-loaded activities into Day 1 without spreading them across the available days.",
+      "suggestion": "The AI should distribute itinerary items more evenly across days when building multi-day plans."
+    },
+    {
+      "severity": "minor",
+      "description": "Duplicate U Medvidku entry appears on Day 1 (as 'Historic Brewing at U Medvidku') and Day 2 (as 'Historic Brews at U Medvidku'). This happened because earlier items from step 3a were not deduplicated when step 3b added a full Day 1 plan.",
+      "suggestion": "The AI or backend should detect near-duplicate itinerary items and merge or skip them."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "No expert handoff on first Iceland planning message",
+      "context": "When asked about the Laugavegur Trail with specific hiking questions, the AI responded directly without calling suggest_expert. The expert (Bjorn) was only introduced after the user explicitly asked for 'a local Iceland hiking expert'. The CZ expert (Pavel) was proactively suggested, showing inconsistency.",
+      "severity": "P2"
+    },
+    {
+      "issue": "suggest_expert used distilleries theme instead of craft-beer alone for CZ",
+      "context": "The CZ expert handoff used themes ['craft-beer', 'distilleries'] even though the user only mentioned craft beer and breweries. Adding distilleries broadened the expert scope unnecessarily, though the resulting persona (Pavel) was still relevant.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Companion mode added itinerary items without explicit user request",
+      "context": "When asked 'What should we do this evening?' in companion mode, the AI called create_itinerary_items to add items. Companion mode should primarily answer questions rather than modify the itinerary unless explicitly asked to add something.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The app handled the two-trip workflow cleanly, creating separate Czech Republic and Iceland trips with appropriate destination countries. The AI demonstrated strong knowledge of both extended profiles (CZ and IS) with specific brewery names (Zly Casy, U Medvidku, Pivovar Strahov, Dva Kohouti) and detailed Laugavegur Trail information (hut system, river crossings, 55km length, FI hut booking). Expert handoffs produced relevant personas (Pavel for Czech beer, Bjorn for Iceland hiking). The main gaps are duplicate tool calls, inconsistent proactive expert handoff, and unbalanced itinerary distribution."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "multi_trip",
+    "extended_location_profiles",
+    "extended_theme_profiles",
+    "expert_handoff",
+    "itinerary_creation",
+    "trip_lifecycle"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece & Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Duplicate create_itinerary_items tool call in single response",
+      "description": "The AI called create_itinerary_items twice in the same response with identical items. The second call was correctly rejected by the dedup logic (status: already_exists, skipped_count: 7), but the duplicate call wastes tokens and a tool loop iteration.",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING requesting Crete itinerary",
+      "expected": "AI should call create_itinerary_items once and confirm based on the tool result",
+      "actual": "AI called create_itinerary_items twice with identical payloads; second call returned already_exists"
+    },
+    {
+      "severity": "P2",
+      "title": "Istanbul itinerary items not created in companion mode",
+      "description": "When asked for a 2-day Istanbul plan in companion mode, the AI attempted create_itinerary_items but the tool returned status: not_needed with message 'The user's message is an informational query, not a request to modify the itinerary.' The user explicitly asked for a plan for their 2 days, which arguably should have been added to the itinerary. The tool's classification as 'not needed' seems overly conservative for companion mode.",
+      "api_command": "SendMessage in CHAT_MODE_COMPANION requesting Istanbul 2-day plan",
+      "expected": "Itinerary items created for Istanbul days (days 4-5)",
+      "actual": "Tool rejected the call as 'not_needed'; no itinerary items persisted for Istanbul"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode responses were not noticeably more concise than planning mode responses. The Istanbul companion response was similarly long and detailed. The persona spec says companion should be more concise.",
+      "severity": "P2",
+      "suggestion": "Tune companion mode system prompt to produce shorter, more actionable responses compared to planning mode"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "No suggest_expert triggered despite deep history discussion",
+      "context": "Sent 4 planning messages about Delphi oracle, Ephesus Roman history, Knossos archaeology, and Istanbul Byzantine history. None triggered suggest_expert for a Greece or Turkey history specialist. The persona spec requires testing 3 expert handoffs.",
+      "severity": "P1"
+    },
+    {
+      "issue": "No recommend_booking triggered for Delphi tour request",
+      "context": "Explicitly asked for guided tours at Delphi with an archaeologist guide. The AI attempted web_search (which returned no results due to no web access) but never called recommend_booking to generate affiliate-linked tour recommendations.",
+      "severity": "P1"
+    },
+    {
+      "issue": "web_search tool returned no results (not configured)",
+      "context": "When asked about Delphi archaeologist tour guides, web_search returned status: no_web_access. This is likely an environment limitation rather than a bug, but it degraded the experience.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "{\"query\":\"archaeologist guide Delphi private tour stratigraphy sacred way\"}",
+      "error": "Real-time web search is not configured in this environment. Returned status: no_web_access."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 1,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated impressive academic-level knowledge across all topics: Delphi oracle (Pythia, adyton, pneuma/ethylene theory with de Boer and Hale citation), Ephesus (Attalid bequest, Library of Celsus), Knossos (Evans controversy with nuanced critique), and Istanbul (Hagia Sophia, Archaeological Museum, Hippodrome). The Crete itinerary was well-structured with appropriate time allocations for an academic. However, the AI failed to trigger expert handoff (suggest_expert) despite 4 deeply historical conversations that should have matched Greece/Turkey history profiles, and failed to use recommend_booking for the Delphi tour request. Istanbul companion recommendations correctly focused on historical sites (not Grand Bazaar shopping). The knowledge depth was genuinely impressive for an academic traveler, but the missing tool calls are a significant gap."
+  },
+  "feature_coverage": ["selection", "planning", "itinerary", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

@@ -1,0 +1,83 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "PARTIAL",
+  "trip_destination": "Italy",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "delete_itinerary_items never called when user requests removal",
+      "description": "When user said 'let's cut Venice entirely' (msg 7) and 'Remove San Lorenzo Market and Piazzale Michelangelo' (msg 9c), the AI never called delete_itinerary_items. It only called create_itinerary_items to add new content. While Venice items didn't exist yet (so no orphaned items), the AI should have used the delete tool when the user explicitly asked to remove existing items in msg 9c. This is a systematic failure to use the deletion tool.",
+      "steps_to_reproduce": "1. Build itinerary with items on Day 7. 2. Ask AI to remove specific items (San Lorenzo Market, Piazzale Michelangelo). 3. Observe that delete_itinerary_items is never called.",
+      "expected": "AI calls delete_itinerary_items to remove the specified items, then create_itinerary_items to add replacements",
+      "actual": "AI repeatedly asks clarifying questions instead of executing the explicit removal request, even after 3 attempts",
+      "api_command": "SendMessage with content 'Remove San Lorenzo Market and Piazzale Michelangelo from Day 7 and add the half-day Tuscan wine tasting instead. Just do it.'"
+    },
+    {
+      "severity": "P2",
+      "title": "Day 5 has contradictory items: Cinque Terre day trip AND Florence arrival",
+      "description": "Day 5 contains both 'Day Trip to Cinque Terre' (activity) and 'Travel to Florence & Settle In' (transport) plus full Florence activities. A day trip to Cinque Terre from Rome and traveling to Florence on the same day is physically impossible. The Cinque Terre item was added prematurely during msg 4 (Pompeii discussion) when Cinque Terre had not yet been mentioned by the user.",
+      "expected": "Day 5 should be the first day in Florence (travel from Rome + Florence exploration) without a Cinque Terre day trip",
+      "actual": "Day 5 starts with 'Day Trip to Cinque Terre' followed by Florence arrival and activities"
+    },
+    {
+      "severity": "P2",
+      "title": "Missing Day 10 in itinerary",
+      "description": "The trip is described as 10 days (Rome 4, Florence 3, Cinque Terre 3) but the itinerary only has 9 days. Day 10 for Cinque Terre was never created.",
+      "expected": "10 days of itinerary items",
+      "actual": "Only 9 days created"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Trip title still says 'Rome, Florence, Venice' after user explicitly cut Venice and replaced with Cinque Terre. The AI should have updated the trip title to reflect the major destination change.",
+      "severity": "P2",
+      "suggestion": "AI should call UpdateTrip to change the title when a major destination is added/removed"
+    },
+    {
+      "description": "Free tier daily message limit (10) makes the 10-message rapid-fire test impossible to complete. The user hits the limit before being able to send the final summary request. This means users on the free tier cannot have extended planning conversations.",
+      "severity": "P2",
+      "suggestion": "Consider increasing the free tier limit or not counting AI-initiated tool calls against the user's message count"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI refuses to execute explicit removal/replacement instructions, repeatedly offering options instead",
+      "context": "User explicitly said 'Remove San Lorenzo Market and Piazzale Michelangelo from Day 7 and add the half-day Tuscan wine tasting instead. Just do it.' - AI responded by listing the same 3 options again. Even after choosing option 2, the AI still refused and asked again. This happened across 3 consecutive messages.",
+      "severity": "P1"
+    },
+    {
+      "issue": "AI never added Pompeii to itinerary despite user request",
+      "context": "User asked 'Can you add a day trip to Pompeii from Rome? Maybe on day 3?' The AI discussed the logistics but never called create_itinerary_items for Pompeii. Instead, it asked the user to choose between options. The user never got a chance to resolve this before hitting the message limit.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI prematurely added Cinque Terre day trip to Day 5 during Pompeii discussion",
+      "context": "During msg 4 (Pompeii request), the AI created a 'Day Trip to Cinque Terre' on Day 5 even though Cinque Terre had not been mentioned by the user yet. This was likely a hallucination or confusion.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI over-cautious with itinerary modifications - asks too many clarifying questions",
+      "context": "The persona is designed to be iterative and expects rapid modifications. The AI's constant 'which option would you prefer' pattern wastes messages and frustrates the rapid-fire workflow. A travel planning AI should be more willing to execute modifications when explicitly instructed.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not update trip title after major destination change",
+      "context": "After user explicitly said 'cut Venice entirely, give those 3 days to Cinque Terre', the trip title remained '10 Days in Italy: Rome, Florence, Venice'. The AI should have called UpdateTrip to reflect the new itinerary structure.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip creation was instant and accurate. The AI built a solid initial itinerary for Rome with good vegetarian options and maintained dietary context perfectly throughout all 10 messages. However, it was overly cautious with modifications - refusing to execute explicit delete/replace instructions across 3 consecutive messages, and never adding the Pompeii day trip the user requested. The train pass advice (recommending point-to-point over Eurail for this specific itinerary) was excellent and substantive. The rapid-fire modification workflow was hampered by the AI's tendency to ask clarifying questions rather than executing direct instructions, and the 10-message free tier limit prevented completing the full test. Companion mode was not tested due to message exhaustion."
+  },
+  "feature_coverage": ["selection", "planning", "trip_sharing", "chat_history", "usage_tracking", "referral", "trip_lifecycle"]
+}

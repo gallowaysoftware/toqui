@@ -1,0 +1,45 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon",
+  "completed_steps": ["auth", "setup_create_trip", "setup_seed_itinerary", "setup_activate", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "companion_msg6", "verify_itinerary_count"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 2",
+      "description": "Message 2 ('I'm near Praça do Comércio — what's a good lunch spot around here?') triggered a create_itinerary_items tool call attempting to add 'Lunch at Cantinho do Avillez' on day 1. The backend guardrail intercepted and returned status:not_needed, so no items were actually created, but the AI should not have called the tool at all on an informational query.",
+      "expected": "No create_itinerary_items tool call on an informational lunch recommendation query",
+      "actual": "create_itinerary_items called with 1 item (day 1: Lunch at Cantinho do Avillez). Backend guardrail blocked mutation.",
+      "api_command": "buf curl SendMessage with content 'I'm near Praça do Comércio — what's a good lunch spot around here?' in CHAT_MODE_COMPANION"
+    },
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 6",
+      "description": "Message 6 ('Recommend something fun to do tonight.') triggered a create_itinerary_items tool call attempting to add 'Fado Evening at Clube de Fado' on day 4. The backend guardrail intercepted and returned status:not_needed, so no items were actually created. This is the same regression trigger from Run 5 N-01 msg5 — the AI still conflates 'recommend' with 'add to plan'.",
+      "expected": "No create_itinerary_items tool call on a recommendation query",
+      "actual": "create_itinerary_items called with 1 item (day 4: Fado Evening at Clube de Fado). Backend guardrail blocked mutation.",
+      "api_command": "buf curl SendMessage with content 'Recommend something fun to do tonight.' in CHAT_MODE_COMPANION"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI attempts itinerary tool calls on informational queries despite companion-mode prompt instructions. The backend guardrail (status:not_needed) prevents actual mutation, but the unnecessary tool round-trip adds latency and wastes tokens. Messages 2 (lunch spot) and 6 (evening recommendation) both triggered this. The AI's prompt discipline does not fully distinguish 'recommend/suggest' from 'add to my plan'.",
+      "context": "Messages 1, 3, 4, 5 correctly avoided tool calls. Messages 2 and 6 (both food/activity recommendations) incorrectly called create_itinerary_items.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The companion mode responses were helpful, concise, and phone-friendly (all under 185 words). The AI answered all 6 informational queries with relevant, practical information about Lisbon. However, the AI attempted to call create_itinerary_items on 2 of 6 purely informational queries (msgs 2 and 6), showing the prompt discipline gap between 'recommend' and 'add'. The backend guardrail successfully prevented actual itinerary mutation (final count 12 = N_BEFORE), so the user experience was preserved, but the extra tool calls add unnecessary latency."
+  },
+  "feature_coverage": ["trip_create", "planning_itinerary_seed", "trip_activate", "companion_info_queries", "companion_guardrail_validation"]
+}

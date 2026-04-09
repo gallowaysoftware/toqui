@@ -1,0 +1,52 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Token expiry too short for agentic tests",
+      "description": "The JWT token expired mid-test (within ~5 minutes of issuance based on timing), requiring creation of a new user to continue. The token's exp claim showed only ~4 hours validity but expired prematurely, possibly due to clock skew or iat being set in the past.",
+      "expected": "Token should remain valid for the full 1-hour access token lifetime",
+      "actual": "Token expired after approximately 3-4 minutes of testing"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The cross-cutting religious etiquette comparison response was truncated by MAX_TOKENS before covering Buddhist temple etiquette in Myanmar. The AI tried to produce a comprehensive comparative table but exceeded the response length limit, resulting in the response ending with whitespace padding and an error message.",
+      "severity": "P2",
+      "suggestion": "Consider increasing MAX_TOKENS for planning mode responses, or instruct the AI to be more concise with comparative answers to avoid truncation."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "No itinerary items created across 5 planning messages",
+      "context": "Despite extensive discussion about Jerusalem sites, Saudi Arabia logistics, Myanmar considerations, and cross-cutting etiquette, the AI never called create_itinerary_items to add structured items to the itinerary. The user explicitly asked about day-by-day plans but the AI only provided text-based advice.",
+      "severity": "P1"
+    },
+    {
+      "issue": "No expert persona handoff triggered",
+      "context": "Across 5 planning messages covering Israel (history/religion), Saudi Arabia (culture), and Myanmar (history/culture), the AI never called suggest_expert to hand off to a location or theme specialist. Topics like Jerusalem religious sites and Saudi cultural etiquette are ideal candidates for expert handoff (e.g., Israel+history, Saudi Arabia+food for dinner recommendations).",
+      "severity": "P2"
+    },
+    {
+      "issue": "MAX_TOKENS truncation on comparative etiquette response",
+      "context": "When asked for a comparative overview of dress codes across all three countries, the AI produced an extremely verbose response that hit the token limit. The response ended with hundreds of whitespace characters and a truncation error, never reaching the Buddhist temple etiquette section for Myanmar.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 2,
+    "persona_handoff_score": 1,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent cultural sensitivity and factual accuracy across all three complex destinations. It correctly handled Temple Mount/Haram al-Sharif dual naming, accurately stated that abayas are no longer legally required for foreign women in Saudi Arabia, provided a balanced and factual assessment of Myanmar's post-coup situation without editorializing, and confirmed Bagan temple climbing restrictions. Israel safety was discussed frankly without fear-mongering. However, the AI failed to create any itinerary items or trigger expert handoffs, and one response was truncated by MAX_TOKENS. The cultural depth and factual accuracy were impressive, but the lack of structured planning output was a significant gap."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage"]
+}

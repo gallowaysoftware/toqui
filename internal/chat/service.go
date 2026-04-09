@@ -360,16 +360,18 @@ const (
 // and the AI continues generating. This loops until the AI produces a final
 // response (stop_reason=end_turn) or the iteration limit is reached.
 func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string) string {
-	var fullResponse strings.Builder
+	var fullResponse strings.Builder     // reset each iteration (for AI context)
+	var completeResponse strings.Builder // never reset (for messageComplete fullContent)
 	var totalInputTokens, totalOutputTokens int
 	// Retry guards. fabricationRetries allows up to 2 retries per request
 	// because Gemini sometimes ignores the first nudge (Run 7 R-05 — both
 	// retries fired via user_intent trigger but Gemini didn't comply).
 	// The second retry uses a more imperative tone. Expert and empty-stream
 	// guards remain one-shot since a single retry suffices for those.
-	var fabricationRetries int  // create_itinerary_items missing (max 2)
-	var expertRetried bool      // suggest_expert claimed but not called
-	var emptyStreamRetried bool // provider returned no events
+	var fabricationRetries int   // create_itinerary_items missing (max 2)
+	var expertRetried bool       // suggest_expert claimed but not called
+	var emptyStreamRetried bool  // provider returned no events
+	var everCalledItinerary bool // true if create_itinerary_items was called in ANY iteration
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
 		// Stop if the client disconnected.
@@ -413,6 +415,16 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 		fullResponse.WriteString(turnText)
 
+		// Also accumulate into completeResponse (never reset) so
+		// messageComplete.fullContent has ALL text across iterations,
+		// not just the final iteration's. Fixes Run 11 R-03 P2.
+		if len(turnText) > 0 {
+			if completeResponse.Len() > 0 {
+				completeResponse.WriteByte(' ')
+			}
+			completeResponse.WriteString(turnText)
+		}
+
 		// Accumulate token usage across tool loop iterations.
 		if turnUsage != nil {
 			totalInputTokens += turnUsage.InputTokens
@@ -447,6 +459,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 						fabricationRetries = 0
 						expertRetried = false
 						emptyStreamRetried = false
+						everCalledItinerary = false
 						slog.Info("tool loop: persona swapped mid-turn",
 							"session_id", sessionID,
 							"new_persona_id", newPersona.ID,
@@ -550,6 +563,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			lname := strings.ToLower(tc.Name)
 			if strings.Contains(lname, "create_itinerary") {
 				calledCreateItinerary = true
+				everCalledItinerary = true
 			}
 			if strings.Contains(lname, "expert") {
 				calledSuggestExpert = true
@@ -603,7 +617,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		// Either trigger fires a retry (up to 2 per turn with escalating
 		// tone). The retry message names the tool explicitly so the AI
 		// can't talk its way out of calling it.
-		if aiReq.Mode == "planning" && fabricationRetries < 2 && !calledCreateItinerary {
+		if aiReq.Mode == "planning" && fabricationRetries < 2 && !calledCreateItinerary && !everCalledItinerary {
 			triggered := ""
 			switch {
 			case impliesItineraryCreation(responseText):
@@ -676,9 +690,18 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			slog.Error("failed to store assistant message", "error", err)
 		}
 
+		// Use completeResponse for the messageComplete event so the
+		// frontend gets ALL text across tool loop iterations, not just
+		// the final iteration. The stored message uses responseText
+		// (final iteration only) for Gemini history compatibility.
+		fullContent := completeResponse.String()
+		if fullContent == "" {
+			fullContent = responseText
+		}
+
 		sendOrDrop(outCh, ctx, StreamEvent{
 			Type:      "message_complete",
-			Text:      responseText,
+			Text:      fullContent,
 			SessionID: sessionID,
 			MessageID: assistantMsg.ID,
 		})
@@ -713,9 +736,13 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		slog.Error("failed to store assistant message", "error", err)
 	}
 
+	iterFullContent := completeResponse.String()
+	if iterFullContent == "" {
+		iterFullContent = responseText
+	}
 	sendOrDrop(outCh, ctx, StreamEvent{
 		Type:      "message_complete",
-		Text:      responseText,
+		Text:      iterFullContent,
 		SessionID: sessionID,
 		MessageID: assistantMsg.ID,
 	})
