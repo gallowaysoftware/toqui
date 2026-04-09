@@ -1,0 +1,73 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "PARTIAL",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI error on second message — no response from AI",
+      "description": "Message 2 (refine allocation to Rome 4/Florence 3/Venice 3) produced partial text then returned error: 'no response from AI — please try again'. The AI started generating a response but the stream terminated with an error. Retry succeeded on next attempt.",
+      "steps_to_reproduce": "Send a planning-mode message asking to split itinerary into a specific day allocation shortly after trip creation.",
+      "expected": "Complete AI response with itinerary items created",
+      "actual": "Partial text response followed by error event: {\"error\":{\"message\":\"no response from AI — please try again\"}}"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip title/description not updated after cutting Venice",
+      "description": "After message 7 which explicitly removed Venice and replaced it with Cinque Terre, the trip title remained '10 Days in Italy: Rome, Florence & Venice' and description still mentioned Venice. The AI correctly updated itinerary items but never called UpdateTrip to fix the metadata.",
+      "expected": "Trip title updated to reflect Rome, Florence, Cinque Terre after the major restructuring in message 7",
+      "actual": "Trip title remained '10 Days in Italy: Rome, Florence & Venice' through completion"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history missing some messages from the session",
+      "description": "GetChatHistory returned 14 messages (7 user + 7 assistant) but we sent at least 10 planning messages (including retry of message 2). The first selection-mode message and its response, plus the Venice removal message and Cinque Terre addition message appear missing from the planning session history. This may be because the initial message was in selection mode and some messages hit errors, but the user expects all conversation context to be preserved.",
+      "steps_to_reproduce": "Send 10+ messages across selection and planning mode in the same session, then call GetChatHistory",
+      "expected": "All messages from the session visible in history",
+      "actual": "Only 14 of ~20 messages returned"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Free tier daily message limit of 10 is too low for a rapid-fire planning persona. The persona's core test requires 10 conversational turns, which exhausted the entire daily budget before companion mode could be tested. This means free-tier users who plan iteratively (the natural way to plan) will hit the wall before completing basic trip planning.",
+      "severity": "P2",
+      "suggestion": "Consider either raising the free-tier limit to 15-20 messages, or not counting tool-result continuation loops against the user's message count."
+    },
+    {
+      "description": "The AI proactively removed the Pompeii day trip (from message 4) when the user only asked to remove Venice in message 7. The user said 'cut Venice entirely' but did not mention Pompeii. The AI decided on its own to remove Pompeii and replace Day 3 with other Roman sights, without asking the user first.",
+      "severity": "P2",
+      "suggestion": "The AI should only modify what the user explicitly requests. If removing Venice creates a scheduling conflict with Pompeii, the AI should ask rather than act unilaterally."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI removed Pompeii day trip without being asked during Venice removal (message 7)",
+      "context": "User message 7 said 'cut Venice entirely, give those 3 days to Cinque Terre'. The AI also called delete_itinerary_items for 'Day Trip to Pompeii' which was on Day 3 in Rome, not related to Venice at all. The AI then replaced it with Pantheon/Trevi/Spanish Steps. The final summary in message 10 does not mention Pompeii at all.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Vegetarian context retained well across turns",
+      "context": "After message 3 introduced the vegetarian preference, all subsequent food recommendations included vegetarian options. The final summary in message 10 included '(Vegetarian-Friendly)' labels on meals. No non-vegetarian food was suggested. This is a positive finding.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Train pass advice was excellent and specific",
+      "context": "Message 8 correctly advised point-to-point tickets over Eurail for this specific itinerary (only 3 main train journeys), mentioned mandatory seat reservations as additional Eurail costs, and recommended advance booking for discounts. Substantive and accurate.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The AI handled rapid-fire iterative planning impressively well overall. It correctly created, modified, and rebuilt the itinerary across 10 messages. The critical Venice-to-Cinque-Terre swap in message 7 was executed correctly with proper delete_itinerary_items and create_itinerary_items calls — no Venice remnants in the final itinerary. Vegetarian context was retained throughout all turns. Train advice was practical and accurate. The main issues were: (1) the AI unilaterally removed the Pompeii day trip when only asked to cut Venice, which is a context/instruction-following problem; (2) an intermittent 'no response from AI' error on message 2; and (3) the daily message limit prevented testing companion mode entirely. The trip title was never updated to reflect the Venice-to-Cinque-Terre change."
+  },
+  "feature_coverage": ["selection", "planning", "sharing", "chat_history", "usage", "itinerary_modifications", "delete_itinerary_items"]
+}

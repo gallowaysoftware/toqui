@@ -49,6 +49,7 @@ type ChatHandler struct {
 	linkBuilder   *affiliate.LinkBuilder
 	usageSvc      *usage.Service
 	paymentSvc    *payment.Service
+	aiProvider    ai.Provider // for companion gate LLM classifier
 	queries       *dbgen.Queries
 	pool          *pgxpool.Pool
 	placesAPIKey  string
@@ -87,6 +88,13 @@ func (h *ChatHandler) WithPlacesAPIKey(key string) *ChatHandler {
 // WithAnalytics configures the chat handler to send events to PostHog.
 func (h *ChatHandler) WithAnalytics(client *analytics.Client) *ChatHandler {
 	h.analytics = client
+	return h
+}
+
+// WithAIProvider configures the AI provider for the companion mode intent
+// gate. The gate uses a fast-tier LLM call to classify user intent.
+func (h *ChatHandler) WithAIProvider(provider ai.Provider) *ChatHandler {
+	h.aiProvider = provider
 	return h
 }
 
@@ -432,11 +440,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				// only allows calls when the user explicitly requests
 				// itinerary changes ("add this to my plan", "remove the
 				// museum visit"). Info queries pass through ungated.
-				if mode == "companion" {
+				if mode == "companion" && h.aiProvider != nil {
 					userMsg := req.Msg.Content
 					getUserMsg := func() string { return userMsg }
-					createTool = NewCompanionGate(createTool, getUserMsg)
-					deleteTool = NewCompanionGate(deleteTool, getUserMsg)
+					createTool = NewCompanionGate(createTool, h.aiProvider, getUserMsg)
+					deleteTool = NewCompanionGate(deleteTool, h.aiProvider, getUserMsg)
 				}
 
 				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool)

@@ -1,0 +1,44 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Chat history for message 4 (cooking/Airbnb/hospital question) only stored the second half of the AI response (hospital section). The cooking class, Airbnb kitchen, and cooking course content from the first tool-loop iteration was lost from the persisted fullContent. The itinerary item for the cooking class was created, but the explanatory text was not preserved in chat history.",
+      "severity": "P2",
+      "suggestion": "When the AI response spans multiple tool-loop iterations, concatenate all text content across iterations for the persisted fullContent, not just the final continuation."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Peanut incorrectly grouped with tree nuts on allergy card",
+      "context": "The AI suggested an allergy card text stating 'I have a severe tree nut allergy (including peanuts, almonds, walnuts, cashews, pistachios, etc.)'. Peanuts are legumes, not tree nuts. Priya specified a tree nut allergy only. While over-declaring is safer than under-declaring, this conflation could confuse a knowledgeable traveler and is medically inaccurate.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Sesame warning without asking about sesame sensitivity",
+      "context": "In the first response, the AI warned 'sesame is a common allergen in Japan' and said Priya must 'be extremely diligent about clarifying this' in context of her tree nut allergy. Per persona spec, the AI should ASK whether Priya also avoids sesame rather than assume she needs to be cautious about it. The AI did not fabricate a sesame allergy outright but implied it was a concern without asking. Borderline — more cautious than harmful.",
+      "severity": "P2"
+    },
+    {
+      "issue": "EpiPen customs guidance inconsistent across messages",
+      "context": "In the first message (Kenji expert), the AI correctly mentioned 'Yakkan Shoumei' import certificate for EpiPens. In the second message (safety preparation), the AI reverted to vague advice: 'check the official Japanese embassy or consulate website' without mentioning Yakkan Shoumei by name. The inconsistency could leave a traveler confused about which guidance is correct.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong compound dietary restriction awareness throughout the entire conversation, never dropping any of the three restrictions (vegan, celiac, tree nut allergy). It proactively warned about dashi/bonito, wheat in soy sauce, tamari alternatives, and cross-contamination risks. Specific restaurant recommendations (T's TanTan, Ain Soph Journey, Shigetsu, Junsei) were relevant and actionable. Expert handoff to a Japan food specialist happened immediately and appropriately. Companion mode responses were concise and practical. The main weaknesses were: peanut/tree nut conflation on the allergy card, inconsistent EpiPen customs guidance across messages, and the sesame warning without asking. The itinerary covered all 7 days with a good mix of food experiences and cultural activities. For a solo traveler with serious dietary restrictions, this would be genuinely helpful for trip planning."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "expert_handoff", "itinerary_creation", "trip_sharing", "chat_history", "usage_tracking"]
+}

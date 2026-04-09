@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
@@ -16,23 +17,29 @@ import (
 //
 // This prevents the Run 5 / Run 8 regression where Gemini interprets
 // "recommend a lunch spot" as "add a lunch spot to the itinerary".
-// The gate uses fast substring matching — no LLM call needed.
+//
+// The gate uses a fast-tier LLM classifier to determine intent. This
+// handles all languages and natural phrasings that substring matching
+// would miss. Cost is ~$0.001 per check on the fast model tier.
 //
 // When the gate blocks a call, it returns a success-shaped JSON response
 // (no "error" key) telling the AI the tool is not needed for this query.
 // This prevents retry loops.
 type CompanionGate struct {
 	inner          tools.Tool
+	provider       ai.Provider
 	lastUserMsg    func() string // returns the most recent user message
 	toolNameForLog string
 }
 
-// NewCompanionGate wraps the given tool with an intent gate. The
-// lastUserMsg function should return the user's most recent message
+// NewCompanionGate wraps the given tool with an LLM-based intent gate.
+// The provider is used for the fast-tier classification call.
+// The lastUserMsg function should return the user's most recent message
 // content (typically from the SendMessage request).
-func NewCompanionGate(inner tools.Tool, lastUserMsg func() string) *CompanionGate {
+func NewCompanionGate(inner tools.Tool, provider ai.Provider, lastUserMsg func() string) *CompanionGate {
 	return &CompanionGate{
 		inner:          inner,
+		provider:       provider,
 		lastUserMsg:    lastUserMsg,
 		toolNameForLog: inner.Definition().Name,
 	}
@@ -48,7 +55,7 @@ func (g *CompanionGate) Execute(ctx context.Context, args json.RawMessage) (json
 		userMsg = g.lastUserMsg()
 	}
 
-	if !userExplicitlyRequestsItineraryChange(userMsg) {
+	if !g.classifyItineraryIntent(ctx, userMsg) {
 		slog.Info("companion gate: blocked tool call on info query",
 			"tool", g.toolNameForLog,
 			"user_msg_preview", userMsg[:min(len(userMsg), 80)],
@@ -62,70 +69,77 @@ func (g *CompanionGate) Execute(ctx context.Context, args json.RawMessage) (json
 	return g.inner.Execute(ctx, args)
 }
 
-// userExplicitlyRequestsItineraryChange returns true when the user's
-// message contains explicit intent to add, save, remove, or modify
-// itinerary items. Info queries like "recommend a restaurant" or "what
-// should I do tonight" return false.
-func userExplicitlyRequestsItineraryChange(msg string) bool {
-	if msg == "" {
+// classifyItineraryIntent uses a fast-tier LLM call to determine whether
+// the user's message is an explicit request to modify the itinerary
+// (add, remove, save items) vs an informational query (recommend, suggest,
+// what should I do). This works across all languages.
+//
+// Returns true = allow the tool call, false = block it.
+// On any error (timeout, provider failure), defaults to ALLOW to avoid
+// blocking legitimate requests.
+func (g *CompanionGate) classifyItineraryIntent(ctx context.Context, userMsg string) bool {
+	if userMsg == "" {
 		return false
 	}
-	lower := strings.ToLower(msg)
 
-	// Exact phrase matches — strongest signals.
-	for _, phrase := range []string{
-		"add to my itinerary",
-		"add to my plan",
-		"add to the itinerary",
-		"add to the plan",
-		"save to my itinerary",
-		"save to my plan",
-		"save this for later",
-		"save that for later",
-		"put on my itinerary",
-		"put on my plan",
-		"remove from my itinerary",
-		"remove from my plan",
-		"remove from the itinerary",
-		"cut from my itinerary",
-		"delete from my itinerary",
-		"drop from my plan",
-		"take off my itinerary",
-	} {
-		if strings.Contains(lower, phrase) {
-			return true
+	classifyCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	req := &ai.ChatRequest{
+		SystemPrompt: `You are a binary classifier. Determine if the user wants to MODIFY their travel itinerary (add, remove, save, schedule, or delete items) or just wants INFORMATION (recommendations, suggestions, questions, directions, tips).
+
+Answer with exactly one word: MODIFY or INFO.
+
+MODIFY examples (any language):
+- "add that to my plan" → MODIFY
+- "save this for tomorrow" → MODIFY
+- "put the temple visit on day 2" → MODIFY
+- "remove the museum from my itinerary" → MODIFY
+- "ajoute ça à mon planning" → MODIFY
+- "これを旅程に追加して" → MODIFY
+- "agrega esto a mi itinerario" → MODIFY
+
+INFO examples (any language):
+- "recommend a good restaurant" → INFO
+- "what should I do tonight?" → INFO
+- "is the tram worth riding?" → INFO
+- "how do I get to the museum?" → INFO
+- "recommend something fun" → INFO
+- "what's the tipping etiquette?" → INFO
+- "quelle est la météo?" → INFO`,
+		Messages: []ai.Message{
+			{Role: "user", Content: userMsg},
+		},
+		MaxTokens:   4,
+		Temperature: 0,
+		ModelTier:   ai.ModelTierFast,
+	}
+
+	eventCh, err := g.provider.ChatStream(classifyCtx, req)
+	if err != nil {
+		slog.Debug("companion gate classifier failed, allowing tool call", "error", err)
+		return true // fail-open: allow on error
+	}
+
+	var response strings.Builder
+	for event := range eventCh {
+		if event.Type == ai.EventTextDelta {
+			response.WriteString(event.Text)
+		}
+		if event.Type == ai.EventError {
+			slog.Debug("companion gate classifier error, allowing tool call", "error", event.Error)
+			return true // fail-open
 		}
 	}
 
-	// Pattern: "add [something] to my itinerary/plan" — catches phrases
-	// like "add that temple visit to my itinerary for tomorrow morning"
-	// that the exact matches above miss (Run 9 N-01 P1).
-	for _, verb := range []string{"add ", "save ", "put ", "include "} {
-		idx := strings.Index(lower, verb)
-		if idx == -1 {
-			continue
-		}
-		rest := lower[idx+len(verb):]
-		for _, dest := range []string{"to my itinerary", "to my plan", "to the itinerary", "to the plan", "on my itinerary", "on my plan", "in my itinerary", "in my plan", "for tomorrow", "for today", "for day "} {
-			if strings.Contains(rest, dest) {
-				return true
-			}
-		}
-	}
+	result := strings.TrimSpace(strings.ToUpper(response.String()))
+	isModify := strings.HasPrefix(result, "MODIFY")
 
-	// Pattern: "remove/cut/delete [something]" — broader match for deletion.
-	for _, verb := range []string{"remove the ", "cut the ", "delete the ", "drop the ", "cancel the "} {
-		if strings.Contains(lower, verb) {
-			return true
-		}
-	}
+	slog.Debug("companion gate classifier result",
+		"result", result,
+		"is_modify", isModify,
+		"user_msg_preview", userMsg[:min(len(userMsg), 60)],
+	)
 
-	// Scheduling patterns.
-	for _, phrase := range []string{"schedule this", "schedule that", "book this into"} {
-		if strings.Contains(lower, phrase) {
-			return true
-		}
-	}
-
-	return false
+	return isModify
 }

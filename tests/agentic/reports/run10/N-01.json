@@ -1,0 +1,48 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty JSON object",
+      "description": "GET /shared/{token} returned {} instead of trip details (title, status, itinerary). The share token was generated successfully and unshare worked, but the public view endpoint returned no data.",
+      "steps_to_reproduce": "1. POST /api/trips/share with a valid trip_id. 2. GET /shared/{share_token} (no auth). 3. Response is {}.",
+      "expected": "JSON object with trip title, description, status, destination, itinerary",
+      "actual": "Empty JSON object {}",
+      "api_command": "curl -s http://localhost:8090/shared/0Q57M8huMSVwsfYNpDIGSF"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI repeatedly attempts unsolicited create_itinerary_items calls in companion mode",
+      "context": "In 3 out of 5 informational companion messages (msg 1, 2, and 5), the AI attempted to call create_itinerary_items despite the user not requesting any itinerary changes. The companion mode tool guard correctly blocked these with 'not_needed' status, but the AI should not be attempting tool calls for purely informational queries in companion mode. This adds latency to responses and indicates the system prompt needs stronger companion mode guidance.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Message 1 arrival advice incomplete — missing SIM card and money exchange",
+      "context": "When asked 'just landed at BKK, what do I do first?', the AI only covered transport (Airport Rail Link) but omitted other critical arrival tasks: getting a SIM card, currency exchange/ATM usage, and downloading Grab. A traveler just landing needs a comprehensive quick checklist, not just one item.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Tipping etiquette missing massage therapist guidance",
+      "context": "Thailand-specific tipping advice covered restaurants, taxis, hotels, and tour guides, but omitted massage therapists (50-100 baht), which is one of the most common tipping scenarios for tourists in Thailand.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode delivered concise, accurate, and Thailand-specific responses. Geographic reasoning was excellent (correctly identified Wat Saket from 'big gold temple'). All responses stayed under 200 words. Food recommendations were concrete with specific dish names and locations. The tool guard successfully prevented unsolicited itinerary creation, and the AI correctly created items when explicitly asked. Main gaps: the AI repeatedly attempted unsolicited tool calls (blocked by guard), and some responses missed key details (SIM card on arrival, massage tipping)."
+  },
+  "feature_coverage": ["companion", "create_trip", "activate_trip", "complete_trip", "sharing", "unsharing", "chat_history", "usage", "itinerary_creation_on_request"]
+}

@@ -1,0 +1,125 @@
+{
+  "persona": "R-03",
+  "name": "Returning User — Marcus with Multiple Trips",
+  "run": 10,
+  "timestamp": "2026-04-09T16:18:00Z",
+  "provider": "gemini",
+  "status": "PARTIAL_PASS",
+  "summary": "Phase 1 (trip setup) and Phase 2 (vague trip matching, itinerary creation) passed perfectly. Phase 3 (trip switching) partially failed — the AI suggested a Morocco expert but did not call select_trip to formally switch trips. Phase 4 (new trip creation) failed — the AI did not call create_trip for New Zealand and instead added NZ itinerary items to the Greece trip.",
+  "phases": {
+    "phase1_setup": {
+      "status": "PASS",
+      "details": "Created 'Moroccan Adventure' (ACTIVE) and 'Greek Islands Hopping' (PLANNING) via TripService. ListTrips confirmed 2 trips with correct statuses and auto-detected destination countries (MA, GR)."
+    },
+    "phase2_selection_mode": {
+      "status": "PASS",
+      "details": "Step 4: 'my Greece trip' correctly matched to 'Greek Islands Hopping' via select_trip. TripSelected event emitted with correct trip ID. Step 5: AI called create_itinerary_items with 13 well-structured Santorini items across 3 days (arrival, Fira, Oia sunset, volcano tour, Akrotiri, wine tasting, Red Beach, Pyrgos). ItineraryUpdate event emitted."
+    },
+    "phase3_trip_switching": {
+      "status": "PARTIAL_FAIL",
+      "details": "Step 6: AI recognized 'take me to my Morocco trip' as a Morocco reference and called suggest_expert(MA) to hand off to Hassan (Morocco expert). However, it did NOT call select_trip to formally switch to the Moroccan Adventure trip. No TripSelected event was emitted. The conversation remained on the Greece trip_id. Step 7: AI responded about Marrakech with relevant seasonal advice (spring/autumn best) in Morocco context via Hassan persona, but the trip context was still the Greece trip."
+    },
+    "phase4_new_trip_creation": {
+      "status": "FAIL",
+      "details": "Step 8: AI did NOT call create_trip for New Zealand. Instead it called suggest_expert(NZ) for persona handoff to Kauri, then called create_itinerary_items with 27 NZ South Island items — but these were added to the Greece trip (35f11337). No TripCreated event was emitted. ListTrips confirmed only 2 trips (Morocco + Greece), not 3. Step 9: FAILED — only 2 trips exist, expected 3."
+    }
+  },
+  "bugs": [
+    {
+      "id": "B1",
+      "severity": "P1",
+      "title": "AI does not call create_trip when user requests a new trip in planning mode",
+      "description": "When in planning mode for an existing trip, user said 'I also want to start planning a trip to New Zealand — maybe 2 weeks on the South Island.' The AI should have recognized this as a new trip request and called create_trip. Instead, it called suggest_expert(NZ) and create_itinerary_items, adding 27 NZ items to the existing Greece trip. This corrupts the Greece itinerary with unrelated NZ content.",
+      "steps_to_reproduce": "1. Create 2 trips. 2. Enter planning mode for one trip. 3. Ask to plan a trip to a completely new destination. 4. Observe that create_trip is not called and items are added to the current trip.",
+      "expected": "AI calls create_trip to create a new 'New Zealand' trip, emits TripCreated event",
+      "actual": "AI added NZ itinerary items to the Greece trip. No TripCreated event. No new trip created.",
+      "category": "tool_usage"
+    },
+    {
+      "id": "B2",
+      "severity": "P1",
+      "title": "AI does not call select_trip when user requests to switch trips in planning mode",
+      "description": "When in planning mode for Greece trip, user said 'Actually, take me to my Morocco trip.' The AI called suggest_expert(MA) to hand off to a Morocco specialist, but did NOT call select_trip to formally switch to the Moroccan Adventure trip. The trip_id remained the Greece trip throughout. The AI treated this as a persona/topic switch rather than a trip switch.",
+      "steps_to_reproduce": "1. Have 2 trips (Morocco active, Greece planning). 2. Enter planning mode for Greece. 3. Say 'take me to my Morocco trip'. 4. Observe that select_trip is not called.",
+      "expected": "AI calls select_trip with the Morocco trip ID, emits TripSelected event, switches trip context",
+      "actual": "AI called suggest_expert(MA) for persona handoff. No select_trip call. No TripSelected event. Trip context remained Greece.",
+      "category": "tool_usage"
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "U1",
+      "severity": "P2",
+      "title": "NZ itinerary items mixed into Greece trip itinerary",
+      "description": "Because create_trip was not called, 27 NZ South Island items were appended to the Greece trip itinerary alongside the 13 existing Santorini items. The Greece trip now has a completely incoherent itinerary mixing Greek and NZ content. This would be very confusing for a user viewing their itinerary."
+    },
+    {
+      "id": "U2",
+      "severity": "P2",
+      "title": "select_trip tool may not be available in planning mode",
+      "description": "The persona spec says select_trip is available in 'selection' mode. When the user is already in planning mode, the AI may not have access to select_trip, making trip switching impossible via chat. The system may need to support trip switching from planning mode, or instruct the AI to tell the user to return to selection mode first."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "id": "A1",
+      "observation": "AI correctly matched vague 'my Greece trip' to 'Greek Islands Hopping' on first attempt without asking for clarification",
+      "quality": "GOOD"
+    },
+    {
+      "id": "A2",
+      "observation": "AI proactively created comprehensive itinerary items (13 for Santorini, 27 for NZ) with rich descriptions, timing, and practical tips",
+      "quality": "GOOD"
+    },
+    {
+      "id": "A3",
+      "observation": "AI defaulted to suggest_expert when user mentioned a different destination, rather than recognizing the trip management intent (switch trip or create trip)",
+      "quality": "POOR"
+    },
+    {
+      "id": "A4",
+      "observation": "AI correctly recognized Morocco context after persona switch and gave relevant Marrakech seasonal advice",
+      "quality": "GOOD"
+    },
+    {
+      "id": "A5",
+      "observation": "Web search attempted for Marrakech question but gracefully fell back to knowledge when web search was unavailable",
+      "quality": "GOOD"
+    }
+  ],
+  "tool_calls": [
+    {"tool": "select_trip", "count": 1, "success": 1, "notes": "Correctly matched Greece trip from vague reference"},
+    {"tool": "create_itinerary_items", "count": 2, "success": 2, "notes": "13 Santorini items + 27 NZ items (NZ items incorrectly added to Greece trip)"},
+    {"tool": "suggest_expert", "count": 2, "success": 2, "notes": "Hassan (MA) and Kauri (NZ) — used when select_trip/create_trip should have been called"},
+    {"tool": "web_search", "count": 1, "success": 0, "notes": "Not configured in test environment, graceful fallback"},
+    {"tool": "create_trip", "count": 0, "success": 0, "notes": "NEVER CALLED — should have been called for NZ trip"},
+    {"tool": "select_trip_for_switch", "count": 0, "success": 0, "notes": "select_trip not called when user requested trip switch to Morocco"}
+  ],
+  "stream_events": {
+    "TripSelected": 1,
+    "TripCreated": 0,
+    "ItineraryUpdate": 2,
+    "PersonaSwitch": 2,
+    "SessionCreated": 1
+  },
+  "usefulness_scores": {
+    "trip_creation": 3,
+    "itinerary_quality": 5,
+    "persona_handoff": 4,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "trip_switching": 2,
+    "vague_reference_matching": 5,
+    "overall": 3
+  },
+  "test_metadata": {
+    "total_messages_sent": 4,
+    "total_trips_created_api": 2,
+    "total_trips_created_chat": 0,
+    "trip_ids": {
+      "morocco": "8ff6b317-69a6-4e93-81c5-1fb5d5fc95f7",
+      "greece": "35f11337-0e11-47ea-be0c-3de451cbb0c4"
+    },
+    "session_id": "30586c66-5853-4ba2-b301-2e23f1196305"
+  }
+}

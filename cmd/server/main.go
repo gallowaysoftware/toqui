@@ -294,7 +294,8 @@ func main() {
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
-		WithAnalytics(posthogClient)
+		WithAnalytics(posthogClient).
+		WithAIProvider(aiProvider)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)

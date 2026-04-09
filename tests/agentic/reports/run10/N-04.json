@@ -1,0 +1,194 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extraction Gauntlet",
+  "run": 10,
+  "date": "2026-04-09",
+  "duration_minutes": 5,
+  "trip_id": "39f56fef-fa45-4f83-be17-0f251afd295d",
+  "summary": "All 16 test steps passed. 7 bookings ingested successfully, ListBookings returned all 7 with correct types, all 7 field extractions returned accurate specific answers matching the source artifacts, and the negative test correctly refused to hallucinate.",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "test_steps": [
+    {
+      "step": 1,
+      "action": "CreateTrip",
+      "result": "PASS",
+      "details": "Trip 'Booking Gauntlet Trip' created with id 39f56fef-fa45-4f83-be17-0f251afd295d"
+    },
+    {
+      "step": 2,
+      "action": "IngestBooking - flight-confirmation.txt (BOOKING_TYPE_FLIGHT)",
+      "result": "PASS",
+      "booking_id": "1fd01037-063f-4706-8720-87ae228fd3bb",
+      "details": "Ingested as BOOKING_TYPE_FLIGHT. Confirmation code DL7829X, provider Delta Air Lines. detailsJson correctly parsed departure_terminal=4, arrival_terminal=1, flight_number=DL 472."
+    },
+    {
+      "step": 3,
+      "action": "IngestBooking - hotel-confirmation.txt (BOOKING_TYPE_HOTEL)",
+      "result": "PASS",
+      "booking_id": "3359f812-9587-4cea-92b0-cacd7c5805dd",
+      "details": "Ingested as BOOKING_TYPE_HOTEL. Confirmation code HAB-2026-9831, provider Hotel Arts Barcelona. hotelDetails populated with check-in/check-out dates, room type, address."
+    },
+    {
+      "step": 4,
+      "action": "IngestBooking - activity-confirmation.txt (BOOKING_TYPE_ACTIVITY)",
+      "result": "PASS",
+      "booking_id": "ff50c3b0-cb74-498a-8037-9a8ca41b37d4",
+      "details": "Ingested as BOOKING_TYPE_ACTIVITY. Confirmation code SF-44921, provider GetYourGuide. activityDetails populated with meeting point, items to bring, date, time, duration."
+    },
+    {
+      "step": 5,
+      "action": "IngestBooking - car-rental-confirmation.txt (BOOKING_TYPE_CAR_RENTAL)",
+      "result": "PASS",
+      "booking_id": "2b409be1-daac-46fa-97b1-5f95db9967b8",
+      "details": "Ingested as BOOKING_TYPE_CAR_RENTAL. Confirmation code R-8847321, provider Hertz. carRentalDetails with pickup/dropoff locations, times, car type."
+    },
+    {
+      "step": 6,
+      "action": "IngestBooking - hostel-booking.txt (BOOKING_TYPE_HOTEL)",
+      "result": "PASS",
+      "booking_id": "c1e8fb41-6dd6-492f-b1f2-9cdc301b4402",
+      "details": "Ingested as BOOKING_TYPE_HOTEL. Confirmation code VBH-20260601, provider Hostelworld. detailsJson correctly parsed all 3 properties (Hanoi, Hue, Saigon) with individual check-in/check-out dates and rates."
+    },
+    {
+      "step": 7,
+      "action": "IngestBooking - ryokan-booking.txt (BOOKING_TYPE_HOTEL)",
+      "result": "PASS",
+      "booking_id": "2e3444a4-35ac-4134-a9df-70e478f51c3b",
+      "details": "Ingested as BOOKING_TYPE_HOTEL. Confirmation code RYO-K-5521, provider Gion Nanba Ryokan. hotelDetails populated with room type, address, phone."
+    },
+    {
+      "step": 8,
+      "action": "IngestBooking - tour-booking.txt (BOOKING_TYPE_TOUR)",
+      "result": "PASS",
+      "booking_id": "a9e32c1e-2b36-4c7d-9e24-5f05901099fc",
+      "details": "Ingested as BOOKING_TYPE_TOUR. Confirmation code OAXF-2026-112, provider SABORES DE OAXACA FOOD TOURS. tourDetails populated with stops, guide, meeting point, date, time, duration, price."
+    },
+    {
+      "step": 9,
+      "action": "ListBookings",
+      "result": "PASS",
+      "details": "Returned 7 bookings. Types: TOUR(1), FLIGHT(1), HOTEL(3), ACTIVITY(1), CAR_RENTAL(1). All have non-empty id, rawSource, title, and correct type matching submission."
+    },
+    {
+      "step": 10,
+      "action": "ExtractBookingField - Flight: terminal and departure time",
+      "result": "PASS",
+      "booking_id": "1fd01037-063f-4706-8720-87ae228fd3bb",
+      "question": "What terminal and what time does my outbound flight depart?",
+      "extracted_answer": "Your outbound flight, DL 472, departs from Terminal 4 at 6:45 PM EDT.",
+      "expected_info": "Terminal 4, 6:45 PM EDT",
+      "accuracy": "EXACT_MATCH",
+      "details": "Correctly identified Terminal 4 and 6:45 PM EDT from the outbound flight section. Also included flight number DL 472 as bonus context."
+    },
+    {
+      "step": 11,
+      "action": "ExtractBookingField - Hotel: cancellation policy",
+      "result": "PASS",
+      "booking_id": "3359f812-9587-4cea-92b0-cacd7c5805dd",
+      "question": "What is the cancellation policy?",
+      "extracted_answer": "Free cancellation is available until June 12, 2026 (11:59 PM CEST). If you cancel after June 12, the first night (EUR 289.00) will be charged. In case of a no-show, the full stay will be charged.",
+      "expected_info": "Free cancellation until June 12, 2026 (11:59 PM CEST). After June 12: first night (EUR 289.00). No-show: full stay.",
+      "accuracy": "EXACT_MATCH",
+      "details": "All three tiers of the cancellation policy correctly extracted: free cancellation deadline, late cancellation penalty, and no-show charge."
+    },
+    {
+      "step": 12,
+      "action": "ExtractBookingField - Activity: meeting point and what to bring",
+      "result": "PASS",
+      "booking_id": "ff50c3b0-cb74-498a-8037-9a8ca41b37d4",
+      "question": "What is the meeting point and what should I bring?",
+      "extracted_answer": "The meeting point is at the Nativity Facade entrance (Carrer de la Marina side), address C/ de la Marina, 253, 08013 Barcelona. Look for the guide holding an orange \"Barcelona Expert Tours\" sign. Please arrive 15 minutes early. What to bring: Valid photo ID, comfortable walking shoes, sunscreen and water bottle, this confirmation, shoulders and knees must be covered.",
+      "expected_info": "Nativity Facade entrance, C/ de la Marina 253, Barcelona. Bring: photo ID, walking shoes, sunscreen, water bottle, confirmation, dress code (shoulders/knees covered).",
+      "accuracy": "EXACT_MATCH",
+      "details": "Meeting point with address, guide identification, and all 5 items to bring correctly extracted."
+    },
+    {
+      "step": 13,
+      "action": "ExtractBookingField - Car Rental: insurance and fuel policy",
+      "result": "PASS",
+      "booking_id": "2b409be1-daac-46fa-97b1-5f95db9967b8",
+      "question": "What insurance is included and what is the fuel policy?",
+      "extracted_answer": "The included insurance consists of Super CDW (zero excess) and Theft Protection. The fuel policy is Full-to-Full.",
+      "expected_info": "Super CDW (zero excess) + Theft Protection. Fuel: Full-to-Full.",
+      "accuracy": "EXACT_MATCH",
+      "details": "Both insurance types (Super CDW with zero excess, Theft Protection) and Full-to-Full fuel policy correctly identified."
+    },
+    {
+      "step": 14,
+      "action": "ExtractBookingField - Hostel: Hanoi check-in time",
+      "result": "PASS",
+      "booking_id": "c1e8fb41-6dd6-492f-b1f2-9cdc301b4402",
+      "question": "What time is check-in at the Hanoi hostel?",
+      "extracted_answer": "Check-in at Hanoi Old Quarter Hostel is from 2:00 PM to 10:00 PM.",
+      "expected_info": "2:00 PM - 10:00 PM at Hanoi Old Quarter Hostel",
+      "accuracy": "EXACT_MATCH",
+      "details": "Correctly disambiguated Hanoi hostel from the 3-property booking. Identified HANOI OLD QUARTER HOSTEL by name and provided the correct check-in window (2:00 PM - 10:00 PM). Did NOT confuse with Hue (1:00 PM - 11:00 PM) or Saigon (2:00 PM - midnight)."
+    },
+    {
+      "step": 15,
+      "action": "ExtractBookingField - Ryokan: meals and dinner time",
+      "result": "PASS",
+      "booking_id": "2e3444a4-35ac-4134-a9df-70e478f51c3b",
+      "question": "What meals are included and what time is dinner?",
+      "extracted_answer": "The meal plan includes Kaiseki Dinner and Traditional Japanese breakfast. The Kaiseki Dinner is served in-room at either 6:00 PM or 6:30 PM, with guests asked to confirm their preference at check-in.",
+      "expected_info": "Kaiseki Dinner (in-room, 6:00 PM or 6:30 PM) + Traditional Japanese breakfast (dining room, 7:30-9:00 AM).",
+      "accuracy": "EXACT_MATCH",
+      "details": "Both meals correctly identified. Dinner time options (6:00 PM or 6:30 PM) and in-room serving correctly noted."
+    },
+    {
+      "step": 16,
+      "action": "ExtractBookingField - Tour: tastings count and dietary accommodations",
+      "result": "PASS",
+      "booking_id": "a9e32c1e-2b36-4c7d-9e24-5f05901099fc",
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "extracted_answer": "There are 12 food tastings included. Dietary accommodations available are vegetarian, gluten-free (with advance notice), and vegan substitutions for most stops. Guests must notify the tour operator of any allergies or dietary restrictions at least 48 hours before the tour.",
+      "expected_info": "12 tastings. Dietary: vegetarian, gluten-free (advance notice), vegan substitutions for most stops. 48-hour advance notice required.",
+      "accuracy": "EXACT_MATCH",
+      "details": "Correct count of 12 tastings. All three dietary options (vegetarian, gluten-free, vegan) correctly identified with the 48-hour notice requirement."
+    },
+    {
+      "step": 17,
+      "action": "ExtractBookingField - Negative test: irrelevant question on flight booking",
+      "result": "PASS",
+      "booking_id": "1fd01037-063f-4706-8720-87ae228fd3bb",
+      "question": "What is the hotel wifi password?",
+      "extracted_answer": "I am sorry, but the provided booking confirmation is for a flight and does not contain any information about a hotel or its wifi password.",
+      "expected_behavior": "AI should indicate information is not available in the flight confirmation, NOT hallucinate.",
+      "accuracy": "CORRECT_REFUSAL",
+      "details": "AI correctly identified this is a flight booking, not a hotel booking, and refused to fabricate information. No hallucination detected."
+    }
+  ],
+  "scores": {
+    "ingestion_accuracy": 5,
+    "field_extraction_accuracy": 5,
+    "multi_property_disambiguation": 5,
+    "hallucination_resistance": 5,
+    "type_classification": 5,
+    "overall": 5
+  },
+  "score_justification": {
+    "ingestion_accuracy": "All 7 artifacts ingested with correct types, confirmation codes, providers, and structured detailsJson. Multi-property hostel booking correctly decomposed into 3 property objects.",
+    "field_extraction_accuracy": "All 7 extraction questions returned specific, accurate answers that exactly match the source artifacts. No vague non-answers, no generic advice.",
+    "multi_property_disambiguation": "Hostel extraction correctly isolated Hanoi-specific check-in time (2:00 PM - 10:00 PM) without confusing it with Hue (1:00 PM - 11:00 PM) or Saigon (2:00 PM - midnight).",
+    "hallucination_resistance": "Negative test passed cleanly. AI recognized the booking type mismatch and refused to fabricate hotel information from a flight confirmation.",
+    "type_classification": "ListBookings returned all 7 bookings with types matching submission: FLIGHT(1), HOTEL(3), ACTIVITY(1), CAR_RENTAL(1), TOUR(1).",
+    "overall": "Perfect score across all 17 test steps. Zero bugs, zero UX issues, zero AI behavior issues. Booking pipeline is robust."
+  },
+  "regression_baseline": {
+    "flight_terminal_and_time": "Terminal 4, 6:45 PM EDT",
+    "hotel_cancellation_policy": "Free until June 12; after: EUR 289 first night; no-show: full stay",
+    "activity_meeting_point": "Nativity Facade entrance, C/ de la Marina 253, Barcelona",
+    "activity_what_to_bring": "Photo ID, walking shoes, sunscreen, water bottle, confirmation, dress code",
+    "car_rental_insurance": "Super CDW (zero excess), Theft Protection",
+    "car_rental_fuel_policy": "Full-to-Full",
+    "hostel_hanoi_checkin": "2:00 PM - 10:00 PM",
+    "ryokan_meals": "Kaiseki Dinner + Traditional Japanese breakfast",
+    "ryokan_dinner_time": "6:00 PM or 6:30 PM",
+    "tour_tastings_count": "12",
+    "tour_dietary": "Vegetarian, gluten-free (advance notice), vegan substitutions",
+    "negative_test_response": "Correctly refused; identified booking type mismatch"
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Structural — Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_gettrip_nonexistent", "test2_gettrip_malformed", "test3_createtrip_empty_title", "test4_createtrip_oversized_title", "test5_invalid_status_transition", "test6_sendmessage_empty", "test7_sendmessage_oversized", "test8_deletebooking_nonexistent", "test9_ingestbooking_empty", "test10_listtrips_zero"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural adversarial test — not a user experience evaluation. All 10 validation and error-handling test cases passed. The API correctly distinguishes INVALID_ARGUMENT (malformed input) from NOT_FOUND (valid-but-missing resources), enforces buf.validate constraints on string lengths and UUID formats, rejects invalid status transitions with FAILED_PRECONDITION, handles idempotent deletes gracefully, and returns empty collections without errors. No panics, no 500s, no missing validation constraints detected."
+  },
+  "feature_coverage": ["validation", "error_handling", "status_transitions", "idempotent_delete"],
+  "test_results": {
+    "test_01_gettrip_nonexistent_uuid": {
+      "description": "GetTrip with non-existent UUID (00000000-0000-0000-0000-000000000000)",
+      "expected": "NOT_FOUND error",
+      "actual": "not_found: trip not found",
+      "pass": true,
+      "notes": "Correct error code and message. No panic or 500."
+    },
+    "test_02_gettrip_malformed_id": {
+      "description": "GetTrip with malformed ID (not-a-uuid)",
+      "expected": "INVALID_ARGUMENT from buf.validate",
+      "actual": "invalid_argument: validation error: id: value must be a valid UUID",
+      "pass": true,
+      "notes": "Validation interceptor correctly catches malformed UUID before business logic."
+    },
+    "test_03_createtrip_empty_title": {
+      "description": "CreateTrip with empty title",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: title: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced."
+    },
+    "test_04_createtrip_oversized_title": {
+      "description": "CreateTrip with 513-character title",
+      "expected": "INVALID_ARGUMENT from buf.validate max_len",
+      "actual": "invalid_argument: validation error: title: value length must be at most 512 characters",
+      "pass": true,
+      "notes": "buf.validate max_len=512 constraint enforced correctly."
+    },
+    "test_05_invalid_status_transition": {
+      "description": "UpdateTrip: COMPLETED -> PLANNING",
+      "expected": "Error rejecting invalid transition",
+      "actual": "failed_precondition: invalid trip status transition: completed -> planning",
+      "pass": true,
+      "notes": "State machine properly enforced. Uses FAILED_PRECONDITION code which is semantically correct."
+    },
+    "test_06_sendmessage_empty_content": {
+      "description": "SendMessage with empty content string",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: content: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced on streaming RPC."
+    },
+    "test_07_sendmessage_oversized_content": {
+      "description": "SendMessage with 10001-character content",
+      "expected": "INVALID_ARGUMENT from buf.validate max_len",
+      "actual": "invalid_argument: validation error: content: value length must be at most 10000 characters",
+      "pass": true,
+      "notes": "buf.validate max_len=10000 constraint enforced correctly."
+    },
+    "test_08_deletebooking_nonexistent": {
+      "description": "DeleteBooking with non-existent UUID",
+      "expected": "NOT_FOUND or silent success (idempotent)",
+      "actual": "Silent success (empty response {})",
+      "pass": true,
+      "notes": "Idempotent delete behavior. Acceptable — no error, no panic."
+    },
+    "test_09_ingestbooking_empty_rawtext": {
+      "description": "IngestBooking with empty raw_text",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: raw_text: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced."
+    },
+    "test_10_listtrips_zero_trips": {
+      "description": "ListTrips with no trips created",
+      "expected": "Successful response with empty trips array",
+      "actual": "Successful response with pagination:{} and no trips array (empty collection)",
+      "pass": true,
+      "notes": "Correctly returns success with empty result, not NOT_FOUND."
+    }
+  }
+}
