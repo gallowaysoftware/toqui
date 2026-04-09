@@ -362,11 +362,12 @@ const (
 func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string) string {
 	var fullResponse strings.Builder
 	var totalInputTokens, totalOutputTokens int
-	// One-shot guards. Each fires at most once per request so a stuck AI
-	// can't trigger an infinite retry loop. The three guards are
-	// independent so an empty-stream recovery in iteration 0 doesn't
-	// preclude an itinerary-fabrication retry in iteration 1 (review W2).
-	var fabricationRetried bool // create_itinerary_items missing
+	// Retry guards. fabricationRetries allows up to 2 retries per request
+	// because Gemini sometimes ignores the first nudge (Run 7 R-05 — both
+	// retries fired via user_intent trigger but Gemini didn't comply).
+	// The second retry uses a more imperative tone. Expert and empty-stream
+	// guards remain one-shot since a single retry suffices for those.
+	var fabricationRetries int  // create_itinerary_items missing (max 2)
 	var expertRetried bool      // suggest_expert claimed but not called
 	var emptyStreamRetried bool // provider returned no events
 
@@ -443,7 +444,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 						// Reset all retry guards so the expert gets a fresh
 						// chance to call its own tools without being treated
 						// as a continuation of the previous persona's turn.
-						fabricationRetried = false
+						fabricationRetries = 0
 						expertRetried = false
 						emptyStreamRetried = false
 						slog.Info("tool loop: persona swapped mid-turn",
@@ -547,7 +548,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		calledSuggestExpert := false
 		for _, tc := range toolCalls {
 			lname := strings.ToLower(tc.Name)
-			if strings.Contains(lname, "itinerary") {
+			if strings.Contains(lname, "create_itinerary") {
 				calledCreateItinerary = true
 			}
 			if strings.Contains(lname, "expert") {
@@ -599,32 +600,40 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		//   2. userRequestsItineraryCreation(latestUserMsg) — user explicitly
 		//      asked for items to be created and the AI didn't comply
 		//
-		// Either trigger fires the one-shot retry. The retry message names
-		// the tool explicitly so the AI can't talk its way out of calling it.
-		if aiReq.Mode == "planning" && !fabricationRetried && !calledCreateItinerary {
+		// Either trigger fires a retry (up to 2 per turn with escalating
+		// tone). The retry message names the tool explicitly so the AI
+		// can't talk its way out of calling it.
+		if aiReq.Mode == "planning" && fabricationRetries < 2 && !calledCreateItinerary {
 			triggered := ""
 			switch {
 			case impliesItineraryCreation(responseText):
 				triggered = "past_tense_claim"
 			case userRequestsItineraryCreation(latestUserMsg):
 				triggered = "user_intent"
+			case fabricationRetries == 0 && s.classifyItineraryIntent(ctx, latestUserMsg, responseText):
+				triggered = "llm_classifier"
 			}
 			if triggered != "" {
-				fabricationRetried = true
+				fabricationRetries++
 				slog.Warn("tool loop: fabricated/missing itinerary tool call — re-prompting",
 					"session_id", sessionID,
 					"iteration", iteration,
 					"trigger", triggered,
+					"retry_attempt", fabricationRetries,
 					"other_tool_calls", len(toolCalls),
 					"response_preview", responseText[:min(len(responseText), 120)],
 				)
-				// Note: the injected user message uses the "(System note:"
-				// prefix so mostRecentUserContent skips it on subsequent
-				// iterations and the user-intent detector keeps reading the
-				// real user request.
+				// Escalating nudge: the first retry is polite; the second is
+				// imperative with explicit instructions. Run 7 R-05 showed
+				// Gemini ignoring both user_intent retries with the same
+				// wording, so the second attempt must be materially different.
+				nudge := "(System note: you described an itinerary but did not actually call create_itinerary_items. Call it now — pass the exact items you just described as a structured list. Do not reply with text; just call the tool.)"
+				if fabricationRetries >= 2 {
+					nudge = "(System note: MANDATORY — you MUST call create_itinerary_items RIGHT NOW. This is your last chance. Output ONLY a tool call with all the items. No text, no preamble, no explanation — ONLY the create_itinerary_items function call.)"
+				}
 				aiReq.Messages = append(aiReq.Messages,
 					ai.Message{Role: "assistant", Content: responseText},
-					ai.Message{Role: "user", Content: "(System note: you described an itinerary but did not actually call create_itinerary_items. Call it now — pass the exact items you just described as a structured list. Do not reply with text; just call the tool.)"},
+					ai.Message{Role: "user", Content: nudge},
 				)
 				fullResponse.Reset()
 				continue
@@ -649,6 +658,12 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			fullResponse.Reset()
 			continue
 		}
+
+		// Strip post-retry meta-narration: after a fabrication retry the AI
+		// sometimes includes self-referential artifacts like "I actually did
+		// call create_itinerary_items in my previous response" or "As I
+		// mentioned, the items have been saved". These confuse the user.
+		responseText = stripRetryArtifacts(responseText)
 
 		assistantMsg := &chatstore.ChatMessage{
 			Role:    "assistant",
@@ -1468,4 +1483,173 @@ func extractPDFText(data []byte) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+// stripRetryArtifacts removes self-referential meta-narration that the AI
+// sometimes produces after a fabrication retry. These sentences reference the
+// retry mechanism or prior turns in a way that confuses the user.
+//
+// Run 7 N-16 example: "I actually did call create_itinerary_items in my
+// previous response — here's a summary of what was saved:"
+//
+// The approach: scan for sentences containing artifact patterns, remove them,
+// and trim leftover whitespace. This is deliberately conservative — only
+// removing sentences that explicitly reference prior tool calls or responses.
+func stripRetryArtifacts(text string) string {
+	if text == "" {
+		return text
+	}
+
+	lower := strings.ToLower(text)
+
+	// Quick check: skip the expensive splitting if no artifact markers exist.
+	hasArtifact := false
+	for _, marker := range retryArtifactMarkers {
+		if strings.Contains(lower, marker) {
+			hasArtifact = true
+			break
+		}
+	}
+	if !hasArtifact {
+		return text
+	}
+
+	// Split into sentences and filter. We use a simple heuristic: split on
+	// sentence-ending punctuation followed by a space or newline.
+	var cleaned strings.Builder
+	remaining := text
+	for remaining != "" {
+		// Find the next sentence boundary.
+		endIdx := -1
+		for i := 0; i < len(remaining)-1; i++ {
+			if (remaining[i] == '.' || remaining[i] == '!' || remaining[i] == '?') &&
+				(remaining[i+1] == ' ' || remaining[i+1] == '\n') {
+				endIdx = i + 1
+				break
+			}
+		}
+
+		var sentence string
+		if endIdx == -1 {
+			sentence = remaining
+			remaining = ""
+		} else {
+			sentence = remaining[:endIdx]
+			remaining = remaining[endIdx:]
+		}
+
+		sentLower := strings.ToLower(sentence)
+		isArtifact := false
+		for _, marker := range retryArtifactMarkers {
+			if strings.Contains(sentLower, marker) {
+				isArtifact = true
+				break
+			}
+		}
+
+		if !isArtifact {
+			cleaned.WriteString(sentence)
+		}
+	}
+
+	result := strings.TrimSpace(cleaned.String())
+	if result == "" {
+		// If stripping removed everything, return the original to avoid
+		// sending an empty response.
+		return text
+	}
+	return result
+}
+
+// classifyItineraryIntent uses a cheap LLM call to determine whether the
+// user's message implies they want itinerary items created. This is a fallback
+// for when the substring-based userRequestsItineraryCreation misses a phrasing.
+//
+// The classifier runs on the fast model tier with a small token budget to keep
+// costs negligible (~$0.001/call). It returns true only when the LLM responds
+// with "YES" — any error or ambiguous response defaults to false (no retry).
+//
+// This was introduced based on Run 7 analysis: the user suggested "you can
+// always use a 2nd LLM call with a cheap model" to derive intent when the
+// substring matcher fails.
+func (s *Service) classifyItineraryIntent(ctx context.Context, userMsg, aiResponse string) bool {
+	if userMsg == "" {
+		return false
+	}
+
+	// Short-circuit: if the user message is very short and clearly not about
+	// itinerary creation, skip the LLM call.
+	if len(userMsg) < 15 {
+		return false
+	}
+
+	classifyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &ai.ChatRequest{
+		SystemPrompt: `You are a classification bot. Your ONLY job is to determine whether the user's message is asking for itinerary items to be created, added, or built.
+
+Answer with exactly ONE word: YES or NO.
+
+YES means: the user wants structured itinerary items (days, activities, meals, sightseeing) to be created or added to their trip plan.
+NO means: the user is asking a question, making a comment, or discussing something that does NOT require creating itinerary items.
+
+Examples:
+"Build me a 10-day itinerary for Italy" → YES
+"What's the best time to visit?" → NO
+"Add a day trip to Pompeii" → YES
+"Tell me about the food in Tokyo" → NO
+"Plan my entire 7-day trip" → YES
+"How do I get from the airport?" → NO`,
+		Messages: []ai.Message{
+			{Role: "user", Content: fmt.Sprintf("User message: %s\n\nAI response (no tool call made): %s", userMsg, aiResponse[:min(len(aiResponse), 200)])},
+		},
+		MaxTokens:   8,
+		Temperature: 0,
+		ModelTier:   ai.ModelTierFast,
+	}
+
+	eventCh, err := s.provider.ChatStream(classifyCtx, req)
+	if err != nil {
+		slog.Debug("intent classifier failed to start", "error", err)
+		return false
+	}
+
+	var response strings.Builder
+	for event := range eventCh {
+		if event.Type == ai.EventTextDelta {
+			response.WriteString(event.Text)
+		}
+		if event.Type == ai.EventError {
+			slog.Debug("intent classifier error", "error", event.Error)
+			return false
+		}
+	}
+
+	result := strings.TrimSpace(strings.ToUpper(response.String()))
+	isYes := strings.HasPrefix(result, "YES")
+	if isYes {
+		slog.Info("llm intent classifier: itinerary creation detected",
+			"user_msg_preview", userMsg[:min(len(userMsg), 80)],
+		)
+	}
+	return isYes
+}
+
+// retryArtifactMarkers are phrases that indicate self-referential meta-narration
+// from a post-retry response. Sentences containing these are removed.
+var retryArtifactMarkers = []string{
+	"i actually did call",
+	"i did call create_itinerary",
+	"in my previous response",
+	"in my earlier response",
+	"as i mentioned in my previous",
+	"as mentioned earlier",
+	"i already called",
+	"i have already called",
+	"i've already called",
+	"the tool was already called",
+	"the items were already saved in my previous",
+	"i called create_itinerary_items",
+	"i used create_itinerary_items",
 }

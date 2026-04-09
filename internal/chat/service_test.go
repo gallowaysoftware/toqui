@@ -236,3 +236,56 @@ func TestMostRecentUserContent(t *testing.T) {
 		})
 	}
 }
+
+func TestStripRetryArtifacts(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no artifacts — unchanged",
+			input: "Here's your 10-day Italy itinerary! Day 1 starts in Rome.",
+			want:  "Here's your 10-day Italy itinerary! Day 1 starts in Rome.",
+		},
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "strips 'I actually did call' sentence",
+			input: "I actually did call create_itinerary_items in my previous response. Here's your plan for Peru!",
+			want:  "Here's your plan for Peru!",
+		},
+		{
+			name:  "strips 'in my previous response' sentence",
+			input: "Great itinerary! In my previous response, I already saved these items. Let me know if you want changes.",
+			want:  "Great itinerary! Let me know if you want changes.",
+		},
+		{
+			name:  "strips multiple artifact sentences",
+			input: "I called create_itinerary_items with all the items. As mentioned earlier, everything is saved. Here are your highlights.",
+			want:  "Here are your highlights.",
+		},
+		{
+			name:  "preserves normal text with 'call' in it",
+			input: "Call the restaurant to make a reservation. The number is on their website.",
+			want:  "Call the restaurant to make a reservation. The number is on their website.",
+		},
+		{
+			name:  "all-artifact text returns original",
+			input: "I actually did call create_itinerary_items in my previous response.",
+			want:  "I actually did call create_itinerary_items in my previous response.",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := stripRetryArtifacts(c.input)
+			if got != c.want {
+				t.Errorf("stripRetryArtifacts(%q)\n  got:  %q\n  want: %q", c.input, got, c.want)
+			}
+		})
+	}
+}

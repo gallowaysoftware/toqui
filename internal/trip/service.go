@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"time"
 
@@ -361,6 +362,32 @@ func (s *Service) CreateItineraryItem(ctx context.Context, tripID uuid.UUID, day
 		return dbgen.ItineraryItem{}, fmt.Errorf("create itinerary item: %w", err)
 	}
 	return item, nil
+}
+
+// DeleteItineraryItems removes itinerary items by their IDs. Only items owned
+// by the given user (via the trip's user_id) are deleted. Returns the list of
+// actually-deleted IDs so the caller can report accurately, and an error if
+// ALL deletions failed (partial success returns the successful IDs with nil).
+func (s *Service) DeleteItineraryItems(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) ([]uuid.UUID, error) {
+	var deleted []uuid.UUID
+	var lastErr error
+	for _, id := range itemIDs {
+		err := s.queries.DeleteItineraryItem(ctx, dbgen.DeleteItineraryItemParams{
+			ID:     id,
+			UserID: userID,
+		})
+		if err != nil {
+			slog.Error("delete itinerary item", "item_id", id, "error", err)
+			lastErr = err
+			continue
+		}
+		deleted = append(deleted, id)
+	}
+	// Return error only when ALL deletions failed.
+	if len(deleted) == 0 && lastErr != nil {
+		return nil, fmt.Errorf("all %d deletions failed: %w", len(itemIDs), lastErr)
+	}
+	return deleted, nil
 }
 
 func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error) {

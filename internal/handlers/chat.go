@@ -417,7 +417,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		// queries (Run 5 N-01, N-10 — "what do I do first?" silently added
 		// items to the itinerary). The stub needs no tripID so we register
 		// it unconditionally for companion mode.
-		if mode == "planning" {
+		if mode == "planning" || mode == "companion" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 				itineraryTool := NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()
@@ -426,10 +426,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}).WithGeocoding(h.pool, h.placesAPIKey).
 					WithAnalytics(h.analytics, userID.String())
 				params.ExtraTools = append(params.ExtraTools, itineraryTool)
+
+				deleteTool := NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
+					slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
+				})
+				params.ExtraTools = append(params.ExtraTools, deleteTool)
 			}
-		}
-		if mode == "companion" {
-			params.ExtraTools = append(params.ExtraTools, NewCompanionItineraryStub())
 		}
 
 		// Companion mode: inject nearby_places tool with user's cached location
