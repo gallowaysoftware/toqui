@@ -19,13 +19,14 @@ const vertexAIScope = "https://www.googleapis.com/auth/cloud-platform"
 
 // Gemini model defaults per tier. Override via AI_GEMINI_MODEL_FAST, AI_GEMINI_MODEL_SMART, AI_GEMINI_MODEL_BEST.
 //
-// Upgraded to Gemini 3 family (April 2026) to avoid customer-visible swap
-// during the Gemini 2.5 deprecation (Oct 2026). Gemini 3 models are in
-// Preview but offer significantly better reasoning and tool compliance.
+// Using Gemini 2.5 (GA). Gemini 3 Preview models are not yet accessible
+// on Vertex AI (404 on all regions as of April 2026). Will upgrade to
+// Gemini 3 when it goes GA — the env var overrides make this a config-only
+// change. Gemini 2.5 retirement is no earlier than Oct 16, 2026.
 var geminiModels = map[ModelTier]string{
-	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-3.1-flash-lite-preview"),
-	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-3-flash-preview"),
-	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-3.1-pro-preview"),
+	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-2.5-flash-lite"),
+	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-2.5-flash"),
+	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-2.5-pro"),
 }
 
 // GeminiProvider implements the Provider interface using Google Vertex AI.
@@ -60,7 +61,7 @@ func NewGeminiProvider(projectID, location string) (*GeminiProvider, error) {
 		projectID:   projectID,
 		location:    location,
 		tokenSource: creds.TokenSource,
-		model:       "gemini-3-flash-preview",
+		model:       "gemini-2.5-flash",
 		client:      &http.Client{Timeout: 5 * time.Minute},
 	}, nil
 }

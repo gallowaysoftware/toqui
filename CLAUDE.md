@@ -900,9 +900,9 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 | Model Tier | Claude                     | Gemini (Vertex AI)        |
 | ---------- | -------------------------- | ------------------------- |
-| fast       | `claude-haiku-4-5`         | `gemini-3.1-flash-lite-preview` |
-| smart      | `claude-sonnet-4-6`        | `gemini-3-flash-preview`        |
-| best       | `claude-sonnet-4-6`        | `gemini-3.1-pro-preview`        |
+| fast       | `claude-haiku-4-5`         | `gemini-2.5-flash-lite` |
+| smart      | `claude-sonnet-4-6`        | `gemini-2.5-flash`      |
+| best       | `claude-sonnet-4-6`        | `gemini-2.5-pro`        |
 
 Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
 
