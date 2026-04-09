@@ -344,6 +344,11 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 					NumParticipants: int32(d.NumParticipants),
 					MeetingPoint:    d.MeetingPoint,
 					Stops:           stops,
+					Date:            d.Date,
+					StartTime:       d.StartTime,
+					Duration:        d.Duration,
+					GuideName:       d.GuideName,
+					Price:           d.Price,
 				},
 			}
 		}
@@ -357,6 +362,11 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 					Location:     d.Location,
 					NumGuests:    int32(d.NumGuests),
 					Notes:        d.Notes,
+					Date:         d.Date,
+					StartTime:    d.StartTime,
+					Duration:     d.Duration,
+					GuideName:    d.GuideName,
+					Price:        d.Price,
 				},
 			}
 		}

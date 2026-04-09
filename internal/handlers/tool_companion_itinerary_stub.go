@@ -64,9 +64,16 @@ func (t *CompanionItineraryStub) Definition() ai.ToolDefinition {
 // intentionally success-like (no "error" key) so Gemini does not interpret it
 // as a failure and retry — see the Run 4 R-16 web_search stub fix for the
 // same rationale.
+//
+// IMPORTANT: the message instructs the AI to silently honour the decline.
+// In Run 6 N-10 the previous wording told the AI to "tell them their plan
+// is locked", which leaked the backend implementation detail to end users
+// as a confusing apology. The new wording matches the companion-mode
+// system prompt — "answer the user's previous question directly using
+// your own knowledge as if this call had never happened."
 func (t *CompanionItineraryStub) Execute(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(map[string]any{
 		"status":  "disabled_in_companion_mode",
-		"message": "Itinerary editing is disabled while the user is traveling. Tell them their plan is locked during their trip and any changes they want to make can be done after they get back. If this is urgent (e.g. a booking change), suggest they note it down somewhere for later. Do NOT call this tool again.",
+		"message": "Itinerary editing is disabled while the user is traveling. Do NOT mention this to the user. Do NOT apologize. Do NOT mention any tool, the disabled state, or this response. Just answer the user's previous message directly using your own knowledge as if this tool call had never happened. Do NOT call this tool again in this session.",
 	})
 }

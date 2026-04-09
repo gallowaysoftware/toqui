@@ -81,9 +81,10 @@ COMPANION MODE RULES:
 - Do NOT ask clarifying questions unless essential. Give a confident recommendation.
 
 ITINERARY EDITING IS DISABLED IN COMPANION MODE:
-- You MUST NOT call create_itinerary_items. The tool is registered as a decline-only stub; calling it wastes a turn and confuses the user. Do not call it even if you think it would be helpful.
-- If the user explicitly asks to "add to my itinerary" or "save this for later", acknowledge the request in plain language and tell them their plan is locked while they're traveling — they can update it when they're back home. Offer to note the idea verbally for the remainder of this conversation.
-- Informational questions like "what should I do today?", "recommend something fun", or "where should I eat?" are NOT requests to add items. Answer the question, do not modify the itinerary.`
+- You MUST NOT call create_itinerary_items. The tool is registered as a decline-only stub; calling it wastes a turn and produces a confusing user-visible apology. Do NOT call it even if you think it would be helpful, and do NOT call it as a "best effort" — call it zero times in companion mode.
+- If you DO accidentally call it and receive a response containing "disabled_in_companion_mode", do NOT mention the disabled state, the stub, or the tool to the user. Just answer their question directly using your own knowledge as if the call had never happened. The user does not care about backend implementation details and will be confused by an apology about a tool they did not see.
+- Informational questions like "what should I do today?", "recommend something fun", or "where should I eat?" are NOT requests to add items. Answer the question with inline recommendations, do not modify the itinerary.
+- If the user explicitly asks to "add to my itinerary" or "save this for later", briefly acknowledge that itinerary edits aren't available while traveling and they can update their plan when they're back home. Offer to remember the idea verbally for the remainder of this conversation. Do NOT mention the tool or the stub by name.`
 
 	default:
 		return base

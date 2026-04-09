@@ -362,7 +362,13 @@ const (
 func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string) string {
 	var fullResponse strings.Builder
 	var totalInputTokens, totalOutputTokens int
-	var fabricationRetried bool // one-shot guard against fabricated tool success (#171)
+	// One-shot guards. Each fires at most once per request so a stuck AI
+	// can't trigger an infinite retry loop. The three guards are
+	// independent so an empty-stream recovery in iteration 0 doesn't
+	// preclude an itinerary-fabrication retry in iteration 1 (review W2).
+	var fabricationRetried bool // create_itinerary_items missing
+	var expertRetried bool      // suggest_expert claimed but not called
+	var emptyStreamRetried bool // provider returned no events
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
 		// Stop if the client disconnected.
@@ -434,10 +440,12 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					if newPersona != nil {
 						aiReq.SystemPrompt = buildPrompt(newPersona)
 						swappedPersona = newPersona
-						// Reset fabrication guard so the expert gets a fresh
+						// Reset all retry guards so the expert gets a fresh
 						// chance to call its own tools without being treated
 						// as a continuation of the previous persona's turn.
 						fabricationRetried = false
+						expertRetried = false
+						emptyStreamRetried = false
 						slog.Info("tool loop: persona swapped mid-turn",
 							"session_id", sessionID,
 							"new_persona_id", newPersona.ID,
@@ -530,47 +538,113 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 
 		// AI finished (end_turn) — store and emit the final response.
-		// If the response is empty (no text, no tool calls), suppress the
-		// assistant message to avoid blank bubbles in chat history, and emit
-		// an error event so the frontend can show a retry prompt. This is the
-		// symmetric fix to the user-message rollback on AI failure (#167).
 		responseText := fullResponse.String()
+
+		// Check which tools were actually called this turn so the recovery
+		// branches below can distinguish "the AI did the right thing" from
+		// "the AI talked about doing it but didn't".
+		calledCreateItinerary := false
+		calledSuggestExpert := false
+		for _, tc := range toolCalls {
+			lname := strings.ToLower(tc.Name)
+			if strings.Contains(lname, "itinerary") {
+				calledCreateItinerary = true
+			}
+			if strings.Contains(lname, "expert") {
+				calledSuggestExpert = true
+			}
+		}
+
+		// Find the most recent user message in the request so we can detect
+		// the user's intent. Skips system-injected nudges from previous
+		// fabrication retries (those have a "(System note:" prefix).
+		latestUserMsg := mostRecentUserContent(aiReq.Messages)
+
+		// Empty-turn recovery: in Run 6 several personas (R-03, R-16, N-02,
+		// N-06, N-07, N-16) hit a Gemini path where the stream returns no
+		// text and no tool calls at all. Previously we suppressed the turn
+		// and emitted an error. Now we retry once with a stronger nudge if
+		// we still have iteration budget — most of these recover on the
+		// second attempt.
 		if responseText == "" && len(toolCalls) == 0 {
+			if !emptyStreamRetried && iteration < maxToolLoopIterations-1 {
+				emptyStreamRetried = true
+				slog.Warn("tool loop: empty turn detected — retrying with nudge",
+					"session_id", sessionID,
+					"iteration", iteration,
+				)
+				aiReq.Messages = append(aiReq.Messages,
+					ai.Message{Role: "user", Content: "(System note: your last turn produced no output. Please answer my previous message — call any tools you need and reply with text.)"},
+				)
+				fullResponse.Reset()
+				continue
+			}
 			slog.Warn("suppressing empty assistant turn — no content and no tool calls",
 				"session_id", sessionID,
 				"iteration", iteration,
 			)
-			select {
-			case outCh <- StreamEvent{Type: "error", Error: "no response from AI — please try again"}:
-			case <-ctx.Done():
-			}
+			sendOrDrop(outCh, ctx, StreamEvent{Type: "error", Error: "no response from AI — please try again"})
 			return ""
 		}
 
-		// Detect fabricated tool success: in planning mode the AI sometimes
-		// claims it has added items to the itinerary without ever calling
-		// create_itinerary_items (#171, Run 5 R-02/R-11/N-06). Check whether
-		// create_itinerary_items specifically was called — the AI may have
-		// called OTHER tools (web_search, recommend_booking) in the same turn
-		// and still fabricated the itinerary-creation claim.
-		calledCreateItinerary := false
-		for _, tc := range toolCalls {
-			if strings.Contains(strings.ToLower(tc.Name), "itinerary") {
-				calledCreateItinerary = true
-				break
+		// Fabrication detection: planning mode, the AI sometimes claims it
+		// has added items to the itinerary without calling
+		// create_itinerary_items. Run 5 R-02/R-11/N-06 fixed the past-tense
+		// claim form. Run 6 R-05/R-16/N-06/N-07/N-12/N-16 surfaced a broader
+		// failure mode: the AI describes the plan in present tense and just
+		// stops, with NO past-tense claim text to match. Both forms are
+		// caught here:
+		//
+		//   1. impliesItineraryCreation(responseText) — past-tense claim
+		//   2. userRequestsItineraryCreation(latestUserMsg) — user explicitly
+		//      asked for items to be created and the AI didn't comply
+		//
+		// Either trigger fires the one-shot retry. The retry message names
+		// the tool explicitly so the AI can't talk its way out of calling it.
+		if aiReq.Mode == "planning" && !fabricationRetried && !calledCreateItinerary {
+			triggered := ""
+			switch {
+			case impliesItineraryCreation(responseText):
+				triggered = "past_tense_claim"
+			case userRequestsItineraryCreation(latestUserMsg):
+				triggered = "user_intent"
+			}
+			if triggered != "" {
+				fabricationRetried = true
+				slog.Warn("tool loop: fabricated/missing itinerary tool call — re-prompting",
+					"session_id", sessionID,
+					"iteration", iteration,
+					"trigger", triggered,
+					"other_tool_calls", len(toolCalls),
+					"response_preview", responseText[:min(len(responseText), 120)],
+				)
+				// Note: the injected user message uses the "(System note:"
+				// prefix so mostRecentUserContent skips it on subsequent
+				// iterations and the user-intent detector keeps reading the
+				// real user request.
+				aiReq.Messages = append(aiReq.Messages,
+					ai.Message{Role: "assistant", Content: responseText},
+					ai.Message{Role: "user", Content: "(System note: you described an itinerary but did not actually call create_itinerary_items. Call it now — pass the exact items you just described as a structured list. Do not reply with text; just call the tool.)"},
+				)
+				fullResponse.Reset()
+				continue
 			}
 		}
-		if aiReq.Mode == "planning" && !fabricationRetried && !calledCreateItinerary && impliesItineraryCreation(responseText) {
-			fabricationRetried = true
-			slog.Warn("tool loop: fabricated tool success detected — re-prompting",
+
+		// suggest_expert fabrication detection: Run 6 R-16, N-07, N-12 all
+		// hit a pattern where the AI says "let me bring in a specialist" or
+		// equivalent without actually calling suggest_expert. Same one-shot
+		// guard as itinerary fabrication.
+		if !expertRetried && !calledSuggestExpert && impliesExpertHandoff(responseText) {
+			expertRetried = true
+			slog.Warn("tool loop: fabricated expert handoff — re-prompting",
 				"session_id", sessionID,
 				"iteration", iteration,
-				"other_tool_calls", len(toolCalls),
 				"response_preview", responseText[:min(len(responseText), 120)],
 			)
 			aiReq.Messages = append(aiReq.Messages,
 				ai.Message{Role: "assistant", Content: responseText},
-				ai.Message{Role: "user", Content: "You described adding items to the itinerary but did not call create_itinerary_items. Call it now — pass the exact items you just described as a structured list. Do not reply with text; call the tool."},
+				ai.Message{Role: "user", Content: "(System note: you said you would hand this off to a specialist but did not actually call suggest_expert. Call it now to make the handoff happen — do not reply with text.)"},
 			)
 			fullResponse.Reset()
 			continue
@@ -903,6 +977,257 @@ func impliesItineraryCreation(text string) bool {
 		}
 	}
 	return false
+}
+
+// userRequestsItineraryCreation returns true when the user's most recent
+// message clearly asks the AI to build, add, or modify itinerary items.
+// This is the user-intent half of the fabrication detector — it fires the
+// retry whenever the user explicitly asked for itinerary work and the
+// response had no create_itinerary_items tool call, regardless of what
+// the response text said. Catches the Run 6 "AI describes plan and stops"
+// failure mode that the response-text detector misses (R-05 Iceland,
+// R-16 Crete, N-06 India, N-07 Japan preamble, N-12 Israel/SA/MM, N-16 Peru).
+//
+// Phrases are matched case-insensitively as substrings, but a negation
+// guard short-circuits "don't add", "stop adding", "forget the X" and
+// other cancel/refusal patterns so the retry never forces items the user
+// explicitly didn't want (review W1).
+func userRequestsItineraryCreation(text string) bool {
+	if text == "" {
+		return false
+	}
+	lower := strings.ToLower(text)
+
+	// Negation / cancellation guard. If any of these patterns appear at all
+	// in the message, the user is steering AWAY from itinerary changes —
+	// suppress the trigger entirely. This is conservative (we may miss a
+	// genuine "don't worry, build me an itinerary" with both phrases) but
+	// the cost of a missed retry is much lower than the cost of forcing
+	// items the user explicitly rejected.
+	for _, neg := range []string{
+		"don't add", "do not add", "dont add",
+		"don't build", "do not build",
+		"don't create", "do not create",
+		"don't make", "do not make",
+		"don't put", "do not put",
+		"stop adding", "stop building",
+		"forget the create_itinerary",
+		"forget about the itinerary",
+		"cancel the itinerary",
+		"not the itinerary", "not my itinerary",
+		"without adding",
+	} {
+		if strings.Contains(lower, neg) {
+			return false
+		}
+	}
+
+	for _, phrase := range []string{
+		// Direct tool name mention — strongest signal. Must appear with
+		// an action verb to avoid matching error-discussion contexts like
+		// "the create_itinerary_items error is weird".
+		"call create_itinerary_items",
+		"use create_itinerary_items",
+		"use the create_itinerary_items",
+		"call the create_itinerary_items",
+		"invoke create_itinerary_items",
+
+		// "Build me / build out" — require an itinerary-context noun on
+		// the right-hand side so we don't catch "build me a packing list".
+		"build me an itinerary",
+		"build me a day-by-day",
+		"build me a day by day",
+		"build me a 3-day",
+		"build me a 4-day",
+		"build me a 5-day",
+		"build me a 7-day",
+		"build me a 10-day",
+		"build me a 14-day",
+		"build me a 21-day",
+		"build me a complete itinerary",
+		"build me a detailed itinerary",
+		"build me a full itinerary",
+		"build me a plan for",
+		"build me a trip",
+		"build out a day-by-day",
+		"build out my itinerary",
+		"build out the itinerary",
+		"build my itinerary",
+		"build the itinerary",
+		"build a day-by-day itinerary",
+		"build a day by day itinerary",
+
+		// "Create" — same noun-on-right rule
+		"create a day-by-day itinerary",
+		"create a day by day itinerary",
+		"create me an itinerary",
+		"create me a day-by-day",
+		"create me a day by day",
+		"create my itinerary",
+		"create the itinerary",
+		"create an itinerary",
+		"create a 3-day itinerary",
+		"create a 4-day itinerary",
+		"create a 5-day itinerary",
+		"create a 7-day itinerary",
+		"create a 10-day itinerary",
+		"create a 14-day itinerary",
+		"create a 21-day itinerary",
+		"create a 3-day plan",
+		"create a 5-day plan",
+		"create a 7-day plan",
+		"create a 10-day plan",
+
+		// "Give me a [N-day] itinerary / plan"
+		"give me a day-by-day",
+		"give me a day by day",
+		"give me an itinerary",
+		"give me a detailed itinerary",
+		"give me a complete itinerary",
+		"give me a full itinerary",
+
+		// "Plan me / plan a [N] day"
+		"plan me a",
+		"plan a day-by-day",
+		"plan a day by day",
+		"plan a 3-day",
+		"plan a 5-day",
+		"plan a 7-day",
+		"plan a 10-day",
+
+		// "Add to my itinerary" / "add X to day Y"
+		"add to my itinerary",
+		"add to the itinerary",
+		"add it to my itinerary",
+		"add them to my itinerary",
+		"add these to my itinerary",
+		"add those to my itinerary",
+		"add this to my itinerary",
+		"add to day",
+		"add a day trip",
+		"add a stop",
+
+		// Direct verb + structured-noun patterns
+		"day-by-day itinerary",
+		"day by day itinerary",
+		"day-by-day plan",
+		"full itinerary",
+		"complete itinerary",
+		"detailed itinerary",
+		"my itinerary for",
+	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// impliesExpertHandoff returns true when the AI's response text claims
+// it will or did hand off to a specialist persona, without actually
+// calling suggest_expert. Catches Run 6 R-16/N-07/N-12 cases where the
+// AI role-plays the handoff in text but never fires the tool, so the
+// frontend never receives the personaSwitch event.
+//
+// Detection requires BOTH an action phrase ("let me bring in", "I'll
+// hand you off", etc.) AND a target token ("expert", "specialist") in
+// the same response. This catches "I'll hand you off to our food
+// specialist" while rejecting "let me bring in some examples" and
+// "I'll connect you with the restaurant" (review W4).
+func impliesExpertHandoff(text string) bool {
+	if text == "" {
+		return false
+	}
+	lower := strings.ToLower(text)
+
+	// Target tokens — at least one of these must appear in the response.
+	hasTarget := strings.Contains(lower, "expert") ||
+		strings.Contains(lower, "specialist")
+	if !hasTarget {
+		return false
+	}
+
+	// Action phrases — at least one must appear. Each phrase must be a
+	// verb construction that semantically means "I am about to delegate
+	// to someone else", not a passive observation about an expert.
+	for _, action := range []string{
+		"let me bring in",
+		"i'll bring in",
+		"i am going to bring in",
+		"i'm going to bring in",
+
+		"let me hand you off",
+		"let me hand this off",
+		"i'll hand you off",
+		"i'll hand this off",
+		"handing you off",
+
+		"passing you to",
+		"transferring you to",
+
+		"let me connect you with",
+		"i'll connect you with",
+
+		"let me pull in",
+		"i'll pull in",
+
+		"let me get our",
+		"i'll get our",
+
+		"the expert here is",
+		"our specialist on",
+		"our expert on",
+		"our local expert on",
+	} {
+		if strings.Contains(lower, action) {
+			// Extra guard: if the action is a generic "connect you with"
+			// or "passing you to", make sure it's connecting them to a
+			// PERSON (expert/specialist) and not a thing (restaurant,
+			// hotel concierge, support desk). The hasTarget check above
+			// ensures expert/specialist appears SOMEWHERE in the message,
+			// but for these generic actions we additionally require the
+			// target token to follow within ~80 chars.
+			if action == "let me connect you with" ||
+				action == "i'll connect you with" ||
+				action == "passing you to" ||
+				action == "transferring you to" {
+				idx := strings.Index(lower, action)
+				windowEnd := idx + len(action) + 80
+				if windowEnd > len(lower) {
+					windowEnd = len(lower)
+				}
+				window := lower[idx:windowEnd]
+				if !strings.Contains(window, "expert") && !strings.Contains(window, "specialist") {
+					continue
+				}
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// mostRecentUserContent returns the text of the most recent message in the
+// conversation that came from the user (Role == "user") and is NOT a
+// system-injected nudge from a previous fabrication retry. The retry
+// nudges have a "(System note:" prefix that we explicitly skip so the
+// detector keeps reading the real user intent across retries.
+func mostRecentUserContent(messages []ai.Message) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		m := messages[i]
+		if m.Role != "user" {
+			continue
+		}
+		if strings.HasPrefix(strings.TrimSpace(m.Content), "(System note:") {
+			continue
+		}
+		// Skip messages that only carry tool results (no human prose).
+		if m.Content == "" && len(m.ToolResults) > 0 {
+			continue
+		}
+		return m.Content
+	}
+	return ""
 }
 
 // lookupExtraTool resolves a per-request tool by name, falling back to a

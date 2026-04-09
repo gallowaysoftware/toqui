@@ -901,8 +901,18 @@ type TourDetails struct {
 	NumParticipants int32                  `protobuf:"varint,3,opt,name=num_participants,json=numParticipants,proto3" json:"num_participants,omitempty"`
 	MeetingPoint    string                 `protobuf:"bytes,4,opt,name=meeting_point,json=meetingPoint,proto3" json:"meeting_point,omitempty"`
 	Stops           []*TourStop            `protobuf:"bytes,5,rep,name=stops,proto3" json:"stops,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Added in PR #198 (Run 5 R-06/R-11 fix). The Go struct already carried
+	// these fields and the AI parser writes them into details_json, but the
+	// proto schema didn't expose them. Run 6 R-11 flagged the gap. Adding
+	// them as new field numbers preserves wire compatibility with existing
+	// booking documents.
+	Date          string `protobuf:"bytes,6,opt,name=date,proto3" json:"date,omitempty"`                            // ISO YYYY-MM-DD
+	StartTime     string `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // local HH:MM or HH:MM-HH:MM window
+	Duration      string `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty"`                    // human-readable duration, e.g. "3h 30m"
+	GuideName     string `protobuf:"bytes,9,opt,name=guide_name,json=guideName,proto3" json:"guide_name,omitempty"`
+	Price         string `protobuf:"bytes,10,opt,name=price,proto3" json:"price,omitempty"` // currency-prefixed string, e.g. "USD 85.00"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TourDetails) Reset() {
@@ -970,13 +980,54 @@ func (x *TourDetails) GetStops() []*TourStop {
 	return nil
 }
 
+func (x *TourDetails) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *TourDetails) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+func (x *TourDetails) GetDuration() string {
+	if x != nil {
+		return x.Duration
+	}
+	return ""
+}
+
+func (x *TourDetails) GetGuideName() string {
+	if x != nil {
+		return x.GuideName
+	}
+	return ""
+}
+
+func (x *TourDetails) GetPrice() string {
+	if x != nil {
+		return x.Price
+	}
+	return ""
+}
+
 type ActivityDetails struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Operator      string                 `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
-	ActivityName  string                 `protobuf:"bytes,2,opt,name=activity_name,json=activityName,proto3" json:"activity_name,omitempty"`
-	Location      string                 `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
-	NumGuests     int32                  `protobuf:"varint,4,opt,name=num_guests,json=numGuests,proto3" json:"num_guests,omitempty"`
-	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Operator     string                 `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	ActivityName string                 `protobuf:"bytes,2,opt,name=activity_name,json=activityName,proto3" json:"activity_name,omitempty"`
+	Location     string                 `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
+	NumGuests    int32                  `protobuf:"varint,4,opt,name=num_guests,json=numGuests,proto3" json:"num_guests,omitempty"`
+	Notes        string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
+	// Same Run 6 R-11 follow-up: expose the parser's existing fields.
+	Date          string `protobuf:"bytes,6,opt,name=date,proto3" json:"date,omitempty"`
+	StartTime     string `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	Duration      string `protobuf:"bytes,8,opt,name=duration,proto3" json:"duration,omitempty"`
+	GuideName     string `protobuf:"bytes,9,opt,name=guide_name,json=guideName,proto3" json:"guide_name,omitempty"`
+	Price         string `protobuf:"bytes,10,opt,name=price,proto3" json:"price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1042,6 +1093,41 @@ func (x *ActivityDetails) GetNumGuests() int32 {
 func (x *ActivityDetails) GetNotes() string {
 	if x != nil {
 		return x.Notes
+	}
+	return ""
+}
+
+func (x *ActivityDetails) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *ActivityDetails) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+func (x *ActivityDetails) GetDuration() string {
+	if x != nil {
+		return x.Duration
+	}
+	return ""
+}
+
+func (x *ActivityDetails) GetGuideName() string {
+	if x != nil {
+		return x.GuideName
+	}
+	return ""
+}
+
+func (x *ActivityDetails) GetPrice() string {
+	if x != nil {
+		return x.Price
 	}
 	return ""
 }
@@ -1860,20 +1946,36 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\blocation\x18\x02 \x01(\tR\blocation\x12\x1a\n" +
 	"\bduration\x18\x03 \x01(\tR\bduration\x12\x14\n" +
-	"\x05notes\x18\x04 \x01(\tR\x05notes\"\xc9\x01\n" +
+	"\x05notes\x18\x04 \x01(\tR\x05notes\"\xcd\x02\n" +
 	"\vTourDetails\x12#\n" +
 	"\rtour_operator\x18\x01 \x01(\tR\ftourOperator\x12\x1b\n" +
 	"\ttour_name\x18\x02 \x01(\tR\btourName\x12)\n" +
 	"\x10num_participants\x18\x03 \x01(\x05R\x0fnumParticipants\x12#\n" +
 	"\rmeeting_point\x18\x04 \x01(\tR\fmeetingPoint\x12(\n" +
-	"\x05stops\x18\x05 \x03(\v2\x12.toqui.v1.TourStopR\x05stops\"\xa3\x01\n" +
+	"\x05stops\x18\x05 \x03(\v2\x12.toqui.v1.TourStopR\x05stops\x12\x12\n" +
+	"\x04date\x18\x06 \x01(\tR\x04date\x12\x1d\n" +
+	"\n" +
+	"start_time\x18\a \x01(\tR\tstartTime\x12\x1a\n" +
+	"\bduration\x18\b \x01(\tR\bduration\x12\x1d\n" +
+	"\n" +
+	"guide_name\x18\t \x01(\tR\tguideName\x12\x14\n" +
+	"\x05price\x18\n" +
+	" \x01(\tR\x05price\"\xa7\x02\n" +
 	"\x0fActivityDetails\x12\x1a\n" +
 	"\boperator\x18\x01 \x01(\tR\boperator\x12#\n" +
 	"\ractivity_name\x18\x02 \x01(\tR\factivityName\x12\x1a\n" +
 	"\blocation\x18\x03 \x01(\tR\blocation\x12\x1d\n" +
 	"\n" +
 	"num_guests\x18\x04 \x01(\x05R\tnumGuests\x12\x14\n" +
-	"\x05notes\x18\x05 \x01(\tR\x05notes\"\x8b\x01\n" +
+	"\x05notes\x18\x05 \x01(\tR\x05notes\x12\x12\n" +
+	"\x04date\x18\x06 \x01(\tR\x04date\x12\x1d\n" +
+	"\n" +
+	"start_time\x18\a \x01(\tR\tstartTime\x12\x1a\n" +
+	"\bduration\x18\b \x01(\tR\bduration\x12\x1d\n" +
+	"\n" +
+	"guide_name\x18\t \x01(\tR\tguideName\x12\x14\n" +
+	"\x05price\x18\n" +
+	" \x01(\tR\x05price\"\x8b\x01\n" +
 	"\x11RestaurantDetails\x12'\n" +
 	"\x0frestaurant_name\x18\x01 \x01(\tR\x0erestaurantName\x12\x18\n" +
 	"\acuisine\x18\x02 \x01(\tR\acuisine\x12\x1d\n" +

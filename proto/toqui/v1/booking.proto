@@ -103,6 +103,16 @@ message TourDetails {
   int32 num_participants = 3;
   string meeting_point = 4;
   repeated TourStop stops = 5;
+  // Added in PR #198 (Run 5 R-06/R-11 fix). The Go struct already carried
+  // these fields and the AI parser writes them into details_json, but the
+  // proto schema didn't expose them. Run 6 R-11 flagged the gap. Adding
+  // them as new field numbers preserves wire compatibility with existing
+  // booking documents.
+  string date = 6;        // ISO YYYY-MM-DD
+  string start_time = 7;  // local HH:MM or HH:MM-HH:MM window
+  string duration = 8;    // human-readable duration, e.g. "3h 30m"
+  string guide_name = 9;
+  string price = 10;      // currency-prefixed string, e.g. "USD 85.00"
 }
 
 message ActivityDetails {
@@ -111,6 +121,12 @@ message ActivityDetails {
   string location = 3;
   int32 num_guests = 4;
   string notes = 5;
+  // Same Run 6 R-11 follow-up: expose the parser's existing fields.
+  string date = 6;
+  string start_time = 7;
+  string duration = 8;
+  string guide_name = 9;
+  string price = 10;
 }
 
 message RestaurantDetails {
