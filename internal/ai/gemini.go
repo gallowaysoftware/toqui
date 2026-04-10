@@ -281,14 +281,34 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 			funcDecls = append(funcDecls, funcDecl)
 		}
 
-		body["tools"] = []map[string]any{
+		toolsList := []map[string]any{
 			{"functionDeclarations": funcDecls},
 		}
-		body["toolConfig"] = map[string]any{
+
+		// Gemini 3 grounding: add either Google Search or Google Maps
+		// alongside function declarations. Can't combine both in one
+		// request, so we pick based on the chat mode:
+		// - Companion mode → Google Maps (real place data: ratings, hours)
+		// - Planning/Selection → Google Search (web data: visa, weather)
+		if g.useDevAPI {
+			if req.Mode == "companion" {
+				toolsList = append(toolsList, map[string]any{"googleMaps": map[string]any{}})
+			} else {
+				toolsList = append(toolsList, map[string]any{"googleSearch": map[string]any{}})
+			}
+		}
+
+		body["tools"] = toolsList
+		toolConfig := map[string]any{
 			"functionCallingConfig": map[string]any{
 				"mode": "AUTO",
 			},
 		}
+		// Required for mixing built-in tools with function calling on Gemini 3
+		if g.useDevAPI {
+			toolConfig["includeServerSideToolInvocations"] = true
+		}
+		body["toolConfig"] = toolConfig
 	}
 
 	// Generation config.
