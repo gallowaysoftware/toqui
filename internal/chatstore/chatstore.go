@@ -229,7 +229,11 @@ func (s *Store) AddMessageWithMode(ctx context.Context, userID, tripID, sessionI
 }
 
 func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID string, limit int) ([]*ChatMessage, error) {
-	iter := s.messagesCol(userID, tripID, sessionID).OrderBy("createdAt", firestore.Asc).Limit(limit).Documents(ctx)
+	// Fetch the NEWEST messages by ordering DESC, then reverse to restore
+	// chronological order. This ensures that in tool-heavy conversations
+	// (where each tool call generates multiple intermediate messages), the
+	// most recent user messages are never silently dropped.
+	iter := s.messagesCol(userID, tripID, sessionID).OrderBy("createdAt", firestore.Desc).Limit(limit).Documents(ctx)
 	defer iter.Stop()
 
 	var messages []*ChatMessage
@@ -248,6 +252,12 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 		}
 		messages = append(messages, &msg)
 	}
+
+	// Reverse to chronological order (oldest first) for the AI provider.
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
 	return messages, nil
 }
 
