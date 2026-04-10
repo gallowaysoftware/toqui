@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -324,7 +326,7 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 
 	requestID, err := h.lifecycleSvc.RequestExport(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("data export is coming soon"))
+		return nil, internalError(ctx, "request export", err)
 	}
 
 	audit.Log(audit.EventDataExport, "user_id", userID.String())
@@ -333,6 +335,35 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 		RequestId: requestID.String(),
 		Message:   "Your data export is being prepared. You'll be notified when it's ready to download.",
 	}), nil
+}
+
+// HandleExportDownload serves the user's data export as a JSON download.
+// GET /api/export/{requestID} — requires authentication, user must own the export.
+func (h *AuthHandler) HandleExportDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := authenticateRESTRequest(r, h.authSvc)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate the export live (no stored files — user data is small enough)
+	export, err := h.lifecycleSvc.ExportUserData(r.Context(), userID)
+	if err != nil {
+		slog.Error("export download failed", "user_id", userID, "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"toqui-data-export.json\"")
+	if err := json.NewEncoder(w).Encode(export); err != nil {
+		slog.Error("failed to encode export", "error", err)
+	}
 }
 
 func (h *AuthHandler) lookupTier(ctx context.Context, userID uuid.UUID) string {

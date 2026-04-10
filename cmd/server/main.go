@@ -461,6 +461,9 @@ func main() {
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
 	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
 
+	// Data export download (GDPR Article 20)
+	mux.HandleFunc("/api/export/", authHandler.HandleExportDownload)
+
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)

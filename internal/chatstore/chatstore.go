@@ -242,6 +242,43 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 	return messages, nil
 }
 
+// ExportChatData exports all chat sessions and messages for a user across
+// all their trips. Used for GDPR Article 20 (data portability).
+type ExportedSession struct {
+	Session  *ChatSession   `json:"session"`
+	Messages []*ChatMessage `json:"messages"`
+}
+
+func (s *Store) ExportChatData(ctx context.Context, userID string, tripIDs []string) (map[string][]ExportedSession, error) {
+	result := make(map[string][]ExportedSession)
+
+	for _, tripID := range tripIDs {
+		sessions, err := s.ListSessions(ctx, userID, tripID, 1000)
+		if err != nil {
+			slog.Warn("export: failed to list sessions for trip", "trip_id", tripID, "error", err)
+			continue
+		}
+
+		var exported []ExportedSession
+		for _, session := range sessions {
+			messages, err := s.GetMessages(ctx, userID, tripID, session.ID, 10000)
+			if err != nil {
+				slog.Warn("export: failed to get messages", "session_id", session.ID, "error", err)
+				continue
+			}
+			exported = append(exported, ExportedSession{
+				Session:  session,
+				Messages: messages,
+			})
+		}
+		if len(exported) > 0 {
+			result[tripID] = exported
+		}
+	}
+
+	return result, nil
+}
+
 // MoveSessionToTrip moves a session (and all its messages) from one trip path
 // to another. Used when a selection-mode session needs to be retroactively
 // linked to a trip that was created mid-conversation.
