@@ -1,0 +1,119 @@
+{
+  "persona": "N-05",
+  "name": "Trip Sharing Lifecycle",
+  "run": "run19",
+  "date": "2026-04-10",
+  "duration_seconds": 65,
+  "user": {
+    "id": "38570457-b5b5-4fed-a3a4-f2164e77d73d",
+    "email": "n05-run19b@toqui-test.local",
+    "name": "N-05-run19b"
+  },
+  "trip": {
+    "id": "9c89d7a6-9990-44cc-a251-2667f20d5d41",
+    "title": "Tokyo & Kyoto: 7-Day Discovery"
+  },
+  "test_results": {
+    "phase1_trip_setup": {
+      "status": "PASS",
+      "steps": {
+        "get_current_user": {
+          "status": "PASS",
+          "detail": "Identity verified: n05-run19b@toqui-test.local, subscriptionTier=free"
+        },
+        "create_trip_via_chat": {
+          "status": "PASS",
+          "detail": "AI called create_trip tool, returned trip_id=9c89d7a6-9990-44cc-a251-2667f20d5d41, title='Tokyo & Kyoto: 7-Day Discovery', status=TRIP_STATUS_PLANNING"
+        },
+        "create_itinerary_items": {
+          "status": "PASS",
+          "detail": "AI called create_itinerary_items with 7 items covering days 1-7. All items created successfully with correct types (activity, sightseeing, transport, shopping)."
+        },
+        "ingest_booking": {
+          "status": "PASS",
+          "detail": "Ryokan booking ingested as BOOKING_TYPE_HOTEL. Confirmation code RYO-K-5521 extracted. Hotel details parsed correctly (name, check-in/out dates, room type, address, phone)."
+        }
+      }
+    },
+    "phase2_enable_sharing": {
+      "status": "PASS",
+      "steps": {
+        "share_trip": {
+          "status": "PASS",
+          "detail": "POST /api/trips/share returned token_1='GGNY8E3pZpQnMH77yo4Vae' and share_url"
+        }
+      }
+    },
+    "phase3_access_shared_view": {
+      "status": "PASS",
+      "steps": {
+        "get_shared_view": {
+          "status": "PASS",
+          "detail": "GET /shared/{token_1} returned 200 with trip title, description, destination, status, 7 itinerary items (grouped by day), and 1 booking"
+        },
+        "no_sensitive_data_leak": {
+          "status": "PASS",
+          "detail": "Shared view does NOT contain user_id, auth tokens, trip_id, or any user-identifying data. Root keys are only: trip, itinerary, bookings"
+        }
+      }
+    },
+    "phase4_disable_sharing": {
+      "status": "PASS",
+      "steps": {
+        "unshare_trip": {
+          "status": "PASS",
+          "detail": "POST /api/trips/unshare returned {status: 'ok'}"
+        },
+        "token_revocation_security": {
+          "status": "PASS",
+          "detail": "CRITICAL SECURITY TEST: GET /shared/{token_1} after unshare returns HTTP 404. Old token is properly revoked."
+        }
+      }
+    },
+    "phase5_re_enable_sharing": {
+      "status": "PASS",
+      "steps": {
+        "re_share_trip": {
+          "status": "PASS",
+          "detail": "POST /api/trips/share returned token_2='4SeRpyxpYZ81iPxRatEKmE'. Token is DIFFERENT from token_1 (no token reuse)."
+        },
+        "token_uniqueness": {
+          "status": "PASS",
+          "detail": "token_1='GGNY8E3pZpQnMH77yo4Vae' != token_2='4SeRpyxpYZ81iPxRatEKmE'. New share generates a fresh token."
+        }
+      }
+    },
+    "phase6_verify_new_share": {
+      "status": "PASS",
+      "steps": {
+        "new_token_accessible": {
+          "status": "PASS",
+          "detail": "GET /shared/{token_2} returns 200 with full trip data (title, itinerary, bookings)"
+        },
+        "old_token_stays_invalid": {
+          "status": "PASS",
+          "detail": "CRITICAL SECURITY TEST: GET /shared/{token_1} STILL returns 404 after re-sharing. Old token does not resurrect when sharing is re-enabled."
+        }
+      }
+    }
+  },
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "security_findings": {
+    "token_revocation": "PASS - Unsharing immediately invalidates the share token (HTTP 404)",
+    "token_reuse_prevention": "PASS - Re-sharing generates a new unique token, does not reuse the old one",
+    "old_token_resurrection": "PASS - Old token stays invalid even after re-sharing (no token resurrection)",
+    "data_leakage": "PASS - Shared view contains no user_id, auth tokens, or identifying data"
+  },
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "sharing_security": 5,
+    "overall": 5
+  },
+  "summary": "All 11 test steps passed. The trip sharing lifecycle is secure and correct: share tokens are properly revoked on unshare (HTTP 404), re-sharing generates a new unique token, old tokens do not resurrect, and the shared view contains no sensitive user data. Trip creation via chat, itinerary generation (7 items), and booking ingestion (ryokan) all worked flawlessly."
+}

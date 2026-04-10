@@ -1,0 +1,110 @@
+{
+  "persona": "R-11",
+  "name": "Camila — Food Blogger",
+  "run": 19,
+  "date": "2026-04-10",
+  "duration_minutes": 8,
+  "status": "PASS",
+  "summary": "All 9 test steps passed. Trip created with rich food-focused itinerary (18 items across 10 days). Expert handoff to Mexico food/distilleries specialist (Julián) happened proactively on first message. Booking ingestion parsed tour details correctly. recommend_booking triggered with FTC disclosures. Cultural depth on Dia de Muertos was excellent.",
+
+  "steps": [
+    {
+      "step": 1,
+      "name": "GetCurrentUser",
+      "status": "PASS",
+      "details": "User verified: r11-run19b@toqui-test.local, user_id=5dd75e59-4a17-47fd-b338-335d21635e2d, tier=free"
+    },
+    {
+      "step": 2,
+      "name": "Selection mode — create_trip",
+      "status": "PASS",
+      "details": "Trip 'Mexico City & Oaxaca Culinary Adventure' created (73c1f173-52de-4020-b235-cf1c431ded8f). AI proactively created 12 itinerary items in the same turn, covering all 10 days with food-specific entries (Pujol, Quintonil, El Vilsito, Casa Oaxaca, mezcal distillery, mole workshop, Criollo)."
+    },
+    {
+      "step": 3,
+      "name": "Expert handoff — suggest_expert",
+      "status": "PASS",
+      "details": "Proactive personaSwitch to 'Julián' (expert-5041fc71b99cea82) — specialties: food, distilleries. Handoff happened on the very first message without needing a separate prompt. Expert description: 'Expert in ancestral agave spirits and Oaxacan gastronomy.'"
+    },
+    {
+      "step": 4,
+      "name": "CDMX vs Oaxaca food depth + mezcal varieties",
+      "status": "PASS",
+      "details": "Expert showed deep food knowledge. CDMX characterized as cosmopolitan melting pot (Al Pastor/Lebanese influence, Suadero, Torta, antojito culture). Oaxaca as ancestral/indigenous (Zapotec/Mixtec, Tlayuda, seven moles, chapulines). Mezcal varieties beyond Espadín: Tobalá (floral, high-altitude), Tepeztate (35yr maturation, funky/herbal), Cuishe/Karwinskii (mineral, nutty), Arroqueño (buttery, chocolatey). Added Mezcaloteca tasting to itinerary."
+    },
+    {
+      "step": 5,
+      "name": "IngestBooking — tour",
+      "status": "PASS",
+      "details": "Tour booking ingested successfully. Parsed: provider='SABORES DE OAXACA FOOD TOURS', title='Oaxaca Street Food & Markets Walking Tour', confirmation_code='OAXF-2026-112', date=2026-12-08, guide='Chef Roberto Mendoza', 3 stops (Benito Juarez, 20 de Noviembre, Mercado de Abastos), 2 participants, price=$149.80, meeting point extracted."
+    },
+    {
+      "step": 6,
+      "name": "ListBookings — verify tour",
+      "status": "PASS",
+      "details": "1 booking returned matching the ingested tour. All fields preserved including tourDetails with stops, guide, meeting point."
+    },
+    {
+      "step": 7,
+      "name": "recommend_booking + FTC disclosure",
+      "status": "PASS",
+      "details": "3 recommend_booking calls via GetYourGuide (chocolate workshop, market food tour, cooking class). All 3 included FTC affiliate disclosure in response text: 'Affiliate disclosure: I may earn a small commission if you book through this link.' Also added 5 more itinerary items (market tour, chocolate workshop, nixtamalization workshop, night crawl, insect pairing)."
+    },
+    {
+      "step": 8,
+      "name": "Dia de Muertos cultural depth",
+      "status": "PASS",
+      "details": "Rich cultural response covering: Pan de Muerto (caritas, Pan de Yema, anise-flavored, Oaxacan vs generic), Mole Negro (ceremonial significance, charred chiles, labor-intensive, altar offering), Nicuatole (pre-Hispanic maize jelly, cochineal dye), Tejate ('drink of the gods', cacao+maize froth), Calaveritas de Azúcar (amaranth/chocolate varieties, spiritual invitation), Tamales de Mole en Hoja de Plátano (banana leaf, cemetery tradition). Offered to adjust itinerary for Xoxocotlán cemetery visit."
+    },
+    {
+      "step": 9,
+      "name": "GetItinerary — completeness check",
+      "status": "PASS",
+      "details": "10 days, 18 items total. Days 1-5: CDMX (Rosetta, Quintonil, street food crawl, Azul Histórico, Coyoacán, nixtamalization, Pujol, El Vilsito). Days 6-10: Oaxaca (market tour, Casa Oaxaca, Mezcaloteca, Smoke Aisle, night crawl, mezcal distillery, insect pairing, mole workshop, chocolate workshop, Criollo). Mix of meals, activities, and nightlife."
+    }
+  ],
+
+  "tools_invoked": {
+    "create_trip": 1,
+    "suggest_expert": 1,
+    "create_itinerary_items": 5,
+    "recommend_booking": 6,
+    "web_search": 5
+  },
+
+  "bugs": [],
+
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Some itinerary items on Day 6 and Day 10 have duplicate orderInDay=1. Day 6 has 3 items with order_in_day values [1, 1, 2] and Day 10 has 2 items both with order_in_day=1. While not breaking functionality, it could cause display confusion in the frontend.",
+      "context": "GetItinerary response shows overlapping orderInDay values within the same day."
+    }
+  ],
+
+  "ai_behavior_issues": [
+    {
+      "severity": "P2",
+      "description": "On Step 7, the AI attempted to re-add 2 items that already existed (market tour and chocolate workshop), received an 'already_exists' response, then successfully added 3 new items. This shows the dedup guard works, but the AI wasted a tool call.",
+      "context": "Tool result: 'All 2 requested items are already in the user's itinerary on the specified days. No new items were needed.'"
+    }
+  ],
+
+  "tool_failures": [],
+
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "overall": 5,
+    "notes": "Exceptional performance. The food expert (Julián) demonstrated genuinely deep knowledge of Mexican gastronomy: CDMX vs Oaxaca regional distinctions, wild mezcal varieties with accurate tasting profiles, Dia de Muertos ceremonial foods with cultural significance. Itinerary is comprehensive with 18 food-specific items spanning street food, fine dining, markets, workshops, distillery tours, and nightlife. Booking ingestion parsed all tour fields correctly. FTC disclosures present on all affiliate links. The AI consistently tailored advice for a food blogger audience (photography tips, content suggestions, Instagram-worthy spots)."
+  },
+
+  "session_id": "4ff7869d-9772-416c-921a-1c98a896ad1a",
+  "trip_id": "73c1f173-52de-4020-b235-cf1c431ded8f",
+  "user_id": "5dd75e59-4a17-47fd-b338-335d21635e2d",
+  "message_count": 4,
+  "booking_count": 1
+}

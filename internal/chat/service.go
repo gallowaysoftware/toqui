@@ -681,6 +681,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		// call create_itinerary_items in my previous response" or "As I
 		// mentioned, the items have been saved". These confuse the user.
 		responseText = stripRetryArtifacts(responseText)
+		responseText = stripTemplatePlaceholders(responseText)
 
 		assistantMsg := &chatstore.ChatMessage{
 			Role:    "assistant",
@@ -702,6 +703,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		// (Run 17 N-01 P2: completeResponse can duplicate phrases when
 		// Gemini re-emits pre-tool text in continuation turns).
 		fullContent = stripTrailingStutter(fullContent)
+		fullContent = stripTemplatePlaceholders(fullContent)
 
 		sendOrDrop(outCh, ctx, StreamEvent{
 			Type:      "message_complete",
@@ -1756,4 +1758,31 @@ var retryArtifactMarkers = []string{
 	"the items were already saved in my previous",
 	"i called create_itinerary_items",
 	"i used create_itinerary_items",
+}
+
+// stripTemplatePlaceholders removes {{...}} template-like tokens that the AI
+// sometimes hallucinates (e.g. "{{DISCLOSURE_REPLACER_RECOMMEND_BOOKING_STUB}}").
+// These are never valid user-facing content; legitimate Markdown never uses
+// double-brace syntax. Run 19 N-12 P2.
+func stripTemplatePlaceholders(text string) string {
+	for {
+		start := strings.Index(text, "{{")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(text[start:], "}}")
+		if end == -1 {
+			break
+		}
+		// Remove the placeholder and any surrounding whitespace collapse
+		before := text[:start]
+		after := text[start+end+2:]
+		// Trim a single leading/trailing space to avoid double-spaces
+		if strings.HasSuffix(before, " ") && strings.HasPrefix(after, " ") {
+			after = after[1:]
+		}
+		text = before + after
+	}
+	// Clean up any trailing whitespace left behind
+	return strings.TrimRight(text, " \t")
 }

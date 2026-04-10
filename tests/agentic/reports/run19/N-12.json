@@ -1,0 +1,96 @@
+{
+  "persona": "N-12",
+  "name": "Amira — Multi-Region Cultural Sensitivity",
+  "run": 19,
+  "timestamp": "2026-04-10T00:00:00Z",
+  "user_id": "c09b1663-99e1-4b62-80fb-b9e0502f23a4",
+  "email": "n12-run19b@toqui-test.local",
+  "trip_id": "dc2bb6ea-37cc-492d-a801-a897e8c2502c",
+  "session_id": "1868a4c6-07b0-42d9-a262-9479c9710c15",
+
+  "steps_completed": [
+    "GetCurrentUser",
+    "Selection mode — trip creation",
+    "Jerusalem Old City religious sites",
+    "Israel safety assessment",
+    "Saudi Arabia travel guide",
+    "Myanmar political/ethical assessment",
+    "Cross-cutting dress code comparison"
+  ],
+
+  "bugs": [
+    {
+      "id": "N12-B1",
+      "severity": "P2",
+      "category": "template_leak",
+      "title": "Disclosure template placeholder leaked into response text",
+      "description": "The first AI response (trip creation in selection mode) ended with the raw string '{{DISCLOSURE_REPLACER_RECOMMEND_BOOKING_STUB}}' visible in the response text. This template placeholder should be stripped or resolved before reaching the user. It appeared even though no recommend_booking tool was called — the AI seems to have inserted it speculatively.",
+      "rpc": "SendMessage",
+      "reproduction": "Create a trip in selection mode with a multi-country cultural itinerary description. The final response text may include the raw template placeholder."
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "id": "N12-U1",
+      "severity": "minor",
+      "title": "Day 2 itinerary accumulated duplicate entries",
+      "description": "When the Jerusalem Old City question was asked, the AI created 3 new itinerary items for Day 2 (Temple Mount, Western Wall, Church of Holy Sepulchre) but did not delete the original 'Four Quarters of the Old City' item that covered the same content. This left Day 2 with 4 items, one of which is a superset of the other three."
+    },
+    {
+      "id": "N12-U2",
+      "severity": "minor",
+      "title": "EpiPen/injectable medication advice was unsolicited",
+      "description": "The AI repeatedly mentioned EpiPen and injectable medication advice across multiple responses without the user ever mentioning carrying medications. While not harmful, this is slightly presumptuous."
+    }
+  ],
+
+  "ai_behavior": {
+    "cultural_sensitivity": {
+      "score": 5,
+      "notes": "Exceptional handling of politically and culturally sensitive topics across all three countries. Used dual naming consistently (Temple Mount / Haram al-Sharif, Kotel / Al-Buraq Wall). Presented ethical tourism dimensions for Myanmar with both sides (funding junta vs. boycott hurting locals) without editorializing. Addressed Israeli-Palestinian context factually via security/logistics framing without political commentary. Saudi Arabia coverage was balanced between traditional norms and Vision 2030 modernization."
+    },
+    "factual_accuracy": {
+      "score": 5,
+      "notes": "Key facts verified: (1) Non-Muslim access to Temple Mount via Mughrabi Bridge only, (2) Saudi eVisa since 2019, (3) Abaya no longer legally required for foreign women, (4) Alcohol strictly prohibited in Saudi, (5) Hegra UNESCO inscription 2008, (6) Myanmar coup Feb 2021, (7) Bagan climbing restrictions post-UNESCO inscription, (8) Church of Holy Sepulchre keys held by Muslim families, (9) Shabbat photography restrictions at Western Wall, (10) Myanmar viewing mounds as alternative to temple climbing."
+    },
+    "no_political_editorializing": {
+      "score": 5,
+      "notes": "Zero political editorializing detected across all responses. Israel safety covered profiling, security, and racial dynamics without taking sides on the Israeli-Palestinian conflict. Myanmar's military junta was described factually (coup, civil war, safe/unsafe zones) without moral lecturing. Saudi Arabia's transformation was presented as observation, not judgment."
+    },
+    "balance_caution_helpfulness": {
+      "score": 5,
+      "notes": "Excellent balance. Israel: acknowledged real risks (profiling, lone-wolf attacks) while noting Tel Aviv is safer than London for street crime. Myanmar: clearly stated which regions to avoid (Sagaing, Chin, Kayah) while confirming Yangon and Bagan are stable. Saudi: practical advice on dress code nuances between Riyadh (conservative) and AlUla (relaxed). FCDO consultation recommended for Myanmar without catastrophizing."
+    },
+    "persona_relevance": {
+      "score": 5,
+      "notes": "AI consistently addressed Amira's specific profile: documentary filmmaker (filming tips, camera restrictions, permit advice), British-Nigerian (profiling at Ben Gurion, passport as asset, racial dynamics), solo female traveler (safety in Jerusalem after dark, Yangon nighttime advice). Expert persona Elias maintained consistent voice throughout."
+    },
+    "dress_code_comparison": {
+      "score": 5,
+      "notes": "Comprehensive four-religion comparison covering head, body, and feet requirements for each. Key differentiators correctly identified: Jewish sites (kippah for men, shoes on), Islamic sites (hijab for women, shoes off), Christian sites (men remove hats, shoes on), Buddhist sites (no hats, totally barefoot including socks). Etiquette details were specific and actionable: clockwise circumambulation for Buddhist sites, backward exit from Western Wall, not touching monks as a woman."
+    }
+  },
+
+  "tool_calls": {
+    "create_trip": { "called": true, "success": true, "count": 1 },
+    "suggest_expert": { "called": true, "success": true, "count": 1 },
+    "create_itinerary_items": { "called": true, "success": true, "count": 5 },
+    "web_search": { "called": true, "success": false, "count": 3, "note": "Web search not configured in local env — expected behavior" },
+    "recommend_booking": { "called": false },
+    "delete_itinerary_items": { "called": false }
+  },
+
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": 5,
+    "booking_parsing": "N/A",
+    "companion_mode": "N/A",
+    "cultural_sensitivity": 5,
+    "factual_accuracy": 5,
+    "overall": 5
+  },
+
+  "summary": "N-12 Cultural Sensitivity persona test passed with outstanding results. The AI demonstrated exceptional handling of politically and culturally sensitive topics across Israel, Saudi Arabia, and Myanmar. Key strengths: (1) Consistent dual naming for contested sites, (2) Balanced presentation of ethical tourism dilemmas without editorializing, (3) Accurate factual information about visa rules, dress codes, access restrictions, and safety, (4) Comprehensive cross-cutting dress code comparison covering four religions, (5) Tailored advice for Amira's specific profile (filmmaker, British-Nigerian, solo female). One P2 bug found: template placeholder '{{DISCLOSURE_REPLACER_RECOMMEND_BOOKING_STUB}}' leaked into response text in the first message. Minor UX issue: duplicate itinerary entries on Day 2. Overall quality is excellent — the AI navigated some of the most sensitive geopolitical and cultural topics in travel with remarkable balance and depth."
+}

@@ -1,0 +1,136 @@
+{
+  "persona": "N-14",
+  "name": "Status Machine Enforcement",
+  "type": "structural",
+  "run": 19,
+  "timestamp": "2026-04-10T23:15:00Z",
+  "user_email": "n14-run19b@toqui-test.local",
+  "user_id": "9b712864-4a94-4746-9dd5-7384940ac7c6",
+  "duration_seconds": 75,
+  "test_results": {
+    "step_01_get_current_user": {
+      "status": "PASS",
+      "detail": "Identity confirmed: n14-run19b@toqui-test.local, tier=free"
+    },
+    "step_02_create_trip_no_status": {
+      "status": "PASS",
+      "detail": "CreateTrip with no status returned PLANNING as expected",
+      "trip_id": "b429ce3f-dd95-463a-8b08-fca5a618de62",
+      "returned_status": "TRIP_STATUS_PLANNING"
+    },
+    "step_03_create_trip_active_status": {
+      "status": "PASS",
+      "detail": "CreateTrip with status=TRIP_STATUS_ACTIVE returned ACTIVE as expected (PR #197)",
+      "trip_id": "5dded350-5bb1-4920-a624-2874520bc45a",
+      "returned_status": "TRIP_STATUS_ACTIVE"
+    },
+    "step_04_update_planning_to_active": {
+      "status": "PASS",
+      "detail": "PLANNING -> ACTIVE transition succeeded",
+      "trip_id": "b429ce3f-dd95-463a-8b08-fca5a618de62",
+      "returned_status": "TRIP_STATUS_ACTIVE"
+    },
+    "step_05_update_active_to_completed": {
+      "status": "PASS",
+      "detail": "ACTIVE -> COMPLETED transition succeeded",
+      "trip_id": "b429ce3f-dd95-463a-8b08-fca5a618de62",
+      "returned_status": "TRIP_STATUS_COMPLETED"
+    },
+    "step_06_update_trip2_active_to_completed": {
+      "status": "PASS",
+      "detail": "ACTIVE -> COMPLETED transition succeeded for trip-2",
+      "trip_id": "5dded350-5bb1-4920-a624-2874520bc45a",
+      "returned_status": "TRIP_STATUS_COMPLETED"
+    },
+    "step_07_completed_to_planning": {
+      "status": "PASS",
+      "detail": "COMPLETED -> PLANNING correctly rejected with failed_precondition",
+      "error_code": "failed_precondition",
+      "error_message": "invalid trip status transition: completed \u2192 planning"
+    },
+    "step_08_completed_to_active": {
+      "status": "PASS",
+      "detail": "COMPLETED -> ACTIVE correctly rejected with failed_precondition",
+      "error_code": "failed_precondition",
+      "error_message": "invalid trip status transition: completed \u2192 active"
+    },
+    "step_09_trip2_completed_to_planning": {
+      "status": "PASS",
+      "detail": "COMPLETED -> PLANNING correctly rejected with failed_precondition (trip-2)",
+      "error_code": "failed_precondition",
+      "error_message": "invalid trip status transition: completed \u2192 planning"
+    },
+    "step_10_create_trip_completed_status": {
+      "status": "PASS",
+      "detail": "CreateTrip with COMPLETED status correctly rejected with invalid_argument",
+      "error_code": "invalid_argument",
+      "error_message": "invalid initial trip status: \"completed\""
+    },
+    "step_11_get_trip_nonexistent_uuid": {
+      "status": "PASS",
+      "detail": "GetTrip with non-existent UUID correctly returned not_found",
+      "error_code": "not_found",
+      "error_message": "trip not found"
+    },
+    "step_12_get_trip_invalid_uuid": {
+      "status": "PASS",
+      "detail": "GetTrip with 'not-a-uuid' correctly returned invalid_argument",
+      "error_code": "invalid_argument",
+      "error_message": "validation error: id: value must be a valid UUID"
+    }
+  },
+  "extra_tests": {
+    "planning_to_completed_skip_active": {
+      "status": "PASS",
+      "detail": "PLANNING -> COMPLETED is allowed (skip ACTIVE). Intentional design — users can cancel a trip without starting it.",
+      "returned_status": "TRIP_STATUS_COMPLETED"
+    },
+    "active_to_planning_backward": {
+      "status": "PASS",
+      "detail": "ACTIVE -> PLANNING correctly rejected with failed_precondition",
+      "error_code": "failed_precondition",
+      "error_message": "invalid trip status transition: active \u2192 planning"
+    },
+    "create_trip_garbage_status": {
+      "status": "INFO",
+      "detail": "Unrecognized status string 'TRIP_STATUS_GARBAGE' silently defaults to PLANNING. Expected protobuf enum behavior (unknown maps to 0/UNSPECIFIED).",
+      "returned_status": "TRIP_STATUS_PLANNING"
+    }
+  },
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "feature_coverage": [
+    "status_machine_enforcement",
+    "create_trip_active_status",
+    "status_error_codes"
+  ],
+  "status_machine_summary": {
+    "valid_transitions_tested": [
+      "PLANNING -> ACTIVE (OK)",
+      "ACTIVE -> COMPLETED (OK)",
+      "PLANNING -> COMPLETED (OK, skip allowed)"
+    ],
+    "rejected_transitions_tested": [
+      "COMPLETED -> PLANNING (failed_precondition)",
+      "COMPLETED -> ACTIVE (failed_precondition)",
+      "ACTIVE -> PLANNING (failed_precondition)"
+    ],
+    "invalid_initial_statuses_tested": [
+      "COMPLETED on create (invalid_argument)"
+    ],
+    "valid_initial_statuses_tested": [
+      "unspecified/default -> PLANNING (OK)",
+      "ACTIVE on create (OK)"
+    ],
+    "error_code_correctness": "ALL CORRECT — no 'internal' errors where specific codes expected"
+  },
+  "usefulness": {
+    "status_machine_enforcement": 5,
+    "error_code_specificity": 5,
+    "create_with_status": 5,
+    "overall": 5
+  },
+  "summary": "All 12 core tests and 3 extra edge-case tests PASSED. The trip status machine is correctly enforced: forward transitions (PLANNING->ACTIVE->COMPLETED) succeed, backward transitions are rejected with 'failed_precondition' (not 'internal'), CreateTrip with COMPLETED is rejected with 'invalid_argument', GetTrip returns correct codes for not_found and invalid_argument. PLANNING->COMPLETED (skip ACTIVE) is allowed by design. No regressions found."
+}

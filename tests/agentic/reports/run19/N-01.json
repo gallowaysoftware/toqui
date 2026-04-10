@@ -1,0 +1,125 @@
+{
+  "persona": "N-01",
+  "name": "Jake — Companion Mode Power User",
+  "run": "run19",
+  "date": "2026-04-10",
+  "status": "PASS",
+  "user_id": "c2cf6815-acaa-4979-8ce3-2839edbd7421",
+  "trip_id": "18215774-9763-4080-94f8-486651f17340",
+  "session_id": "bfbefaa5-da05-4b96-a599-9f571e2066e2",
+
+  "steps_completed": [
+    "GetCurrentUser — identity verified (n01-run19b@toqui-test.local)",
+    "CreateTrip via RPC — 'Thailand Adventure' created",
+    "UpdateTrip to ACTIVE — companion mode enabled",
+    "Message 1: BKK arrival — SIM, transport, money, food covered (169 words)",
+    "Message 2: Food near Khao San — specific dishes, prices, no itinerary items (193 words)",
+    "Message 3: Lost near gold temple — identified Grand Palace from coords + description (169 words)",
+    "Message 4: Tipping etiquette — Thailand-specific, massage 50-100 THB (140 words)",
+    "Message 5: Fun tonight — Flower Market, jazz bar, Khao San (142 words)",
+    "GetChatHistory — 10 messages (5 user + 5 assistant), no itineraryUpdate events",
+    "GetItinerary — confirmed empty before message 6",
+    "Message 6: Explicit add request — create_itinerary_items fired, itineraryUpdate event emitted (114 words)",
+    "GetItinerary — confirmed 1 item: 'Grand Palace & Wat Phra Kaew Photography' on Day 2"
+  ],
+
+  "bugs": [
+    {
+      "id": "N01-B01",
+      "severity": "P2",
+      "category": "AI behavior",
+      "title": "Text stutter/repetition at end of message 1",
+      "description": "Message 1 ends with: 'Avoid taxis to taxis to save $15. Safe travels! Where are you laying your head tonight? I head tonight? I tonight? I tonight?' — repeated phrase fragments that look like a generation loop or token-level repetition bug.",
+      "repro": "Send companion message 'just landed at BKK, what do I do first?' with ACTIVE trip. Observe final sentence of response.",
+      "expected": "Clean closing sentence without repetition",
+      "actual": "Stuttered repetition: 'taxis to taxis', 'head tonight? I head tonight? I tonight? I tonight?'"
+    },
+    {
+      "id": "N01-B02",
+      "severity": "P2",
+      "category": "AI behavior",
+      "title": "Text stutter/repetition at end of message 5",
+      "description": "Message 5 ends with: 'unmatched for your portfolio material for your portfolio. (your) photography).' — another instance of repeated/garbled text at the end of a response.",
+      "repro": "Send companion message 'recommend something fun for tonight'. Observe final sentence.",
+      "expected": "Clean closing recommendation",
+      "actual": "Stuttered: 'for your portfolio material for your portfolio. (your) photography).'"
+    }
+  ],
+
+  "ux_issues": [],
+
+  "ai_behavior_issues": [
+    {
+      "id": "N01-AI01",
+      "severity": "P2",
+      "title": "Repetition/stutter at end of AI responses (2 of 6 messages)",
+      "description": "Two out of six messages exhibited garbled repetition at the tail end. This is a known LLM issue but happens frequently enough (33%) to degrade companion mode UX. May be related to token budget or stop sequence handling."
+    }
+  ],
+
+  "tool_results": {
+    "create_itinerary_items": {
+      "status": "PASS",
+      "notes": "Correctly fired ONLY when user explicitly requested 'add that temple visit to my itinerary'. Did NOT fire on any of the 5 prior conversational messages. Item created with appropriate title, description, day_number=2, type=sightseeing."
+    },
+    "nearby_places": {
+      "status": "PASS",
+      "notes": "Called twice on message 1 (Magic Food Point, SuperRich near BKK airport). No results found (expected — Places API returned empty for specific venue queries at airport coords). AI handled gracefully by providing advice from its knowledge."
+    },
+    "web_search": {
+      "status": "N/A",
+      "notes": "Called 3 times on message 2 for opening hours. Returned 'no_web_access' (expected in local env). AI gracefully fell back to general knowledge."
+    },
+    "suggest_expert": {
+      "status": "NOT_CALLED",
+      "notes": "AI did not hand off to a Thailand expert. Acceptable — companion mode is about quick reactive help, not deep expert consultation."
+    }
+  },
+
+  "key_test_results": {
+    "companion_conciseness": {
+      "status": "PASS",
+      "detail": "All 6 responses under 200 words. Word counts: 169, 193, 169, 140, 142, 114."
+    },
+    "no_unsolicited_itinerary": {
+      "status": "PASS",
+      "detail": "Messages 1-5 had zero itineraryUpdate events. GetItinerary confirmed empty before message 6. create_itinerary_items only fired on explicit 'add to my itinerary' request."
+    },
+    "geographic_reasoning": {
+      "status": "PASS",
+      "detail": "From 'big gold temple' + coordinates (13.7536, 100.4926), AI correctly identified Grand Palace/Wat Phra Kaew and provided walking directions back to Khao San Road via Sanam Luang and Ratchadamnoen Avenue."
+    },
+    "thailand_tipping": {
+      "status": "PASS",
+      "detail": "Correctly stated tipping is not mandatory, gave massage tip range (50-100 THB), mentioned rounding up, included cultural note about using right hand."
+    },
+    "age_appropriate_nightlife": {
+      "status": "PASS",
+      "detail": "Recommended Flower Market (photographer-relevant), Khao San Road nightlife, and a blues/jazz bar. All appropriate for a 26yo solo traveler."
+    },
+    "budget_awareness": {
+      "status": "PASS",
+      "detail": "Multiple references to $50/day budget. Mentioned Grand Palace is $14 (big chunk), gave street food prices (50-60 THB), ATM fee warnings."
+    }
+  },
+
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 3,
+    "booking_parsing": null,
+    "companion_mode": 4,
+    "overall": 4
+  },
+
+  "score_justifications": {
+    "trip_creation": "Trip created and activated to ACTIVE status via RPC without issues.",
+    "itinerary_quality": "Single item created on explicit request with excellent detail (time, dress code, walking distance). Correctly placed on Day 2.",
+    "persona_handoff": "No expert handoff attempted. Not a failure — companion mode prioritizes quick reactive help. Score reflects 'not tested' rather than 'failed'.",
+    "booking_parsing": "Not applicable to this persona.",
+    "companion_mode": "Strong performance: concise answers, location-aware, culturally relevant, budget-conscious. Deducted 1 point for stutter/repetition bugs in 2 of 6 messages.",
+    "overall": "Companion mode works well for the core use case. Reactive advice is accurate, concise, and contextual. The repetition bug is the only notable defect."
+  },
+
+  "summary": "N-01 companion mode test PASSED. All 6 companion messages were concise (<200 words), contextually relevant, and Thailand-specific. The key test — no unsolicited itinerary creation — passed cleanly: create_itinerary_items only fired on the explicit 'add to my itinerary' request in message 6. Geographic reasoning correctly identified Grand Palace from vague 'big gold temple' description. Two P2 bugs found: text stutter/repetition at the end of messages 1 and 5 (garbled repeated phrases)."
+}

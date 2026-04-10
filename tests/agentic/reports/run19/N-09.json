@@ -1,0 +1,178 @@
+{
+  "persona": "N-09",
+  "name": "Marco — Rapid-Fire Italy Planner",
+  "run": 19,
+  "timestamp": "2026-04-10T12:30:00Z",
+  "user_id": "6ce7f6dd-8fd6-4928-8c3e-1393ba28fecd",
+  "email": "n09-run19b@toqui-test.local",
+  "trip_id": "3ef9d439-f031-4997-b171-8eebbf842498",
+  "session_id": "92e34296-cb2a-4bdd-9460-b820a614fd04",
+  "messages_sent": 10,
+  "messages_used": 10,
+  "message_limit": 10,
+
+  "bugs": [
+    {
+      "id": "N09-B01",
+      "severity": "P1",
+      "title": "AI gets stuck repeating same topic — ignores subsequent user messages",
+      "description": "After Message 8 (train pass question), the AI became stuck in a loop answering the train pass question. Messages 9 (wine tasting request) and 10 (final itinerary summary request) both received train pass advice instead of addressing the actual user question. Even Message 10 which very explicitly asked for a 'complete final itinerary with all changes' received yet another train pass comparison. This is a severe context retention/comprehension failure where the AI appears to be ignoring the user's actual message content after ~8 turns.",
+      "repro": "Send 10 rapid messages in a planning session. After message 8, subsequent messages get the same topic response regardless of content.",
+      "expected": "Each message should be read and answered based on its actual content.",
+      "actual": "Messages 9 and 10 (and possibly 11) received train pass advice instead of wine tasting / itinerary summary."
+    },
+    {
+      "id": "N09-B02",
+      "severity": "P2",
+      "title": "Wine tasting not added to itinerary despite explicit request",
+      "description": "Message 9 explicitly asked 'Can you add a wine tasting experience in Tuscany? Maybe a half-day between Florence and Cinque Terre?' but the AI answered with train pass advice instead. No wine tasting itinerary item was ever created. The create_itinerary_items tool was never called for a wine tasting experience.",
+      "repro": "Send wine tasting request as message 9 in a 10-message rapid-fire session.",
+      "expected": "AI should call create_itinerary_items to add a wine tasting activity, potentially on Day 7 or between Florence and Cinque Terre.",
+      "actual": "AI repeated train pass answer. No wine tasting in final itinerary."
+    },
+    {
+      "id": "N09-B03",
+      "severity": "P2",
+      "title": "Venice remnant items not fully removed after 'cut Venice' request",
+      "description": "After Message 7 ('cut Venice entirely'), the AI correctly called delete_itinerary_items to remove 14 Venice items and create_itinerary_items for Cinque Terre. However, some Venice-associated items survived: 'Venetian Ghetto Walk' on Day 9, 'Dal Moro\\'s' (Venice pasta shop) on Day 9, 'Osteria al Squero' (Venice restaurant) on Day 10, 'Fried Land' (Venice restaurant) on Day 8. These appear to have been re-added when creating Cinque Terre items — the AI seems to have mixed Venice restaurant names into the Cinque Terre days.",
+      "repro": "Create full 10-day Italy itinerary with Venice days 8-10, then ask to cut Venice and replace with Cinque Terre.",
+      "expected": "All Venice-specific items should be removed. Cinque Terre items should have Cinque Terre-appropriate restaurants.",
+      "actual": "Venice restaurant names (Dal Moro's, Fried Land, Osteria al Squero, Venetian Ghetto Walk) appear on Cinque Terre days."
+    },
+    {
+      "id": "N09-B04",
+      "severity": "P2",
+      "title": "Chat history missing assistant responses for some messages",
+      "description": "GetChatHistory returned 13 messages but several assistant responses are missing. Message 2's assistant response (full itinerary creation) is not in history. Messages 8, 9, 10 user messages and their assistant responses are also missing. Only 6 user messages and 5 assistant messages appear in the 13-message history, despite 10 exchanges occurring.",
+      "repro": "Send 10 messages in rapid succession in a planning session, then call GetChatHistory.",
+      "expected": "All 10 user messages and all 10 assistant responses should be in chat history (20 messages).",
+      "actual": "Only 13 messages in history. Multiple user and assistant messages are missing."
+    },
+    {
+      "id": "N09-B05",
+      "severity": "P2",
+      "title": "Message 4 (Pompeii) skipped itinerary creation due to fuzzy dedup",
+      "description": "When asked to add a Pompeii day trip on Day 3, the AI called create_itinerary_items but the tool returned 'All 33 requested items are already in the user's itinerary on the specified days. No new items were needed' with skipped_count=33. However, Pompeii items DO exist in the final itinerary on Day 3 (apparently added by a prior message's tool call). The dedup logic appears overly aggressive — it seems to have treated the Pompeii items as duplicates of existing items even though they were new.",
+      "repro": "Create itinerary, then ask to add a specific new day trip. The create_itinerary_items tool may incorrectly report them as duplicates.",
+      "expected": "New Pompeii items should be created. If they were already created by a prior call, the tool should say which specific items already exist.",
+      "actual": "Tool said 33 items already exist (skipped_count=33) but the actual itinerary had fewer than 33 items. The Pompeii items do exist, suggesting they were created in a prior tool call within the same message."
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "id": "N09-U01",
+      "severity": "P2",
+      "title": "AI response contains raw tool result text leaked into user-facing message",
+      "description": "Message 4's response ends with raw tool result text: 'All requested items are already in the user's itinerary on the specified days. No new items were needed — just confirm to the user that these items are already scheduled. Do NOT call this tool again with the same items.}' This internal directive leaked into the user-visible response."
+    },
+    {
+      "id": "N09-U02",
+      "severity": "P2",
+      "title": "Duplicate/repeated content in single AI responses",
+      "description": "Several AI responses contain what appears to be two complete answers concatenated. For example, Message 1 contains both Toqui's response AND Alessandro's response as one long message. Message 3 contains two complete vegetarian update responses. This may be related to the expert handoff producing two response blocks that get concatenated."
+    }
+  ],
+
+  "ai_behavior": [
+    {
+      "id": "N09-A01",
+      "title": "Expert handoff to Alessandro (food+budget) was proactive and appropriate",
+      "positive": true,
+      "description": "On the first message, the AI immediately handed off to Alessandro, an Italian food and budget expert. This was contextually appropriate given the vegetarian + budget focus."
+    },
+    {
+      "id": "N09-A02",
+      "title": "Venice removal correctly triggered delete_itinerary_items + create_itinerary_items",
+      "positive": true,
+      "description": "Message 7's request to 'cut Venice entirely' correctly triggered delete_itinerary_items (14 items removed) followed by create_itinerary_items for Cinque Terre days. This is the critical test for modification handling and it passed."
+    },
+    {
+      "id": "N09-A03",
+      "title": "Vegetarian preference retained across early messages",
+      "positive": true,
+      "description": "Through messages 1-7, the AI consistently maintained awareness of the vegetarian preference, mentioning vegetarian-specific restaurants and dishes. 20 itinerary item descriptions mention vegetarian options."
+    },
+    {
+      "id": "N09-A04",
+      "title": "Budget awareness maintained consistently",
+      "positive": true,
+      "description": "The AI maintained awareness of the $150/day budget throughout, providing budget breakdowns, suggesting affordable options, and recommending advance booking strategies."
+    },
+    {
+      "id": "N09-A05",
+      "title": "Context retention fails catastrophically after ~8 turns",
+      "positive": false,
+      "description": "After 8 turns, the AI stopped reading the actual user message and kept repeating train pass advice. This is the most severe AI behavior issue found — the AI essentially became unresponsive to user input while still generating plausible-sounding responses."
+    }
+  ],
+
+  "tool_calls": {
+    "create_trip": {"called": true, "success": true, "count": 1},
+    "suggest_expert": {"called": true, "success": true, "count": 1, "persona": "Alessandro (food+budget)"},
+    "create_itinerary_items": {"called": true, "success": true, "count": 5, "notes": "Created items for all 10 days across multiple calls"},
+    "delete_itinerary_items": {"called": true, "success": true, "count": 1, "items_deleted": 14, "notes": "Successfully deleted Venice items"},
+    "web_search": {"called": true, "success": false, "count": 3, "notes": "Not configured in local env"},
+    "recommend_booking": {"called": false, "notes": "Not called despite budget discussion"},
+    "select_trip": {"called": false},
+    "nearby_places": {"called": false}
+  },
+
+  "context_retention": {
+    "vegetarian_retained": true,
+    "vegetarian_retained_through_message": 7,
+    "vegetarian_in_final_itinerary": true,
+    "budget_retained": true,
+    "pompeii_added": true,
+    "cinque_terre_added": true,
+    "venice_removed": true,
+    "venice_remnants_found": ["Venetian Ghetto Walk (Day 9)", "Dal Moro's (Day 9)", "Fried Land (Day 8)", "Osteria al Squero (Day 10)"],
+    "wine_tasting_added": false,
+    "final_summary_provided": false,
+    "context_lost_after_message": 8,
+    "notes": "Context retention was good through messages 1-7. After message 8, the AI became stuck repeating the train pass topic and ignored subsequent messages entirely."
+  },
+
+  "itinerary_final_state": {
+    "total_days": 10,
+    "total_items": 48,
+    "day_1_city": "Rome",
+    "day_2_city": "Rome",
+    "day_3_city": "Rome/Pompeii day trip",
+    "day_4_city": "Rome",
+    "day_5_city": "Florence",
+    "day_6_city": "Florence",
+    "day_7_city": "Florence",
+    "day_8_city": "Cinque Terre (Monterosso)",
+    "day_9_city": "Cinque Terre (hiking + Manarola)",
+    "day_10_city": "Cinque Terre (Riomaggiore) + departure",
+    "has_pompeii": true,
+    "has_wine_tasting": false,
+    "has_venice": false,
+    "has_cinque_terre": true,
+    "venice_remnant_items": 4,
+    "vegetarian_mentions_in_descriptions": 20
+  },
+
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": 5,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "context_retention": 2,
+    "modification_handling": 4,
+    "overall": 3
+  },
+
+  "score_justifications": {
+    "trip_creation": "Trip created immediately with correct title, description, and destination. Smooth transition to planning mode.",
+    "itinerary_quality": "Excellent quality for days 1-7. Good restaurant recommendations, budget tips, transport logistics. Deducted 1 point for Venice remnant items in Cinque Terre days and missing wine tasting.",
+    "persona_handoff": "Proactive handoff to Alessandro (food + budget expert) on the first message. Persona maintained Italian character throughout with appropriate phrases and cultural knowledge.",
+    "context_retention": "Score of 2 because: vegetarian preference was retained well through message 7, but after message 8 the AI became completely unresponsive to user input. Messages 9 and 10 received train pass answers instead of addressing wine tasting and final summary requests. This is a critical failure for a 'rapid-fire conversation' test.",
+    "modification_handling": "Venice removal (message 7) worked correctly — delete_itinerary_items called with 14 items, create_itinerary_items called for Cinque Terre. Pompeii addition worked. Wine tasting addition failed (message ignored). Deducted 1 point for Venice remnants and missed wine tasting.",
+    "overall": "Score of 3 because: the first 7 messages worked excellently with proper tool usage, context retention, and itinerary management. The Venice-to-Cinque-Terre swap was the critical test and passed. However, the last 3 messages all received the same train pass answer regardless of content, which is a severe regression. For a persona specifically testing 'rapid-fire conversation' and 'context retention across 10 messages', this failure is significant."
+  },
+
+  "summary": "The N-09 rapid-fire test revealed a critical context retention bug: after approximately 8 turns of conversation, the AI stopped reading the user's actual message and became stuck repeating train pass advice. Messages 1-7 worked excellently — trip creation, expert handoff, itinerary building, Pompeii addition, and the critical Venice-to-Cinque-Terre swap all succeeded with proper tool usage. However, messages 8-10 all received identical train pass responses regardless of the actual question asked (wine tasting request, final summary request). Additional issues include Venice restaurant names leaking into Cinque Terre days, raw tool result text leaking into user-visible responses, and missing messages in chat history."
+}

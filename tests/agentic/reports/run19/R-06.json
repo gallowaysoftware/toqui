@@ -1,0 +1,116 @@
+{
+  "persona": "R-06",
+  "name": "Priya — Organized Barcelona Traveler (Booking Regression)",
+  "run": 19,
+  "timestamp": "2026-04-10T22:21:00Z",
+  "duration_minutes": 8,
+  "overall_result": "PASS",
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "category": "stutter",
+      "description": "In restaurant recommendation (Step 12), the AI called create_itinerary_items three times with identical items. The duplicate dedup correctly returned 'already_exists' on the 2nd and 3rd calls, but the AI's final response contained repeated text blocks confirming the same restaurants multiple times. This is a stutter/repetition issue in the tool loop.",
+      "step": 12,
+      "evidence": "AI called create_itinerary_items 3 times with the same 4 restaurant items. Response contained 3 paragraphs of nearly identical confirmation text."
+    },
+    {
+      "severity": "P2",
+      "category": "booking_type_mismatch",
+      "description": "Activity booking was ingested with BOOKING_TYPE_ACTIVITY but the AI parser reclassified it to BOOKING_TYPE_TOUR. While semantically valid (Sagrada Familia tour), the type returned does not match the type requested. This could confuse frontend filtering.",
+      "step": 5,
+      "evidence": "Requested booking_type: BOOKING_TYPE_ACTIVITY, returned type: BOOKING_TYPE_TOUR"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "steps": [
+    {
+      "step": 1,
+      "name": "GetCurrentUser",
+      "result": "PASS",
+      "details": "User verified: r06-run19b@toqui-test.local, id=e55ffd18-67ab-4e25-b50c-280ab168e2b2"
+    },
+    {
+      "step": 2,
+      "name": "Selection mode — create_trip",
+      "result": "PASS",
+      "details": "create_trip triggered correctly. Trip created: 'Barcelona Trip' (4c80c949-8e24-4376-8dcc-5e8c90944470), status=TRIP_STATUS_PLANNING, destination=ES"
+    },
+    {
+      "step": 3,
+      "name": "IngestBooking — flight",
+      "result": "PASS",
+      "details": "Flight ingested: DL7829X, Delta Air Lines, JFK→BCN, seat 27F, passenger MARTINEZ/ELENA MS. All structured fields extracted correctly (flightDetails populated)."
+    },
+    {
+      "step": 4,
+      "name": "IngestBooking — hotel",
+      "result": "PASS",
+      "details": "Hotel ingested: HAB-2026-9831, Hotel Arts Barcelona, Superior Room City View, check-in 2026-06-15, check-out 2026-06-20, 2 guests. hotelDetails fully populated."
+    },
+    {
+      "step": 5,
+      "name": "IngestBooking — activity",
+      "result": "PASS_WITH_NOTE",
+      "details": "Activity ingested: SF-44921, GetYourGuide, Sagrada Familia tour. tourDetails populated (meeting point, operator, date, time). Note: type returned as BOOKING_TYPE_TOUR instead of requested BOOKING_TYPE_ACTIVITY."
+    },
+    {
+      "step": 6,
+      "name": "ListBookings",
+      "result": "PASS",
+      "details": "3 bookings returned with correct types (FLIGHT, HOTEL, TOUR), correct confirmation codes, and correct providers."
+    },
+    {
+      "step": 7,
+      "name": "GetBooking — all three",
+      "result": "PASS",
+      "details": "All three bookings returned complete structured data including flightDetails, hotelDetails, and tourDetails sub-objects."
+    },
+    {
+      "step": 8,
+      "name": "ExtractBookingField — flight terminal/departure",
+      "result": "PASS",
+      "details": "Correct answer: JFK Terminal 4, 6:45 PM EDT on June 15, 2026. Extracted fields include departure_terminal, departure_time, flight_number."
+    },
+    {
+      "step": 9,
+      "name": "ExtractBookingField — hotel cancellation policy",
+      "result": "PASS",
+      "details": "Correct answer: Free cancellation until June 12, 2026 (11:59 PM CEST). Late cancellation = EUR 289.00 (first night). No-show = full stay. All policy details accurately extracted."
+    },
+    {
+      "step": 10,
+      "name": "ExtractBookingField — activity meeting point",
+      "result": "PASS",
+      "details": "Correct answer: Nativity Facade entrance (Carrer de la Marina side), C/ de la Marina 253, 08013 Barcelona. Guide holding orange 'Barcelona Expert Tours' sign. Arrive 15 minutes early."
+    },
+    {
+      "step": 11,
+      "name": "Planning — day trip recommendation (recommend_booking)",
+      "result": "PASS",
+      "details": "recommend_booking triggered with GetYourGuide partner link for Barcelona day trips (Montserrat, Girona, Dali Museum). FTC affiliate disclosure present in AI response: 'Affiliate disclosure: I may earn a small commission if you book through this link.' Also triggered suggest_expert (Jordi, Spain specialist) and create_itinerary_items (7 items across 5 days)."
+    },
+    {
+      "step": 12,
+      "name": "Planning — restaurant suggestion (no recommend_booking)",
+      "result": "PASS",
+      "details": "recommend_booking was correctly NOT triggered. AI recommended 4 authentic local restaurants (La Cova Fumada, El Xampanyet, Quimet & Quimet, Bar del Pla) and added them as meal itinerary items. No affiliate links in response. Minor stutter: tool called 3x with same items."
+    },
+    {
+      "step": 13,
+      "name": "Itinerary verification",
+      "result": "PASS",
+      "details": "5-day itinerary verified via GetItinerary: 11 total items across 5 days. Incorporates existing bookings (arrival/BCN, Hotel Arts check-in, Sagrada Familia tour on Day 3). Includes transport, accommodation, sightseeing, activities, and meals."
+    }
+  ],
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "overall": 5
+  },
+  "summary": "All 13 test steps passed. The booking ingestion pipeline works excellently — all three booking types (flight, hotel, activity/tour) were parsed with correct structured fields. ExtractBookingField accurately answered natural language questions about each booking. The recommend_booking tool correctly triggered for bookable activities (day trips with transport/tickets) and correctly did NOT trigger for restaurant recommendations. FTC affiliate disclosure was present in all AI responses containing partner links. The AI proactively built a comprehensive 5-day itinerary incorporating existing bookings. Two minor P2 issues: (1) AI stutter on restaurant step — create_itinerary_items called 3x with identical items causing repeated confirmation text, (2) BOOKING_TYPE_ACTIVITY was reclassified to BOOKING_TYPE_TOUR by the AI parser."
+}

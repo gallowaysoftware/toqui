@@ -296,7 +296,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var itineraryItems []dbgen.ItineraryItem
 	var pendingSwitch *personaSwitchInfo
 	var recommendations []affiliate.Recommendation
-	var createdTripID string // first trip created this session (for session relinking, #153)
+	var createdTripID string  // first trip created this session (for session relinking, #153)
+	var selectedTripID string // most recent trip selected this session (survives copy-and-clear)
 	var mu sync.Mutex
 
 	// Check if this trip is unlocked (Trip Pro purchased or trial active)
@@ -394,6 +395,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		selectTripTool := NewSelectTripTool(h.tripSvc, userID, func(tripID, title, description string) {
 			mu.Lock()
 			selectedTrips = append(selectedTrips, tripCreatedInfo{ID: tripID, Title: title, Description: description})
+			selectedTripID = tripID // persist across copy-and-clear (#230)
 			mu.Unlock()
 		})
 
@@ -412,13 +414,27 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			WithDeferredTripID(func() (uuid.UUID, bool) {
 				mu.Lock()
 				defer mu.Unlock()
+				// 1. Trip created in this turn (never cleared)
 				if createdTripID != "" {
 					if id, err := uuid.Parse(createdTripID); err == nil {
 						return id, true
 					}
 				}
+				// 2. Trip selected in this turn (survives copy-and-clear, #230)
+				if selectedTripID != "" {
+					if id, err := uuid.Parse(selectedTripID); err == nil {
+						return id, true
+					}
+				}
+				// 3. Pending select_trip result (may be cleared by event handler)
 				if len(selectedTrips) > 0 {
 					if id, err := uuid.Parse(selectedTrips[len(selectedTrips)-1].ID); err == nil {
+						return id, true
+					}
+				}
+				// 4. Trip ID from request (subsequent messages in selection mode)
+				if req.Msg.TripId != "" {
+					if id, err := uuid.Parse(req.Msg.TripId); err == nil {
 						return id, true
 					}
 				}
@@ -955,8 +971,17 @@ func buildTripContext(title, description, destinationCountry string, destination
 	}
 
 	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. However, DO ask clarifying questions about the traveler's preferences, interests, pace, budget, dietary restrictions, mobility needs, and travel style — these help you give better recommendations.")
-	sb.WriteString("\n\nITINERARY TOOL USAGE: ALWAYS use the create_itinerary_items tool when you suggest specific activities, meals, sightseeing, or experiences for the trip. If you mention a concrete place or activity the traveler should do, save it to the itinerary — don't just describe it in prose. The user expects items to appear in their itinerary view. Only skip the tool for abstract questions about transport logistics, safety, budgets, or general destination info where no specific activity is being recommended.")
-	sb.WriteString("\nCRITICAL: NEVER describe an itinerary plan in text without also calling create_itinerary_items to save it. If you mention specific activities, restaurants, or attractions for specific days, you MUST create itinerary items for them. The user's itinerary is only useful if it's saved — text descriptions alone are not visible in their trip plan.")
+
+	// Differentiate itinerary tool behavior between planning and companion mode.
+	// In planning mode, the AI should proactively create items. In companion mode
+	// (status=active), the user is traveling and asking questions — only create
+	// items when they explicitly ask (Run 19 N-13 regression).
+	if strings.EqualFold(status, "active") {
+		sb.WriteString("\n\nCOMPANION MODE — ITINERARY TOOL USAGE: You are in companion mode (the trip is active). The traveler is on the ground and asking you questions. Do NOT proactively modify the itinerary. Only call create_itinerary_items or delete_itinerary_items when the user EXPLICITLY asks to add or remove something from their plan (e.g., \"add that to my itinerary\", \"save this for tomorrow\", \"remove the museum visit\"). For all other queries — recommendations, suggestions, directions, opinions, tips, \"what should I do\", \"where should I eat\" — just answer in text. The user's itinerary already exists; don't clutter it with every suggestion you make.")
+	} else {
+		sb.WriteString("\n\nITINERARY TOOL USAGE: ALWAYS use the create_itinerary_items tool when you suggest specific activities, meals, sightseeing, or experiences for the trip. If you mention a concrete place or activity the traveler should do, save it to the itinerary — don't just describe it in prose. The user expects items to appear in their itinerary view. Only skip the tool for abstract questions about transport logistics, safety, budgets, or general destination info where no specific activity is being recommended.")
+		sb.WriteString("\nCRITICAL: NEVER describe an itinerary plan in text without also calling create_itinerary_items to save it. If you mention specific activities, restaurants, or attractions for specific days, you MUST create itinerary items for them. The user's itinerary is only useful if it's saved — text descriptions alone are not visible in their trip plan.")
+	}
 	sb.WriteString("\n\n")
 	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()

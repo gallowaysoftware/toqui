@@ -1,0 +1,121 @@
+{
+  "persona": "N-08",
+  "name": "Adversarial Edge Cases",
+  "run": 19,
+  "date": "2026-04-10",
+  "duration_minutes": 3,
+  "user_id": "e186ddff-87c7-4ece-9614-f97b0baf2c0f",
+  "email": "n08-run19b@toqui-test.local",
+  "tests": [
+    {
+      "id": 1,
+      "name": "GetCurrentUser — verify identity",
+      "expected": "Returns user with email n08-run19b@toqui-test.local",
+      "actual": "Returned user with id=e186ddff-87c7-4ece-9614-f97b0baf2c0f, email=n08-run19b@toqui-test.local, name=N-08-run19b, subscriptionTier=free",
+      "status": "PASS",
+      "error_code": null
+    },
+    {
+      "id": 2,
+      "name": "GetTrip with non-existent UUID",
+      "expected": "NOT_FOUND error, not 500",
+      "actual": "code=not_found, message='trip not found'",
+      "status": "PASS",
+      "error_code": "not_found"
+    },
+    {
+      "id": 3,
+      "name": "GetTrip with invalid UUID 'not-a-uuid'",
+      "expected": "INVALID_ARGUMENT from buf.validate",
+      "actual": "code=invalid_argument, message='validation error: id: value must be a valid UUID'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 4,
+      "name": "CreateTrip with empty title",
+      "expected": "INVALID_ARGUMENT",
+      "actual": "code=invalid_argument, message='validation error: title: value length must be at least 1 characters'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 5,
+      "name": "CreateTrip with 513-char title",
+      "expected": "INVALID_ARGUMENT",
+      "actual": "code=invalid_argument, message='validation error: title: value length must be at most 512 characters'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 6,
+      "name": "Status transition: COMPLETED -> PLANNING",
+      "expected": "Rejected (invalid backward transition)",
+      "actual": "Trip created (PLANNING), updated to COMPLETED successfully. Attempt to revert to PLANNING returned code=failed_precondition, message='invalid trip status transition: completed → planning'. Backward transition correctly rejected.",
+      "status": "PASS",
+      "error_code": "failed_precondition"
+    },
+    {
+      "id": 7,
+      "name": "SendMessage with empty content",
+      "expected": "INVALID_ARGUMENT",
+      "actual": "code=invalid_argument, message='validation error: content: value length must be at least 1 characters'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 8,
+      "name": "SendMessage with 10001-char content",
+      "expected": "INVALID_ARGUMENT",
+      "actual": "code=invalid_argument, message='validation error: content: value length must be at most 10000 characters'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 9,
+      "name": "DeleteBooking with non-existent UUID",
+      "expected": "NOT_FOUND or silent success",
+      "actual": "Silent success — returned empty object {}. No error. This is idempotent delete behavior (acceptable but notable: no NOT_FOUND distinction).",
+      "status": "PASS",
+      "error_code": null,
+      "note": "Idempotent delete — returns success even for non-existent booking. P2 consideration: some APIs prefer NOT_FOUND for non-existent resources."
+    },
+    {
+      "id": 10,
+      "name": "IngestBooking with empty raw_text",
+      "expected": "INVALID_ARGUMENT",
+      "actual": "code=invalid_argument, message='validation error: raw_text: value length must be at least 1 characters'",
+      "status": "PASS",
+      "error_code": "invalid_argument"
+    },
+    {
+      "id": 11,
+      "name": "ListTrips when user has no trips",
+      "expected": "Empty array [], not error",
+      "actual": "Returned {\"pagination\":{}} — empty result with pagination metadata, no error. Correct behavior (trips field is omitted when empty, not null or error).",
+      "status": "PASS",
+      "error_code": null
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "title": "DeleteBooking returns silent success for non-existent resources",
+      "description": "DeleteBooking with a non-existent UUID returns an empty success response ({}) instead of NOT_FOUND. While idempotent deletes are a valid design choice, it means the client cannot distinguish between 'deleted successfully' and 'never existed'. This could mask bugs in client code that passes wrong IDs.",
+      "rpc": "DeleteBooking",
+      "suggestion": "Consider returning NOT_FOUND when the booking does not exist, or document the idempotent delete behavior in the API docs."
+    }
+  ],
+  "ai_issues": [],
+  "tool_failures": [],
+  "evaluation": {
+    "error_handling": 5,
+    "validation": 5,
+    "status_transitions": 5,
+    "boundary_conditions": 5,
+    "overall": 5,
+    "notes": "All 11 tests passed. Validation is thorough — buf.validate catches empty strings, oversized strings, and invalid UUIDs at the interceptor layer before reaching handlers. Status transitions are properly guarded with failed_precondition. No HTTP 500s or panics observed. Error messages are clear and actionable. The only minor note is the idempotent delete behavior on DeleteBooking."
+  },
+  "summary": "N-08 adversarial edge case suite: 11/11 tests passed. Zero P0/P1 bugs. One P2 observation (idempotent DeleteBooking). Error handling is robust — proper error codes (invalid_argument, not_found, failed_precondition) are returned for all invalid inputs. No server errors or panics."
+}

@@ -1,0 +1,116 @@
+{
+  "persona": "N-11",
+  "name": "Lifecycle CRUD Stress Test",
+  "run": "run19",
+  "date": "2026-04-10",
+  "user_id": "9ddb844a-b207-4f6e-a60f-7e7db43badd6",
+  "email": "n11-run19b@toqui-test.local",
+  "trip_id": "374be34e-276a-497a-8894-54eb398b8487",
+  "status": "PASS",
+  "duration_seconds": 140,
+  "steps": [
+    {
+      "step": 1,
+      "name": "GetCurrentUser",
+      "status": "PASS",
+      "details": "User identity confirmed: n11-run19b@toqui-test.local, subscriptionTier=free"
+    },
+    {
+      "step": 2,
+      "name": "CreateTrip",
+      "status": "PASS",
+      "details": "Created trip 374be34e with title 'Lifecycle Test -- Kyoto Spring', status=TRIP_STATUS_PLANNING"
+    },
+    {
+      "step": 3,
+      "name": "GetTrip (verify creation)",
+      "status": "PASS",
+      "details": "Title, description, status=TRIP_STATUS_PLANNING all correct. Themes auto-detected as ['history'], destinationCountry=JP"
+    },
+    {
+      "step": 4,
+      "name": "UpdateTrip title only (COALESCE test)",
+      "status": "PASS",
+      "details": "Title changed to 'Lifecycle Test -- Kyoto Autumn'. Description preserved as 'Cherry blossom season trip for lifecycle validation'. COALESCE partial update works."
+    },
+    {
+      "step": 5,
+      "name": "UpdateTrip description only (COALESCE test)",
+      "status": "PASS",
+      "details": "Description changed to 'Updated: autumn foliage trip.' Title preserved as 'Lifecycle Test -- Kyoto Autumn'. COALESCE partial update works."
+    },
+    {
+      "step": 6,
+      "name": "UpdateTrip status to ACTIVE",
+      "status": "PASS",
+      "details": "Status changed to TRIP_STATUS_ACTIVE. Title and description both preserved."
+    },
+    {
+      "step": 7,
+      "name": "SendMessage (create itinerary)",
+      "status": "PASS",
+      "details": "AI called create_itinerary_items, added 'Visit Kinkaku-ji (The Golden Pavilion)' as sightseeing on day 1. Tool result confirmed 1 item created. AI also attempted a duplicate call which was correctly rejected with 'already_exists' status."
+    },
+    {
+      "step": 8,
+      "name": "IngestBooking (flight)",
+      "status": "PASS",
+      "details": "Flight DL7829X (Delta, JFK->BCN) ingested successfully. ListBookings returned 1 booking with correct confirmation code, provider, flight details."
+    },
+    {
+      "step": 9,
+      "name": "GetItinerary",
+      "status": "PASS",
+      "details": "Itinerary returned 1 day with 1 item (Kinkaku-ji sightseeing)"
+    },
+    {
+      "step": 10,
+      "name": "Share trip + verify public access",
+      "status": "PASS",
+      "details": "Share token x9gYvsEe3mfDnMXoIDU7nW generated. Public GET returned correct title, description, itinerary (1 item), and booking (1 flight)."
+    },
+    {
+      "step": 11,
+      "name": "UpdateTrip status to COMPLETED",
+      "status": "PASS",
+      "details": "Status changed to TRIP_STATUS_COMPLETED. Title 'Lifecycle Test -- Kyoto Autumn' and description 'Updated: autumn foliage trip.' both preserved."
+    },
+    {
+      "step": 12,
+      "name": "ListTrips",
+      "status": "PASS",
+      "details": "Trip present in list with status=TRIP_STATUS_COMPLETED, totalCount=1"
+    },
+    {
+      "step": 13,
+      "name": "Unshare + verify revoked",
+      "status": "PASS",
+      "details": "POST /api/trips/unshare returned ok. GET /shared/{token} returned 404 not found."
+    },
+    {
+      "step": 14,
+      "name": "DeleteTrip + verify cascade",
+      "status": "PASS",
+      "details": "DeleteTrip returned empty success. GetTrip returned not_found (404). ListTrips returned empty (pagination.totalCount absent). Cascade verified: ListBookings empty, GetItinerary returns not_found."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "severity": "P2",
+      "description": "During SendMessage, the AI called create_itinerary_items twice with identical arguments. The second call was correctly rejected by the backend with 'already_exists', but the AI should not have made the duplicate call. This wastes a tool loop iteration.",
+      "step": 7
+    }
+  ],
+  "tool_failures": [],
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "overall": 5
+  },
+  "summary": "Full lifecycle CRUD stress test passed all 14 steps with zero bugs. The complete lifecycle (create -> update title -> update description -> activate -> chat+itinerary -> ingest booking -> share -> complete -> unshare -> delete) works correctly. COALESCE partial updates preserve unmodified fields. Cascade deletion correctly cleans up bookings, itinerary, and share tokens. One minor AI behavior issue: duplicate tool call in the same turn (P2)."
+}

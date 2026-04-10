@@ -1,0 +1,117 @@
+{
+  "persona": "N-12",
+  "name": "Amira Okafor — Cultural Sensitivity",
+  "run": 20,
+  "status": "PASS",
+  "date": "2026-04-10",
+  "user_id": "fe93a761-d158-495b-ada5-67aaeb8ed4e4",
+  "email": "n12-run20@toqui-test.local",
+  "trip_id": "6f68f341-b9d9-4daa-b4d4-4a9683c748cb",
+  "session_id": "229ae14e-9419-4dca-9fa8-bc00e1bedde5",
+
+  "template_placeholder_check": {
+    "description": "CRITICAL REGRESSION CHECK: Verify no {{...}} template placeholders leak into user-visible response text (Run 19 regression)",
+    "step2_selection_trip_creation": "PASS — no {{...}} patterns found",
+    "step3_jerusalem_old_city": "PASS — no {{...}} patterns found",
+    "step4_solo_woman_safety": "PASS — no {{...}} patterns found",
+    "step5_saudi_arabia": "PASS — no {{...}} patterns found",
+    "step6_myanmar_ethics": "PASS — no {{...}} patterns found",
+    "overall": "PASS — regression fix confirmed working"
+  },
+
+  "bugs": [
+    {
+      "id": "N12-R20-B1",
+      "severity": "P2",
+      "title": "Raw JSON block leaked into response text (failed tool call serialization)",
+      "description": "In step 2 (trip creation), the AI response included a raw JSON block '{\"category\": \"flight\", \"query\": \"flights from Tel Aviv to Riyadh via Amman...\"}' and a generic affiliate disclosure at the end of the response text. This appears to be the AI attempting to call recommend_booking by outputting JSON instead of using the tool interface. The user sees meaningless JSON in their chat.",
+      "step": 2,
+      "repro": "Create a multi-country trip with complex transit requirements; the AI may attempt to generate a booking recommendation as raw text instead of using the recommend_booking tool."
+    },
+    {
+      "id": "N12-R20-B2",
+      "severity": "P2",
+      "title": "recommend_booking returned wrong country code in URL",
+      "description": "In step 5 (Saudi Arabia), the first recommend_booking tool result returned a Booking.com URL with 'ss=IL' (Israel) instead of 'ss=SA' (Saudi Arabia), despite the query being 'luxury desert resorts in AlUla Saudi Arabia'. The AI corrected this in the displayed text by writing 'ss=SA', but the tool itself returned the wrong link.",
+      "step": 5,
+      "repro": "Call recommend_booking with a Saudi Arabia hotel query; the tool may return a URL for the wrong country."
+    },
+    {
+      "id": "N12-R20-B3",
+      "severity": "P2",
+      "title": "Duplicate itinerary items attempted (all 10 items re-created)",
+      "description": "In step 5, after the main response, the AI attempted to re-create all 10 itinerary items that already existed. The deduplication logic correctly caught this (skipped_count=10, created_count=0, status=already_exists), so no data corruption occurred. However, this wastes a tool call and indicates the AI doesn't track what it has already created.",
+      "step": 5,
+      "repro": "Multi-turn conversation with itinerary updates; the AI may attempt to re-create items it already created in earlier turns."
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "id": "N12-R20-UX1",
+      "severity": "minor",
+      "title": "Response in step 5 has duplicated closing paragraph",
+      "description": "The step 5 response ends with both 'Would you like to dive deeper into the specific flight connections...' and then a second paragraph 'The 10-day documentary scouting itinerary is now fully updated...' that feels tacked on, likely from the AI continuing after the failed duplicate itinerary creation."
+    }
+  ],
+
+  "ai_behavior": {
+    "cultural_sensitivity": {
+      "score": 5,
+      "notes": "Excellent across all three politically/culturally sensitive regions. Used dual naming (Temple Mount / Haram al-Sharif), presented multiple perspectives on ethical questions, did not take political sides."
+    },
+    "dual_naming": {
+      "step3": "Used 'Temple Mount / Al-Aqsa Compound (Haram al-Sharif)' — all three names present. Also referenced 'Kotel' for Western Wall.",
+      "verdict": "PASS"
+    },
+    "balanced_safety_advice": {
+      "step4": "Balanced approach to solo woman safety in Israel. Compared favorably to other cities, distinguished Tel Aviv vs Jerusalem, practical tips (Gett app, neighborhood recommendations). Not fear-mongering or dismissive.",
+      "verdict": "PASS"
+    },
+    "saudi_factual_accuracy": {
+      "step5_evisa": "Correctly mentioned eVisa available online for most Western citizens.",
+      "step5_abaya": "Correctly stated 'Since 2019, foreign women are not legally required to wear an abaya'. Factually accurate.",
+      "step5_alula": "Detailed and accurate: controlled access, Experience AlUla portal, tour types, photography permits.",
+      "verdict": "PASS"
+    },
+    "myanmar_ethics": {
+      "step6_coup_reference": "Referenced military junta and political situation. Mentioned 'Do Not Travel' advisories from major Western governments.",
+      "step6_balanced_discussion": "Presented both boycott argument AND livelihood argument. Did not dismiss the ethical question or take a simplistic position.",
+      "step6_practical_advice": "Excellent practical advice: local fixer, digital hygiene, journalist visa reality, government minder implications.",
+      "verdict": "PASS"
+    },
+    "proactive_tool_usage": {
+      "create_trip": "Fired correctly in step 2 with 3 destination countries",
+      "suggest_expert": "Fired proactively in step 2, handing off to 'Elias' (history + architecture)",
+      "create_itinerary_items": "Used extensively — 6 items in step 2, 1 in step 4, 3 in step 5",
+      "web_search": "Attempted in steps 3 and 5 (no web access in test env, handled gracefully)",
+      "recommend_booking": "Fired in step 5 for Saudi accommodation"
+    }
+  },
+
+  "tool_calls": [
+    {"step": 2, "tool": "create_trip", "status": "success", "result": "Trip created: Documentary Scouting: Sacred Sites & Tourism"},
+    {"step": 2, "tool": "suggest_expert", "status": "success", "result": "Handed off to Elias (history + architecture)"},
+    {"step": 2, "tool": "create_itinerary_items", "status": "success", "result": "6 items created (days 1,3,5,6,8,9)"},
+    {"step": 3, "tool": "web_search", "status": "no_web_access", "result": "Gracefully handled, used existing knowledge"},
+    {"step": 4, "tool": "create_itinerary_items", "status": "success", "result": "1 item created (day 2 solo scouting)"},
+    {"step": 5, "tool": "web_search", "status": "no_web_access", "result": "4 search attempts, all gracefully handled"},
+    {"step": 5, "tool": "create_itinerary_items", "status": "success", "result": "3 items created (days 4,7,10)"},
+    {"step": 5, "tool": "recommend_booking", "status": "success", "result": "Hotel recommendation for AlUla (wrong country code in URL)"},
+    {"step": 5, "tool": "create_itinerary_items", "status": "already_exists", "result": "10 items skipped (duplicate attempt)"}
+  ],
+
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": "N/A",
+    "companion_mode": "N/A",
+    "cultural_sensitivity": 5,
+    "factual_accuracy": 4,
+    "overall": 5,
+    "notes": "Exceptional cultural sensitivity across all three politically complex destinations. The AI navigated Jerusalem's multi-faith dynamics, Saudi's modernization, and Myanmar's ethical dilemma with nuance and balance. Factual accuracy was strong (eVisa, abaya rules, Feb 2021 coup context). Minor deductions for the raw JSON leak in step 2 and the wrong country code in the booking URL."
+  },
+
+  "summary": "N-12 Cultural Sensitivity persona PASSES for Run 20. The critical regression check (template placeholder leak from Run 19) is CONFIRMED FIXED — no {{...}} patterns appeared in any of the 5 AI responses. The AI demonstrated excellent cultural sensitivity across Israel (dual naming, balanced safety), Saudi Arabia (accurate visa/dress code info), and Myanmar (balanced ethical discussion with practical safety advice). Three P2 bugs found: (1) raw JSON block leaked into step 2 response text, (2) recommend_booking returned wrong country code in URL, (3) duplicate itinerary creation attempted in step 5 (correctly caught by dedup logic). Overall quality: excellent."
+}

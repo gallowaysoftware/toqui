@@ -1,0 +1,142 @@
+{
+  "persona": "N-06",
+  "name": "Raj - Ultra-Budget India Backpacker",
+  "run": "run19",
+  "date": "2026-04-10",
+  "user_id": "2ed90f80-2a90-4186-ace4-15c0fee6c5cc",
+  "email": "n06-run19b@toqui-test.local",
+  "trip_id": "7464bc60-b426-4890-b721-b9f9988fea5d",
+  "session_id": "955451bd-240f-46f6-b138-972ceea26018",
+  "messages_sent": 4,
+  "messages_remaining": 6,
+
+  "bugs": [
+    {
+      "id": "N06-B1",
+      "severity": "P2",
+      "title": "create_itinerary_items fails with no_trip_selected after select_trip succeeds in same turn",
+      "description": "In step 3 (full itinerary request), the AI called select_trip which returned success, but subsequent create_itinerary_items calls in the same tool loop returned 'no_trip_selected' error 3 times. The trip context from select_trip is not being propagated to the tool execution context within the same message turn. This only happened in the second message; subsequent messages with explicit trip_id in the request worked fine.",
+      "steps_to_reproduce": "1. Create a trip in session 1. 2. In a new message without trip_id, ask the AI to build a full itinerary. 3. AI calls select_trip (succeeds) then create_itinerary_items (fails with no_trip_selected).",
+      "expected": "create_itinerary_items should succeed after select_trip succeeds in the same tool loop",
+      "actual": "create_itinerary_items returns no_trip_selected error despite select_trip having just returned success"
+    },
+    {
+      "id": "N06-B2",
+      "severity": "P2",
+      "title": "Itinerary day numbering inconsistency: Golden Triangle placed on days 4-8 but described as days 1-8",
+      "description": "The itinerary has Amber Fort (Jaipur) on Day 4 and Taj Mahal on Day 7, but the text narrative says 'Days 1-3: Delhi, Days 4-5: Agra, Days 6-7: Jaipur'. The actual itinerary items placed Delhi on Days 1-2, Jaipur items on Days 4-6, and Agra/Taj on Day 7. The day numbering in the itinerary items doesn't match the narrative ordering (Delhi -> Agra -> Jaipur vs Delhi -> Jaipur -> Agra).",
+      "expected": "Itinerary item day numbers should match the described city sequence",
+      "actual": "Jaipur items are on days 4-6 but Agra/Taj is on day 7, suggesting Delhi -> Jaipur -> Agra ordering in items but Delhi -> Agra -> Jaipur in narrative"
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "id": "N06-UX1",
+      "severity": "minor",
+      "title": "Rishikesh days (14-19) are sparsely populated with only 1 item per day",
+      "description": "While Delhi and Jaipur days have 3-4 items each, the Rishikesh portion (days 14-19) has only 1 item per day. This leaves the user with an incomplete plan for the final week. The AI could have been more thorough in populating these days."
+    },
+    {
+      "id": "N06-UX2",
+      "severity": "minor",
+      "title": "Day 20 is missing entirely from the itinerary",
+      "description": "The itinerary jumps from Day 19 to Day 21. Day 20 has no items, leaving a gap in the 3-week plan."
+    },
+    {
+      "id": "N06-UX3",
+      "severity": "minor",
+      "title": "Beatles Ashram entry fee (Rs 600) noted but not flagged as budget concern",
+      "description": "Day 18 includes the Beatles Ashram at Rs 600 ($7.20) for foreigners. While the AI noted it as 'a bit pricy', it didn't flag this as exceeding the $10/day budget as clearly as it did with the Taj Mahal. At 72% of the daily budget for a single activity, this deserved more emphasis."
+    }
+  ],
+
+  "ai_behavior": [
+    {
+      "id": "N06-AI1",
+      "type": "positive",
+      "title": "Excellent budget enforcement and awareness throughout",
+      "description": "The AI consistently referenced the $10/day budget, provided INR prices alongside USD, and flagged budget-busting activities (especially the Taj Mahal at $13-15.60). It proactively suggested cost-saving strategies like saving $1/day, viewing Taj from Mehtab Bagh instead of paying full entry, and using General Class trains."
+    },
+    {
+      "id": "N06-AI2",
+      "type": "positive",
+      "title": "Strong vegetarian awareness and food recommendations",
+      "description": "Every food recommendation was vegetarian. The AI mentioned the Green Dot symbol, recommended specific vegetarian dishes (Pyaaz Kachori, Gatte ki Sabzi, Dal Baati Churma, Masala Dosa), and all prices were under $3 per meal. It also highlighted free meals at Gurudwara Bangla Sahib (Langar)."
+    },
+    {
+      "id": "N06-AI3",
+      "type": "positive",
+      "title": "Correct transport class recommendations",
+      "description": "The AI consistently recommended General Class ($1.10) and Sleeper Class ($2-5) trains, explicitly advising to avoid AC coaches and taxis. It never suggested flights or premium transport options."
+    },
+    {
+      "id": "N06-AI4",
+      "type": "positive",
+      "title": "Proactive expert handoff with budget context retained",
+      "description": "The AI handed off to 'Arjun' (India budget + food expert) immediately. The expert maintained full awareness of the $10/day constraint, vegetarian requirement, and student context throughout all responses."
+    },
+    {
+      "id": "N06-AI5",
+      "type": "positive",
+      "title": "Excellent Taj Mahal budget flagging",
+      "description": "The AI flagged the Taj Mahal entry fee (Rs 1,100 / $13) as exceeding the daily budget multiple times across different messages. It provided specific workarounds: save $1/day leading up, view from Mehtab Bagh for Rs 200-300, eat cheaply on Taj day, and view from Taj Yamuna View Point for Rs 50."
+    },
+    {
+      "id": "N06-AI6",
+      "type": "minor_negative",
+      "title": "Duplicate content in step 3 response",
+      "description": "The step 3 response contained what appeared to be two separate responses concatenated together, both covering the same 21-day itinerary with slightly different details. This seems to stem from the tool loop where create_itinerary_items failed but the AI continued and regenerated the text."
+    }
+  ],
+
+  "tool_calls": {
+    "create_trip": {"called": true, "success": true, "notes": "Created 'India Gap Year Budget Trip' with $10/day budget and vegetarian noted in description"},
+    "select_trip": {"called": true, "success": true, "notes": "Called in step 3 but trip context not propagated to subsequent tools in same turn"},
+    "suggest_expert": {"called": true, "success": true, "count": 2, "notes": "Handed off to 'Arjun' (India budget+food expert) in step 2. Second handoff in step 3 to Arjun (budget+food+adventure)."},
+    "create_itinerary_items": {"called": true, "success": "partial", "notes": "Succeeded in steps 2, 5, 7. Failed 3 times in step 3 with no_trip_selected error."},
+    "recommend_booking": {"called": true, "success": true, "count": 4, "notes": "Flights (Skyscanner), hotels Delhi+Rishikesh (Booking.com), insurance (SafetyWing). All with FTC disclosure."},
+    "web_search": {"called": true, "success": false, "notes": "Not configured in test environment. AI handled gracefully."},
+    "nearby_places": {"called": false},
+    "place_lookup": {"called": false},
+    "delete_itinerary_items": {"called": false}
+  },
+
+  "budget_enforcement": {
+    "daily_budget_stated": "$10/day (Rs 830)",
+    "accommodation_prices": ["$2.50-$4 (Bunk Hostel Delhi)", "$3-$4 (Rekha Cottage)", "$3.50-$5 (Hide-In Hostel)", "$4-$5 (Amigosindia)", "$4 (Sprinklers Hostel)"],
+    "all_under_5_per_night": true,
+    "meal_prices": ["$0.70 (Chai+Bun Maska)", "$0.70 (Lassi at Lassiwala)", "$1.20 (Masala Chowk)", "$1.70 (LMB Thali)", "$1.80 (Gatte ki Sabzi dinner)", "$2.15 (Unlimited Rajasthani Thali)", "Free (Langar at Bangla Sahib)"],
+    "all_meals_under_3": true,
+    "all_meals_vegetarian": true,
+    "transport_recommendations": ["General Class train Delhi-Agra: $1.10", "Sleeper Class train Jaipur-Varanasi: $5.40", "Sleeper Class train Varanasi-Haridwar: $6", "Bus Rishikesh-Delhi: $4.20"],
+    "avoided_ac_taxi_flights": true,
+    "taj_mahal_budget_flagged": true,
+    "taj_mahal_price_stated": "Rs 1,100-1,300 ($13-15.60)",
+    "taj_mahal_workarounds_provided": ["Save $1/day", "View from Mehtab Bagh (Rs 200-300)", "Taj Yamuna View Point (Rs 50)", "Eat cheaply on Taj day"]
+  },
+
+  "itinerary_summary": {
+    "total_days_populated": 20,
+    "total_items": 39,
+    "cities_covered": ["Delhi", "Agra", "Jaipur", "Varanasi", "Rishikesh"],
+    "transport_items": 4,
+    "meal_items": 13,
+    "activity_items": 12,
+    "sightseeing_items": 9,
+    "accommodation_items": 1
+  },
+
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": 5,
+    "budget_enforcement": 5,
+    "vegetarian_awareness": 5,
+    "transport_specificity": 5,
+    "price_accuracy_india": 4,
+    "overall": 4
+  },
+
+  "summary": "The N-06 budget enforcement test was largely successful. The AI demonstrated excellent budget awareness throughout, consistently referencing the $10/day constraint, providing specific prices in both INR and USD, and proactively flagging budget-busting activities like the Taj Mahal. Vegetarian awareness was perfect - every food recommendation was vegetarian with no exceptions. Transport recommendations correctly prioritized General Class and Sleeper Class trains over AC, taxis, or flights. The main bug found was create_itinerary_items failing with 'no_trip_selected' when called in the same tool loop after select_trip succeeded (P2). The itinerary was well-populated for the first 8 days but became sparse for the Rishikesh portion (days 14-19). Expert handoff to 'Arjun' worked well with full budget context retention. Overall, this persona test validates that the AI can effectively serve ultra-budget travelers with price-appropriate, diet-aware recommendations."
+}

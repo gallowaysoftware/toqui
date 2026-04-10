@@ -337,3 +337,56 @@ func TestStripTrailingStutter(t *testing.T) {
 		})
 	}
 }
+
+func TestStripTemplatePlaceholders(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no placeholders",
+			input: "Here are the best temples in Kyoto for your visit.",
+			want:  "Here are the best temples in Kyoto for your visit.",
+		},
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "disclosure placeholder at end",
+			input: "Great trip! {{DISCLOSURE_REPLACER_RECOMMEND_BOOKING_STUB}}",
+			want:  "Great trip!",
+		},
+		{
+			name:  "disclosure placeholder inline",
+			input: "Check this link {{DISCLOSURE_REPLACER_RECOMMEND_BOOKING_STUB}} for more info.",
+			want:  "Check this link for more info.",
+		},
+		{
+			name:  "multiple placeholders",
+			input: "Hello {{FOO}} world {{BAR}} end",
+			want:  "Hello world end",
+		},
+		{
+			name:  "unmatched opening braces",
+			input: "Hello {{ world",
+			want:  "Hello {{ world",
+		},
+		{
+			name:  "placeholder only",
+			input: "{{PLACEHOLDER}}",
+			want:  "",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := stripTemplatePlaceholders(c.input)
+			if got != c.want {
+				t.Errorf("stripTemplatePlaceholders(%q)\n  got:  %q\n  want: %q", c.input, got, c.want)
+			}
+		})
+	}
+}

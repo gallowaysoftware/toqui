@@ -1,0 +1,110 @@
+{
+  "persona": "R-16",
+  "name": "Professor Eleanor Whitfield — History Academic",
+  "run": "run19",
+  "timestamp": "2026-04-10T22:27:00Z",
+  "trip_id": "54abe6bf-24f5-4f3e-9672-76cf267e4c44",
+  "session_id": "e19c46c3-c2ed-402c-bd61-c7ea2f6203b2",
+  "user_id": "aec84438-b098-4e85-acaa-0c81300dcbc1",
+  "steps": {
+    "get_current_user": {
+      "status": "PASS",
+      "details": "User identity verified. Email: r16-run19b@toqui-test.local. Tier: free."
+    },
+    "selection_mode_create_trip": {
+      "status": "PASS",
+      "details": "create_trip tool fired. Trip created: 'Archaeological Research: Greece & Turkey' with destination_countries [GR, TR]. Status: planning. AI also proactively called suggest_expert (GR/history+architecture) and create_itinerary_items (8 academic items across Athens, Delphi, Crete, Ephesus, Istanbul) in the same turn."
+    },
+    "delphi_oracle_academic_depth": {
+      "status": "PASS",
+      "details": "Expert handoff to Dimitris (GR/history). Academic depth was excellent: discussed Pythia, adyton, pneuma theory (de Boer & Hale 2001, ethylene, bituminous limestone, Delphi/Kerna fault intersection), prophetai role, strategic ambiguity, Amphictyonic League, Polygonal Wall manumission inscriptions, Plutarch's De defectu oraculorum, French Grande Fouille (1892), Pierre Amandry's dismissal. Far exceeds 'Delphi was important' baseline. create_itinerary_items attempted but failed with no_trip_selected (bug)."
+    },
+    "crete_itinerary": {
+      "status": "PARTIAL",
+      "details": "AI provided excellent academic-only Crete plan: Knossos (West Magazines, Theatral Area, Evans reconstructions), Heraklion Museum (Phaistos Disc, Agia Triada Sarcophagus), Gortyna (Great Code, Roman Odeon), Phaistos (Grand Staircase, unrestored), Malia (Quartier Mu), Gournia ('Pompeii of Minoan Crete'). NO beach or resort suggestions. create_itinerary_items failed with no_trip_selected bug — items not persisted."
+    },
+    "ephesus_cross_cultural": {
+      "status": "PASS",
+      "details": "All three topics addressed at academic level: (1) Attalid bequest 133 BC, publicani, Augustan reforms; (2) Library of Celsus as heroon for Tiberius Julius Celsus Polemaeanus, four statues (Sophia, Arete, Ennoia, Episteme), Second Sophistic; (3) Terrace Houses (Hanghauser) — Roman hypocaust/peristyle with Greek frescoes (Menander), dual identity thesis. create_itinerary_items failed again (same bug)."
+    },
+    "recommend_booking_delphi_tour": {
+      "status": "PASS",
+      "details": "recommend_booking triggered for private archaeological tour at Delphi via GetYourGuide. FTC disclosure present: 'This is a partner link. Toqui may earn a commission at no extra cost to you.' AI contextualized the recommendation to academic needs."
+    },
+    "get_itinerary_verification": {
+      "status": "PARTIAL",
+      "details": "GetItinerary returned 8 items from the initial creation (Step 2): Day 1 (Acropolis, Agoras), Day 4 (Sanctuary of Apollo), Day 6 (Knossos), Day 7 (Phaistos), Day 8 (Gortyn), Day 9 (Ephesus), Day 11 (Istanbul Museums). All academic in nature, full-day pacing at sites. However, subsequent itinerary items from Steps 3-5 (~11 additional items) were NOT persisted due to the no_trip_selected bug."
+    }
+  },
+  "bugs": [
+    {
+      "id": "R16-B1",
+      "severity": "P1",
+      "category": "tool_failure",
+      "title": "create_itinerary_items fails with 'no_trip_selected' in subsequent messages within same session",
+      "description": "After the initial message where create_trip and create_itinerary_items both succeed, all subsequent calls to create_itinerary_items in the same chat session fail with 'no_trip_selected'. The AI correctly calls select_trip to recover, which returns success, but the immediately following create_itinerary_items call still fails. This happened consistently across Steps 3, 4, and 5 (6 total failures, 3 select_trip recovery attempts, none succeeded). Only the 8 items from the first message were persisted.",
+      "reproduction": "1. Create trip via chat (create_trip succeeds). 2. Send second message requesting itinerary items. 3. create_itinerary_items fails with no_trip_selected. 4. AI calls select_trip (succeeds). 5. AI retries create_itinerary_items — still fails.",
+      "expected": "Trip context should persist across messages in the same session, or select_trip should establish context for subsequent tool calls in the same turn.",
+      "actual": "Trip context is lost between messages. Even select_trip does not re-establish context for subsequent create_itinerary_items calls in the same tool loop."
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "R16-UX1",
+      "severity": "P2",
+      "title": "AI acknowledges itinerary tool failure but continues without resolution",
+      "description": "When create_itinerary_items fails, the AI says 'I am experiencing a slight technical synchronization with the itinerary tool' or 'I am still fine-tuning the itinerary tool connection' — these euphemisms don't communicate the real problem. Users would expect the items to exist in their itinerary but they don't."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "id": "R16-AI1",
+      "quality": "excellent",
+      "title": "Academic depth consistently exceeded tourist-level summaries",
+      "description": "Across all exchanges, the AI provided genuine academic-level content: specific scholars (de Boer, Hale, Amandry, Evans), primary sources (Plutarch's De defectu oraculorum), specific archaeological features (adyton, prophetai, Quartier Mu), correct dates (133 BC, 117 AD, 1892), and nuanced analysis (self-Romanization thesis, Second Sophistic, information brokering). This would satisfy a real professor."
+    },
+    {
+      "id": "R16-AI2",
+      "quality": "excellent",
+      "title": "Expert handoff appropriate and consistent",
+      "description": "suggest_expert fired on first message (GR history+architecture) and again on the Delphi deep-dive (GR history). Persona 'Dimitris' was appropriate for Greek history expertise. Expert maintained academic register throughout."
+    },
+    {
+      "id": "R16-AI3",
+      "quality": "excellent",
+      "title": "No tourist-level dilution — respected research focus",
+      "description": "Despite being asked about Crete (a beach destination), the AI never suggested beach time, resorts, or leisure activities. It added Gournia and Malia's Quartier Mu — exactly what an academic would want. Itinerary items were all 'sightseeing' type with full-day academic pacing."
+    },
+    {
+      "id": "R16-AI4",
+      "quality": "good",
+      "title": "Cross-cultural knowledge strong but Turkey expert not triggered",
+      "description": "When discussing Ephesus, the AI did not trigger suggest_expert for TR/history — it continued as the Greece expert Dimitris discussing Turkey. This is acceptable since the topic was cross-cultural (Greek-to-Roman transition), but a Turkey-specific handoff could have added depth."
+    }
+  ],
+  "tool_calls": {
+    "create_trip": {"called": true, "succeeded": true, "count": 1},
+    "select_trip": {"called": true, "succeeded": true, "count": 4, "note": "Called 3 times as recovery after create_itinerary_items failures, plus once for session context"},
+    "suggest_expert": {"called": true, "succeeded": true, "count": 2, "note": "GR history+architecture, then GR history"},
+    "create_itinerary_items": {"called": true, "succeeded": false, "count": 7, "note": "1 success (8 items in first message), 6 failures with no_trip_selected"},
+    "recommend_booking": {"called": true, "succeeded": true, "count": 1},
+    "web_search": {"called": true, "succeeded": false, "count": 1, "note": "No web access configured"},
+    "nearby_places": {"called": false},
+    "place_lookup": {"called": false},
+    "delete_itinerary_items": {"called": false}
+  },
+  "ftc_disclosure": {
+    "present": true,
+    "text": "This is a partner link. Toqui may earn a commission at no extra cost to you."
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 3,
+    "persona_handoff": 5,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "ai_knowledge_depth": 5,
+    "overall": 4,
+    "notes": "Trip creation was excellent (multi-country, academic title/description). Itinerary quality scored 3 because only 8/19 planned items were actually persisted due to the no_trip_selected bug — the AI's proposed items were all excellent but most were lost. Persona handoff was spot-on (Greece history expert). AI knowledge depth was exceptional — genuine academic-level discourse on Delphi oracle mechanisms, Minoan archaeology, and Hellenistic-Roman transition. Overall 4 due to the persistent itinerary bug degrading the practical utility."
+  }
+}

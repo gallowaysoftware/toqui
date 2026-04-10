@@ -1,0 +1,109 @@
+{
+  "persona": "N-10",
+  "name": "Jake Morrison — Last-Minute Airport Traveler",
+  "run": "run19",
+  "timestamp": "2026-04-10T23:01:00Z",
+  "userId": "f7529060-09ce-4884-932d-3689bc5f767e",
+  "tripId": "38c28344-9c03-45a8-9c5f-66e48ce036e3",
+  "sessionId": "c3682b96-081a-4045-bc1b-7c45079075b8",
+  "stepsCompleted": 7,
+  "stepsTotal": 7,
+  "bugs": [
+    {
+      "id": "N10-B1",
+      "severity": "P2",
+      "category": "tool_execution",
+      "title": "Companion mode loses trip context — create_itinerary_items returns no_trip_selected",
+      "description": "In companion mode (trip ACTIVE), calling create_itinerary_items fails with 'no_trip_selected' error on the first attempt. The AI self-recovers by calling select_trip and retrying, but this wastes a tool loop iteration and causes a visible delay. Observed in Steps 6 and 7 (both companion mode messages). The trip was already selected and active — the session should retain trip context across messages.",
+      "reproduction": "1. Create trip and set status to ACTIVE. 2. Send messages in the same session. 3. On messages 3+, create_itinerary_items fails with no_trip_selected. 4. AI must call select_trip before retrying.",
+      "affected_rpcs": ["SendMessage"],
+      "affected_tools": ["create_itinerary_items", "select_trip"]
+    },
+    {
+      "id": "N10-B2",
+      "severity": "P2",
+      "category": "ai_behavior",
+      "title": "Response stutter/repetition at end of Step 7 message",
+      "description": "The AI response for the airport logistics question ends with: 'Anything else you need for your quick Lisbon sprint through your quick Lisbon sprint through Lisbon?' — the phrase 'your quick Lisbon sprint through' is repeated. This is a minor text generation artifact but affects perceived quality.",
+      "reproduction": "Send 4+ messages in a session about Lisbon travel logistics. The final message had a repetition stutter in the closing question.",
+      "affected_rpcs": ["SendMessage"],
+      "affected_tools": []
+    },
+    {
+      "id": "N10-B3",
+      "severity": "P2",
+      "category": "data_integrity",
+      "title": "Itinerary has duplicate/overlapping items from multiple AI responses",
+      "description": "The itinerary accumulated 16 items across 2 days. Step 2 created 7 items (2-day plan), then Step 6 created 7 more items (all on day 1). Result: day 1 has 13 items including duplicate Pastéis de Belém, duplicate Jerónimos Monastery, two different lunches, and overlapping Alfama activities. The dedup caught 1 duplicate (Tram 28) but missed the structural overlap. For a 2-day trip, 16 itinerary items is excessive and confusing.",
+      "reproduction": "1. In selection mode, send a message that creates a 2-day itinerary. 2. In companion mode, ask 'what are the must-dos for tomorrow?' — AI creates a new full-day itinerary that overlaps with the existing one.",
+      "affected_rpcs": ["SendMessage", "GetItinerary"],
+      "affected_tools": ["create_itinerary_items"]
+    },
+    {
+      "id": "N10-B4",
+      "severity": "P2",
+      "category": "data_integrity",
+      "title": "GetChatHistory returns only 2 messages despite 4 exchanges (8 messages)",
+      "description": "ListChatSessions reports messageCount=6 but GetChatHistory returns only 2 messages (the initial user message and the first AI response). The 3 companion-mode exchanges (Steps 5, 6, 7) are not returned by GetChatHistory. This may be because the companion-mode messages are stored under a different session or Firestore path, but the user sent all messages with the same sessionId.",
+      "reproduction": "1. Create a session in selection mode. 2. Send 4 messages total across selection and companion mode using the same sessionId. 3. Call GetChatHistory — only the first 2 messages are returned.",
+      "affected_rpcs": ["GetChatHistory", "ListChatSessions"],
+      "affected_tools": []
+    }
+  ],
+  "uxIssues": [
+    {
+      "id": "N10-UX1",
+      "severity": "minor",
+      "title": "AI response length not calibrated for urgency",
+      "description": "For a user who is 'at the airport right now' with 2 hours to boarding, the Step 2 response was 329 words with a full 2-day text plan PLUS itinerary tool call. The text plan was helpful but could have been shorter given the urgency context. Step 5 (10pm arrival, starving) was similarly verbose at 237 words. A last-minute traveler would benefit from shorter, punchier responses."
+    },
+    {
+      "id": "N10-UX2",
+      "severity": "minor",
+      "title": "AI adds transport items as alternatives rather than a single recommendation",
+      "description": "Step 7 added two itinerary items for airport transit (Metro AND Uber/Taxi) as separate itinerary items. The AI should have picked one recommended option for the itinerary and mentioned alternatives in the text."
+    }
+  ],
+  "aiIssues": [
+    {
+      "id": "N10-AI1",
+      "severity": "minor",
+      "title": "AI did not proactively suggest an expert handoff",
+      "description": "Despite discussing food (Step 5), sightseeing (Step 6), and logistics (Step 7) in Lisbon, the AI never called suggest_expert to hand off to a Portugal food or culture expert. It offered to bring in a 'local food expert' in Step 2 text but didn't proactively call the tool. For a last-minute trip, rapid expert handoff would add significant value."
+    }
+  ],
+  "toolResults": {
+    "create_trip": { "called": true, "success": true, "notes": "Called immediately in response to urgent message — no unnecessary clarifying questions. Correct destination_country PT." },
+    "select_trip": { "called": true, "success": true, "notes": "Called as self-recovery mechanism when create_itinerary_items failed with no_trip_selected in companion mode. Called 3 times total (once per companion message)." },
+    "create_itinerary_items": { "called": true, "success": true, "notes": "Called 3 times. First call: 7 items (2-day plan, Step 2). Second call: 8 items attempted, 7 created, 1 duplicate skipped (Step 6). Third call: 2 transport items (Step 7). Total: 16 items in itinerary." },
+    "recommend_booking": { "called": true, "success": true, "notes": "Called for hotel booking in Step 5. FTC disclosure included in response. Booking.com affiliate link generated correctly." },
+    "web_search": { "called": true, "success": false, "notes": "Called twice (Steps 2 and 5). Both returned no_web_access (expected in local test environment). AI correctly fell back to existing knowledge." },
+    "suggest_expert": { "called": false, "success": null, "notes": "Not called despite opportunities. AI mentioned the possibility of a food expert in text but never triggered the tool." },
+    "nearby_places": { "called": false, "success": null, "notes": "Not called — no location was set via UpdateLocation, so this is expected." }
+  },
+  "usefulness": {
+    "tripCreation": 5,
+    "itineraryQuality": 3,
+    "personaHandoff": 2,
+    "bookingParsing": null,
+    "companionMode": 4,
+    "overall": 4,
+    "notes": "Trip creation was excellent — immediate, no unnecessary questions, perfect for the urgency. Companion mode responses were knowledgeable and actionable (specific restaurants, neighborhoods, transport options, costs). Itinerary quality suffered from duplicate/overlapping items across messages. No persona handoff occurred despite good opportunities. Overall a strong experience for a last-minute traveler — the AI understood urgency and delivered practical Lisbon-specific advice."
+  },
+  "lisbonKnowledge": {
+    "neighborhoods": ["Alfama", "Bairro Alto", "Baixa", "Chiado", "Belém", "Príncipe Real", "Cais do Sodré", "Graça", "Mouraria"],
+    "landmarks": ["Castelo de S. Jorge", "Jerónimos Monastery", "Torre de Belém", "Padrão dos Descobrimentos", "Miradouro de Santa Luzia", "Miradouro da Senhora do Monte", "Miradouro de Santa Catarina", "Livraria Bertrand"],
+    "restaurants": ["Beira Gare", "Time Out Market", "Cervejaria Ramiro", "Pinoquio", "Galeto", "As Bifanas do Afonso", "Pastéis de Belém"],
+    "transport": ["Metro Red Line to airport", "Green Line to Alameda transfer", "Tram 28", "Uber/Bolt", "Viva Viagem card", "15E tram to Belém"],
+    "cultural": ["Fado music", "Ginjinha", "bifana", "pastel de nata", "tascas"],
+    "quality": "Excellent Lisbon-specific knowledge across all responses. Restaurants, neighborhoods, transport, and cultural tips were accurate and relevant."
+  },
+  "brevityAssessment": {
+    "step2_words": 329,
+    "step5_words": 237,
+    "step6_words": 261,
+    "step7_words": 244,
+    "verdict": "Responses are moderately verbose for a last-minute traveler. The content quality is high but could be 30-40% shorter without losing actionable value. The AI adds flourishes ('Nothing like a last-minute dash!') that a rushed airport user might not appreciate."
+  },
+  "summary": "N-10 (Last-Minute Airport Traveler) completed all 7 test steps successfully. The AI excelled at immediate trip creation without excessive clarifying questions, demonstrated strong Lisbon-specific knowledge, and provided actionable companion-mode advice (late-night restaurants, 24-hour itinerary, airport logistics). Key issues: (1) companion mode repeatedly loses trip context requiring select_trip self-recovery (P2), (2) itinerary accumulates duplicate items across messages (P2), (3) minor response stutter (P2), (4) GetChatHistory returns incomplete message history (P2). No expert handoff was triggered despite good opportunities. Overall usefulness: 4/5."
+}
