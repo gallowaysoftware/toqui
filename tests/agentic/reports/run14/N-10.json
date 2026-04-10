@@ -1,0 +1,54 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Companion mode fullContent field only captures text after the last tool call, not the complete response. In Step 6a, the AI gave specific restaurant recs (Povo, A Cevicheria, Time Out Market) in textDelta chunks before calling recommend_booking, but fullContent only contained the post-tool-call text about the Booking.com link. Chat history stored the truncated version.",
+      "severity": "P1",
+      "suggestion": "fullContent should concatenate all textDelta chunks across tool call boundaries, not just the final segment."
+    },
+    {
+      "description": "In Step 6b, the AI attempted to call create_itinerary_items 3 times in companion mode despite being rejected each time with the same 'not_needed' message. This wasted tokens and made the response much longer than necessary as the AI kept apologizing for 'hiccups' and repeating the same plan.",
+      "severity": "P2",
+      "suggestion": "The AI should learn from the first tool rejection and stop retrying the same tool call within the same turn. Consider adding stronger guidance in the system prompt about not retrying rejected companion-mode tool calls."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Selection mode response asked clarifying questions ('Do you have any particular interests?') despite the user explicitly saying they have zero plans and the flight boards in 2 hours. The urgency context should suppress open-ended clarifying questions.",
+      "context": "User said: 'I'm at the airport right now, my flight to Lisbon boards in 2 hours. I land tonight around 10pm. I have 2 days and zero plans. Help me.'",
+      "severity": "P2"
+    },
+    {
+      "issue": "Companion mode responses were too verbose for a last-minute traveler scenario. The one-full-day response (Step 6b) was extremely long due to repeated tool call rejections and repeated plan descriptions. A traveler who just landed at 10pm needs 3-5 bullet points, not a multi-paragraph essay.",
+      "context": "Step 6b fullContent was ~1800 characters for what should have been a concise recap of the existing itinerary.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Planning mode response (Step 3) also showed confusion — the AI successfully created itinerary items but then generated repetitive text saying 'it seems there might be a hiccup' and 'I already added those items'. The fullContent field captured only the confused/repetitive portion, missing the initial coherent response.",
+      "context": "The tool_result confirmed 4 items created successfully, yet the AI second-guessed itself in subsequent text.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI did not proactively suggest an expert persona handoff for Portugal/food despite the user mentioning photography and food interests. No suggest_expert tool call was observed across any of the 4 AI messages.",
+      "context": "Persona is a photographer who loves food — a food expert or photography-focused persona would have been a natural handoff.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 1,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Trip creation was fast and appropriate for the urgency. The itinerary content was genuinely good — Alfama for morning light, Tram 28, pasteis de nata at Belem, Bairro Alto for evening — all solid Lisbon picks that reflect photographer interests. However, response verbosity was a significant issue for a last-minute traveler persona. The airport logistics response (Step 6c) was the best — concise, actionable, and accurate (Red Line metro to Aeroporto, leave by 2:30 PM). The late-night arrival response was also good with specific restaurant names and hours. The repeated tool call rejections in companion mode and resulting apologetic repetitive text degraded the experience. No expert handoff was attempted despite clear food/photography interests."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "itinerary", "recommend_booking"]
+}

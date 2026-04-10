@@ -1,0 +1,55 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning", "fabrication_detection"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Day 7 itinerary overlap: Chinchero and Machu Picchu items stacked",
+      "description": "When Machu Picchu was added on the day after Ollantaytambo (Turn 4), the AI placed Machu Picchu items on Day 7 where Chinchero items already existed. Day 7 ended up with 11 items from two incompatible day plans. The AI noted the conflict in its response text and asked the user how to resolve it, but the items were still added without resolution.",
+      "expected": "AI should either replace conflicting items or assign Machu Picchu to a new day number to avoid overlap",
+      "actual": "Day 7 has 11 items: both Chinchero (3 items from Turn 2) and Machu Picchu (6 items from Turn 4) coexist on the same day"
+    },
+    {
+      "severity": "P2",
+      "title": "Intermittent 'no response from AI' on longer planning messages",
+      "description": "The first two attempts to send the full Turn 1 Cusco 4-day itinerary message (a longer message with explicit tool call instructions) returned 'no response from AI — please try again'. A shorter version of the same request succeeded, and the full message succeeded on the third attempt after a brief wait. This suggests either a timeout or AI provider issue with longer prompts in planning mode.",
+      "steps_to_reproduce": "Send a message with 4+ days of detailed itinerary requests in CHAT_MODE_PLANNING",
+      "expected": "AI responds with itinerary items",
+      "actual": "Error: 'no response from AI — please try again' on first two attempts"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "AI response pattern on turns 2-5 includes 'I understand the importance of making sure all items are correctly added to your itinerary. However, as per the previous interaction...' — the AI seems to think items were already added and is telling the user there's nothing new to do, even though the tool did fire and items were created. This is confusing because the response says 'no need to add them again' when in fact items were just added.",
+      "severity": "P2",
+      "suggestion": "The AI should acknowledge that it just called create_itinerary_items and confirm what was added, rather than implying items were already present from a previous turn."
+    },
+    {
+      "description": "The fabrication detection retry mechanism appears to trigger on most turns (turns 2-5 show double create_itinerary_items calls), suggesting the AI's first attempt often uses fabrication phrasing that triggers the retry. While the retry successfully catches and corrects this, the extra AI call adds latency and cost.",
+      "severity": "P2",
+      "suggestion": "Investigate why the AI consistently fabricates on the first attempt and needs the retry nudge. The system prompt may need stronger initial guidance to call tools before describing results."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI response text contradicts its own actions: it calls create_itinerary_items successfully, then tells the user 'as per the previous interaction, items were already successfully added' — implying the current turn didn't do anything, when it actually just added items.",
+      "context": "Turns 2-5 all exhibit this pattern. The AI seems confused about whether the current turn or a previous turn added the items.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 6 turns built items correctly with no fabrication bugs detected. create_itinerary_items fired on all 5 content turns (turns 1-5) and correctly did not fire on the summary turn (turn 6). Item count progression: Turn 1: 19, Turn 2: 33, Turn 3: 35, Turn 4: 41, Turn 5: 49, Turn 6: 49. Final total: 49 items across 9 days. No fabrication phrases appeared without a corresponding tool call. The fabrication detection retry mechanism worked reliably, catching and correcting fabrication attempts on turns 2-5 (evidenced by double create_itinerary_items calls). However, the AI's post-tool-call text was misleading — it consistently told the user items were 'already added' from a previous turn rather than acknowledging the current turn's additions. Day 7 has a scheduling conflict (Chinchero + Machu Picchu) that the AI identified but did not resolve. The two initial 'no response from AI' errors on the longer Turn 1 message are concerning but non-blocking."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "fabrication_detection", "multi_turn_context", "fabrication_matches_4"]
+}

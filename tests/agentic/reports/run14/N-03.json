@@ -1,0 +1,102 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "Structural — REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing_flow", "error_handling"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 16 REST endpoint tests passed. Health endpoints respond quickly (all under 5ms). Public guides endpoint returns 25 well-structured guides with all expected fields. Authenticated endpoints correctly enforce auth (401 on missing token). Trip sharing lifecycle works end-to-end: share returns token, public fetch works, unshare invalidates token (404 after revocation). Error handling is solid: invalid UUIDs return 400, nonexistent resources return 404, no 500 errors observed anywhere."
+  },
+  "feature_coverage": ["health_endpoints", "guides_api", "usage_api", "referral_api", "trip_sharing", "error_handling"],
+  "endpoint_responses": {
+    "GET /healthz": {
+      "status": 200,
+      "response_time_ms": 1.2,
+      "body": {"status": "ok"}
+    },
+    "GET /health": {
+      "status": 200,
+      "response_time_ms": 0.8,
+      "body": {"status": "healthy", "components": {"database": {"status": "healthy", "latency_ms": 0}, "server": {"status": "healthy"}}}
+    },
+    "GET /livez": {
+      "status": 200,
+      "response_time_ms": 0.3,
+      "body": {"status": "alive"}
+    },
+    "GET /readyz": {
+      "status": 200,
+      "response_time_ms": 4.0,
+      "body": {"status": "ready"}
+    },
+    "GET /api/guides": {
+      "status": 200,
+      "guide_count": 25,
+      "fields_per_guide": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "cta_text", "cta_url"]
+    },
+    "GET /api/guides/tokyo-food": {
+      "status": 200,
+      "has_content": true,
+      "title_matches_list": true,
+      "fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "content", "cta_text", "cta_url"]
+    },
+    "GET /shared/nonexistent-token-12345": {
+      "status": 404,
+      "body": "not found"
+    },
+    "GET /api/usage": {
+      "status": 200,
+      "fields": ["used", "limit", "tier", "resets_at"],
+      "sample": {"used": 0, "limit": 10, "tier": "free"}
+    },
+    "GET /api/referral": {
+      "status": 200,
+      "fields": ["code", "link", "max_rewards", "referee_reward_granted", "referrer_reward_granted", "rewards_earned", "rewards_remaining", "successful_referrals"],
+      "code_present": true
+    },
+    "POST /api/trips/share": {
+      "status": 200,
+      "fields": ["share_token", "share_url"]
+    },
+    "GET /shared/{valid_token}": {
+      "status": 200,
+      "fields": ["trip.title", "trip.description", "trip.status", "itinerary"],
+      "title_correct": true
+    },
+    "POST /api/trips/unshare": {
+      "status": 200,
+      "body": {"status": "ok"}
+    },
+    "GET /shared/{revoked_token}": {
+      "status": 404,
+      "token_properly_invalidated": true
+    },
+    "GET /api/usage (no auth)": {
+      "status": 401,
+      "body": "unauthorized"
+    },
+    "POST /api/trips/share (no auth)": {
+      "status": 401,
+      "body": "unauthorized"
+    },
+    "POST /api/trips/share (invalid trip_id)": {
+      "status": 404,
+      "body": "trip not found"
+    },
+    "POST /api/trips/share (malformed trip_id)": {
+      "status": 400,
+      "body": "invalid trip_id"
+    }
+  }
+}

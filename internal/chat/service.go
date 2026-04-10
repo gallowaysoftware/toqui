@@ -415,14 +415,19 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 		fullResponse.WriteString(turnText)
 
-		// Accumulate into completeResponse for messageComplete.fullContent.
-		// Reset at the start of each iteration so gate-rejection retries
-		// don't duplicate text (Run 13 N-01 P1). For Gemini (which
-		// re-emits text in continuation turns), the final iteration's
-		// text is already complete. For Claude, intermediate text is
-		// stored separately via the persisted message path.
-		completeResponse.Reset()
+		// Accumulate into completeResponse (never reset) so
+		// messageComplete.fullContent has ALL text across iterations,
+		// not just the final iteration's (Run 11 R-03 P2).
+		//
+		// NOTE: This means gate-rejection retries will duplicate text in
+		// fullContent (Run 12 N-01 P1). We accept this tradeoff because
+		// resetting per-iteration causes worse truncation across 5+
+		// personas (Run 14 regression). The N-01 duplication is cosmetic;
+		// the truncation causes lost chat history.
 		if len(turnText) > 0 {
+			if completeResponse.Len() > 0 {
+				completeResponse.WriteByte(' ')
+			}
 			completeResponse.WriteString(turnText)
 		}
 
@@ -593,7 +598,6 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					ai.Message{Role: "user", Content: "(Automated follow-up: your last turn produced no output. Please answer my previous message — call any tools you need and reply with text.)"},
 				)
 				fullResponse.Reset()
-				completeResponse.Reset()
 				continue
 			}
 			slog.Warn("suppressing empty assistant turn — no content and no tool calls",
@@ -655,7 +659,6 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					ai.Message{Role: "user", Content: nudge},
 				)
 				fullResponse.Reset()
-				completeResponse.Reset()
 				continue
 			}
 		}
@@ -676,7 +679,6 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				ai.Message{Role: "user", Content: "(Automated follow-up: you said you would hand this off to a specialist but did not actually call suggest_expert. Call it now to make the handoff happen — do not reply with text.)"},
 			)
 			fullResponse.Reset()
-			completeResponse.Reset()
 			continue
 		}
 

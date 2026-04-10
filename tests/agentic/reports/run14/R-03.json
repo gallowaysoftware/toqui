@@ -1,0 +1,45 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User Multi-Trip",
+  "status": "COMPLETED",
+  "trip_destination": "Greece / Morocco / New Zealand",
+  "completed_steps": ["auth", "setup_trips", "selection_match", "planning_itinerary", "trip_switch", "companion_context", "new_trip_creation", "verify_3_trips", "sharing", "chat_history", "usage", "complete_trip", "final_state"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "fullContent in messageComplete only contains post-tool-result text",
+      "description": "When the AI calls a tool mid-response (e.g., create_itinerary_items), the fullContent field in the messageComplete event only contains the text generated AFTER the tool result continuation, not the complete response including the initial text before the tool call. In the Santorini planning message, the AI generated a detailed 3-day itinerary description before calling create_itinerary_items, then continued with a confirmation after the tool result. The fullContent only captured the final confirmation sentence, losing the detailed itinerary description.",
+      "expected": "fullContent should contain the complete AI response text from all text segments across the entire stream, including text before and after tool calls.",
+      "actual": "fullContent was 'The items I described for your 3-day Santorini itinerary have already been added to your trip plan. You can view them in your itinerary.' — missing the detailed 3-day itinerary description that preceded the tool call.",
+      "api_command": "buf curl SendMessage with Santorini planning question"
+    },
+    {
+      "severity": "P2",
+      "title": "Transient 'no response from AI' error on first planning message",
+      "description": "The first attempt to send a planning mode message about Santorini returned an error: 'no response from AI — please try again'. The retry succeeded. This may indicate a timeout or AI provider issue under load.",
+      "steps_to_reproduce": "Send a planning mode message immediately after a selection mode trip match. The first call may fail with 'no response from AI'.",
+      "expected": "Message should succeed on the first attempt.",
+      "actual": "First attempt returned error, second attempt succeeded after a brief wait."
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Usage counter shows 2 messages used after sending 4 chat messages (selection Greece, planning Santorini, selection Morocco, companion Marrakech, selection NZ). It's unclear which messages count toward the daily limit — selection mode messages may not count, which is reasonable but not documented to the user.",
+      "severity": "P2",
+      "suggestion": "Consider showing a tooltip or help text explaining which message types count toward the daily limit."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The multi-trip workflow was excellent. The AI correctly matched vague references ('my Greece trip' to 'Greek Islands Hopping'), handled trip switching smoothly, and correctly created a new trip for New Zealand instead of trying to match it to an existing one. The Santorini itinerary was comprehensive with 11 well-structured items across 3 days including meals, sightseeing, activities, and practical timing advice. The only friction was a transient AI error on the first planning message and the fullContent truncation after tool calls."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_switching", "trip_creation_via_chat", "trip_creation_via_api", "vague_reference_matching", "itinerary_creation", "sharing", "unsharing", "chat_history", "usage_stats", "trip_completion"]
+}

@@ -1,0 +1,53 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya — The Organized Barcelona Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": ["auth", "selection", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "ftc_disclosure", "itinerary", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions reports messageCount=0 despite 18 messages in session",
+      "description": "ListChatSessions returned messageCount=0 for the only session, but GetChatHistory for the same session returned 18 messages. The messageCount field is not being updated as messages are sent.",
+      "expected": "messageCount should reflect the actual number of messages in the session (18)",
+      "actual": "messageCount was 0",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions with trip_id"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "AI called create_itinerary_items twice in the 5-day itinerary request -- first call succeeded (14 items), second call was rejected as duplicates (16 items). The AI response said 'has already been saved' which makes it sound confused about what happened. The double-call wastes a tool loop iteration and adds latency.",
+      "severity": "P2",
+      "suggestion": "Improve the system prompt to discourage the AI from re-calling create_itinerary_items after a successful first call, or handle the 'already_exists' status more gracefully."
+    },
+    {
+      "description": "Day 1 itinerary items are not in logical order -- 'Arrive in Barcelona & Hotel Check-in' has orderInDay=0 but appears after dinner items in the API response. The orderInDay field seems inconsistent with the logical sequence of the day.",
+      "severity": "P2",
+      "suggestion": "Sort items by orderInDay in the GetItinerary response, or enforce that the AI assigns orderInDay values that reflect the chronological sequence."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "When asked for restaurant recommendations, the AI proactively called create_itinerary_items to add restaurants directly to the itinerary. While proactive, a user might just want suggestions without committing them to the plan. The persona (Priya) is detail-oriented and might prefer to review before adding.",
+      "context": "Asked 'Can you recommend some good restaurants near my hotel for dinner?' and the AI added 2 restaurant items to Day 1 of the itinerary without asking.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI created the restaurant itinerary items twice (identical items) due to a JSON escaping issue on the first attempt. The second call also tried to create the same items. The tool correctly deduplicated but this wastes a tool loop iteration.",
+      "context": "Two create_itinerary_items toolCalls for the restaurant question with slightly different JSON escaping",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The booking ingestion pipeline worked flawlessly -- all 3 bookings (flight, hotel, activity) were parsed correctly with accurate confirmation codes, provider names, dates, and structured details. The AI accurately answered specific booking questions (Terminal 4, 3:00 PM check-in, June 17 10:00 AM tour). ExtractBookingField returned precise answers for all 5 queries across all 3 booking types. The recommend_booking tool fired appropriately for day trip requests and included FTC affiliate disclosure. Restaurant recommendations correctly did NOT trigger recommend_booking. The 5-day itinerary intelligently incorporated existing bookings at correct times. The only issues were minor: duplicate tool calls, aggressive itinerary item creation without user confirmation, and inconsistent item ordering within days."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "ftc_disclosure", "itinerary_creation", "trip_sharing", "chat_history", "usage_tracking", "trip_lifecycle"]
+}

@@ -1,0 +1,40 @@
+{
+  "persona_id": "N-14",
+  "persona_name": "Status Machine Enforcement (Structural)",
+  "status": "COMPLETED",
+  "trip_destination": "",
+  "run_id": "run-14",
+  "completed_steps": [
+    "auth",
+    "phase1_create_default_status",
+    "phase1_create_active_status",
+    "phase1_planning_to_active",
+    "phase1_active_to_completed_trip1",
+    "phase1_active_to_completed_trip2",
+    "phase2_completed_to_planning_trip1",
+    "phase2_completed_to_active_trip1",
+    "phase2_completed_to_planning_trip2",
+    "phase3_create_with_completed",
+    "phase4_get_nonexistent_uuid",
+    "phase4_get_invalid_uuid"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 11 status machine enforcement tests passed. PR #198 sentinel-error mapping is correct: invalid transitions return failed_precondition, invalid initial status returns invalid_argument. PR #197 create-with-ACTIVE feature works. Phase 4 regression guards (not_found and invalid_argument for bad UUIDs) also pass."
+  },
+  "feature_coverage": [
+    "status_machine_enforcement",
+    "create_trip_active_status",
+    "status_error_codes"
+  ]
+}

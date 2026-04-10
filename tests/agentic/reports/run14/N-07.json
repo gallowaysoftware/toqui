@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya Sharma — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI called create_itinerary_items twice with identical 16-item payload. The backend correctly deduplicated (second call returned 0 created, 16 skipped), but this wastes a tool loop iteration and adds latency to the streaming response.",
+      "severity": "P2",
+      "suggestion": "After receiving a successful tool result from create_itinerary_items, the AI should not re-call with the same items. Consider adding dedup logic in the system prompt or tool result handling."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert handoff never triggered despite explicit user requests",
+      "context": "User asked twice for a Japan food expert (msg 4: 'Can I talk to a Japan food expert?', msg 5: 'Can you connect me with an expert who specializes in Japanese food culture?'). The AI never called suggest_expert. In msg 5, it responded 'you are already speaking with me, Haruki, your dedicated Japan food expert' without any personaSwitch event. No suggest_expert tool call was made in any of the 7 messages.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Peanuts incorrectly listed alongside tree nuts in allergy card",
+      "context": "In the initial response, the AI's Japanese allergy card included peanuts (落花生) in the tree nut section. Peanuts are legumes, not tree nuts. While including peanuts is arguably safer (over-cautious), it is technically inaccurate for someone who specifically has a tree nut allergy but not a peanut allergy. The persona did not specify a peanut allergy.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional understanding of compound dietary restrictions in Japan. It correctly identified hidden gluten sources (soy sauce, fu, miso), non-vegan ingredients (dashi/bonito), and cross-contamination risks. It correctly ASKED about sesame allergy rather than assuming one. Restaurant recommendations were specific and actionable (AIN SOPH, T's TanTan, Saido, Shigetsu). The Yakkan Shoumei EpiPen import process was thoroughly explained. Companion mode responses were concise and practical. The only significant weakness was the failure to trigger an expert persona handoff despite explicit requests — the AI claimed to already be an expert without using the suggest_expert tool. The AI treated this as a serious safety matter, not a lifestyle preference, which is exactly the right approach."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "itinerary_creation"]
+}

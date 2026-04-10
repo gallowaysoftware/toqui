@@ -1,0 +1,194 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extractor",
+  "run": 14,
+  "date": "2026-04-10",
+  "duration_minutes": 5,
+  "trip_id": "7c1bb569-fd03-463b-a8db-d913c85b0b71",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_issues": [],
+  "tool_failures": [],
+  "test_results": {
+    "phase1_ingest": {
+      "status": "PASS",
+      "details": "All 7 booking artifacts ingested successfully",
+      "bookings": [
+        {
+          "artifact": "flight-confirmation.txt",
+          "booking_id": "460e4d37-33ac-4345-b962-648a1844dcc4",
+          "type_submitted": "BOOKING_TYPE_FLIGHT",
+          "type_stored": "BOOKING_TYPE_FLIGHT",
+          "title": "Flight to Barcelona",
+          "status": "PASS"
+        },
+        {
+          "artifact": "hotel-confirmation.txt",
+          "booking_id": "80692bf5-ca8a-426b-9712-88444e4bcba0",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "title": "Booking Confirmed - Hotel Arts Barcelona",
+          "status": "PASS"
+        },
+        {
+          "artifact": "activity-confirmation.txt",
+          "booking_id": "080d127d-831d-4a5d-8954-e4aa1e905d74",
+          "type_submitted": "BOOKING_TYPE_ACTIVITY",
+          "type_stored": "BOOKING_TYPE_ACTIVITY",
+          "title": "Sagrada Familia: Skip-the-Line Guided Tour with Tower Access",
+          "status": "PASS"
+        },
+        {
+          "artifact": "car-rental-confirmation.txt",
+          "booking_id": "03aeb05e-ffb8-4c11-8728-b347b357445a",
+          "type_submitted": "BOOKING_TYPE_CAR_RENTAL",
+          "type_stored": "BOOKING_TYPE_CAR_RENTAL",
+          "title": "Hertz Car Rental Reservation for Elena Martinez",
+          "status": "PASS"
+        },
+        {
+          "artifact": "hostel-booking.txt",
+          "booking_id": "c2193008-3339-4954-a26e-b18163c70fc4",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "title": "Hostelworld Booking Confirmed - VBH-20260601 (3 Properties)",
+          "status": "PASS"
+        },
+        {
+          "artifact": "ryokan-booking.txt",
+          "booking_id": "f0564839-42f5-46ac-a7a2-c091040604e6",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "title": "Reservation Confirmed - Gion Nanba Ryokan, Kyoto",
+          "status": "PASS"
+        },
+        {
+          "artifact": "tour-booking.txt",
+          "booking_id": "bba12f54-a8a4-43d6-be10-db60d287307a",
+          "type_submitted": "BOOKING_TYPE_TOUR",
+          "type_stored": "BOOKING_TYPE_TOUR",
+          "title": "Oaxaca Street Food & Markets Walking Tour",
+          "status": "PASS"
+        }
+      ]
+    },
+    "phase2_list": {
+      "status": "PASS",
+      "total_bookings": 7,
+      "all_have_raw_source": true,
+      "all_types_match": true
+    },
+    "phase3_extract": {
+      "status": "PASS",
+      "extractions": [
+        {
+          "test": 9,
+          "booking": "flight",
+          "question": "What terminal and what time does my outbound flight depart?",
+          "expected": "Terminal 4, 6:45 PM EDT",
+          "answer": "Your outbound flight, DL 472, departs from Terminal 4 at New York (JFK) at 6:45 PM EDT.",
+          "extracted_fields": {
+            "departure_terminal": "Terminal 4",
+            "departure_time": "6:45 PM EDT"
+          },
+          "accurate": true,
+          "status": "PASS"
+        },
+        {
+          "test": 10,
+          "booking": "hotel",
+          "question": "What is the cancellation policy?",
+          "expected": "Free cancellation until June 12 2026, after that first night EUR 289 charged, no-show full stay",
+          "answer": "You can cancel for free until June 12, 2026, at 11:59 PM CEST. If you cancel after June 12, the first night (EUR 289.00) will be charged. In case of a no-show, the full stay will be charged.",
+          "extracted_fields": {
+            "cancellation_policy": "Free cancellation until June 12, 2026 (11:59 PM CEST). Cancellation after June 12: first night charged (EUR 289.00). No-show: full stay charged."
+          },
+          "accurate": true,
+          "status": "PASS"
+        },
+        {
+          "test": 11,
+          "booking": "activity",
+          "question": "What is the meeting point and what should I bring?",
+          "expected": "Nativity Facade entrance, Carrer de la Marina side; bring photo ID, comfortable shoes, sunscreen, water, confirmation, shoulders/knees covered",
+          "answer": "The meeting point is at the Nativity Facade entrance (Carrer de la Marina side), specifically C/ de la Marina, 253, 08013 Barcelona. You should look for a guide holding an orange \"Barcelona Expert Tours\" sign and arrive 15 minutes early. What to bring includes: a valid photo ID (passport or national ID), comfortable walking shoes, sunscreen and water bottle, this confirmation (printed or on your phone), and ensure your shoulders and knees are covered (dress code enforced).",
+          "extracted_fields": {
+            "meeting_point": "Nativity Facade entrance (Carrer de la Marina side), C/ de la Marina, 253, 08013 Barcelona",
+            "what_to_bring": "Valid photo ID, comfortable walking shoes, sunscreen and water bottle, confirmation, shoulders and knees covered"
+          },
+          "accurate": true,
+          "status": "PASS"
+        },
+        {
+          "test": 12,
+          "booking": "car_rental",
+          "question": "What insurance is included and what is the fuel policy?",
+          "expected": "Super CDW (zero excess) + Theft Protection; fuel Full-to-Full",
+          "answer": "The included insurance consists of Super CDW (zero excess) and Theft Protection. The fuel policy is Full-to-Full.",
+          "extracted_fields": {
+            "fuel_policy": "Full-to-Full",
+            "insurance_included": "Super CDW (zero excess), Theft Protection"
+          },
+          "accurate": true,
+          "status": "PASS"
+        },
+        {
+          "test": 13,
+          "booking": "hostel",
+          "question": "What time is check-in at the Hanoi hostel?",
+          "expected": "2:00 PM - 10:00 PM (Hanoi-specific, not confused with Hue or Saigon)",
+          "answer": "Check-in at Hanoi Old Quarter Hostel is between 2:00 PM and 10:00 PM.",
+          "extracted_fields": {},
+          "accurate": true,
+          "hanoi_disambiguated": true,
+          "status": "PASS",
+          "notes": "Correctly identified Hanoi Old Quarter Hostel specifically, did not confuse with Hue (1:00 PM-11:00 PM) or Saigon (2:00 PM-midnight)"
+        },
+        {
+          "test": 14,
+          "booking": "ryokan",
+          "question": "What meals are included and what time is dinner?",
+          "expected": "Kaiseki dinner + traditional Japanese breakfast; dinner at 6:00 PM or 6:30 PM",
+          "answer": "The included meals are Kaiseki Dinner and Traditional Japanese Breakfast. Dinner is served in-room at either 6:00 PM or 6:30 PM, with guests needing to confirm their preference at check-in.",
+          "extracted_fields": {
+            "dinner_time": "6:00 PM or 6:30 PM",
+            "included_meals": "Kaiseki Dinner, Traditional Japanese Breakfast"
+          },
+          "accurate": true,
+          "status": "PASS"
+        },
+        {
+          "test": 15,
+          "booking": "tour",
+          "question": "How many food tastings are included and what dietary accommodations are available?",
+          "expected": "12 tastings; vegetarian, gluten-free with advance notice, vegan substitutions for most stops",
+          "answer": "There are 12 food tastings included. The tour can accommodate vegetarian and gluten-free diets with advance notice, and vegan substitutions are available for most stops.",
+          "extracted_fields": {
+            "dietary_accommodations": "vegetarian, gluten-free, vegan (substitutions for most stops)",
+            "food_tastings_count": "12"
+          },
+          "accurate": true,
+          "status": "PASS"
+        }
+      ]
+    },
+    "phase4_negative": {
+      "status": "PASS",
+      "test": 16,
+      "booking": "flight",
+      "question": "What is the hotel wifi password?",
+      "answer": "I'm sorry, but the provided booking confirmation does not contain any information about a hotel wifi password. It is a flight booking confirmation.",
+      "hallucinated": false,
+      "correctly_refused": true
+    }
+  },
+  "evaluation": {
+    "ingestion_accuracy": 5,
+    "field_extraction_accuracy": 5,
+    "multi_property_disambiguation": 5,
+    "hallucination_resistance": 5,
+    "type_classification": 5,
+    "overall": 5
+  },
+  "summary": "Perfect run. All 7 booking artifacts ingested successfully with correct types. All 7 field extraction queries returned accurate, specific answers cross-referenced against the raw artifacts. The hostel multi-property disambiguation worked correctly — Hanoi check-in time (2:00 PM-10:00 PM) was isolated without confusion with Hue (1:00 PM-11:00 PM) or Saigon (2:00 PM-midnight). The negative test correctly refused to fabricate hotel wifi info from a flight confirmation. No bugs, no hallucinations, no vague non-answers."
+}

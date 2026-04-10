@@ -1,0 +1,32 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "setup_create_trip", "setup_seed_itinerary", "setup_activate", "companion_msg1_weather", "companion_msg2_lunch", "companion_msg3_tram28", "companion_msg4_directions", "companion_msg5_tipping", "companion_msg6_recommend_tonight", "final_itinerary_check"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 6",
+      "description": "Message 6 ('Recommend something fun to do tonight.') triggered create_itinerary_items tool call. The AI attempted to add a 'Fado Show with Dinner at Clube de Fado' item to day 4. The backend guardrail correctly rejected the call with status 'not_needed' and the itinerary was NOT mutated, but the AI should not have called the tool at all on an informational query.",
+      "steps_to_reproduce": "1. Create trip, seed 12-item itinerary, activate trip. 2. In companion mode, send: 'Recommend something fun to do tonight.' 3. Observe toolCall event with toolName=create_itinerary_items in the stream.",
+      "expected": "No itinerary tool calls on informational 'recommend' query",
+      "actual": "create_itinerary_items called with 1 item (Fado show). Backend guardrail rejected it.",
+      "api_command": "buf curl SendMessage with content='Recommend something fun to do tonight.' mode=CHAT_MODE_COMPANION"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "All 6 companion-mode informational queries received helpful, concise answers (69-152 words). The AI correctly answered questions about weather, restaurants, transport, etiquette, and nightlife without modifying the itinerary. However, message 6 ('recommend something fun tonight') still triggered create_itinerary_items — the backend guardrail caught it and prevented mutation, but the AI prompt discipline is not fully preventing tool calls on recommendation queries. The itinerary remained intact at 12 items throughout. Score is 4 instead of 5 due to the one tool over-fire on msg 6."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "itinerary_guardrail"]
+}
