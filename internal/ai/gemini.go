@@ -19,51 +19,79 @@ const vertexAIScope = "https://www.googleapis.com/auth/cloud-platform"
 
 // Gemini model defaults per tier. Override via AI_GEMINI_MODEL_FAST, AI_GEMINI_MODEL_SMART, AI_GEMINI_MODEL_BEST.
 //
-// Using Gemini 2.5 (GA). Gemini 3 Preview models are not yet accessible
-// on Vertex AI (404 on all regions as of April 2026). Will upgrade to
-// Gemini 3 when it goes GA — the env var overrides make this a config-only
-// change. Gemini 2.5 retirement is no earlier than Oct 16, 2026.
+// Gemini 3 Preview models via the Developer API (generativelanguage.googleapis.com).
+// Falls back to Gemini 2.5 GA on Vertex AI when no API key is configured.
 var geminiModels = map[ModelTier]string{
-	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-2.5-flash-lite"),
-	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-2.5-flash"),
-	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-2.5-pro"),
+	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-3.1-flash-lite-preview"),
+	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-3-flash-preview"),
+	ModelTierBest:  getEnvOrDefault("AI_GEMINI_MODEL_BEST", "gemini-3.1-pro-preview"),
 }
 
-// GeminiProvider implements the Provider interface using Google Vertex AI.
-// Authentication uses Application Default Credentials (ADC), the same
-// mechanism used for Secret Manager resolution — no API keys needed.
+// GeminiProvider implements the Provider interface using either the Gemini
+// Developer API (preferred, supports Gemini 3) or Vertex AI (fallback,
+// Gemini 2.5 only).
+//
+// Developer API: generativelanguage.googleapis.com — uses API key
+// Vertex AI:     {region}-aiplatform.googleapis.com — uses ADC/OAuth
 type GeminiProvider struct {
+	// Developer API fields (preferred)
+	apiKey string
+
+	// Vertex AI fields (fallback)
 	projectID   string
 	location    string
 	tokenSource oauth2.TokenSource
-	model       string
-	client      *http.Client
+
+	// Shared
+	model     string
+	client    *http.Client
+	useDevAPI bool
 }
 
-// NewGeminiProvider creates a Vertex AI Gemini provider.
-// It resolves Application Default Credentials at construction time.
-// Works with:
-//   - gcloud auth application-default login (local dev)
-//   - GOOGLE_APPLICATION_CREDENTIALS env var (service account JSON)
-//   - GCE/Cloud Run metadata server (production)
-func NewGeminiProvider(projectID, location string) (*GeminiProvider, error) {
-	ctx := context.Background()
-	creds, err := google.FindDefaultCredentials(ctx, vertexAIScope)
-	if err != nil {
-		return nil, fmt.Errorf("find default credentials for Vertex AI: %w", err)
+// NewGeminiProvider creates a Gemini provider. It prefers the Developer API
+// (when apiKey is set) for Gemini 3 access. Falls back to Vertex AI when
+// only projectID is available.
+func NewGeminiProvider(apiKey, projectID, location string) (*GeminiProvider, error) {
+	p := &GeminiProvider{
+		model:  geminiModels[ModelTierSmart],
+		client: &http.Client{Timeout: 5 * time.Minute},
 	}
 
-	if location == "" {
-		location = "us-central1"
+	if apiKey != "" {
+		// Developer API — supports Gemini 3
+		p.apiKey = apiKey
+		p.useDevAPI = true
+		slog.Info("gemini provider: using Developer API (Gemini 3)",
+			"model", p.model,
+		)
+		return p, nil
 	}
 
-	return &GeminiProvider{
-		projectID:   projectID,
-		location:    location,
-		tokenSource: creds.TokenSource,
-		model:       "gemini-2.5-flash",
-		client:      &http.Client{Timeout: 5 * time.Minute},
-	}, nil
+	if projectID != "" {
+		// Vertex AI fallback — Gemini 2.5 only
+		ctx := context.Background()
+		creds, err := google.FindDefaultCredentials(ctx, vertexAIScope)
+		if err != nil {
+			return nil, fmt.Errorf("find default credentials for Vertex AI: %w", err)
+		}
+		if location == "" {
+			location = "us-central1"
+		}
+		p.projectID = projectID
+		p.location = location
+		p.tokenSource = creds.TokenSource
+		p.useDevAPI = false
+		// Override to 2.5 models for Vertex AI
+		p.model = "gemini-2.5-flash"
+		slog.Info("gemini provider: using Vertex AI (Gemini 2.5 fallback)",
+			"project", projectID,
+			"location", location,
+			"model", p.model,
+		)
+		return p, nil
+	}
+
+	return nil, fmt.Errorf("gemini provider requires either GEMINI_API_KEY or VERTEX_AI_PROJECT_ID")
 }
 
 func (g *GeminiProvider) Name() string {
@@ -79,10 +107,7 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	}
 
 	model := g.resolveModel(req)
-	url := fmt.Sprintf(
-		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent?alt=sse",
-		g.location, g.projectID, g.location, model,
-	)
+	url := g.buildURL(model)
 
 	cfg := defaultRetryConfig()
 	resp, err := doWithRetry(ctx, cfg, "gemini", func() (*http.Response, error) { //nolint:bodyclose // body is closed in the goroutine below; doWithRetry closes on retries
@@ -90,15 +115,17 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
-
-		// Get Bearer token from ADC (auto-refreshes).
-		token, err := g.tokenSource.Token()
-		if err != nil {
-			return nil, fmt.Errorf("get access token: %w", err)
-		}
-
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+		if !g.useDevAPI {
+			// Vertex AI: Bearer token from ADC
+			token, err := g.tokenSource.Token()
+			if err != nil {
+				return nil, fmt.Errorf("get access token: %w", err)
+			}
+			httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		}
+		// Developer API: key is already in the URL query string
 
 		return g.client.Do(httpReq)
 	})
@@ -114,6 +141,20 @@ func (g *GeminiProvider) ChatStream(ctx context.Context, req *ChatRequest) (<-ch
 	}()
 
 	return ch, nil
+}
+
+// buildURL constructs the streaming endpoint URL for the configured backend.
+func (g *GeminiProvider) buildURL(model string) string {
+	if g.useDevAPI {
+		return fmt.Sprintf(
+			"https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s",
+			model, g.apiKey,
+		)
+	}
+	return fmt.Sprintf(
+		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent?alt=sse",
+		g.location, g.projectID, g.location, model,
+	)
 }
 
 // resolveModel returns the Gemini model identifier for the request's tier.
@@ -168,18 +209,23 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 				} else {
 					args = map[string]any{}
 				}
-				parts = append(parts, map[string]any{
+				fcPart := map[string]any{
 					"functionCall": map[string]any{
 						"name": tc.Name,
 						"args": args,
 					},
-				})
+				}
+				// Gemini 3 thought signatures: if the tool call has a thought
+				// signature from a previous response, include it so the model
+				// can maintain reasoning continuity across turns.
+				if tc.ThoughtSignature != "" {
+					fcPart["thoughtSignature"] = tc.ThoughtSignature
+				}
+				parts = append(parts, fcPart)
 			}
 		} else if len(msg.ToolResults) > 0 {
 			// User message with function responses.
-			// Gemini matches by function name (no tool_call_id concept).
 			for _, tr := range msg.ToolResults {
-				// Try to parse content as JSON object; fall back to wrapping as {"result": content}.
 				var response any
 				if err := json.Unmarshal([]byte(tr.Content), &response); err != nil {
 					response = map[string]any{"result": tr.Content}
@@ -220,7 +266,7 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 	}
 	body["contents"] = contents
 
-	// Tools (function declarations + optional grounding tools).
+	// Tools (function declarations).
 	if len(req.Tools) > 0 {
 		funcDecls := make([]map[string]any, 0, len(req.Tools))
 		for _, t := range req.Tools {
@@ -228,7 +274,6 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 				"name":        t.Name,
 				"description": t.Description,
 			}
-			// Parameters is already JSON Schema — parse to object for Gemini.
 			var params any
 			if err := json.Unmarshal(t.Parameters, &params); err == nil {
 				funcDecl["parameters"] = params
@@ -236,11 +281,6 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 			funcDecls = append(funcDecls, funcDecl)
 		}
 
-		// NOTE: Google Search and Maps grounding tools cannot be mixed
-		// with functionDeclarations in the same tools array on Gemini 2.5
-		// ("Multiple tools are supported only when they are all search
-		// tools"). Grounding will be enabled when we upgrade to Gemini 3
-		// or via a separate non-function-calling request path.
 		body["tools"] = []map[string]any{
 			{"functionDeclarations": funcDecls},
 		}
@@ -278,7 +318,6 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 			return
 		}
 		if done {
-			// Stream ended. Determine stop reason from what we saw.
 			stopReason := "end_turn"
 			if hadFunctionCall {
 				stopReason = "tool_use"
@@ -296,7 +335,12 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 						FunctionCall *struct {
 							Name string         `json:"name"`
 							Args map[string]any `json:"args"`
+							ID   string         `json:"id"`
 						} `json:"functionCall"`
+						// Gemini 3 thought signatures — must be captured and
+						// circulated back in follow-up requests for reasoning
+						// continuity across tool-call turns.
+						ThoughtSignature string `json:"thoughtSignature"`
 					} `json:"parts"`
 				} `json:"content"`
 				FinishReason string `json:"finishReason"`
@@ -305,13 +349,14 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 				PromptTokenCount     int `json:"promptTokenCount"`
 				CandidatesTokenCount int `json:"candidatesTokenCount"`
 				TotalTokenCount      int `json:"totalTokenCount"`
+				ThoughtsTokenCount   int `json:"thoughtsTokenCount"`
 			} `json:"usageMetadata"`
 		}
 		if err := json.Unmarshal([]byte(data), &resp); err != nil {
 			continue
 		}
 
-		// Parse usage metadata (appears in chunks, last one has final counts).
+		// Parse usage metadata (last chunk has final counts).
 		if resp.UsageMetadata != nil {
 			usage = &Usage{
 				InputTokens:  resp.UsageMetadata.PromptTokenCount,
@@ -325,7 +370,6 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 
 		candidate := resp.Candidates[0]
 
-		// Process parts: text deltas and function calls.
 		for _, part := range candidate.Content.Parts {
 			if part.Text != "" {
 				ch <- Event{Type: EventTextDelta, Text: part.Text}
@@ -334,35 +378,35 @@ func (g *GeminiProvider) processStream(ctx context.Context, body io.Reader, ch c
 			if part.FunctionCall != nil {
 				hadFunctionCall = true
 
-				// Marshal args object to JSON string for our unified ToolCall format.
 				argsJSON, err := json.Marshal(part.FunctionCall.Args)
 				if err != nil {
 					argsJSON = []byte("{}")
 				}
 
-				// Gemini has no tool call IDs — generate a synthetic one.
+				// Use Gemini's native ID if provided (Gemini 3), otherwise synthetic
+				callID := part.FunctionCall.ID
+				if callID == "" {
+					callID = "gemini-" + uuid.New().String()
+				}
+
 				ch <- Event{
 					Type: EventToolCall,
 					Tool: &ToolCall{
-						ID:        "gemini-" + uuid.New().String(),
-						Name:      part.FunctionCall.Name,
-						Arguments: string(argsJSON),
+						ID:               callID,
+						Name:             part.FunctionCall.Name,
+						Arguments:        string(argsJSON),
+						ThoughtSignature: part.ThoughtSignature,
 					},
 				}
 			}
 		}
 
-		// Check finish reason. Gemini uses "STOP" for both normal completion
-		// and tool calls — we distinguish by whether a functionCall was present.
 		if candidate.FinishReason != "" && candidate.FinishReason != "FINISH_REASON_UNSPECIFIED" {
 			slog.Info("gemini stream finished",
 				"finish_reason", candidate.FinishReason,
 				"had_function_call", hadFunctionCall,
 			)
 
-			// MAX_TOKENS means the model was truncated mid-generation. Treat this
-			// as an error so the caller can surface a retry prompt rather than
-			// silently returning an incomplete (possibly empty) response.
 			if candidate.FinishReason == "MAX_TOKENS" {
 				ch <- Event{
 					Type:  EventError,

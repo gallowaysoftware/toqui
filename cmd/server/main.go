@@ -138,11 +138,12 @@ func main() {
 		var geminiProvider ai.Provider
 		var claudeProvider ai.Provider
 
-		if gp, err := ai.NewGeminiProvider(vertexProjectID, cfg.VertexAILocation); err != nil {
+		// Prefer Developer API (Gemini 3) when API key is available;
+		// fall back to Vertex AI (Gemini 2.5) otherwise.
+		if gp, err := ai.NewGeminiProvider(cfg.GeminiAPIKey, vertexProjectID, cfg.VertexAILocation); err != nil {
 			slog.Warn("failed to initialize Gemini provider", "error", err)
 		} else {
 			geminiProvider = gp
-			slog.Info("AI provider initialized", "provider", "gemini", "project", vertexProjectID, "location", cfg.VertexAILocation)
 		}
 
 		if cfg.AnthropicAPIKey != "" {

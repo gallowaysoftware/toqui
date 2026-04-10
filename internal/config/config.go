@@ -37,8 +37,13 @@ type Config struct {
 	// AI providers
 	AnthropicAPIKey string
 
-	// Vertex AI (Gemini fallback) — uses ADC, no API key needed
-	VertexAIProjectID string // GCP project for Vertex AI calls
+	// Gemini — supports two backends:
+	// 1. Developer API (generativelanguage.googleapis.com) — uses API key, supports Gemini 3
+	// 2. Vertex AI (aiplatform.googleapis.com) — uses ADC, Gemini 2.5 only
+	// When GeminiAPIKey is set, the Developer API is used (preferred for Gemini 3).
+	// When only VertexAIProjectID is set, Vertex AI is used as fallback.
+	GeminiAPIKey      string // Gemini Developer API key (from Secret Manager)
+	VertexAIProjectID string // GCP project for Vertex AI calls (fallback)
 	VertexAILocation  string // Region (default: us-central1)
 
 	// Cost control
@@ -139,6 +144,7 @@ func Load() (*Config, error) {
 		FacebookRedirectURI:            getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
 		JWTSecret:                      getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		AnthropicAPIKey:                os.Getenv("ANTHROPIC_API_KEY"),
+		GeminiAPIKey:                   os.Getenv("GEMINI_API_KEY"),
 		VertexAIProjectID:              os.Getenv("VERTEX_AI_PROJECT_ID"),
 		VertexAILocation:               getEnv("VERTEX_AI_LOCATION", "us-central1"),
 		DailyAITokenBudget:             getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),

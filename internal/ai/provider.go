@@ -84,6 +84,10 @@ type ToolCall struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"` // JSON string
+	// ThoughtSignature is a Gemini 3 opaque token that must be circulated
+	// back in follow-up messages for reasoning continuity across tool-call
+	// turns. Empty for Gemini 2.5 and Claude.
+	ThoughtSignature string `json:"thought_signature,omitempty"`
 }
 
 type ToolResult struct {

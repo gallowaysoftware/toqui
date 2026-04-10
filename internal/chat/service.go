@@ -791,16 +791,16 @@ func estimateCostUSD(provider string, tier ai.ModelTier, inputTokens, outputToke
 	case "gemini":
 		switch tier {
 		case ai.ModelTierFast:
-			// Gemini 2.5 Flash-Lite
-			inputRate, outputRate = 0.10, 0.40
+			// Gemini 3.1 Flash-Lite Preview
+			inputRate, outputRate = 0.25, 1.50
 		case ai.ModelTierSmart:
-			// Gemini 2.5 Flash
-			inputRate, outputRate = 0.30, 2.50
+			// Gemini 3 Flash Preview
+			inputRate, outputRate = 0.50, 3.00
 		case ai.ModelTierBest:
-			// Gemini 2.5 Pro
-			inputRate, outputRate = 1.25, 10.00
+			// Gemini 3.1 Pro Preview
+			inputRate, outputRate = 2.00, 12.00
 		default:
-			inputRate, outputRate = 0.10, 0.40
+			inputRate, outputRate = 0.25, 1.50
 		}
 	default:
 		return 0
