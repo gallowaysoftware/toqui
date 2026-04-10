@@ -338,6 +338,24 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		},
 	)
 
+	// In selection mode, add a deferred destination resolver so
+	// suggest_expert can resolve the country after create_trip fires
+	// in the same turn (Run 12 R-16 P2: no_destination error).
+	if isSelection {
+		suggestExpertTool = suggestExpertTool.WithDeferredDestination(func() string {
+			mu.Lock()
+			defer mu.Unlock()
+			if createdTripID != "" {
+				if id, parseErr := uuid.Parse(createdTripID); parseErr == nil {
+					if t, getErr := h.tripSvc.GetByID(context.Background(), userID, id); getErr == nil && t.DestinationCountry.Valid {
+						return t.DestinationCountry.String
+					}
+				}
+			}
+			return ""
+		})
+	}
+
 	// Wrap suggest_expert for free-tier users to enforce 3-message teaser
 	var expertTool tools.Tool = suggestExpertTool
 	if !userTier.IsPro() && !tripUnlocked {

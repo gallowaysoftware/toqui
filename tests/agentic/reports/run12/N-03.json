@@ -1,0 +1,119 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "Structural - REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": [
+    "auth",
+    "health_endpoints",
+    "public_endpoints",
+    "authenticated_endpoints",
+    "trip_sharing_lifecycle",
+    "error_handling"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural REST endpoint test only - no AI interaction evaluated. All 16 test cases passed: 4 health endpoints, 3 public endpoints, 2 authenticated endpoints, 4 sharing lifecycle steps, and 3 error handling cases. Every endpoint returned well-formed JSON with correct HTTP status codes."
+  },
+  "feature_coverage": [
+    "healthz",
+    "health_detailed",
+    "livez",
+    "readyz",
+    "guides_list",
+    "guides_detail",
+    "shared_trip_invalid_token",
+    "usage",
+    "referral",
+    "trip_share",
+    "shared_trip_valid_token",
+    "trip_unshare",
+    "shared_trip_after_unshare",
+    "usage_no_auth",
+    "share_no_auth",
+    "share_invalid_trip"
+  ],
+  "endpoint_shapes": {
+    "GET /healthz": {
+      "status_code": 200,
+      "response": {"status": "ok"},
+      "latency_ms": 1.1
+    },
+    "GET /health": {
+      "status_code": 200,
+      "response_fields": ["status", "components.database.status", "components.database.latency_ms", "components.server.status", "components.server.uptime_seconds"],
+      "latency_ms": 0.6
+    },
+    "GET /livez": {
+      "status_code": 200,
+      "response": {"status": "alive"},
+      "latency_ms": 0.4
+    },
+    "GET /readyz": {
+      "status_code": 200,
+      "response": {"status": "ready"},
+      "latency_ms": 0.8
+    },
+    "GET /api/guides": {
+      "status_code": 200,
+      "response_fields": ["guides[]", "total"],
+      "guides_count": 25,
+      "guide_fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "cta_text", "cta_url"]
+    },
+    "GET /api/guides/{slug}": {
+      "status_code": 200,
+      "response_fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "content", "cta_text", "cta_url"]
+    },
+    "GET /shared/{invalid}": {
+      "status_code": 404,
+      "response": "not found"
+    },
+    "GET /api/usage": {
+      "status_code": 200,
+      "response_fields": ["used", "limit", "tier", "resets_at"],
+      "sample": {"used": 0, "limit": 10, "tier": "free"}
+    },
+    "GET /api/referral": {
+      "status_code": 200,
+      "response_fields": ["code", "link", "max_rewards", "referee_reward_granted", "referrer_reward_granted", "rewards_earned", "rewards_remaining", "successful_referrals"]
+    },
+    "POST /api/trips/share": {
+      "status_code": 200,
+      "response_fields": ["share_token", "share_url"]
+    },
+    "GET /shared/{valid_token}": {
+      "status_code": 200,
+      "response_fields": ["trip.title", "trip.description", "trip.destination_country", "trip.status", "itinerary[]"]
+    },
+    "POST /api/trips/unshare": {
+      "status_code": 200,
+      "response": {"status": "ok"}
+    },
+    "GET /shared/{revoked_token}": {
+      "status_code": 404,
+      "response": "not found"
+    },
+    "GET /api/usage (no auth)": {
+      "status_code": 401,
+      "response": "unauthorized"
+    },
+    "POST /api/trips/share (no auth)": {
+      "status_code": 401,
+      "response": "unauthorized"
+    },
+    "POST /api/trips/share (invalid trip)": {
+      "status_code": 404,
+      "response": "trip not found"
+    }
+  }
+}

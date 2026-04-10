@@ -1,0 +1,74 @@
+{
+  "persona_id": "N-04",
+  "persona_name": "Booking Field Extractor",
+  "status": "COMPLETED",
+  "trip_destination": "Multiple Destinations",
+  "completed_steps": ["auth", "create_trip", "ingest_7_bookings", "list_bookings", "extract_flight", "extract_hotel", "extract_activity", "extract_car_rental", "extract_hostel", "extract_ryokan", "extract_tour", "negative_test"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 7 booking artifacts were ingested successfully with correct type classification, provider names, and confirmation codes. ExtractBookingField returned accurate, specific answers for all 7 targeted questions, correctly referencing exact terminal numbers, times, cancellation deadlines, insurance types, fuel policies, meal schedules, and tasting counts directly from the raw text. The Hanoi hostel disambiguation was perfect -- the AI isolated Hanoi-specific check-in times without confusing them with the Hue or Saigon properties. The negative test (asking about hotel wifi on a flight booking) was handled correctly with no hallucination. This is an excellent booking management system."
+  },
+  "feature_coverage": ["ingest_booking", "list_bookings", "extract_booking_field", "create_trip"],
+  "extraction_results": {
+    "Q9_flight_terminal_and_time": {
+      "question": "What terminal and what time does my outbound flight depart?",
+      "answer": "Your outbound flight departs from New York (JFK) Terminal 4 at 6:45 PM EDT.",
+      "expected_contains": ["Terminal 4", "6:45 PM"],
+      "correct": true
+    },
+    "Q10_hotel_cancellation": {
+      "question": "What is the cancellation policy?",
+      "answer": "You can cancel for free until June 12, 2026 (11:59 PM CEST). If you cancel after this date, the first night's charge (EUR 289.00) will be applied. In case of a no-show, the full stay will be charged.",
+      "expected_contains": ["June 12", "EUR 289.00", "no-show"],
+      "correct": true
+    },
+    "Q11_activity_meeting_and_items": {
+      "question": "What is the meeting point and what should I bring?",
+      "answer": "Your meeting point is at the Nativity Facade entrance (Carrer de la Marina side), at C/ de la Marina, 253, 08013 Barcelona. Look for the guide holding an orange \"Barcelona Expert Tours\" sign. You should bring a valid photo ID (passport or national ID), comfortable walking shoes, sunscreen and a water bottle, and this confirmation (printed or on your phone). Shoulders and knees must be covered.",
+      "expected_contains": ["Nativity Facade", "photo ID", "comfortable walking shoes", "sunscreen"],
+      "correct": true
+    },
+    "Q12_car_insurance_and_fuel": {
+      "question": "What insurance is included and what's the fuel policy?",
+      "answer": "The included insurance consists of Super CDW (zero excess) and Theft Protection. The fuel policy is Full-to-Full.",
+      "expected_contains": ["Super CDW", "Theft Protection", "Full-to-Full"],
+      "correct": true
+    },
+    "Q13_hostel_hanoi_checkin": {
+      "question": "What time is check-in at the Hanoi hostel?",
+      "answer": "Check-in at Hanoi Old Quarter Hostel is from 2:00 PM to 10:00 PM.",
+      "expected_contains": ["2:00 PM", "10:00 PM"],
+      "correct": true,
+      "note": "Correctly disambiguated Hanoi from Hue and Saigon properties"
+    },
+    "Q14_ryokan_meals_and_dinner": {
+      "question": "What meals are included and what time is dinner?",
+      "answer": "The included meals are Kaiseki Dinner and Traditional Japanese Breakfast. The Kaiseki Dinner is served in-room at either 6:00 PM or 6:30 PM.",
+      "expected_contains": ["Kaiseki Dinner", "Breakfast", "6:00 PM", "6:30 PM"],
+      "correct": true
+    },
+    "Q15_tour_tastings_and_dietary": {
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "answer": "There are 12 tastings included across 3 markets and 4 street food stands. Dietary accommodations include vegetarian, gluten-free, and vegan substitutions for most stops, provided you notify them at least 48 hours before the tour.",
+      "expected_contains": ["12", "vegetarian", "gluten-free", "vegan"],
+      "correct": true
+    },
+    "Q16_negative_test": {
+      "question": "What is the hotel's wifi password?",
+      "answer": "I'm sorry, but the provided booking confirmation is for a flight with Delta Air Lines and does not contain any information about hotels or their WiFi passwords.",
+      "expected_behavior": "Should indicate info not present, no hallucination",
+      "correct": true,
+      "hallucinated": false
+    }
+  }
+}

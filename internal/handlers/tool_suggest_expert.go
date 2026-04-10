@@ -15,9 +15,10 @@ import (
 // knowledge (food, history, distilleries, etc.), it calls this tool to trigger
 // a PersonaSwitch event on the frontend.
 type SuggestExpertTool struct {
-	registry           *persona.Registry
-	destinationCountry string // from current trip context
-	onSwitch           func(previous, expert *persona.Persona, handoffMessage string)
+	registry            *persona.Registry
+	destinationCountry  string        // from current trip context
+	destinationProvider func() string // lazy fallback for selection mode
+	onSwitch            func(previous, expert *persona.Persona, handoffMessage string)
 }
 
 type suggestExpertArgs struct {
@@ -31,6 +32,15 @@ func NewSuggestExpertTool(registry *persona.Registry, destinationCountry string,
 		destinationCountry: destinationCountry,
 		onSwitch:           onSwitch,
 	}
+}
+
+// WithDeferredDestination sets a lazy destination resolver for selection mode
+// where the destination isn't known at tool construction time but becomes
+// available after create_trip fires in the same turn (Run 12 R-16 P2).
+func (t *SuggestExpertTool) WithDeferredDestination(provider func() string) *SuggestExpertTool {
+	cp := *t
+	cp.destinationProvider = provider
+	return &cp
 }
 
 func (t *SuggestExpertTool) Definition() ai.ToolDefinition {
@@ -68,10 +78,15 @@ func (t *SuggestExpertTool) Execute(ctx context.Context, args json.RawMessage) (
 		return nil, fmt.Errorf("at least one theme is required")
 	}
 
-	// Use provided region code, or fall back to trip's destination country
+	// Use provided region code, or fall back to trip's destination country,
+	// or resolve lazily from the deferred provider (selection mode — trip
+	// may have been created earlier in the same turn).
 	regionCode := params.RegionCode
 	if regionCode == "" {
 		regionCode = t.destinationCountry
+	}
+	if regionCode == "" && t.destinationProvider != nil {
+		regionCode = t.destinationProvider()
 	}
 
 	if regionCode == "" {

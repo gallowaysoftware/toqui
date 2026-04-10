@@ -35,7 +35,7 @@ None — Jake is a spontaneous traveler who books on the go.
 
 ## Special Attention
 
-- Conciseness is the primary metric. Every companion response must be under 200 words. Over 200 words is P1.
+- Conciseness is important. Target under 200 words per companion response. Over 250 words is P2 (not P1 — occasionally a detailed recommendation merits slightly longer responses).
 - The AI must NOT proactively create itinerary items in companion mode. Unsolicited itinerary creation is a behavioral regression.
 - Geographic reasoning: "big gold temple" near Khao San Road should yield an educated guess (Wat Saket, Grand Palace area), not 5 clarifying questions.
 - Cultural advice must be Thailand-specific (wai greeting, shoes off at temples, don't point feet at Buddha). Generic "be respectful" is useless.

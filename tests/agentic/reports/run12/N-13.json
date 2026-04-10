@@ -1,0 +1,31 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "setup_create_trip", "setup_seed_itinerary", "setup_activate", "setup_baseline_count", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "companion_msg6", "final_itinerary_check"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 2",
+      "description": "Message 2 ('I'm near Praça do Comércio — what's a good lunch spot around here?') triggered a toolCall with toolName 'create_itinerary_items'. The AI attempted to add a 'Lunch at Pinoquio' item to day 4. The companion-mode guardrail intercepted the call at the tool execution layer and returned status 'not_needed', preventing actual itinerary mutation. However, the toolCall stream event was still emitted to the frontend, meaning the client saw the tool invocation attempt. The itinerary count remained at 12 (no actual mutation), but the AI's decision to call the tool on a purely informational query violates the prompt discipline requirement.",
+      "expected": "No create_itinerary_items toolCall on informational queries in companion mode",
+      "actual": "toolCall emitted for create_itinerary_items with input adding 'Lunch at Pinoquio' to day 4. Tool guardrail returned not_needed, preventing mutation.",
+      "api_command": "SendMessage with content 'I'm near Praça do Comércio — what's a good lunch spot around here?' in CHAT_MODE_COMPANION"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The companion mode guardrail test was largely successful. 5 of 6 informational queries were handled correctly with no itinerary tool calls. Message 2 (lunch spot recommendation) triggered a create_itinerary_items call, but the server-side guardrail prevented actual mutation. All responses were concise (30-157 words), relevant, and directly answered the user's question without claiming to modify the itinerary. The seed itinerary (12 items, 4 days x 3 per day) remained perfectly intact throughout. The critical message 6 ('recommend something fun tonight') — which was the specific failure trigger in Run 5 — passed cleanly this time. The prompt discipline is mostly working but needs tightening for food/restaurant recommendation queries that overlap with itinerary item types."
+  },
+  "feature_coverage": ["companion", "create_itinerary_items_guardrail", "itinerary_immutability"]
+}

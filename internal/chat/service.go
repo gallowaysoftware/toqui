@@ -592,6 +592,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					ai.Message{Role: "user", Content: "(Automated follow-up: your last turn produced no output. Please answer my previous message — call any tools you need and reply with text.)"},
 				)
 				fullResponse.Reset()
+				completeResponse.Reset()
 				continue
 			}
 			slog.Warn("suppressing empty assistant turn — no content and no tool calls",
@@ -653,6 +654,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 					ai.Message{Role: "user", Content: nudge},
 				)
 				fullResponse.Reset()
+				completeResponse.Reset()
 				continue
 			}
 		}
@@ -673,6 +675,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				ai.Message{Role: "user", Content: "(Automated follow-up: you said you would hand this off to a specialist but did not actually call suggest_expert. Call it now to make the handoff happen — do not reply with text.)"},
 			)
 			fullResponse.Reset()
+			completeResponse.Reset()
 			continue
 		}
 
