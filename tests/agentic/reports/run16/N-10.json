@@ -1,0 +1,44 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The initial selection-mode response was quite long (500+ words) despite the user expressing extreme urgency. For a last-minute traveler at the airport, a shorter initial response with just the trip creation confirmation and top 3 priorities would be better, with the full itinerary available on request.",
+      "severity": "P2",
+      "suggestion": "When urgency signals are detected (e.g., 'right now', 'boarding in 2 hours'), the AI could give a shorter initial response focused on immediate next steps, and offer the full plan as a follow-up."
+    },
+    {
+      "description": "The AI created 8 itinerary items during selection mode (before a trip was even confirmed). While proactive, this happened in what should be a trip-creation step. The persona spec says to send ONE planning message for itinerary creation before activating to companion mode, but the AI front-loaded everything into selection mode.",
+      "severity": "P2",
+      "suggestion": "This is arguably good UX for an urgent traveler (saves a round trip), but it means the selection-to-planning flow was collapsed. Not a bug, but worth noting for test coverage purposes."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "The AI made 3 web_search tool calls in the selection-mode response even though web search is not configured in this environment. While the fallback message correctly tells it to proceed with existing knowledge, making 3 failing calls adds latency to the response.",
+      "context": "Selection mode first message",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI proactively handed off to an expert persona (Tiago, Portugal food+history) during the very first selection-mode message. While the expert knowledge was good, it means the user's subsequent companion-mode messages were answered by the expert rather than Toqui. This is fine behavior but means the persona switch happened before the user had any context on who Toqui is.",
+      "context": "Selection mode, suggest_expert called alongside create_trip and create_itinerary_items",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI performed exceptionally well for the last-minute traveler use case. Trip creation was instant with no unnecessary clarifying questions. Companion mode responses were concise, practical, and packed with actionable specifics (restaurant names, metro lines, departure times, price estimates). The AI correctly identified Lisbon-specific knowledge: late dining culture, metro Red Line to airport, Baixa/Alfama neighborhoods, Pasteis de Belem, and adapted recommendations for a photographer. The itinerary of 8 items across 2 days was realistic for the compressed timeline. Minor deductions: the initial selection-mode response was longer than ideal for someone boarding in 2 hours, and the itinerary put a Fado dinner on Day 1 but did not account for the 10pm arrival (Day 1 is really just the arrival night). The airport logistics response was excellent -- specific time to leave, cost, and budget alternative with metro transfer details."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

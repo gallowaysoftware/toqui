@@ -125,6 +125,7 @@ message ChatSession {
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp last_message_at = 5;
   string active_persona_id = 6;
+  int32 message_count = 7;
 }
 
 message ChatMessage {

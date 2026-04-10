@@ -303,12 +303,16 @@ func normalizeTitle(s string) string {
 
 // isDuplicateItem checks whether a new item on the given day has a title
 // similar enough to an existing item to be considered a duplicate.
-// Similarity is determined by containment (one title contains the other).
+// Uses containment + word overlap: if 60%+ of the significant words in
+// either title appear in the other, it's a duplicate. This catches
+// near-matches like "Day Trip: Montserrat" vs "Day Trip to Montserrat
+// Monastery" that pure containment misses (Run 16 R-05/R-06/R-20 P2).
 func isDuplicateItem(existing []dbgen.ItineraryItem, dayNumber int, title string) bool {
 	norm := normalizeTitle(title)
 	if norm == "" {
 		return false
 	}
+	newWords := significantWords(norm)
 	for _, e := range existing {
 		if !e.DayNumber.Valid || int(e.DayNumber.Int32) != dayNumber {
 			continue
@@ -317,11 +321,43 @@ func isDuplicateItem(existing []dbgen.ItineraryItem, dayNumber int, title string
 			continue
 		}
 		existNorm := normalizeTitle(e.Title.String)
+		// Exact or containment match
 		if existNorm == norm || strings.Contains(existNorm, norm) || strings.Contains(norm, existNorm) {
+			return true
+		}
+		// Word overlap: if 60%+ of significant words overlap, it's a dup
+		existWords := significantWords(existNorm)
+		if wordOverlapRatio(newWords, existWords) >= 0.6 || wordOverlapRatio(existWords, newWords) >= 0.6 {
 			return true
 		}
 	}
 	return false
+}
+
+// significantWords returns the set of words longer than 3 chars (skips
+// articles, prepositions, conjunctions that don't carry meaning).
+func significantWords(s string) map[string]bool {
+	words := make(map[string]bool)
+	for _, w := range strings.Fields(s) {
+		if len(w) > 3 {
+			words[w] = true
+		}
+	}
+	return words
+}
+
+// wordOverlapRatio returns the fraction of words in `a` that also appear in `b`.
+func wordOverlapRatio(a, b map[string]bool) float64 {
+	if len(a) == 0 {
+		return 0
+	}
+	overlap := 0
+	for w := range a {
+		if b[w] {
+			overlap++
+		}
+	}
+	return float64(overlap) / float64(len(a))
 }
 
 // geocodeItems resolves location names to coordinates and persists them.

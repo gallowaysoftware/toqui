@@ -966,6 +966,7 @@ type ChatSession struct {
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LastMessageAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_message_at,json=lastMessageAt,proto3" json:"last_message_at,omitempty"`
 	ActivePersonaId string                 `protobuf:"bytes,6,opt,name=active_persona_id,json=activePersonaId,proto3" json:"active_persona_id,omitempty"`
+	MessageCount    int32                  `protobuf:"varint,7,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1040,6 +1041,13 @@ func (x *ChatSession) GetActivePersonaId() string {
 		return x.ActivePersonaId
 	}
 	return ""
+}
+
+func (x *ChatSession) GetMessageCount() int32 {
+	if x != nil {
+		return x.MessageCount
+	}
+	return 0
 }
 
 type ChatMessage struct {
@@ -1417,7 +1425,7 @@ const file_toqui_v1_chat_proto_rawDesc = "" +
 	"\n" +
 	"ErrorEvent\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\"\x89\x02\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"\xae\x02\n" +
 	"\vChatSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12&\n" +
@@ -1425,7 +1433,8 @@ const file_toqui_v1_chat_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12B\n" +
 	"\x0flast_message_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\rlastMessageAt\x12*\n" +
-	"\x11active_persona_id\x18\x06 \x01(\tR\x0factivePersonaId\"\xa3\x02\n" +
+	"\x11active_persona_id\x18\x06 \x01(\tR\x0factivePersonaId\x12#\n" +
+	"\rmessage_count\x18\a \x01(\x05R\fmessageCount\"\xa3\x02\n" +
 	"\vChatMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +

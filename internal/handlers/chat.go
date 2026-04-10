@@ -1116,6 +1116,7 @@ func (h *ChatHandler) ListChatSessions(ctx context.Context, req *connect.Request
 			Mode:          chatModeFromString(s.Mode),
 			CreatedAt:     timestamppb.New(s.CreatedAt),
 			LastMessageAt: timestamppb.New(s.LastMessageAt),
+			MessageCount:  int32(s.MessageCount),
 		}
 	}
 

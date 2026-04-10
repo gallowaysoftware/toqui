@@ -18,6 +18,7 @@ type ChatSession struct {
 	Mode          string     `firestore:"mode"` // planning, companion
 	CreatedAt     time.Time  `firestore:"createdAt"`
 	LastMessageAt time.Time  `firestore:"lastMessageAt"`
+	MessageCount  int        `firestore:"messageCount"`
 	ExpireAt      *time.Time `firestore:"expireAt,omitempty"`
 }
 
@@ -204,6 +205,7 @@ func (s *Store) AddMessageWithMode(ctx context.Context, userID, tripID, sessionI
 		"id":            sessionID,
 		"tripId":        tripID,
 		"lastMessageAt": msg.CreatedAt,
+		"messageCount":  firestore.Increment(1),
 	}
 	if mode != "" {
 		sessionUpdate["mode"] = mode

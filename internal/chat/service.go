@@ -171,7 +171,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	if err := s.chatStore.AddMessageWithMode(ctx, params.UserID.String(), storeTripID, sessionID, userMsg, params.Mode); err != nil {
 		return nil, "", fmt.Errorf("store user message: %w", err)
 	}
-	userMsgID := userMsg.ID // populated by AddMessage
+	_ = userMsg.ID // populated by AddMessage (no longer used for cleanup)
 
 	// Load history
 	history, err := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, 50)
@@ -304,31 +304,23 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		}()
 		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID, params.PersonaSwitchCh, buildPrompt)
 
-		// Clean up on AI failure: if the AI produced no response (e.g., 429,
-		// timeout, provider error), roll back the user message and optionally
-		// the session so they don't appear as orphaned entries in history.
-		if responseText == "" {
+		// Clean up on AI failure: only delete the session if it was freshly
+		// created and the AI produced zero response text. We no longer delete
+		// user messages on failure — the user sent a real message and
+		// deleting it causes messages to go "missing" from history when the
+		// AI partially responded (tool calls succeeded but final text was
+		// empty). Run 16 N-05/R-03/R-20 P2: messages vanished because the
+		// cleanup code deleted them based on empty responseText even though
+		// the AI had streamed useful tool call content to the client.
+		if responseText == "" && isNewSession {
 			cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-
-			// Roll back the user message so history doesn't show a message
-			// with no AI response.
-			if userMsgID != "" {
-				if err := s.chatStore.DeleteMessage(cleanupCtx, params.UserID.String(), storeTripID, sessionID, userMsgID); err != nil {
-					slog.Error("failed to delete orphaned user message", "message_id", userMsgID, "error", err)
-				}
-			}
-
-			// Also delete the session itself if it was freshly created and is
-			// now empty, to keep the session list tidy.
-			if isNewSession {
-				slog.Warn("cleaning up orphaned session with no AI response",
-					"session_id", sessionID,
-					"user_id", params.UserID.String(),
-				)
-				if err := s.chatStore.DeleteSession(cleanupCtx, params.UserID.String(), storeTripID, sessionID); err != nil {
-					slog.Error("failed to delete orphaned session", "session_id", sessionID, "error", err)
-				}
+			slog.Warn("cleaning up orphaned session with no AI response",
+				"session_id", sessionID,
+				"user_id", params.UserID.String(),
+			)
+			if err := s.chatStore.DeleteSession(cleanupCtx, params.UserID.String(), storeTripID, sessionID); err != nil {
+				slog.Error("failed to delete orphaned session", "session_id", sessionID, "error", err)
 			}
 		}
 
@@ -347,7 +339,10 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 
 const (
 	// maxToolLoopIterations prevents infinite tool call loops.
-	maxToolLoopIterations = 5
+	// Selection mode needs more headroom because a single turn can
+	// trigger create_trip + suggest_expert + create_itinerary_items +
+	// recommend_booking (Run 16 R-02 P2: exhausted at 5).
+	maxToolLoopIterations = 7
 
 	// turnTimeout is the per-turn deadline for the AI provider channel. If the
 	// provider goroutine stalls or panics without closing the channel,

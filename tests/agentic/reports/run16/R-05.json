@@ -1,0 +1,64 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_verification"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns 0 itinerary items",
+      "description": "When viewing a shared trip via GET /shared/{token}, the response includes the trip metadata but the itinerary days array contains 0 items, even though the trip has a full itinerary (19 items for CZ, 7 for Iceland). The itinerary data appears to not be included in the shared view response.",
+      "expected": "Shared trip view should include itinerary items so the recipient can see the planned activities",
+      "actual": "itinerary.days[].items is empty for both shared trips despite having 19 and 7 items respectively",
+      "api_command": "curl -s http://localhost:8090/shared/xPmYFiGg0kbI1FcxeojHzq"
+    },
+    {
+      "severity": "P2",
+      "title": "ListChatSessions shows messageCount=0 for sessions with messages",
+      "description": "ListChatSessions returns messageCount=0 for sessions that have confirmed messages (verified via GetChatHistory which returned 4 messages for the CZ trip session). This may be a Firestore aggregation issue or intentional optimization, but is misleading for UI.",
+      "expected": "messageCount should reflect actual message count",
+      "actual": "messageCount is 0 for sessions with 4+ messages"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate Zatec itinerary items on Day 4",
+      "description": "The AI created two overlapping items for Zatec on Day 4: 'Zatec Hop Museum & Temple of Hops and Beer' (order 1) and 'Zatec: The Hop Pilgrimage' (order 1). Both are order_in_day=1 and describe essentially the same activity (visiting the hop museum). This appears to be a tool-loop artifact where the AI created itinerary items in two separate tool calls with overlapping content.",
+      "expected": "One consolidated Zatec museum/hop pilgrimage item",
+      "actual": "Two near-duplicate items with same order_in_day=1"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count does not include selection-mode messages",
+      "description": "Sent 4 total AI messages (1 selection CZ + 1 planning CZ + 1 selection Iceland + 1 companion CZ), but usage shows 3. The initial selection-mode message for CZ may not have been counted, or the selection-mode Iceland message was counted with the planning session. Minor discrepancy.",
+      "expected": "Usage count should match total SendMessage calls",
+      "actual": "usage.used=3 after 4 SendMessage calls"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The sour beer planning message (message 2 in CZ planning) did not appear in GetChatHistory for the CZ trip session. It may have been stored under a different session context since it was sent via CHAT_MODE_PLANNING with the same session_id but the initial trip creation happened in CHAT_MODE_SELECTION. The session spanning across modes may cause message gaps in history.",
+      "severity": "P2",
+      "suggestion": "Ensure all messages sent to the same session_id are retrievable via GetChatHistory regardless of mode transitions"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Duplicate itinerary items created in tool loop iterations",
+      "context": "On the CZ trip, the AI created two near-identical Zatec items in Day 4 (both with order_in_day=1). This suggests the AI called create_itinerary_items in multiple tool loop iterations without deduplicating against what it had already created.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "This was an exceptionally impressive test run. The extended profiles for CZ and IS loaded perfectly — the Czech expert 'Jakub' demonstrated deep knowledge of Czech brewing traditions including obscure breweries (Unetice, Wild Creatures, Fenetra), cultural customs (Mliko pour, coaster rules), and niche sour/wild ale recommendations. The Iceland expert 'Bjorn' provided detailed Laugavegur stage-by-stage breakdown with distances, elevation, timing, and terrain, plus critical logistics about hut booking urgency, river crossings, and weather. The two-trip workflow was completely clean — creating Iceland did NOT interfere with the Czech trip. Companion mode response was appropriately concise and location-specific. The craft-beer and hiking extended themes combined with CZ and IS extended locations produced genuinely expert-level personas. As a craft beer and hiking enthusiast, this would be genuinely useful for trip planning."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "expert_handoff", "itinerary_creation", "multi_trip", "extended_profiles", "extended_themes"]
+}

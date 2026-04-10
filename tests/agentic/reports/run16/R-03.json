@@ -1,0 +1,56 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "selection", "planning", "trip_switching", "new_trip_creation", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "GetChatHistory returns 0 messages for session with known messages",
+      "description": "After sending 2 messages in session 8426b424-5d09-4ea9-8d9d-922c4680f918 (selection + planning for Greece trip), GetChatHistory returned an empty messages array. ListChatSessions correctly showed the session exists. This suggests messages may not be persisting to Firestore or there is a retrieval issue.",
+      "steps_to_reproduce": "1. Send messages in CHAT_MODE_SELECTION and CHAT_MODE_PLANNING. 2. Call GetChatHistory with the session_id and trip_id.",
+      "expected": "Messages array with at least 2 user messages and 2 assistant messages",
+      "actual": "Empty messages array (0 messages)",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/GetChatHistory -H 'Content-Type: application/json' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\": \"aa6cd037-7697-4017-858a-a3124806f666\", \"session_id\": \"8426b424-5d09-4ea9-8d9d-922c4680f918\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage counter only counts 2 of 4 AI messages sent",
+      "description": "Sent 4 messages total via SendMessage (1 selection for Greece, 1 planning for Greece, 1 companion for Morocco, 1 selection for NZ). Usage endpoint reports used=2. Selection mode messages may intentionally not count, but companion mode should count. If selection mode is excluded by design, the count should be 2 (planning + companion), which matches. However, if all AI messages should count, this is undercounting.",
+      "expected": "Usage count of 4 (all messages) or 2 (if selection mode excluded by design)",
+      "actual": "used=2"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When asking for a 3-day Santorini itinerary, the AI called create_itinerary_items 3 times — first call succeeded with 9 items, 2nd and 3rd calls detected duplicates and returned 'already_exists'. This caused the final response text to have duplicated summary paragraphs at the end. The dedup logic works correctly (no duplicate items created), but the AI should not re-attempt the same tool call after receiving an 'already_exists' response.",
+      "severity": "P2",
+      "suggestion": "Consider adding a stronger instruction in the system prompt telling the AI not to retry create_itinerary_items after receiving an already_exists status, or cap tool loop iterations for this specific pattern."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items 3 times with identical items in a single turn. The first call succeeded (9 items created), but the AI then called it 2 more times with the same items in subsequent tool loop iterations, receiving 'already_exists' each time.",
+      "context": "Step 5: Planning mode Santorini itinerary request",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not call create_itinerary_items for the New Zealand trip overview, only providing a text outline. While the user didn't explicitly ask for itinerary items, the system prompt instructs proactive itinerary creation when discussing plans.",
+      "context": "Step 8: New trip creation for NZ — AI gave a 14-day text outline but did not add items to the itinerary",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The core multi-trip workflow works excellently. Vague reference matching ('my Greece trip' -> 'Greek Islands Hopping') worked perfectly on first try. Trip switching ('take me to my Morocco trip') correctly selected the existing trip. New trip creation for NZ correctly created a new trip rather than matching existing ones. The Santorini 3-day itinerary was detailed and well-structured with 9 high-quality items across 3 days. The Morocco companion mode response was contextually appropriate. The main issues are cosmetic: duplicate tool calls causing response text duplication, and missing itinerary items for the NZ overview."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_switching", "trip_creation", "sharing", "chat_history", "usage", "completion"]
+}
