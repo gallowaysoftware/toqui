@@ -1,0 +1,76 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning_turn_1", "planning_turn_2", "planning_turn_3", "planning_turn_4", "planning_turn_5", "planning_turn_6_summary"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "delete_itinerary_items title matching overly broad",
+      "description": "When Turn 4 requested Machu Picchu on Day 7, the AI called delete_itinerary_items to remove Chinchero activities from Day 7. The title-based fuzzy matching also removed 'Farewell Dinner in Cusco' from Day 4 (deleted_count=6 but only 5 Chinchero items on Day 7). Day 4 went from 5 items to 4 items. The original 'Farewell Dinner in Cusco' was lost.",
+      "expected": "Only Day 7 Chinchero items deleted (5 items)",
+      "actual": "6 items deleted including 'Farewell Dinner in Cusco' from Day 4",
+      "api_command": "Turn 4 SendMessage triggered delete_itinerary_items with titles including 'Dinner in Cusco'"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate dinner entries on Day 2 after food turn",
+      "description": "Turn 3 added 'Dinner: Traditional Andean Cuisine' to Day 2 order_in_day=5, but the existing 'Dinner in San Blas or Historic Center' also at order_in_day=5 was not removed. Day 2 now has two dinner entries. The AI should have either replaced the existing dinner or not added a conflicting one.",
+      "expected": "One dinner entry on Day 2",
+      "actual": "Two dinner entries on Day 2 (both at order_in_day=5)"
+    },
+    {
+      "severity": "P2",
+      "title": "Chinchero activities deleted but not rescheduled",
+      "description": "When Machu Picchu replaced Chinchero on Day 7, the Chinchero activities (market, textile demo, lunch) were deleted entirely rather than moved to another day. The persona's trip plan originally included Chinchero as part of the Sacred Valley segment. The AI mentioned it would adjust but did not reschedule.",
+      "expected": "Chinchero activities moved to another day or user prompted about rescheduling",
+      "actual": "Chinchero activities permanently lost"
+    },
+    {
+      "severity": "P2",
+      "title": "Turn 1 returned 'no response from AI' error on first attempt",
+      "description": "The first SendMessage call in planning mode (Turn 1) returned {\"error\":{\"message\":\"no response from AI — please try again\"}}. The retry succeeded. This is a transient reliability issue.",
+      "steps_to_reproduce": "Send first planning mode message immediately after selection mode trip creation",
+      "expected": "Successful response on first attempt",
+      "actual": "Error requiring retry"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI frequently repeats itself within the tool loop, producing multiple text segments that say 'these items were already added' after successfully creating itinerary items. This creates a confusing multi-paragraph response where the first part confirms the action and subsequent parts redundantly re-confirm it.",
+      "severity": "P2",
+      "suggestion": "After successful tool execution, the AI should produce a single confirmation paragraph rather than multiple iterations of 'already added' text."
+    },
+    {
+      "description": "Days 10-14 (Lima return, final days) are never planned despite the persona describing a 2-week trip. The itinerary covers only 9 of 14 days. The AI never prompted the user to continue planning the remaining days.",
+      "severity": "P2",
+      "suggestion": "When the user mentions a trip duration, the AI should track which days are unplanned and proactively remind the user."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI produces redundant 'already added' confirmations within the same response due to tool loop iterations",
+      "context": "In turns 1-5, after the tool result comes back, the AI generates a confirmation, then in the next tool loop iteration generates another 'these were already added' paragraph. The fullContent only captures the final iteration, but the stream shows multiple text segments.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "SendMessage",
+      "input": "Turn 1 first attempt - Cusco 4-day itinerary request",
+      "error": "no response from AI — please try again"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 6 planning turns executed correctly from a fabrication detection standpoint. Zero fabrication detected: turns 1-5 all called create_itinerary_items successfully, turn 6 (summary) correctly did not call it. Per-turn item counts: Turn 1=17, Turn 2=32, Turn 3=36, Turn 4=38, Turn 5=46, Turn 6=46 (no change). Final itinerary has 46 items across 9 days covering Cusco (days 1-4), Sacred Valley (days 5-6), Machu Picchu (day 7), and Lake Titicaca (days 8-9). The AI demonstrated strong tool calling discipline with no fabricated success claims. Minor issues: duplicate dinner entries from additive food turn, overly broad title matching on delete, and Chinchero activities lost when replaced by Machu Picchu. The itinerary content quality is high with detailed descriptions, timing estimates, and practical logistics."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "delete_itinerary_items", "fabrication_detection", "multi_turn_context", "fabrication_matches_0"]
+}

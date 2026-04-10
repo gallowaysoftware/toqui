@@ -1,0 +1,130 @@
+{
+  "persona": "N-11",
+  "name": "Lifecycle Stress Test",
+  "run": 13,
+  "date": "2026-04-10",
+  "duration_seconds": 180,
+  "steps": [
+    {
+      "step": 1,
+      "name": "CreateTrip",
+      "status": "PASS",
+      "details": "Created trip with title 'Lifecycle Test — Kyoto Spring', description 'Cherry blossom season trip for lifecycle validation', dates 2026-10-01 to 2026-10-10. Returned trip_id=0707e877-e969-4b2d-a235-482a7c308408, status=TRIP_STATUS_PLANNING."
+    },
+    {
+      "step": 2,
+      "name": "GetTrip (verify create)",
+      "status": "PASS",
+      "details": "All fields match: title, description, status=TRIP_STATUS_PLANNING, startDate=2026-10-01, endDate=2026-10-10. AI theme classifier auto-tagged themes=['history'], destinationCountry=JP."
+    },
+    {
+      "step": 3,
+      "name": "UpdateTrip title only (COALESCE test)",
+      "status": "PASS",
+      "details": "Updated title to 'Lifecycle Test — Kyoto Autumn'. Verified via GetTrip: title changed, description='Cherry blossom season trip for lifecycle validation' preserved, dates preserved, status preserved. COALESCE partial update works correctly."
+    },
+    {
+      "step": 4,
+      "name": "UpdateTrip description only (COALESCE test)",
+      "status": "PASS",
+      "details": "Updated description to 'Updated: autumn foliage trip.' Verified via GetTrip: description changed, title='Lifecycle Test — Kyoto Autumn' preserved from step 3, dates preserved. COALESCE works for description-only updates."
+    },
+    {
+      "step": 5,
+      "name": "UpdateTrip status to ACTIVE",
+      "status": "PASS",
+      "details": "Status changed to TRIP_STATUS_ACTIVE. Title and description preserved through status transition."
+    },
+    {
+      "step": 6,
+      "name": "Send planning message (create itinerary)",
+      "status": "PASS",
+      "notes": "AI called create_itinerary_items and created 2 items: 'Visit Kinkaku-ji (Golden Pavilion)' on Day 1 and 'Explore Fushimi Inari-taisha Shrine' on Day 2. Session created: e55e3186-a1a3-4827-b9d3-811303c7a9a2.",
+      "details": "AI correctly called create_itinerary_items tool. Minor observation: AI made a duplicate tool call for the same items on a second loop iteration, but backend correctly returned already_exists and skipped. The fullContent field in messageComplete only captured the final text segment, not the full concatenated response — this is a known issue."
+    },
+    {
+      "step": 7,
+      "name": "IngestBooking + ListBookings",
+      "status": "PASS",
+      "details": "Ingested Delta flight confirmation (DL7829X). AI parser extracted: provider='Delta Air Lines', confirmation_code='DL7829X', type=BOOKING_TYPE_FLIGHT, departure='New York (JFK)', arrival='Barcelona (BCN)', passenger='Elena Martinez', seat='27F', class='Main Cabin (Economy)'. ListBookings confirmed 1 booking attached to trip."
+    },
+    {
+      "step": 8,
+      "name": "GetItinerary",
+      "status": "PASS",
+      "details": "Returned 2 days with 1 item each. Day 1: 'Visit Kinkaku-ji (Golden Pavilion)' (sightseeing). Day 2: 'Explore Fushimi Inari-taisha Shrine' (sightseeing). Item count: 2."
+    },
+    {
+      "step": 9,
+      "name": "Enable sharing + verify public view",
+      "status": "PASS",
+      "details": "POST /api/trips/share returned share_token='VgCGZ0j2LVkwLRAkqHqfkR'. Public GET /shared/{token} (no auth) returned trip data with correct title 'Lifecycle Test — Kyoto Autumn', itinerary (2 days), and booking summary (flight, Delta Air Lines)."
+    },
+    {
+      "step": 10,
+      "name": "UpdateTrip status to COMPLETED",
+      "status": "PASS",
+      "details": "Status changed to TRIP_STATUS_COMPLETED. Title='Lifecycle Test — Kyoto Autumn' and description='Updated: autumn foliage trip.' both preserved through status transition. No field corruption."
+    },
+    {
+      "step": 11,
+      "name": "ListTrips verify",
+      "status": "PASS",
+      "details": "ListTrips returned 1 trip with status=TRIP_STATUS_COMPLETED, title='Lifecycle Test — Kyoto Autumn'. totalCount=1."
+    },
+    {
+      "step": 12,
+      "name": "Disable sharing + verify",
+      "status": "PASS",
+      "details": "POST /api/trips/unshare returned status=ok. GET /shared/{token} now returns HTTP 404 'not found'. Share token properly invalidated — no security leak."
+    },
+    {
+      "step": 13,
+      "name": "DeleteTrip",
+      "status": "PASS",
+      "details": "DeleteTrip returned empty response (success)."
+    },
+    {
+      "step": 14,
+      "name": "Verify deletion (cascade)",
+      "status": "PASS",
+      "details": "GetTrip returns NotFound. ListTrips returns empty (pagination.totalCount absent = 0). ListBookings for deleted trip returns empty — bookings cascade-deleted. No orphaned records."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "area": "chat",
+      "description": "AI made a duplicate create_itinerary_items tool call on a second loop iteration with the exact same items. The backend correctly handled this (returned already_exists, skipped_count=2), but the redundant tool call wastes a loop iteration and confuses the AI's response flow.",
+      "observed": "AI called create_itinerary_items twice with identical items. Second call returned already_exists.",
+      "expected": "AI should not re-call the same tool with identical arguments after receiving a successful result."
+    },
+    {
+      "severity": "P2",
+      "area": "chat",
+      "description": "messageComplete.fullContent only contains the final text segment after the last tool call, not the full concatenated response across all text deltas. This was flagged in Run 11 as a regression.",
+      "observed": "fullContent='It seems those items were already safely added to your itinerary! Kinkaku-ji for Day 1 and Fushimi Inari for Day 2 are all set.'",
+      "expected": "fullContent should contain the complete response text from all text deltas concatenated together, including text before and after tool calls."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "severity": "P2",
+      "description": "AI produced intermediate text between tool loop iterations, then made a redundant duplicate tool call. The text acknowledged the items were already added, yet it still called the tool again.",
+      "observed": "After first successful create_itinerary_items, AI emitted text saying items were added, then called create_itinerary_items again with identical arguments.",
+      "expected": "AI should stop after acknowledging the successful tool result rather than re-calling the same tool."
+    }
+  ],
+  "tool_failures": [],
+  "evaluation": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "overall": 5,
+    "notes": "All 14 lifecycle steps passed. COALESCE partial updates work correctly for both title-only and description-only updates. Status transitions (PLANNING -> ACTIVE -> COMPLETED) preserve all fields. Cascade deletion works — bookings are cleaned up when trip is deleted. Share token lifecycle works correctly — sharing can be toggled on/off and the public endpoint respects the current state. The only issues are minor AI behavior quirks (duplicate tool call) and the previously-known fullContent regression."
+  },
+  "summary": "PASS — 14/14 steps passed. Full lifecycle CRUD stress test successful. No P0 or P1 bugs found. COALESCE partial updates, status transitions, cascade deletion, and share token lifecycle all working correctly. Two P2 observations: duplicate tool call by AI and fullContent regression (known from Run 11)."
+}

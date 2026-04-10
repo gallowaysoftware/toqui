@@ -1,0 +1,54 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand",
+  "completed_steps": ["auth", "create_trip", "activate", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "verify_no_itinerary", "companion_msg6_explicit_itinerary", "verify_itinerary_created", "chat_history", "usage", "sharing", "unshare", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "fullContent duplicated when companion gate rejects tool call",
+      "description": "When the AI calls create_itinerary_items in companion mode and the companion gate returns 'not_needed', the tool loop re-generates the response. The fullContent field in the messageComplete event contains the original partial response concatenated with the re-generated response, resulting in duplicated text shown to the user.",
+      "steps_to_reproduce": "1. Create a trip with status ACTIVE. 2. Send a message in CHAT_MODE_COMPANION like 'just landed at BKK, what do I do first?'. 3. If the AI attempts create_itinerary_items and gets rejected, the fullContent will contain the response text twice.",
+      "expected": "fullContent should contain only the final, clean response text without duplication",
+      "actual": "fullContent contains the pre-tool-call text + a space + the complete re-generated response, effectively doubling the content. Message 1 had 224 words (should have been ~120). Message 5 had the entire flower market response duplicated.",
+      "api_command": "buf curl --schema . --protocol connect --http2-prior-knowledge --header 'Authorization: Bearer $TOKEN' --header 'Origin: $ORIGIN' -d '{\"content\":\"just landed at BKK, what do I do first?\",\"mode\":\"CHAT_MODE_COMPANION\",\"trip_id\":\"TRIP_ID\"}' http://$HOST/toqui.v1.ChatService/SendMessage"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Message 5 ('recommend something fun for tonight') only suggested one option (flower market). For a 26-year-old solo traveler asking about evening fun in Bangkok, multiple options would be more helpful (e.g., night markets, rooftop bars, Muay Thai, night food tours). The single-option response feels limiting.",
+      "severity": "P2",
+      "suggestion": "Consider prompting the AI to provide 2-3 varied evening options when asked for nightlife/evening recommendations, especially for younger solo travelers."
+    },
+    {
+      "description": "Message 2: The AI mentioned Jay Fai twice, then awkwardly corrected itself ('Raan Jay Fai: Actually, I just mentioned Jay Fai'). This feels unpolished and wastes the user's reading time.",
+      "severity": "P2",
+      "suggestion": "Minor quality issue in response generation; the AI should deduplicate its own recommendations."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI attempted unsolicited create_itinerary_items in companion mode on 2 out of 5 messages (messages 1 and 5). The companion gate correctly blocked these, but the AI should learn from the first rejection to not attempt it again in the same session.",
+      "context": "Message 1 ('just landed at BKK') and Message 5 ('recommend something fun for tonight') both triggered unsolicited create_itinerary_items calls that were rejected by the companion gate with 'not_needed' status.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Message 3 ('I think I'm lost, I'm near a big gold temple') did not mention Wat Saket (the Golden Mount), which is actually the most likely 'big gold temple' near Khao San Road. The AI guessed Grand Palace/Wat Phra Kaew and Wat Pho, which are reasonable but Wat Saket is closer to Khao San and more commonly described as a 'big gold temple'.",
+      "context": "The persona specification suggested Wat Saket or Grand Palace area as the expected guess. The AI's guesses were reasonable but missed the most geographically likely candidate.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode worked well overall. Responses were generally concise and actionable with Thailand-specific advice. The companion gate correctly prevented unsolicited itinerary creation and allowed it when explicitly requested. The main issues are: (1) a P1 content duplication bug where fullContent doubles when the companion gate rejects a tool call, and (2) the AI still attempts create_itinerary_items in companion mode despite being in a reactive context. Food recommendations were concrete with specific dish names and prices. Cultural advice (tipping) was accurate and Thailand-specific. Geographic reasoning was decent but missed Wat Saket as the most likely 'big gold temple' near Khao San."
+  },
+  "feature_coverage": ["companion", "create_itinerary_items", "companion_gate", "sharing", "usage", "chat_history"]
+}

@@ -415,13 +415,14 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		}
 		fullResponse.WriteString(turnText)
 
-		// Also accumulate into completeResponse (never reset) so
-		// messageComplete.fullContent has ALL text across iterations,
-		// not just the final iteration's. Fixes Run 11 R-03 P2.
+		// Accumulate into completeResponse for messageComplete.fullContent.
+		// Reset at the start of each iteration so gate-rejection retries
+		// don't duplicate text (Run 13 N-01 P1). For Gemini (which
+		// re-emits text in continuation turns), the final iteration's
+		// text is already complete. For Claude, intermediate text is
+		// stored separately via the persisted message path.
+		completeResponse.Reset()
 		if len(turnText) > 0 {
-			if completeResponse.Len() > 0 {
-				completeResponse.WriteByte(' ')
-			}
 			completeResponse.WriteString(turnText)
 		}
 

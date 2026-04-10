@@ -1,0 +1,67 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "Structural - REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing", "error_handling"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural REST endpoint test with no AI interaction. All 16 test cases passed: 4 health endpoints returned correct shapes with sub-2ms response times, 3 public endpoints (guides list, guide detail, invalid share token) behaved correctly, 2 authenticated endpoints (usage, referral) returned valid data, the full share/fetch/unshare/fetch-fails lifecycle worked as expected, and all 3 error handling cases returned proper HTTP status codes (401/404) instead of 500s."
+  },
+  "feature_coverage": ["health_endpoints", "guides_api", "usage_api", "referral_api", "trip_sharing", "error_handling"],
+  "endpoint_shapes": {
+    "GET /healthz": {"status": "ok"},
+    "GET /health": {"status": "healthy", "components": {"database": {"status": "healthy", "latency_ms": 0}, "server": {"status": "healthy", "uptime_seconds": "number"}}},
+    "GET /livez": {"status": "alive"},
+    "GET /readyz": {"status": "ready"},
+    "GET /api/guides": {"guides": [{"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "cta_text": "string", "cta_url": "string"}]},
+    "GET /api/guides/{slug}": {"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "content": "string", "cta_text": "string", "cta_url": "string"},
+    "GET /shared/{invalid}": "not found (HTTP 404)",
+    "GET /api/usage": {"used": 0, "limit": 10, "tier": "free", "resets_at": "ISO8601"},
+    "GET /api/referral": {"code": "string", "link": "string", "max_rewards": 10, "referee_reward_granted": false, "referrer_reward_granted": false, "rewards_earned": 0, "rewards_remaining": 10, "successful_referrals": 0},
+    "POST /api/trips/share": {"share_token": "string", "share_url": "string"},
+    "GET /shared/{valid_token}": {"trip": {"title": "string", "description": "string", "status": "string"}, "itinerary": []},
+    "POST /api/trips/unshare": {"status": "ok"},
+    "GET /api/usage (no auth)": "unauthorized (HTTP 401)",
+    "POST /api/trips/share (no auth)": "unauthorized (HTTP 401)",
+    "POST /api/trips/share (invalid trip)": "trip not found (HTTP 404)"
+  },
+  "test_results": {
+    "phase1_health": {
+      "healthz": {"http_code": 200, "time_ms": 1.44, "pass": true},
+      "health": {"http_code": 200, "time_ms": 0.85, "pass": true},
+      "livez": {"http_code": 200, "time_ms": 0.32, "pass": true},
+      "readyz": {"http_code": 200, "time_ms": 1.00, "pass": true}
+    },
+    "phase2_public": {
+      "guides_list": {"http_code": 200, "guide_count": "6+", "pass": true},
+      "guide_detail": {"http_code": 200, "has_content": true, "pass": true},
+      "invalid_share_token": {"http_code": 404, "pass": true}
+    },
+    "phase3_authenticated": {
+      "usage": {"http_code": 200, "used_gte_0": true, "limit_gt_0": true, "has_resets_at": true, "pass": true},
+      "referral": {"http_code": 200, "has_code": true, "code": "0AB54971", "pass": true}
+    },
+    "phase4_sharing": {
+      "share": {"http_code": 200, "has_token": true, "pass": true},
+      "fetch_shared": {"http_code": 200, "title_matches": true, "pass": true},
+      "unshare": {"http_code": 200, "pass": true},
+      "fetch_after_unshare": {"http_code": 404, "token_invalidated": true, "pass": true}
+    },
+    "phase5_errors": {
+      "usage_no_auth": {"http_code": 401, "no_500": true, "pass": true},
+      "share_no_auth": {"http_code": 401, "no_500": true, "pass": true},
+      "share_invalid_trip": {"http_code": 404, "no_500": true, "pass": true}
+    }
+  }
+}

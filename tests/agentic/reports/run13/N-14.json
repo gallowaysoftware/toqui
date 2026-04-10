@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "create_trip_default", "create_trip_active", "forward_transitions", "rejected_transitions", "invalid_initial_status", "regression_guards"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 11 test cases passed. PR #198 sentinel-error mapping is fully functional: invalid status transitions return failed_precondition, invalid initial status returns invalid_argument. PR #197 create-with-ACTIVE feature also confirmed working. Phase 4 regression guards (not_found and invalid_argument for bad UUIDs) match Run 5 baseline."
+  },
+  "feature_coverage": ["status_machine_enforcement", "create_trip_active_status", "status_error_codes"]
+}

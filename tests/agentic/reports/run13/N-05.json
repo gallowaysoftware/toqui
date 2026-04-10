@@ -1,0 +1,46 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural — Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "trip_destination": "Japan",
+  "run_id": "run-13",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "share_enable", "share_access", "share_disable", "share_revocation_verify", "share_re-enable", "share_new_token_verify", "share_old_token_still_invalid", "share_content_completeness", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared view itinerary count differs from GetItinerary",
+      "description": "GetItinerary returns 22 items across 7 days, but the shared view returns 20 items across 7 days. Two items appear to be dropped in the shared view projection. Day 6 shows 2 items in shared view vs potentially more via GetItinerary. This may be due to items created in a second tool call batch not being included, or a serialization discrepancy.",
+      "expected": "22 itinerary items in shared view (matching GetItinerary)",
+      "actual": "20 itinerary items in shared view",
+      "api_command": "GET /shared/{token}"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage counter shows 1 but 2 AI messages were sent",
+      "description": "Two SendMessage calls were made (one in selection mode, one in planning mode), but GET /api/usage returns used:1. The selection-mode message that created the trip may not be counting toward usage.",
+      "expected": "used: 2",
+      "actual": "used: 1",
+      "api_command": "GET /api/usage"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared view booking details only include type, title, and provider. Confirmation code, dates, and address are omitted. While this is safer from a privacy standpoint, it limits the usefulness of shared trip views for collaborators who need booking details.",
+      "severity": "P2",
+      "suggestion": "Consider including non-sensitive booking metadata (check-in/out dates, confirmation code) in the shared view, while continuing to omit raw text and guest personal details."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The sharing lifecycle works correctly and securely. Token revocation properly invalidates old tokens, re-sharing generates new unique tokens, and old tokens remain invalid after re-share. The shared view contains meaningful trip content (itinerary with 20 items across 7 days, booking info) without leaking private data (no userId, email, or JWT tokens). The itinerary quality was excellent with well-organized day-by-day plans covering Tokyo, Hakone, and Kyoto. Booking parsing correctly extracted all hotel details from the ryokan confirmation."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingest", "share_enable", "share_access", "share_disable", "share_revocation", "share_re-enable", "share_token_uniqueness", "share_content_completeness", "chat_history", "usage", "trip_complete"]
+}

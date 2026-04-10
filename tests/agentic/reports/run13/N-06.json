@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The shared trip public endpoint (GET /shared/{token}) returned an HTML page rather than JSON with trip data, making it impossible to verify shared trip content programmatically. The share/unshare flow itself worked correctly.",
+      "severity": "P2",
+      "suggestion": "Consider returning JSON by default or supporting Accept header content negotiation for the shared trip endpoint."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode response for Varanasi food was not noticeably more concise than planning mode responses. Both were similarly detailed and lengthy (~300+ words). Companion mode is expected to be more concise since the user is actively traveling.",
+      "context": "Asked about Varanasi food in CHAT_MODE_COMPANION. Response was very detailed with 5 food items, cultural context, and price breakdowns — similar verbosity to planning mode.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Itinerary did not include explicit per-item or per-day cost estimates. While the AI referenced costs in conversation, the create_itinerary_items tool calls did not include price information in item descriptions for most items, making it hard for the user to track daily budget compliance from the itinerary alone.",
+      "context": "62 itinerary items created across 21 days. Most items mention 'budget-friendly' or 'cheap' but lack specific INR/USD cost estimates in the item descriptions.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness throughout the session. It correctly flagged the Taj Mahal entry fee as exceeding the daily budget and suggested Mehtab Bagh as a free alternative. Food recommendations were accurate with realistic INR prices, all vegetarian, and well within the $3/meal limit. Transport recommendations correctly focused on Sleeper Class and General class trains, avoiding expensive AC options. The AI also correctly identified Varanasi as largely vegetarian by default. The 21-day itinerary was comprehensive with 67 items covering all 5 cities. Minor gaps: no expert persona handoff occurred (the food topic could have triggered one), and companion mode responses were not noticeably more concise than planning mode."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary"]
+}
