@@ -415,16 +415,20 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		// messageComplete.fullContent has ALL text across iterations,
 		// not just the final iteration's (Run 11 R-03 P2).
 		//
-		// NOTE: This means gate-rejection retries will duplicate text in
-		// fullContent (Run 12 N-01 P1). We accept this tradeoff because
-		// resetting per-iteration causes worse truncation across 5+
-		// personas (Run 14 regression). The N-01 duplication is cosmetic;
-		// the truncation causes lost chat history.
+		// Gemini sometimes re-emits pre-tool text in continuation turns.
+		// Strip the overlapping prefix to avoid duplicated paragraphs in
+		// the frontend's fullContent (Run 19 N-01/N-02 stutter).
 		if len(turnText) > 0 {
-			if completeResponse.Len() > 0 {
-				completeResponse.WriteByte(' ')
+			existing := completeResponse.String()
+			if len(existing) > 0 {
+				turnText = stripOverlappingPrefix(existing, turnText)
 			}
-			completeResponse.WriteString(turnText)
+			if len(turnText) > 0 {
+				if completeResponse.Len() > 0 {
+					completeResponse.WriteByte(' ')
+				}
+				completeResponse.WriteString(turnText)
+			}
 		}
 
 		// Accumulate token usage across tool loop iterations.
@@ -1670,6 +1674,34 @@ Examples:
 		)
 	}
 	return isYes
+}
+
+// stripOverlappingPrefix detects when newText begins with content that already
+// appears at the end of existing (Gemini re-emitting pre-tool text in
+// continuation turns). Returns newText with the overlapping prefix removed.
+// Uses a minimum overlap threshold of 20 characters to avoid false positives
+// on short common phrases.
+func stripOverlappingPrefix(existing, newText string) string {
+	// Compare the tail of existing against the head of newText.
+	// We only need to check up to the shorter of the two strings.
+	maxOverlap := len(existing)
+	if len(newText) < maxOverlap {
+		maxOverlap = len(newText)
+	}
+
+	bestOverlap := 0
+	for i := 20; i <= maxOverlap; i++ {
+		tail := existing[len(existing)-i:]
+		head := newText[:i]
+		if tail == head {
+			bestOverlap = i
+		}
+	}
+
+	if bestOverlap > 0 {
+		return newText[bestOverlap:]
+	}
+	return newText
 }
 
 // stripTrailingStutter removes repeated trailing phrases that occur when the

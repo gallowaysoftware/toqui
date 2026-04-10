@@ -390,3 +390,58 @@ func TestStripTemplatePlaceholders(t *testing.T) {
 		})
 	}
 }
+
+func TestStripOverlappingPrefix(t *testing.T) {
+	cases := []struct {
+		name     string
+		existing string
+		newText  string
+		want     string
+	}{
+		{
+			name:     "no overlap",
+			existing: "Here are the best temples.",
+			newText:  "Now let me add those to your itinerary.",
+			want:     "Now let me add those to your itinerary.",
+		},
+		{
+			name:     "exact suffix-prefix overlap",
+			existing: "I recommend visiting Kinkaku-ji temple and Fushimi Inari shrine.",
+			newText:  "Fushimi Inari shrine. Next, let me add a booking.",
+			want:     " Next, let me add a booking.",
+		},
+		{
+			name:     "short overlap below threshold ignored",
+			existing: "Visit the temple.",
+			newText:  "temple. Also try the food.",
+			want:     "temple. Also try the food.",
+		},
+		{
+			name:     "empty new text",
+			existing: "Hello world",
+			newText:  "",
+			want:     "",
+		},
+		{
+			name:     "full overlap (new is suffix of existing)",
+			existing: "The complete response text here.",
+			newText:  "The complete response text here.",
+			want:     "",
+		},
+		{
+			name:     "long paragraph overlap from Gemini re-emit",
+			existing: "Bangkok has amazing street food. Try the pad thai at Thip Samai and the mango sticky rice at Mae Varee.",
+			newText:  "the pad thai at Thip Samai and the mango sticky rice at Mae Varee. Don't miss the night markets!",
+			want:     " Don't miss the night markets!",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := stripOverlappingPrefix(c.existing, c.newText)
+			if got != c.want {
+				t.Errorf("stripOverlappingPrefix()\n  got:  %q\n  want: %q", got, c.want)
+			}
+		})
+	}
+}
