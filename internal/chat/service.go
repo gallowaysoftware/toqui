@@ -188,9 +188,10 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 		}
 		for _, tc := range msg.ToolCalls {
 			m.ToolCalls = append(m.ToolCalls, ai.ToolCall{
-				ID:        tc.ID,
-				Name:      tc.Name,
-				Arguments: tc.Arguments,
+				ID:               tc.ID,
+				Name:             tc.Name,
+				Arguments:        tc.Arguments,
+				ThoughtSignature: tc.ThoughtSignature,
 			})
 		}
 		for _, tr := range msg.ToolResults {
@@ -519,9 +520,10 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			}
 			for _, tc := range toolCalls {
 				storedAssistant.ToolCalls = append(storedAssistant.ToolCalls, chatstore.StoredToolCall{
-					ID:        tc.ID,
-					Name:      tc.Name,
-					Arguments: tc.Arguments,
+					ID:               tc.ID,
+					Name:             tc.Name,
+					Arguments:        tc.Arguments,
+					ThoughtSignature: tc.ThoughtSignature,
 				})
 			}
 			if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, storedAssistant); err != nil {
@@ -696,6 +698,10 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		if fullContent == "" {
 			fullContent = responseText
 		}
+		// Remove trailing stutter from accumulated cross-iteration text
+		// (Run 17 N-01 P2: completeResponse can duplicate phrases when
+		// Gemini re-emits pre-tool text in continuation turns).
+		fullContent = stripTrailingStutter(fullContent)
 
 		sendOrDrop(outCh, ctx, StreamEvent{
 			Type:      "message_complete",
@@ -1662,6 +1668,76 @@ Examples:
 		)
 	}
 	return isYes
+}
+
+// stripTrailingStutter removes repeated trailing phrases that occur when the
+// completeResponse accumulator captures overlapping text from tool loop
+// iterations. Example: "...the best temples in Kyoto! the best temples in Kyoto!"
+// The approach: split into sentences and check if the trailing sentences
+// duplicate an earlier block.
+func stripTrailingStutter(text string) string {
+	if len(text) < 40 {
+		return text
+	}
+	// Split on sentence boundaries (simple: ". ", "! ", "? " and newlines).
+	// Then check if the second half of the sentence list duplicates the first.
+	sentences := splitSentences(text)
+	if len(sentences) < 2 {
+		return text
+	}
+	// Try to find the longest trailing run of sentences that matches a
+	// preceding run of the same length at the same relative position.
+	n := len(sentences)
+	for dupLen := n / 2; dupLen >= 1; dupLen-- {
+		start := n - dupLen
+		preceding := sentences[start-dupLen : start]
+		trailing := sentences[start:]
+		if sentenceSlicesEqual(preceding, trailing) {
+			// Keep only up to the start of the duplicate.
+			result := strings.TrimSpace(strings.Join(sentences[:start], ""))
+			if result != "" {
+				return result
+			}
+		}
+	}
+	return text
+}
+
+// splitSentences splits text into sentence-like chunks, preserving their
+// trailing punctuation and whitespace as part of each chunk.
+func splitSentences(text string) []string {
+	var sentences []string
+	remaining := text
+	for remaining != "" {
+		endIdx := -1
+		for i := 0; i < len(remaining)-1; i++ {
+			if (remaining[i] == '.' || remaining[i] == '!' || remaining[i] == '?') &&
+				(remaining[i+1] == ' ' || remaining[i+1] == '\n') {
+				endIdx = i + 2 // include the punctuation and following space
+				break
+			}
+		}
+		if endIdx == -1 {
+			sentences = append(sentences, remaining)
+			break
+		}
+		sentences = append(sentences, remaining[:endIdx])
+		remaining = remaining[endIdx:]
+	}
+	return sentences
+}
+
+// sentenceSlicesEqual compares two sentence slices after trimming whitespace.
+func sentenceSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if strings.TrimSpace(a[i]) != strings.TrimSpace(b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // retryArtifactMarkers are phrases that indicate self-referential meta-narration

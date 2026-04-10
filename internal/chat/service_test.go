@@ -289,3 +289,51 @@ func TestStripRetryArtifacts(t *testing.T) {
 		})
 	}
 }
+
+func TestStripTrailingStutter(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no stutter",
+			input: "Here are the best temples in Kyoto for your visit.",
+			want:  "Here are the best temples in Kyoto for your visit.",
+		},
+		{
+			name:  "exact trailing duplicate",
+			input: "Here are the best temples in Kyoto! Here are the best temples in Kyoto!",
+			want:  "Here are the best temples in Kyoto!",
+		},
+		{
+			name:  "short text unchanged",
+			input: "Hello world",
+			want:  "Hello world",
+		},
+		{
+			name:  "empty text",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "long text no stutter",
+			input: "Day 1: Visit Fushimi Inari. Day 2: Explore Arashiyama. Day 3: See Kinkaku-ji.",
+			want:  "Day 1: Visit Fushimi Inari. Day 2: Explore Arashiyama. Day 3: See Kinkaku-ji.",
+		},
+		{
+			name:  "multi-sentence block stutter",
+			input: "Visit Fushimi Inari. Explore Arashiyama. See Kinkaku-ji. Visit Fushimi Inari. Explore Arashiyama. See Kinkaku-ji.",
+			want:  "Visit Fushimi Inari. Explore Arashiyama. See Kinkaku-ji.",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := stripTrailingStutter(c.input)
+			if got != c.want {
+				t.Errorf("stripTrailingStutter(%q)\n  got:  %q\n  want: %q", c.input, got, c.want)
+			}
+		})
+	}
+}

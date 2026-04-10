@@ -45,6 +45,9 @@ type StoredToolCall struct {
 	ID        string `firestore:"id"`
 	Name      string `firestore:"name"`
 	Arguments string `firestore:"arguments"` // JSON string
+	// ThoughtSignature is a Gemini 3 opaque token for reasoning continuity
+	// across tool-call turns. Empty for Gemini 2.5 and Claude.
+	ThoughtSignature string `firestore:"thoughtSignature,omitempty"`
 }
 
 // StoredToolResult is a Firestore-friendly representation of a tool execution result.
@@ -205,7 +208,13 @@ func (s *Store) AddMessageWithMode(ctx context.Context, userID, tripID, sessionI
 		"id":            sessionID,
 		"tripId":        tripID,
 		"lastMessageAt": msg.CreatedAt,
-		"messageCount":  firestore.Increment(1),
+	}
+	// Only count user/assistant messages with content — not tool-loop
+	// intermediates (empty assistant with tool_calls, user with tool_results).
+	// This makes messageCount match what GetChatHistory returns after
+	// isToolLoopIntermediate filtering (Run 17 N-02 P2).
+	if msg.Content != "" && (msg.Role == "user" || msg.Role == "assistant") {
+		sessionUpdate["messageCount"] = firestore.Increment(1)
 	}
 	if mode != "" {
 		sessionUpdate["mode"] = mode
