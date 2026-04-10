@@ -1,0 +1,58 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic & Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions messageCount always returns 0",
+      "description": "ListChatSessions returns messageCount=0 for sessions that have messages. GetChatHistory for the same session returns 10 messages correctly. The count field appears to not be populated.",
+      "expected": "messageCount should reflect the actual number of messages in the session",
+      "actual": "messageCount is 0 for all sessions despite messages existing",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions with trip_id"
+    },
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty object on first key extraction attempt",
+      "description": "The shared trip endpoint returns data nested under 'trip' and 'itinerary' keys rather than flat top-level keys. This is not a bug per se but the response structure requires knowing the nesting. The data is correct and complete when accessed properly.",
+      "expected": "Consistent API response structure",
+      "actual": "Data nested under trip/itinerary sub-objects — works correctly"
+    },
+    {
+      "severity": "P2",
+      "title": "tripCreated stream event missing destinationCountry",
+      "description": "The tripCreated stream event for the Iceland trip showed an empty destinationCountry field, though GetTrip correctly returned 'IS'. The CZ trip's tripCreated event also appeared to have destinationCountry absent in the stream payload.",
+      "expected": "tripCreated event should include the destinationCountry that was set",
+      "actual": "destinationCountry field empty in stream event, correct in GetTrip response",
+      "api_command": "SendMessage in CHAT_MODE_SELECTION"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI generated a 7-day CZ itinerary when asked for a 3-day Prague itinerary. While the extra days are useful (day trips to Pilsen, Zatec, Ceske Budejovice), the user explicitly asked for 3 days. The AI should either ask if the user wants additional days or clearly note it is adding bonus days beyond the request.",
+      "severity": "P2",
+      "suggestion": "Respect the user's requested day count and offer to extend if desired"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert handoff happened proactively on the very first message for both CZ and IS trips, which is excellent behavior — the AI correctly identified niche topics (craft-beer, hiking) and routed to specialists immediately.",
+      "context": "CZ trip: Jakub (Czech brewing expert), IS trip: Björn (Icelandic wilderness expert)",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional performance across both extended location profiles (CZ and IS) and extended themes (craft-beer and hiking). The Czech craft beer expert demonstrated genuinely deep knowledge — specific brewery names (U Fleku, Pivovarsky dum, BeerGeek, Sibeeria, Zichovec), technical brewing details (decoction mashing, melanoidins, Saaz hops), neighborhood-level Prague recommendations, and nuanced style comparisons (tmave pivo vs German Dunkel). The Iceland hiking expert provided trail-stage-by-stage breakdowns with distances, elevation, hut names, river crossing warnings, and seasonal advice. Companion mode responses were appropriately concise and practical. The two-trip workflow worked flawlessly — independent trips with no cross-contamination. This is genuinely better than planning these trips manually."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "expert_handoff", "itinerary_creation", "recommend_booking"]
+}

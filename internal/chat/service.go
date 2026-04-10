@@ -485,27 +485,20 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 			}
 			aiReq.Messages = append(aiReq.Messages, assistantMsg)
 
-			// Append the user message with tool results
+			// Append the user message with tool results. If a persona swap
+			// happened, include the nudge as Content on this same message
+			// rather than as a separate user turn (Gemini 3 strict ordering).
 			toolResultMsg := ai.Message{
 				Role:        "user",
 				ToolResults: toolResults,
 			}
-			aiReq.Messages = append(aiReq.Messages, toolResultMsg)
-
-			// After a persona swap, append a non-persisted nudge so the new
-			// expert is forced to substantively answer the user's most recent
-			// message instead of just introducing themselves and ending the
-			// turn (#193). This message exists only in the AI request — it
-			// is NOT written to chat history.
 			if swappedPersona != nil {
-				aiReq.Messages = append(aiReq.Messages, ai.Message{
-					Role: "user",
-					Content: fmt.Sprintf(
-						"(Automated follow-up: you are now responding as %s. The handoff is complete. Answer my most recent question DIRECTLY and substantively using your specialised expertise. Do NOT introduce yourself, do NOT defer to anyone else, and do NOT call suggest_expert again.)",
-						swappedPersona.Name,
-					),
-				})
+				toolResultMsg.Content = fmt.Sprintf(
+					"(Automated follow-up: you are now responding as %s. The handoff is complete. Answer my most recent question DIRECTLY and substantively using your specialised expertise. Do NOT introduce yourself, do NOT defer to anyone else, and do NOT call suggest_expert again.)",
+					swappedPersona.Name,
+				)
 			}
+			aiReq.Messages = append(aiReq.Messages, toolResultMsg)
 
 			// Persist intermediate messages so history reconstruction includes
 			// the tool_call/tool_result pairing on subsequent turns.
@@ -654,8 +647,12 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				if fabricationRetries >= 2 {
 					nudge = "(Automated follow-up: IMPORTANT — please call create_itinerary_items now with all the items you described. Output ONLY the tool call, no text.)"
 				}
+				// Only append the user nudge — NOT the assistant response.
+				// Gemini 3 enforces strict turn ordering (user → model → user)
+				// and inserting an assistant message here creates model → model
+				// which triggers a 400 error. The AI already generated the
+				// response text so it has context without us echoing it back.
 				aiReq.Messages = append(aiReq.Messages,
-					ai.Message{Role: "assistant", Content: responseText},
 					ai.Message{Role: "user", Content: nudge},
 				)
 				fullResponse.Reset()
@@ -674,8 +671,8 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 				"iteration", iteration,
 				"response_preview", responseText[:min(len(responseText), 120)],
 			)
+			// Only user nudge — no assistant echo (Gemini 3 turn ordering).
 			aiReq.Messages = append(aiReq.Messages,
-				ai.Message{Role: "assistant", Content: responseText},
 				ai.Message{Role: "user", Content: "(Automated follow-up: you said you would hand this off to a specialist but did not actually call suggest_expert. Call it now to make the handoff happen — do not reply with text.)"},
 			)
 			fullResponse.Reset()

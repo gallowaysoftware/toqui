@@ -1,0 +1,88 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "run_id": "run15",
+  "trip_destination": "Japan",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingest",
+    "share_enable",
+    "share_access",
+    "share_disable",
+    "share_revocation_verify",
+    "share_re_enable",
+    "share_new_token_verify",
+    "share_old_token_still_invalid",
+    "share_content_completeness",
+    "activate",
+    "chat_history",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions requires trip_id, cannot list selection-mode sessions",
+      "description": "ListChatSessions returns validation error 'trip_id: value is empty, which is not a valid UUID' when called without a trip_id. Selection-mode sessions that haven't yet created a trip cannot be listed. This prevents a client from showing all chat sessions across the app.",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/ListChatSessions -d '{}'",
+      "expected": "Returns sessions without requiring trip_id, or at least returns an empty list",
+      "actual": "Returns validation error: trip_id is empty"
+    },
+    {
+      "severity": "P2",
+      "title": "GetChatHistory missing second planning message",
+      "description": "Sent two messages in the same session (selection mode then planning mode). GetChatHistory for that session only returns the first message pair (user+assistant). The second planning message and its response are missing from history. Usage counter also shows 1 instead of expected 2.",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/GetChatHistory -d '{\"trip_id\":\"...\",\"session_id\":\"...\"}'",
+      "expected": "4 messages (2 user + 2 assistant) and usage count of 2",
+      "actual": "2 messages (1 user + 1 assistant) and usage count of 1"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared view booking does not include confirmation_code field. The ryokan booking has code RYO-K-5521 but the shared view booking shows empty confirmation_code.",
+      "severity": "P2",
+      "suggestion": "Include confirmation_code in the shared view booking projection for reference."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items three times — once successfully creating 32 items, then twice more with the same 32 items (both returned 'already_exists' with 0 created). Redundant tool calls waste tokens.",
+      "context": "Planning mode step 3, after the first successful call the AI re-called the same tool twice more with identical input.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 4,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip sharing lifecycle worked correctly. Token revocation is properly enforced (P0 security path passes), new tokens differ from old ones, and shared views contain complete trip data including itinerary and bookings with no sensitive data leakage. The core sharing feature is solid. Minor issues: chat history may not persist all messages in a reused session, and the AI redundantly re-called create_itinerary_items after successful creation."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "booking_ingest",
+    "share_enable",
+    "share_access_public",
+    "share_disable",
+    "share_revocation",
+    "share_re_enable",
+    "share_token_rotation",
+    "share_old_token_invalidation",
+    "share_content_completeness",
+    "activate",
+    "chat_history",
+    "usage",
+    "complete",
+    "list_trips",
+    "itinerary_persistence"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The Saudi Arabia planning response stored fullContent that started with 'Confirmed. I have added the detailed scouting sessions...' rather than the full Saudi Arabia response text. The actual response was correct in the stream but the messageComplete fullContent appears to have been truncated or replaced with a continuation message from a tool result.",
+      "severity": "P2",
+      "suggestion": "Ensure messageComplete fullContent captures the entire assistant response, not just the final continuation after tool calls."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "The Jerusalem response mentioned a 'ceasefire announced just yesterday' which is fabricated current-event information. The AI should not invent breaking news that could mislead a traveler about the security situation.",
+      "context": "Step 3a: Jerusalem Old City access rules. The AI stated 'Given today's date (April 10, 2026) and the ceasefire announced just yesterday, the Old City is transitioning from a period of total closure to a fragile reopening.' This is fabricated and potentially dangerous misinformation for a real traveler.",
+      "severity": "P1"
+    },
+    {
+      "issue": "The AI referred to Bagan's temple climbing ban as being 'since 2019' in the initial trip creation response but correctly attributed it to the 2019 UNESCO inscription in later responses. This is factually accurate though the specific trigger was the 2016 earthquake damage plus UNESCO designation.",
+      "context": "Steps 2 and 3c both correctly noted the climbing restriction, which is good.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional cultural sensitivity across three complex destinations. It correctly distinguished Muslim vs non-Muslim access rules at Temple Mount/Haram al-Sharif, accurately noted the abaya is no longer legally required for tourists in Saudi Arabia, provided nuanced and balanced coverage of Myanmar's ethical tourism dilemma without editorializing, and gave a respectful cross-faith comparison of dress codes covering Jewish, Islamic, and Buddhist sites. The expert handoff to 'Elias' was appropriate and the persona maintained documentary-filmmaker-level depth throughout. The one significant issue was fabricating a 'ceasefire announced yesterday' which could mislead real travelers. Companion mode responses were appropriately concise compared to planning mode."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "expert_handoff", "itinerary_creation"]
+}

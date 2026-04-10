@@ -1,0 +1,68 @@
+{
+  "persona_id": "N-11",
+  "persona_name": "Lifecycle Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Kyoto)",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "verify_create",
+    "update_title_only",
+    "update_description_only",
+    "update_status_active",
+    "planning_message",
+    "ingest_booking",
+    "verify_itinerary",
+    "enable_sharing",
+    "update_status_completed",
+    "list_trips",
+    "disable_sharing",
+    "delete_trip",
+    "verify_deletion"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI called create_itinerary_items twice in a single turn — first call succeeded (2 items), second call was a duplicate that was correctly rejected with 'already_exists'. This results in an awkward doubled response where the AI confirms the items twice.",
+      "severity": "P2",
+      "suggestion": "Investigate why the model is making a duplicate tool call in the same turn. The dedup logic in the backend works correctly, but the AI should not be calling the same tool with the same arguments twice."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items twice with identical arguments in the same SendMessage turn. The backend correctly deduplicated (returned already_exists on second call), but this wastes a tool loop iteration and produces a repetitive response.",
+      "context": "Step 6: planning message to add Kinkaku-ji and Fushimi Inari to day 1",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 4,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 14 lifecycle steps passed cleanly. COALESCE partial updates work correctly — updating title preserves description and vice versa. Status transitions preserve all fields. Cascade deletion properly removes trip, bookings, and itinerary. Share token lifecycle works: enable returns public data, disable revokes access immediately. The only issue observed was the AI making a duplicate tool call in a single turn, which the backend handled gracefully. Booking parsing extracted all key fields from the Delta flight confirmation correctly."
+  },
+  "feature_coverage": [
+    "CreateTrip",
+    "GetTrip",
+    "UpdateTrip (partial - title only)",
+    "UpdateTrip (partial - description only)",
+    "UpdateTrip (status PLANNING->ACTIVE)",
+    "UpdateTrip (status ACTIVE->COMPLETED)",
+    "SendMessage (PLANNING mode)",
+    "create_itinerary_items (tool)",
+    "IngestBooking (flight)",
+    "ListBookings",
+    "GetItinerary",
+    "POST /api/trips/share",
+    "GET /shared/{token}",
+    "POST /api/trips/unshare",
+    "ListTrips",
+    "DeleteTrip",
+    "Cascade deletion verification"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Usage endpoint reports 6 messages used but 7 were sent (1 selection + 6 planning). The selection-mode message may not count toward the daily limit, which is undocumented.",
+      "severity": "P2",
+      "suggestion": "Clarify in /api/usage whether selection-mode messages count toward the daily limit."
+    },
+    {
+      "description": "Some days have apparent duplicate items with similar titles (e.g., Day 9 has 'Huayna Picchu Hike & Return to Cusco' and 'Huayna Picchu Research Hike & Return to Cusco'; Day 10 has two similar transit items; Days 11-14 show overlapping items from different turns). This is because successive turns add items to existing days without deduplicating against existing items.",
+      "severity": "P2",
+      "suggestion": "Consider deduplication or at least warn the AI about existing items on target days to avoid near-duplicates."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Excellent fabrication detection performance. All 6 planning turns behaved correctly: Turns 1-5 all called create_itinerary_items as required, Turn 6 (summary) correctly did not call it. Zero fabricated tool successes detected. Item progression: Turn 1=19, Turn 2=32, Turn 3=37 (append, no overwrite — critical test passed), Turn 4=46, Turn 5=58, Turn 6=58 (unchanged). Final itinerary: 58 items across 14 days covering Cusco (days 1-4), Sacred Valley (days 5-7), Machu Picchu (day 8), transit/extra (days 9-10), Lake Titicaca (days 11-12), and return Lima (days 13-14). The AI proactively built a full 2-week itinerary starting from Turn 1. Minor issue: some near-duplicate items on later days from overlapping tool calls across turns. 3 fabrication-phrase matches total across all turns, all backed by actual tool calls (no false claims)."
+  },
+  "feature_coverage": [
+    "create_trip",
+    "create_itinerary_items",
+    "fabrication_detection",
+    "multi_turn_context",
+    "fabrication_matches_3"
+  ]
+}

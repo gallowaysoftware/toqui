@@ -1,0 +1,107 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "PARTIAL",
+  "run_id": "run15",
+  "trip_destination": "Italy",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P0",
+      "title": "Chat session breaks after heavy tool usage — both providers fail",
+      "description": "After 7 messages with heavy tool usage (create_itinerary_items, delete_itinerary_items, recommend_booking, suggest_expert), the session becomes permanently broken. Gemini returns 400 'Function call is missing a thought_signature in functionCall parts' and Claude returns 400 'This model does not support assistant message prefill. The conversation must end with a user message.' Both providers fail on the same session, making the conversation unrecoverable. The user must start a new session to continue.",
+      "steps_to_reproduce": "1. Create trip in selection mode. 2. Send 7 planning messages with frequent tool calls (itinerary create/delete, recommend_booking). 3. On message 8, both providers fail with 400 errors.",
+      "expected": "Conversation continues normally across many turns with tool calls",
+      "actual": "Session permanently broken after ~7 messages with heavy tool usage. Gemini: thought_signature missing. Claude: assistant message prefill error.",
+      "api_command": "buf curl SendMessage with session_id of broken session"
+    },
+    {
+      "severity": "P1",
+      "title": "SendMessage returns 'no response from AI' after tool loop exhaustion",
+      "description": "Message 5 (budget check question) triggered 7 tool calls (recommend_booking x3, suggest_expert, create/delete/create itinerary) which exhausted the tool loop iterations (max 5). The response was an error 'no response from AI — please try again' instead of a partial response or graceful degradation. The user sees no useful output.",
+      "steps_to_reproduce": "Send a budget-related question that triggers multiple recommend_booking and create_itinerary_items calls in a single turn.",
+      "expected": "AI provides a response even if some tool calls are skipped, or limits tool calls to stay within the loop budget",
+      "actual": "Error: 'no response from AI — please try again'"
+    },
+    {
+      "severity": "P2",
+      "title": "Venice-related items not fully removed after 'cut Venice' instruction",
+      "description": "After message 7 ('cut Venice entirely'), the delete_itinerary_items tool successfully removed 12 Venice items. However, Day 9 still contains 'Cicchetti Crawl in San Polo' and 'Vegetarian Cicchetti Crawl' — cicchetti are a distinctly Venetian food tradition and San Polo is a Venice neighborhood. These items were likely created during the Cinque Terre addition and not caught by the Venice deletion.",
+      "expected": "All Venice-themed items removed from itinerary after explicit 'cut Venice' instruction",
+      "actual": "Two Venice-related items remain on Day 9: 'Cicchetti Crawl in San Polo' and 'Vegetarian Cicchetti Crawl'"
+    },
+    {
+      "severity": "P2",
+      "title": "Day 7 overloaded with 15 items from multiple sessions",
+      "description": "Day 7 accumulated 15 itinerary items, many of which are duplicates or overlapping (e.g., 'Morning in Boboli Gardens' and 'Vegetarian Tuscan Feast in Oltrarno' alongside 'Wine Tasting at Enoteca Vanni' and 'Cycle the Lucca City Walls'). This appears to be from items created across multiple sessions being layered without deduplication.",
+      "expected": "Items from new sessions should replace or be deduplicated with existing items for the same day",
+      "actual": "15 items on Day 7 including conflicting activities (can't do Boboli Gardens, Lucca wine tasting, AND Cinque Terre check-in all in one day)"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip title not updated after Venice was removed",
+      "description": "After cutting Venice from the itinerary (message 7), the trip title remained 'First Time in Italy: Rome, Florence & Venice'. The AI did not call UpdateTrip to reflect the new itinerary (should be 'Rome, Florence & Cinque Terre').",
+      "expected": "Trip title updated to reflect the revised itinerary after a major destination change",
+      "actual": "Title still references Venice after Venice was removed"
+    },
+    {
+      "severity": "P2",
+      "title": "itineraryUpdate stream events contain 0 items despite successful creation",
+      "description": "The itineraryUpdate events in the stream consistently had 0 items even when create_itinerary_items tool results showed items were successfully created. The frontend would not be able to show real-time itinerary updates from the stream.",
+      "expected": "itineraryUpdate events should contain the created items for real-time frontend display",
+      "actual": "itineraryUpdate events have empty items arrays"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Free tier limit of 10 messages is too low for a rapid-fire planning persona. Marco's use case (iterative planning with frequent modifications) exhausted the limit before reaching companion mode. A user who plans iteratively would hit the wall very quickly.",
+      "severity": "P2",
+      "suggestion": "Consider a higher free-tier limit (15-20) or count only user messages (not AI tool loop iterations) toward the limit"
+    },
+    {
+      "description": "When the AI exhausts tool loop iterations (max 5), the error message 'no response from AI — please try again' is unhelpful. The user has no idea why their message failed or what to do differently.",
+      "severity": "P1",
+      "suggestion": "Provide a more descriptive error like 'Your request triggered too many actions. Try asking a simpler question.' or return a partial response with what was accomplished."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items with already-existing items, triggering 'already_exists' responses. It then retried the same items, wasting tool loop iterations.",
+      "context": "Message 1 planning: after the first create_itinerary_items succeeded (16 items), the AI called it again with the same 16 items, getting 'already_exists'. Then it tried again. This consumed 4 of 5 tool loop iterations on duplicates.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Budget question (message 5) triggered an excessive number of tool calls instead of a text-based response. A simple budget analysis should not require 7 tool calls.",
+      "context": "Message 5 asked about $150/day budget. AI called recommend_booking x3, suggest_expert, create_itinerary_items, delete_itinerary_items, create_itinerary_items — exhausting the tool loop without producing a response.",
+      "severity": "P1"
+    },
+    {
+      "issue": "AI did not update the trip title after the major itinerary change removing Venice and adding Cinque Terre.",
+      "context": "After message 7 explicitly removed Venice and added Cinque Terre, the trip metadata still references Venice. The AI should have called UpdateTrip to update the title.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "SendMessage (session continuation)",
+      "input": "Message 8 in existing session with heavy tool history",
+      "error": "Gemini: 400 'Function call is missing a thought_signature in functionCall parts'; Claude: 400 'This model does not support assistant message prefill. The conversation must end with a user message.'"
+    },
+    {
+      "tool": "SendMessage (tool loop exhaustion)",
+      "input": "Budget question triggering 7+ tool calls",
+      "error": "no response from AI — please try again"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 3,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong initial planning capability — creating a detailed 10-day Italy itinerary with sensible day allocations, and it handled the critical Venice-to-Cinque-Terre modification well by calling delete_itinerary_items and create_itinerary_items. Vegetarian context was retained across turns and reflected in the final summary, which correctly included all 9 modifications. However, the session broke after 7 messages due to thought signature issues, and a budget question exhausted the tool loop without producing any response. The free-tier 10-message limit prevented testing companion mode entirely. The rapid-fire planning use case exposed real scalability issues with multi-turn tool-heavy conversations."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "delete_itinerary_items", "recommend_booking", "suggest_expert", "sharing", "unsharing", "chat_history", "usage", "trip_completion", "multi_session"]
+}

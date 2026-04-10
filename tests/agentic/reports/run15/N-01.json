@@ -1,0 +1,28 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand (Bangkok)",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI created itinerary items in companion mode without being explicitly asked. On message 2 ('I'm hungry, what's near Khao San Road?'), the AI called create_itinerary_items and added 3 items (2 meals + 1 sightseeing) to the itinerary. The persona spec requires companion mode to be reactive, not planning-oriented, and only create items when explicitly requested.",
+      "context": "Message 2 in companion mode. User asked 'I'm hungry, what's near Khao San Road?' — a simple food recommendation question. The AI should have answered without calling create_itinerary_items. This is the behavioral regression the persona was designed to detect.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode responses were high quality — concise (all under 200 words), Thailand-specific, and actionable. The geographic reasoning for 'big gold temple' was excellent, offering 3 plausible matches with distinguishing features. Tipping advice was accurate and budget-aware. Evening recommendations were appropriate for the persona. The one significant issue is that the AI created itinerary items unsolicited on message 2, which is a companion mode behavioral regression. Messages 3-5 correctly avoided creating items, and message 6 correctly created items when explicitly asked."
+  },
+  "feature_coverage": ["companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}
