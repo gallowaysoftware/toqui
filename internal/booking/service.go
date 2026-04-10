@@ -118,8 +118,8 @@ Return a JSON object with these fields:
 - confirmation_code: the booking/confirmation number
 - provider: the company name (airline, hotel chain, etc.)
 - title: a brief description of the booking
-- start_time: ISO 8601 datetime if available
-- end_time: ISO 8601 datetime if available
+- start_time: ISO 8601 datetime if available. For flights, use the OUTBOUND departure time. For hotels, use check-in date+time. For tours/activities, use the start time. ALWAYS populate this if any time info is present.
+- end_time: ISO 8601 datetime if available. For flights, use the OUTBOUND arrival time. For hotels, use check-out date+time. For tours, use the end time.
 - address: the location/address if available
 - departure_location: departure city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's departure.
 - arrival_location: arrival city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's arrival (the destination), NOT the return leg's arrival.

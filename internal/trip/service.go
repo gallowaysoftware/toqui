@@ -49,6 +49,9 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 func (s *Service) Create(ctx context.Context, userID uuid.UUID, title, description string, startDate, endDate *time.Time) (*dbgen.Trip, error) {
+	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
+		return nil, fmt.Errorf("end_date (%s) cannot be before start_date (%s)", endDate.Format("2006-01-02"), startDate.Format("2006-01-02"))
+	}
 	trip, err := s.queries.CreateTrip(ctx, dbgen.CreateTripParams{
 		UserID:      userID,
 		Title:       title,
@@ -196,6 +199,9 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID, status strin
 }
 
 func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time) (*dbgen.Trip, error) {
+	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
+		return nil, fmt.Errorf("end_date (%s) cannot be before start_date (%s)", endDate.Format("2006-01-02"), startDate.Format("2006-01-02"))
+	}
 	// Enforce the documented trip status machine: planning → active → completed
 	// is the canonical forward path, planning → completed is allowed as a
 	// shortcut ("this was a quick trip, mark it done"), and any transition
