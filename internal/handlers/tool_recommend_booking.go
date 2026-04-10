@@ -15,9 +15,12 @@ import (
 // For free-tier users the recommendations include affiliate links and an FTC
 // disclosure. Pro-tier users receive unbiased recommendations instead.
 type RecommendBookingTool struct {
-	linkBuilder *affiliate.LinkBuilder
-	userTier    tier.UserTier
-	onRecommend func(rec affiliate.Recommendation)
+	linkBuilder     *affiliate.LinkBuilder
+	userTier        tier.UserTier
+	onRecommend     func(rec affiliate.Recommendation)
+	tripDestination string // fallback destination from trip context
+	tripStartDate   string // fallback start date (YYYY-MM-DD)
+	tripEndDate     string // fallback end date (YYYY-MM-DD)
 }
 
 type recommendBookingArgs struct {
@@ -39,6 +42,16 @@ func NewRecommendBookingTool(linkBuilder *affiliate.LinkBuilder, userTier tier.U
 		userTier:    userTier,
 		onRecommend: onRecommend,
 	}
+}
+
+// WithTripContext sets fallback destination/dates from the current trip so
+// affiliate URLs are pre-populated when the AI doesn't specify them (#176).
+func (t *RecommendBookingTool) WithTripContext(destination, startDate, endDate string) *RecommendBookingTool {
+	cp := *t
+	cp.tripDestination = destination
+	cp.tripStartDate = startDate
+	cp.tripEndDate = endDate
+	return &cp
 }
 
 func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
@@ -136,9 +149,15 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		}
 		dest := params.Destination
 		if dest == "" {
+			dest = t.tripDestination // fall back to trip context (#176)
+		}
+		if dest == "" {
 			dest = "anywhere"
 		}
 		date := params.DateFrom
+		if date == "" {
+			date = t.tripStartDate // fall back to trip context (#176)
+		}
 		if date == "" {
 			date = "anytime"
 		}
@@ -151,6 +170,9 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 
 	case "hotel":
 		city := params.Destination
+		if city == "" {
+			city = t.tripDestination // fall back to trip context (#176)
+		}
 		if city == "" {
 			city = "your destination"
 		}

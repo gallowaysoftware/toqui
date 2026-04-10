@@ -193,6 +193,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var tripThemes []string
 	var tripTitle, tripDescription string
 	var tripStartDate, tripEndDate string
+	var tripStartDateISO, tripEndDateISO string // YYYY-MM-DD for affiliate URLs
 	var tripStatus string
 	var existingItinerary []dbgen.ItineraryItem
 	var existingBookings []dbgen.Booking
@@ -216,9 +217,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				if t.StartDate.Valid {
 					tripStartDate = t.StartDate.Time.Format(dateFormatLong)
+					tripStartDateISO = t.StartDate.Time.Format("2006-01-02")
 				}
 				if t.EndDate.Valid {
 					tripEndDate = t.EndDate.Time.Format(dateFormatLong)
+					tripEndDateISO = t.EndDate.Time.Format("2006-01-02")
 				}
 			}
 			if h.themeSvc != nil {
@@ -366,11 +369,15 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	// affiliate-linked results; Pro-tier users get unbiased recommendations.
 	var recommendBookingTool tools.Tool
 	if h.linkBuilder != nil {
-		recommendBookingTool = NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
+		rbt := NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
 			mu.Lock()
 			recommendations = append(recommendations, rec)
 			mu.Unlock()
 		})
+		if destinationCountry != "" || tripStartDateISO != "" {
+			rbt = rbt.WithTripContext(destinationCountry, tripStartDateISO, tripEndDateISO)
+		}
+		recommendBookingTool = rbt
 	}
 
 	// Selection mode: add create_trip + select_trip tools

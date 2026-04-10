@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 )
 
 // Registry manages persona resolution. Toqui is the orchestrator and is always
@@ -69,14 +68,13 @@ func (r *Registry) ListAll() []*Persona {
 }
 
 // HandoffMessage generates the message Toqui uses to introduce an expert.
+// Kept minimal so the AI can write contextual narration in its own response
+// text rather than using a templated message (Run 7 #174).
 func (r *Registry) HandoffMessage(expert *Persona) string {
 	if expert.ID == "toqui" {
 		return ""
 	}
-
-	themes := strings.Join(expert.Specialties, " and ")
-	return fmt.Sprintf("I know just the person to help with %s. Meet %s — %s I'll be here if you need anything with your itinerary or bookings.",
-		themes, expert.Name, expert.Description)
+	return fmt.Sprintf("Handing off to %s — %s", expert.Name, expert.Description)
 }
 
 func newToqui() *Persona {

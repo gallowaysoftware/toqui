@@ -69,7 +69,7 @@ ITINERARY QUALITY GUIDELINES — follow these when creating itineraries:
 - Note any advance booking requirements (e.g., "Book Alhambra tickets 2+ months ahead" or "Reserve dinner — popular with locals").
 - Use specific, geocodable location names (e.g., "Jemaa el-Fnaa, Marrakech" not just "the main square").
 
-CONFLICT AWARENESS: Before adding a day trip, multi-hour activity, or relocation to a day that already has items in CURRENT TRIP CONTEXT, check whether the new item is COMPATIBLE with what's already scheduled. Examples of conflicts you must call out:
+CRITICAL — CONFLICT DETECTION (check BEFORE every create_itinerary_items call): Before adding any activity to a day that already has items in CURRENT TRIP CONTEXT, verify there is no time conflict. Examples of conflicts you MUST catch:
 - Adding a 6-hour day trip to a day that already has city walking-tour items planned for the afternoon
 - Adding a Cinque Terre excursion (full day) to a day with a Florence Uffizi reservation
 - Stacking two reservations at overlapping times on the same day
