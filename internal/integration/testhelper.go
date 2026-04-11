@@ -72,7 +72,7 @@ func (e *TestEnv) CleanDB(t *testing.T) {
 
 	tables := []string{
 		"export_requests", "deletion_requests",
-		"trip_themes", "bookings", "itinerary_items", "trips", "users",
+		"trip_collaborators", "trip_themes", "bookings", "itinerary_items", "trips", "users",
 	}
 	for _, table := range tables {
 		if _, err := e.Pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)); err != nil {

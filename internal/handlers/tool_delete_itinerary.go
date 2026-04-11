@@ -23,10 +23,11 @@ import (
 // Run 7 N-09 showed that without a delete tool, items persist after the user
 // explicitly asks to remove them — the AI can only add, never subtract.
 type DeleteItineraryTool struct {
-	tripSvc   *trip.Service
-	tripID    uuid.UUID
-	userID    uuid.UUID
-	onDeleted func(deletedIDs []string)
+	tripSvc               *trip.Service
+	tripID                uuid.UUID
+	userID                uuid.UUID
+	onDeleted             func(deletedIDs []string)
+	allowCollaboratorEdit bool // when true, uses the owner-or-editor deletion query (#263)
 }
 
 type deleteItineraryArgs struct {
@@ -45,6 +46,14 @@ func NewDeleteItineraryTool(tripSvc *trip.Service, tripID, userID uuid.UUID, onD
 		userID:    userID,
 		onDeleted: onDeleted,
 	}
+}
+
+// WithCollaboratorEdit returns a copy of the tool that uses the owner-or-editor
+// deletion query, allowing accepted editor-role collaborators to delete items (#263).
+func (t *DeleteItineraryTool) WithCollaboratorEdit() *DeleteItineraryTool {
+	cp := *t
+	cp.allowCollaboratorEdit = true
+	return &cp
 }
 
 func (t *DeleteItineraryTool) Definition() ai.ToolDefinition {
@@ -137,7 +146,13 @@ func (t *DeleteItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		}
 	}
 
-	deletedUUIDs, err := t.tripSvc.DeleteItineraryItems(ctx, t.userID, unique)
+	var deletedUUIDs []uuid.UUID
+	var err error
+	if t.allowCollaboratorEdit {
+		deletedUUIDs, err = t.tripSvc.DeleteItineraryItemsForOwnerOrEditor(ctx, t.userID, unique)
+	} else {
+		deletedUUIDs, err = t.tripSvc.DeleteItineraryItems(ctx, t.userID, unique)
+	}
 	if err != nil {
 		return json.Marshal(map[string]any{
 			"error":   "delete_failed",

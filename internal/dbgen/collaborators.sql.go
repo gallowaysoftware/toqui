@@ -149,6 +149,26 @@ func (q *Queries) GetTripOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, er
 	return user_id, err
 }
 
+const isAcceptedCollaboratorWithRole = `-- name: IsAcceptedCollaboratorWithRole :one
+SELECT EXISTS (
+  SELECT 1 FROM trip_collaborators
+  WHERE trip_id = $1 AND user_id = $2 AND accepted_at IS NOT NULL AND role = $3
+) AS is_collaborator
+`
+
+type IsAcceptedCollaboratorWithRoleParams struct {
+	TripID uuid.UUID   `json:"trip_id"`
+	UserID pgtype.UUID `json:"user_id"`
+	Role   string      `json:"role"`
+}
+
+func (q *Queries) IsAcceptedCollaboratorWithRole(ctx context.Context, arg IsAcceptedCollaboratorWithRoleParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isAcceptedCollaboratorWithRole, arg.TripID, arg.UserID, arg.Role)
+	var is_collaborator bool
+	err := row.Scan(&is_collaborator)
+	return is_collaborator, err
+}
+
 const listCollaborators = `-- name: ListCollaborators :many
 SELECT id, trip_id, user_id, email, role, invite_token, invited_by, invited_at, accepted_at FROM trip_collaborators
 WHERE trip_id = $1

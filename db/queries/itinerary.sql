@@ -48,6 +48,32 @@ SELECT * FROM itinerary_items
 WHERE itinerary_items.id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2);
 
+-- name: DeleteItineraryItemByOwnerOrEditor :exec
+DELETE FROM itinerary_items ii
+WHERE ii.id = $1
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = ii.trip_id AND (
+      t.user_id = $2
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL AND tc.role = 'editor'
+      )
+    )
+  );
+
+-- name: DeleteItineraryItemsByTripForOwnerOrEditor :exec
+DELETE FROM itinerary_items ii
+WHERE ii.trip_id = $1
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = $1 AND (
+      t.user_id = $2
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL AND tc.role = 'editor'
+      )
+    )
+  );
+
 -- name: CloneItineraryItems :exec
 INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency)
 SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency

@@ -510,6 +510,57 @@ func (s *Service) DeleteItineraryItems(ctx context.Context, userID uuid.UUID, it
 	return deleted, nil
 }
 
+// DeleteItineraryItemsForOwnerOrEditor is like DeleteItineraryItems but also
+// allows accepted editor-role collaborators to delete items (#263).
+func (s *Service) DeleteItineraryItemsForOwnerOrEditor(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) ([]uuid.UUID, error) {
+	var deleted []uuid.UUID
+	var lastErr error
+	for _, id := range itemIDs {
+		err := s.queries.DeleteItineraryItemByOwnerOrEditor(ctx, dbgen.DeleteItineraryItemByOwnerOrEditorParams{
+			ID:     id,
+			UserID: userID,
+		})
+		if err != nil {
+			slog.Error("delete itinerary item (owner/editor)", "item_id", id, "error", err)
+			lastErr = err
+			continue
+		}
+		deleted = append(deleted, id)
+	}
+	if len(deleted) == 0 && lastErr != nil {
+		return nil, fmt.Errorf("all %d deletions failed: %w", len(itemIDs), lastErr)
+	}
+	return deleted, nil
+}
+
+// IsEditorCollaborator reports whether the given user is an accepted
+// collaborator with editor role on the specified trip.
+func (s *Service) IsEditorCollaborator(ctx context.Context, userID, tripID uuid.UUID) bool {
+	ok, err := s.queries.IsAcceptedCollaboratorWithRole(ctx, dbgen.IsAcceptedCollaboratorWithRoleParams{
+		TripID: tripID,
+		UserID: pgtype.UUID{Bytes: userID, Valid: true},
+		Role:   "editor",
+	})
+	if err != nil {
+		return false
+	}
+	return ok
+}
+
+// CanEditTrip reports whether the user is the trip owner or an accepted
+// editor-role collaborator. Used by handlers to gate write operations on
+// itineraries and chat (#263).
+func (s *Service) CanEditTrip(ctx context.Context, userID, tripID uuid.UUID) bool {
+	// Check owner first (fast path via GetByID).
+	if _, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     tripID,
+		UserID: userID,
+	}); err == nil {
+		return true
+	}
+	return s.IsEditorCollaborator(ctx, userID, tripID)
+}
+
 func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error) {
 	items, err := s.queries.ListItineraryItemsByTrip(ctx, tripID)
 	if err != nil {
@@ -564,6 +615,58 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 		// Encode day-level summary/date in the item metadata JSONB so
 		// UpdateItinerary round-trips them without requiring a new table
 		// (Run 5 R-07/N-05 P2). itineraryToProto reads them back.
+		var metadata []byte
+		if item.DaySummary != "" || item.DayDate != "" {
+			md := make(map[string]string, 2)
+			if item.DaySummary != "" {
+				md["day_summary"] = item.DaySummary
+			}
+			if item.DayDate != "" {
+				md["day_date"] = item.DayDate
+			}
+			if b, err := json.Marshal(md); err == nil {
+				metadata = b
+			}
+		}
+		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
+			TripID:             tripID,
+			DayNumber:          int4FromInt(item.DayNumber),
+			OrderInDay:         int4FromInt(item.OrderInDay),
+			Type:               textFromString(item.Type),
+			Title:              textFromString(item.Title),
+			Description:        textFromString(item.Description),
+			Metadata:           metadata,
+			EstimatedCostCents: int8FromPtr(item.EstimatedCostCents),
+			CostCurrency:       textFromString(item.CostCurrency),
+		}); err != nil {
+			return fmt.Errorf("insert item %q: %w", item.Title, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
+}
+
+// ReplaceItineraryForOwnerOrEditor is like ReplaceItinerary but also allows
+// accepted editor-role collaborators to replace the itinerary (#263).
+func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
+	if err := qtx.DeleteItineraryItemsByTripForOwnerOrEditor(ctx, dbgen.DeleteItineraryItemsByTripForOwnerOrEditorParams{
+		TripID: tripID,
+		UserID: userID,
+	}); err != nil {
+		return fmt.Errorf("delete existing: %w", err)
+	}
+
+	for _, item := range items {
 		var metadata []byte
 		if item.DaySummary != "" || item.DayDate != "" {
 			md := make(map[string]string, 2)

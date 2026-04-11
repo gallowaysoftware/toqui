@@ -35,5 +35,11 @@ ORDER BY t.created_at DESC;
 -- name: CountCollaboratorsByTrip :one
 SELECT COUNT(*) FROM trip_collaborators WHERE trip_id = $1;
 
+-- name: IsAcceptedCollaboratorWithRole :one
+SELECT EXISTS (
+  SELECT 1 FROM trip_collaborators
+  WHERE trip_id = $1 AND user_id = $2 AND accepted_at IS NOT NULL AND role = $3
+) AS is_collaborator;
+
 -- name: GetTripOwner :one
 SELECT user_id FROM trips WHERE id = $1;

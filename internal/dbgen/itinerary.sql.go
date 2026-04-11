@@ -153,6 +153,30 @@ func (q *Queries) DeleteItineraryItem(ctx context.Context, arg DeleteItineraryIt
 	return err
 }
 
+const deleteItineraryItemByOwnerOrEditor = `-- name: DeleteItineraryItemByOwnerOrEditor :exec
+DELETE FROM itinerary_items ii
+WHERE ii.id = $1
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = ii.trip_id AND (
+      t.user_id = $2
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL AND tc.role = 'editor'
+      )
+    )
+  )
+`
+
+type DeleteItineraryItemByOwnerOrEditorParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteItineraryItemByOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemByOwnerOrEditorParams) error {
+	_, err := q.db.Exec(ctx, deleteItineraryItemByOwnerOrEditor, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteItineraryItemsByTrip = `-- name: DeleteItineraryItemsByTrip :exec
 DELETE FROM itinerary_items
 WHERE trip_id = $1
@@ -166,6 +190,30 @@ type DeleteItineraryItemsByTripParams struct {
 
 func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItineraryItemsByTripParams) error {
 	_, err := q.db.Exec(ctx, deleteItineraryItemsByTrip, arg.TripID, arg.UserID)
+	return err
+}
+
+const deleteItineraryItemsByTripForOwnerOrEditor = `-- name: DeleteItineraryItemsByTripForOwnerOrEditor :exec
+DELETE FROM itinerary_items ii
+WHERE ii.trip_id = $1
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = $1 AND (
+      t.user_id = $2
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id AND tc.user_id = $2 AND tc.accepted_at IS NOT NULL AND tc.role = 'editor'
+      )
+    )
+  )
+`
+
+type DeleteItineraryItemsByTripForOwnerOrEditorParams struct {
+	TripID uuid.UUID `json:"trip_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteItineraryItemsByTripForOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemsByTripForOwnerOrEditorParams) error {
+	_, err := q.db.Exec(ctx, deleteItineraryItemsByTripForOwnerOrEditor, arg.TripID, arg.UserID)
 	return err
 }
 

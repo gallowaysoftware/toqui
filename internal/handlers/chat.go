@@ -209,9 +209,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var collaboratorCount int64
 	var tripBudgetCents *int64
 	var tripCurrency string
+	var isCollaboratorEditor bool // true if user is an editor collaborator (not owner)
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
-			if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
+			if t, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID); err == nil {
 				tripTitle = t.Title
 				tripStatus = t.Status
 				if t.Description.Valid {
@@ -239,6 +240,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				if t.Currency.Valid && t.Currency.String != "" {
 					tripCurrency = t.Currency.String
+				}
+				// Check if user is a collaborator editor (not the owner).
+				// This gates itinerary write tools for collaborators (#263).
+				if t.UserID != userID {
+					isCollaboratorEditor = h.tripSvc.IsEditorCollaborator(ctx, userID, tripID)
 				}
 			}
 			if h.themeSvc != nil {
@@ -508,6 +514,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		// as "add a lunch spot to the itinerary".
 		if mode == "planning" || mode == "companion" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
+				// Editor-role collaborators can create and delete itinerary
+				// items. update_trip (title, description, status, destinations)
+				// is owner-only. Viewer collaborators get no write tools (#263).
+				isOwner := !isCollaboratorEditor && h.tripSvc.CanEditTrip(ctx, userID, tripID)
+
 				var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()
 					itineraryItems = append(itineraryItems, items...)
@@ -515,20 +526,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}).WithGeocoding(h.pool, h.placesAPIKey).
 					WithAnalytics(h.analytics, userID.String())
 
-				var deleteTool tools.Tool = NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
+				deleteToolBase := NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
 					slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
 				})
-
-				updateTripTool := NewUpdateTripTool(h.tripSvc, tripID, userID, func(id, title, description string, countries []string) {
-					mu.Lock()
-					updatedTrips = append(updatedTrips, tripUpdatedInfo{
-						ID:          id,
-						Title:       title,
-						Description: description,
-						Countries:   countries,
-					})
-					mu.Unlock()
-				})
+				if isCollaboratorEditor {
+					deleteToolBase = deleteToolBase.WithCollaboratorEdit()
+				}
+				var deleteTool tools.Tool = deleteToolBase
 
 				var reorderTool tools.Tool = NewReorderItineraryTool(h.queries, tripID, userID)
 
@@ -544,7 +548,26 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					reorderTool = NewCompanionGate(reorderTool, h.aiProvider, getUserMsg)
 				}
 
-				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, updateTripTool, reorderTool)
+				// Inject itinerary tools for owners and editor collaborators.
+				if isOwner || isCollaboratorEditor {
+					params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, reorderTool)
+				}
+
+				// update_trip is owner-only — collaborators cannot change
+				// trip title, description, status, or destinations.
+				if isOwner {
+					updateTripTool := NewUpdateTripTool(h.tripSvc, tripID, userID, func(id, title, description string, countries []string) {
+						mu.Lock()
+						updatedTrips = append(updatedTrips, tripUpdatedInfo{
+							ID:          id,
+							Title:       title,
+							Description: description,
+							Countries:   countries,
+						})
+						mu.Unlock()
+					})
+					params.ExtraTools = append(params.ExtraTools, updateTripTool)
+				}
 			}
 		}
 
@@ -791,7 +814,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil && h.themeSvc != nil && fullContent != "" {
 			if len(tripThemes) == 0 {
-				if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
+				if t, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID); err == nil {
 					recentMessages := []string{req.Msg.Content, fullContent}
 					go func() {
 						bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -360,13 +360,16 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Ownership check — collaborators can read itineraries but only owners
-	// can rewrite them.
-	if _, err := h.tripSvc.GetByID(ctx, userID, tripID); err != nil {
+	// Access check — trip owners and editor-role collaborators can rewrite
+	// itineraries. Viewers and non-collaborators are rejected (#263).
+	if _, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
 		}
 		return nil, internalError(ctx, "get trip", err)
+	}
+	if !h.tripSvc.CanEditTrip(ctx, userID, tripID) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to modify itinerary"))
 	}
 
 	itin := req.Msg.GetItinerary()
@@ -397,7 +400,7 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 			flat = append(flat, ri)
 		}
 	}
-	if err := h.tripSvc.ReplaceItinerary(ctx, userID, tripID, flat); err != nil {
+	if err := h.tripSvc.ReplaceItineraryForOwnerOrEditor(ctx, userID, tripID, flat); err != nil {
 		return nil, internalError(ctx, "replace itinerary", err)
 	}
 
