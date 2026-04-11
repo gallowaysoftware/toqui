@@ -80,3 +80,12 @@ WHERE id = $1 AND trial_started_at IS NULL;
 
 -- name: IsTripTrialActive :one
 SELECT COALESCE(trial_ends_at > NOW(), false)::boolean AS active FROM trips WHERE id = $1;
+
+-- name: IncrementExpertCalls :one
+UPDATE trips SET expert_calls = expert_calls + 1, updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
+RETURNING expert_calls;
+
+-- name: GetExpertCalls :one
+SELECT expert_calls FROM trips
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);

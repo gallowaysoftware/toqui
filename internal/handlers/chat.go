@@ -360,10 +360,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		})
 	}
 
-	// Wrap suggest_expert for free-tier users to enforce 3-message teaser
+	// Wrap suggest_expert for free-tier users to enforce per-trip expert limit.
+	// The counter is persisted in the DB (trips.expert_calls) so it survives
+	// across messages and sessions, unlike the old per-RPC atomic counter.
 	var expertTool tools.Tool = suggestExpertTool
 	if !userTier.IsPro() && !tripUnlocked {
-		expertTool = newExpertTeaserGate(suggestExpertTool)
+		gateTripID := uuid.Nil
+		if id, err := uuid.Parse(req.Msg.TripId); err == nil {
+			gateTripID = id
+		}
+		expertTool = newExpertTeaserGate(suggestExpertTool, h.queries, gateTripID, userID)
 	}
 
 	// Recommend booking tool is available in all modes. Free-tier users get

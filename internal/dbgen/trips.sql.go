@@ -54,7 +54,7 @@ func (q *Queries) CountTripsByUserAndStatus(ctx context.Context, arg CountTripsB
 const createTrip = `-- name: CreateTrip :one
 INSERT INTO trips (user_id, title, description, start_date, end_date)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
 `
 
 type CreateTripParams struct {
@@ -92,6 +92,7 @@ func (q *Queries) CreateTrip(ctx context.Context, arg CreateTripParams) (Trip, e
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
@@ -113,7 +114,7 @@ func (q *Queries) DeleteTrip(ctx context.Context, arg DeleteTripParams) error {
 const disableTripSharing = `-- name: DisableTripSharing :one
 UPDATE trips SET share_token = NULL, updated_at = NOW()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
 `
 
 type DisableTripSharingParams struct {
@@ -142,6 +143,7 @@ func (q *Queries) DisableTripSharing(ctx context.Context, arg DisableTripSharing
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
@@ -149,7 +151,7 @@ func (q *Queries) DisableTripSharing(ctx context.Context, arg DisableTripSharing
 const enableTripSharing = `-- name: EnableTripSharing :one
 UPDATE trips SET share_token = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
 `
 
 type EnableTripSharingParams struct {
@@ -179,12 +181,30 @@ func (q *Queries) EnableTripSharing(ctx context.Context, arg EnableTripSharingPa
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
 
+const getExpertCalls = `-- name: GetExpertCalls :one
+SELECT expert_calls FROM trips
+WHERE id = $1 AND user_id = $2
+`
+
+type GetExpertCallsParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetExpertCalls(ctx context.Context, arg GetExpertCallsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getExpertCalls, arg.ID, arg.UserID)
+	var expert_calls int32
+	err := row.Scan(&expert_calls)
+	return expert_calls, err
+}
+
 const getTripByID = `-- name: GetTripByID :one
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries FROM trips WHERE id = $1 AND user_id = $2
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips WHERE id = $1 AND user_id = $2
 `
 
 type GetTripByIDParams struct {
@@ -213,12 +233,13 @@ func (q *Queries) GetTripByID(ctx context.Context, arg GetTripByIDParams) (Trip,
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
 
 const getTripByIDOrCollaborator = `-- name: GetTripByIDOrCollaborator :one
-SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at, t.destination_countries FROM trips t
+SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at, t.destination_countries, t.expert_calls FROM trips t
 WHERE t.id = $1
   AND (t.user_id = $2 OR EXISTS (
     SELECT 1 FROM trip_collaborators tc
@@ -252,12 +273,13 @@ func (q *Queries) GetTripByIDOrCollaborator(ctx context.Context, arg GetTripByID
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
 
 const getTripByShareToken = `-- name: GetTripByShareToken :one
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries FROM trips WHERE share_token = $1
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips WHERE share_token = $1
 `
 
 func (q *Queries) GetTripByShareToken(ctx context.Context, shareToken pgtype.Text) (Trip, error) {
@@ -281,8 +303,27 @@ func (q *Queries) GetTripByShareToken(ctx context.Context, shareToken pgtype.Tex
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
+}
+
+const incrementExpertCalls = `-- name: IncrementExpertCalls :one
+UPDATE trips SET expert_calls = expert_calls + 1, updated_at = NOW()
+WHERE id = $1 AND user_id = $2
+RETURNING expert_calls
+`
+
+type IncrementExpertCallsParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) IncrementExpertCalls(ctx context.Context, arg IncrementExpertCallsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementExpertCalls, arg.ID, arg.UserID)
+	var expert_calls int32
+	err := row.Scan(&expert_calls)
+	return expert_calls, err
 }
 
 const isTripTrialActive = `-- name: IsTripTrialActive :one
@@ -297,7 +338,7 @@ func (q *Queries) IsTripTrialActive(ctx context.Context, id uuid.UUID) (bool, er
 }
 
 const listTripsByUser = `-- name: ListTripsByUser :many
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries FROM trips
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -336,6 +377,7 @@ func (q *Queries) ListTripsByUser(ctx context.Context, arg ListTripsByUserParams
 			&i.TrialStartedAt,
 			&i.TrialEndsAt,
 			&i.DestinationCountries,
+			&i.ExpertCalls,
 		); err != nil {
 			return nil, err
 		}
@@ -348,7 +390,7 @@ func (q *Queries) ListTripsByUser(ctx context.Context, arg ListTripsByUserParams
 }
 
 const listTripsByUserAndStatus = `-- name: ListTripsByUserAndStatus :many
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries FROM trips
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips
 WHERE user_id = $1 AND status = $2
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
@@ -393,6 +435,7 @@ func (q *Queries) ListTripsByUserAndStatus(ctx context.Context, arg ListTripsByU
 			&i.TrialStartedAt,
 			&i.TrialEndsAt,
 			&i.DestinationCountries,
+			&i.ExpertCalls,
 		); err != nil {
 			return nil, err
 		}
@@ -423,7 +466,7 @@ SET title = COALESCE(NULLIF($1::text, ''), title),
     end_date = COALESCE($5, end_date),
     updated_at = NOW()
 WHERE id = $6 AND user_id = $7
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
 `
 
 type UpdateTripParams struct {
@@ -465,6 +508,7 @@ func (q *Queries) UpdateTrip(ctx context.Context, arg UpdateTripParams) (Trip, e
 		&i.TrialStartedAt,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
+		&i.ExpertCalls,
 	)
 	return i, err
 }
