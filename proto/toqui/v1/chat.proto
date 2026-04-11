@@ -63,6 +63,7 @@ message SendMessageResponse {
     PersonaSwitch persona_switch = 8;
     TripCreated trip_created = 9;
     TripSelected trip_selected = 10;
+    TripUpdated trip_updated = 11;
   }
 }
 
@@ -73,6 +74,11 @@ message TripCreated {
 
 // Sent when the AI selects an existing trip from the user's list
 message TripSelected {
+  Trip trip = 1;
+}
+
+// Sent when the AI updates a trip's metadata (title, description, destinations)
+message TripUpdated {
   Trip trip = 1;
 }
 

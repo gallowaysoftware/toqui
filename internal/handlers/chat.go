@@ -293,6 +293,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	// Use mutex-protected slices to collect events from tool callbacks
 	var createdTrips []tripCreatedInfo
 	var selectedTrips []tripCreatedInfo // reuse same struct — it has ID, Title, Description
+	var updatedTrips []tripUpdatedInfo
 	var itineraryItems []dbgen.ItineraryItem
 	var pendingSwitch *personaSwitchInfo
 	var recommendations []affiliate.Recommendation
@@ -483,6 +484,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
 				})
 
+				updateTripTool := NewUpdateTripTool(h.tripSvc, tripID, userID, func(id, title, description string, countries []string) {
+					mu.Lock()
+					updatedTrips = append(updatedTrips, tripUpdatedInfo{
+						ID:          id,
+						Title:       title,
+						Description: description,
+						Countries:   countries,
+					})
+					mu.Unlock()
+				})
+
 				// In companion mode, wrap tools with an intent gate that
 				// only allows calls when the user explicitly requests
 				// itinerary changes ("add this to my plan", "remove the
@@ -494,7 +506,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					deleteTool = NewCompanionGate(deleteTool, h.aiProvider, getUserMsg)
 				}
 
-				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool)
+				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, updateTripTool)
 			}
 		}
 
@@ -592,6 +604,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				localRecs = recommendations
 				recommendations = nil
 			}
+			var localUpdated []tripUpdatedInfo
+			if event.ToolName == "update_trip" {
+				localUpdated = updatedTrips
+				updatedTrips = nil
+			}
 			mu.Unlock()
 
 			// Emit proto events outside the lock
@@ -675,6 +692,23 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					"user_id", userID,
 				)
 			}
+			for _, ut := range localUpdated {
+				tripProto := &toquiv1.Trip{
+					Id:          ut.ID,
+					UserId:      userID.String(),
+					Title:       ut.Title,
+					Description: ut.Description,
+				}
+				if err := stream.Send(&toquiv1.SendMessageResponse{
+					Event: &toquiv1.SendMessageResponse_TripUpdated{
+						TripUpdated: &toquiv1.TripUpdated{
+							Trip: tripProto,
+						},
+					},
+				}); err != nil {
+					slog.Warn("stream.Send TripUpdated failed", "error", err)
+				}
+			}
 
 		case "message_complete":
 			fullContent = event.Text
@@ -747,6 +781,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 type tripCreatedInfo struct {
 	ID, Title, Description string
+}
+
+type tripUpdatedInfo struct {
+	ID, Title, Description string
+	Countries              []string
 }
 
 type personaSwitchInfo struct {
