@@ -1,0 +1,4 @@
+-- One-way migration: cannot re-add NOT NULL if NULL rows exist from Facebook-only signups.
+-- To reverse, you would need to backfill google_id for all Facebook-only users first:
+--   UPDATE users SET google_id = 'fb_' || id::text WHERE google_id IS NULL;
+--   ALTER TABLE users ALTER COLUMN google_id SET NOT NULL;

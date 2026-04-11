@@ -75,7 +75,7 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID:  info.ID,
+		GoogleID:  pgtype.Text{String: info.ID, Valid: info.ID != ""},
 		Email:     info.Email,
 		Name:      pgtype.Text{String: info.Name, Valid: info.Name != ""},
 		AvatarUrl: pgtype.Text{String: info.AvatarURL, Valid: info.AvatarURL != ""},

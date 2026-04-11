@@ -2,7 +2,9 @@ package auth
 
 import (
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -123,5 +125,146 @@ func TestRefreshToken_UniqueJTIs(t *testing.T) {
 
 	if r1.JTI == r2.JTI {
 		t.Error("expected different JTIs for different tokens")
+	}
+}
+
+func TestValidateToken_RejectsTokenMissingIssuer(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	// Craft a token without iss claim
+	claims := jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+		"aud": jwtAudience,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating token without iss claim")
+	}
+}
+
+func TestValidateToken_RejectsTokenMissingAudience(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	// Craft a token without aud claim
+	claims := jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+		"iss": jwtIssuer,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating token without aud claim")
+	}
+}
+
+func TestValidateToken_RejectsTokenWrongIssuer(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	claims := jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+		"iss": "wrong-issuer",
+		"aud": jwtAudience,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating token with wrong issuer")
+	}
+}
+
+func TestValidateToken_RejectsTokenWrongAudience(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	claims := jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+		"iss": jwtIssuer,
+		"aud": "wrong-audience",
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating token with wrong audience")
+	}
+}
+
+func TestValidateRefreshToken_RejectsTokenMissingIssuer(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	claims := jwt.MapClaims{
+		"sub":  userID.String(),
+		"exp":  time.Now().Add(30 * 24 * time.Hour).Unix(),
+		"iat":  time.Now().Unix(),
+		"aud":  jwtAudience,
+		"type": "refresh",
+		"jti":  uuid.New().String(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateRefreshToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating refresh token without iss claim")
+	}
+}
+
+func TestValidateRefreshToken_RejectsTokenWrongAudience(t *testing.T) {
+	svc := NewService("client-id", "client-secret", "http://localhost/callback", "test-secret")
+	userID := uuid.New()
+
+	claims := jwt.MapClaims{
+		"sub":  userID.String(),
+		"exp":  time.Now().Add(30 * 24 * time.Hour).Unix(),
+		"iat":  time.Now().Unix(),
+		"iss":  jwtIssuer,
+		"aud":  "wrong-audience",
+		"type": "refresh",
+		"jti":  uuid.New().String(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(svc.jwtSecret)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	_, err = svc.ValidateRefreshToken(signed)
+	if err == nil {
+		t.Fatal("expected error when validating refresh token with wrong audience")
 	}
 }

@@ -99,7 +99,7 @@ const getUserByGoogleID = `-- name: GetUserByGoogleID :one
 SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id FROM users WHERE google_id = $1
 `
 
-func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User, error) {
+func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByGoogleID, googleID)
 	var i User
 	err := row.Scan(
@@ -350,7 +350,7 @@ RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, defaul
 `
 
 type UpsertUserByGoogleIDParams struct {
-	GoogleID  string      `json:"google_id"`
+	GoogleID  pgtype.Text `json:"google_id"`
 	Email     string      `json:"email"`
 	Name      pgtype.Text `json:"name"`
 	AvatarUrl pgtype.Text `json:"avatar_url"`

@@ -95,7 +95,7 @@ func createUser(ctx context.Context, queries *dbgen.Queries, cfg *config.Config,
 
 	googleID := "agentic-test-" + uuid.New().String()
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID:  googleID,
+		GoogleID:  pgtype.Text{String: googleID, Valid: true},
 		Email:     *email,
 		Name:      pgtype.Text{String: *name, Valid: true},
 		AvatarUrl: pgtype.Text{},

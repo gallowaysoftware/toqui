@@ -21,6 +21,12 @@ type contextKey string
 
 const userIDKey contextKey = "user_id"
 
+// JWT issuer and audience constants for claim validation.
+const (
+	jwtIssuer   = "toqui"
+	jwtAudience = "toqui-api"
+)
+
 type GoogleUserInfo struct {
 	ID        string `json:"id"`
 	Email     string `json:"email"`
@@ -127,6 +133,8 @@ func (s *Service) GenerateAccessToken(userID uuid.UUID) (string, error) {
 		"sub": userID.String(),
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Unix(),
+		"iss": jwtIssuer,
+		"aud": jwtAudience,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.jwtSecret)
@@ -155,6 +163,8 @@ func (s *Service) GenerateRefreshToken(userID uuid.UUID, family uuid.UUID) (*Ref
 		"sub":    userID.String(),
 		"exp":    expiresAt.Unix(),
 		"iat":    time.Now().Unix(),
+		"iss":    jwtIssuer,
+		"aud":    jwtAudience,
 		"type":   "refresh",
 		"jti":    jti,
 		"family": family.String(),
@@ -178,7 +188,7 @@ func (s *Service) ValidateToken(tokenString string) (uuid.UUID, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return s.jwtSecret, nil
-	})
+	}, jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("parse token: %w", err)
 	}
@@ -214,7 +224,7 @@ func (s *Service) ValidateRefreshToken(tokenString string) (*RefreshTokenClaims,
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return s.jwtSecret, nil
-	})
+	}, jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
 	if err != nil {
 		return nil, fmt.Errorf("parse token: %w", err)
 	}

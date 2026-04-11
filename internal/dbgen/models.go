@@ -218,7 +218,7 @@ type User struct {
 	ID               uuid.UUID          `json:"id"`
 	Email            string             `json:"email"`
 	Name             pgtype.Text        `json:"name"`
-	GoogleID         string             `json:"google_id"`
+	GoogleID         pgtype.Text        `json:"google_id"`
 	AvatarUrl        pgtype.Text        `json:"avatar_url"`
 	CreatedAt        time.Time          `json:"created_at"`
 	UpdatedAt        time.Time          `json:"updated_at"`

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestTripCRUD(t *testing.T) {
@@ -20,7 +20,7 @@ func TestTripCRUD(t *testing.T) {
 
 	// Create a test user
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID: "test-google-123",
+		GoogleID: pgtype.Text{String: "test-google-123", Valid: true},
 		Email:    "test@example.com",
 		Name:     pgtype.Text{String: "Test User", Valid: true},
 	})
@@ -100,7 +100,7 @@ func TestTripListByStatus(t *testing.T) {
 	queries := dbgen.New(env.Pool)
 
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID: "test-google-status",
+		GoogleID: pgtype.Text{String: "test-google-status", Valid: true},
 		Email:    "status@example.com",
 		Name:     pgtype.Text{String: "Status User", Valid: true},
 	})
@@ -158,7 +158,7 @@ func TestItineraryItemCRUD(t *testing.T) {
 
 	// Create test user
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID: "test-google-itinerary",
+		GoogleID: pgtype.Text{String: "test-google-itinerary", Valid: true},
 		Email:    "itinerary@example.com",
 		Name:     pgtype.Text{String: "Itinerary User", Valid: true},
 	})
@@ -254,7 +254,7 @@ func TestItineraryItemOptionalFields(t *testing.T) {
 	queries := dbgen.New(env.Pool)
 
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID: "test-google-itin-opt",
+		GoogleID: pgtype.Text{String: "test-google-itin-opt", Valid: true},
 		Email:    "itin-opt@example.com",
 		Name:     pgtype.Text{String: "Opt User", Valid: true},
 	})

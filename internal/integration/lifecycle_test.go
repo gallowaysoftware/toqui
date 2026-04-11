@@ -6,11 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestDeleteUser(t *testing.T) {
@@ -24,7 +24,7 @@ func TestDeleteUser(t *testing.T) {
 
 	// Create user and trip
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
-		GoogleID: "test-delete-user",
+		GoogleID: pgtype.Text{String: "test-delete-user", Valid: true},
 		Email:    "delete@example.com",
 		Name:     pgtype.Text{String: "Delete Me", Valid: true},
 	})

@@ -226,7 +226,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(r.Context(), dbgen.UpsertUserByGoogleIDParams{
-		GoogleID:  info.ID,
+		GoogleID:  pgtype.Text{String: info.ID, Valid: info.ID != ""},
 		Email:     info.Email,
 		Name:      pgtype.Text{String: info.Name, Valid: info.Name != ""},
 		AvatarUrl: pgtype.Text{String: info.AvatarURL, Valid: info.AvatarURL != ""},
