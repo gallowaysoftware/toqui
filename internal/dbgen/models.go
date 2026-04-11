@@ -239,6 +239,14 @@ type UserConsent struct {
 	CreatedAt   time.Time          `json:"created_at"`
 }
 
+type UserPreference struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Waitlist struct {
 	ID          uuid.UUID          `json:"id"`
 	Email       string             `json:"email"`

@@ -247,15 +247,16 @@ func (s *Service) RetryFailedDeletions(ctx context.Context) (retried int, failed
 // UserExport is the JSON structure returned by ExportUserData.
 // It contains all user data in a portable format per GDPR Article 20.
 type UserExport struct {
-	ExportedAt string         `json:"exported_at"`
-	User       any            `json:"user"`
-	Trips      []TripExport   `json:"trips"`
-	Bookings   []any          `json:"bookings"`
-	Usage      []any          `json:"usage"`
-	Referrals  []any          `json:"referrals"`
-	Feedback   []any          `json:"feedback"`
-	Payments   []any          `json:"payments"`
-	ChatData   map[string]any `json:"chat_data"`
+	ExportedAt  string         `json:"exported_at"`
+	User        any            `json:"user"`
+	Trips       []TripExport   `json:"trips"`
+	Bookings    []any          `json:"bookings"`
+	Usage       []any          `json:"usage"`
+	Referrals   []any          `json:"referrals"`
+	Feedback    []any          `json:"feedback"`
+	Payments    []any          `json:"payments"`
+	Preferences []any          `json:"preferences"`
+	ChatData    map[string]any `json:"chat_data"`
 }
 
 // TripExport includes a trip and its itinerary items.
@@ -358,6 +359,15 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 	}
 	for _, p := range payments {
 		export.Payments = append(export.Payments, p)
+	}
+
+	// Preferences
+	preferences, err := s.queries.GetPreferences(ctx, userID)
+	if err != nil {
+		slog.Warn("export: failed to list preferences", "error", err)
+	}
+	for _, p := range preferences {
+		export.Preferences = append(export.Preferences, p)
 	}
 
 	return export, nil

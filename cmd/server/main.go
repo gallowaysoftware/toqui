@@ -478,6 +478,19 @@ func main() {
 	})
 	mux.HandleFunc("/api/privacy/consents/", consentHandler.HandleWithdrawConsent)
 
+	// User preferences (authenticated)
+	preferencesHandler := handlers.NewPreferencesHandler(authSvc, pool)
+	mux.HandleFunc("/api/preferences", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			preferencesHandler.HandleGetPreferences(w, r)
+		case http.MethodPut:
+			preferencesHandler.HandlePutPreferences(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)

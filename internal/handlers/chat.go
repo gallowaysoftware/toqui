@@ -462,6 +462,20 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
 		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier)
+	}
+
+	// Inject user preferences into the system context (all modes).
+	// Preferences are appended after mode-specific context so the AI
+	// always has access to remembered dietary, budget, pace, etc.
+	if h.queries != nil {
+		if prefMap, err := loadPreferencesMap(ctx, h.queries, userID); err != nil {
+			slog.Warn("failed to load user preferences for chat context", "user_id", userID, "error", err)
+		} else if len(prefMap) > 0 {
+			params.ExtraSystemContext += buildPreferencesContext(prefMap)
+		}
+	}
+
+	if !isSelection {
 		params.ExtraTools = append(params.ExtraTools, expertTool)
 		if recommendBookingTool != nil {
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
@@ -1025,7 +1039,7 @@ func buildTripContext(title, description, destinationCountry string, destination
 		sb.WriteString("\nThe traveler has accommodation bookings listed above. When planning daily activities, consider proximity to their hotel/accommodation and suggest activities in nearby neighborhoods first.\n")
 	}
 
-	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. However, DO ask clarifying questions about the traveler's preferences, interests, pace, budget, dietary restrictions, mobility needs, and travel style — these help you give better recommendations.")
+	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. If USER PREFERENCES are provided below, use them without asking again — only ask about preferences that are NOT already listed. For any unlisted preferences (interests, mobility needs, travel style, etc.), DO ask clarifying questions to give better recommendations.")
 
 	// Differentiate itinerary tool behavior between planning and companion mode.
 	// In planning mode, the AI should proactively create items. In companion mode
