@@ -523,16 +523,19 @@ func main() {
 	mux.Handle(toquiv1connect.NewPersonaServiceHandler(personaHandler, interceptors))
 
 	// gRPC reflection — enables service discovery for tools like grpcurl and Bruno.
-	reflector := grpcreflect.NewStaticReflector(
-		toquiv1connect.AuthServiceName,
-		toquiv1connect.TripServiceName,
-		toquiv1connect.ChatServiceName,
-		toquiv1connect.BookingServiceName,
-		toquiv1connect.LocationServiceName,
-		toquiv1connect.PersonaServiceName,
-	)
-	mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	// Disabled in production to avoid exposing the full API surface to attackers (#237).
+	if cfg.TargetEnv == "local" || cfg.TargetEnv == "staging" {
+		reflector := grpcreflect.NewStaticReflector(
+			toquiv1connect.AuthServiceName,
+			toquiv1connect.TripServiceName,
+			toquiv1connect.ChatServiceName,
+			toquiv1connect.BookingServiceName,
+			toquiv1connect.LocationServiceName,
+			toquiv1connect.PersonaServiceName,
+		)
+		mux.Handle(grpcreflect.NewHandlerV1(reflector))
+		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	}
 
 	// Per-IP rate limiting — 120 requests/min sustained, burst of 20.
 	// Applies to all routes (public + authenticated). The per-user ConnectRPC

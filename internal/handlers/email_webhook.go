@@ -62,6 +62,9 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Enforce body size limit to prevent memory exhaustion from oversized payloads (#240).
+	r.Body = http.MaxBytesReader(w, r.Body, maxEmailBodySize)
+
 	// Verify webhook signature. Reject unsigned requests if key is configured.
 	if h.webhookKey == "" {
 		slog.Warn("email webhook rejected: SENDGRID_WEBHOOK_KEY not configured")
