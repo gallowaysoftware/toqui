@@ -54,7 +54,7 @@ func (q *Queries) CountTripsByUserAndStatus(ctx context.Context, arg CountTripsB
 const createTrip = `-- name: CreateTrip :one
 INSERT INTO trips (user_id, title, description, start_date, end_date)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector
 `
 
 type CreateTripParams struct {
@@ -93,6 +93,7 @@ func (q *Queries) CreateTrip(ctx context.Context, arg CreateTripParams) (Trip, e
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
@@ -114,7 +115,7 @@ func (q *Queries) DeleteTrip(ctx context.Context, arg DeleteTripParams) error {
 const disableTripSharing = `-- name: DisableTripSharing :one
 UPDATE trips SET share_token = NULL, updated_at = NOW()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector
 `
 
 type DisableTripSharingParams struct {
@@ -144,6 +145,7 @@ func (q *Queries) DisableTripSharing(ctx context.Context, arg DisableTripSharing
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
@@ -151,7 +153,7 @@ func (q *Queries) DisableTripSharing(ctx context.Context, arg DisableTripSharing
 const enableTripSharing = `-- name: EnableTripSharing :one
 UPDATE trips SET share_token = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector
 `
 
 type EnableTripSharingParams struct {
@@ -182,6 +184,7 @@ func (q *Queries) EnableTripSharing(ctx context.Context, arg EnableTripSharingPa
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
@@ -204,7 +207,7 @@ func (q *Queries) GetExpertCalls(ctx context.Context, arg GetExpertCallsParams) 
 }
 
 const getTripByID = `-- name: GetTripByID :one
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips WHERE id = $1 AND user_id = $2
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector FROM trips WHERE id = $1 AND user_id = $2
 `
 
 type GetTripByIDParams struct {
@@ -234,12 +237,13 @@ func (q *Queries) GetTripByID(ctx context.Context, arg GetTripByIDParams) (Trip,
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
 
 const getTripByIDOrCollaborator = `-- name: GetTripByIDOrCollaborator :one
-SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at, t.destination_countries, t.expert_calls FROM trips t
+SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at, t.destination_countries, t.expert_calls, t.search_vector FROM trips t
 WHERE t.id = $1
   AND (t.user_id = $2 OR EXISTS (
     SELECT 1 FROM trip_collaborators tc
@@ -274,12 +278,13 @@ func (q *Queries) GetTripByIDOrCollaborator(ctx context.Context, arg GetTripByID
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
 
 const getTripByShareToken = `-- name: GetTripByShareToken :one
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips WHERE share_token = $1
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector FROM trips WHERE share_token = $1
 `
 
 func (q *Queries) GetTripByShareToken(ctx context.Context, shareToken pgtype.Text) (Trip, error) {
@@ -304,6 +309,7 @@ func (q *Queries) GetTripByShareToken(ctx context.Context, shareToken pgtype.Tex
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }
@@ -338,7 +344,7 @@ func (q *Queries) IsTripTrialActive(ctx context.Context, id uuid.UUID) (bool, er
 }
 
 const listTripsByUser = `-- name: ListTripsByUser :many
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector FROM trips
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -378,6 +384,7 @@ func (q *Queries) ListTripsByUser(ctx context.Context, arg ListTripsByUserParams
 			&i.TrialEndsAt,
 			&i.DestinationCountries,
 			&i.ExpertCalls,
+			&i.SearchVector,
 		); err != nil {
 			return nil, err
 		}
@@ -390,7 +397,7 @@ func (q *Queries) ListTripsByUser(ctx context.Context, arg ListTripsByUserParams
 }
 
 const listTripsByUserAndStatus = `-- name: ListTripsByUserAndStatus :many
-SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls FROM trips
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector FROM trips
 WHERE user_id = $1 AND status = $2
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
@@ -436,6 +443,61 @@ func (q *Queries) ListTripsByUserAndStatus(ctx context.Context, arg ListTripsByU
 			&i.TrialEndsAt,
 			&i.DestinationCountries,
 			&i.ExpertCalls,
+			&i.SearchVector,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchTripsByUser = `-- name: SearchTripsByUser :many
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector FROM trips
+WHERE user_id = $1
+  AND search_vector @@ plainto_tsquery('english', $2)
+ORDER BY ts_rank(search_vector, plainto_tsquery('english', $2)) DESC
+LIMIT $3
+`
+
+type SearchTripsByUserParams struct {
+	UserID     uuid.UUID `json:"user_id"`
+	Query      string    `json:"query"`
+	MaxResults int32     `json:"max_results"`
+}
+
+func (q *Queries) SearchTripsByUser(ctx context.Context, arg SearchTripsByUserParams) ([]Trip, error) {
+	rows, err := q.db.Query(ctx, searchTripsByUser, arg.UserID, arg.Query, arg.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Trip{}
+	for rows.Next() {
+		var i Trip
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.StartDate,
+			&i.EndDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DestinationCountry,
+			&i.CompletedAt,
+			&i.ArchiveAfter,
+			&i.ArchivedAt,
+			&i.ShareToken,
+			&i.TrialStartedAt,
+			&i.TrialEndsAt,
+			&i.DestinationCountries,
+			&i.ExpertCalls,
+			&i.SearchVector,
 		); err != nil {
 			return nil, err
 		}
@@ -466,7 +528,7 @@ SET title = COALESCE(NULLIF($1::text, ''), title),
     end_date = COALESCE($5, end_date),
     updated_at = NOW()
 WHERE id = $6 AND user_id = $7
-RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls
+RETURNING id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector
 `
 
 type UpdateTripParams struct {
@@ -509,6 +571,7 @@ func (q *Queries) UpdateTrip(ctx context.Context, arg UpdateTripParams) (Trip, e
 		&i.TrialEndsAt,
 		&i.DestinationCountries,
 		&i.ExpertCalls,
+		&i.SearchVector,
 	)
 	return i, err
 }

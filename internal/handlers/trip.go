@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -130,6 +131,29 @@ func (h *TripHandler) ListTrips(ctx context.Context, req *connect.Request[toquiv
 	}
 
 	limit := clampPageSize(req.Msg.GetPagination().GetPageSize(), 20, 100)
+
+	query := strings.TrimSpace(req.Msg.GetQuery())
+
+	// When a search query is provided, use full-text search instead of the
+	// normal list path. Search results are ranked by relevance and do not
+	// include shared trips (the user is searching their own trips).
+	if query != "" {
+		results, err := h.tripSvc.SearchByUser(ctx, userID, query, limit)
+		if err != nil {
+			return nil, internalError(ctx, "search trips", err)
+		}
+		protoTrips := make([]*toquiv1.Trip, len(results))
+		for i, t := range results {
+			protoTrips[i] = tripToProto(&t)
+		}
+		return connect.NewResponse(&toquiv1.ListTripsResponse{
+			Trips: protoTrips,
+			Pagination: &toquiv1.PaginationResponse{
+				TotalCount: int32(len(results)),
+			},
+		}), nil
+	}
+
 	offset := int32(0)
 
 	trips, count, err := h.tripSvc.ListByUser(ctx, userID, status, limit, offset)

@@ -100,6 +100,10 @@ message GetTripResponse {
 message ListTripsRequest {
   TripStatus status = 1;
   PaginationRequest pagination = 2;
+  // Optional full-text search query. When non-empty, results are filtered to
+  // trips matching the query against title, description, and destination
+  // country, and ranked by relevance instead of creation date.
+  string query = 3 [(buf.validate.field).string.max_len = 512];
 }
 
 message ListTripsResponse {

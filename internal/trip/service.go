@@ -198,6 +198,21 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID, status strin
 	return trips, count, nil
 }
 
+// SearchByUser performs a full-text search across the user's trips, matching
+// against title, description, and destination country. Results are ranked by
+// relevance.
+func (s *Service) SearchByUser(ctx context.Context, userID uuid.UUID, query string, limit int32) ([]dbgen.Trip, error) {
+	trips, err := s.queries.SearchTripsByUser(ctx, dbgen.SearchTripsByUserParams{
+		UserID:     userID,
+		Query:      query,
+		MaxResults: limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("search trips: %w", err)
+	}
+	return trips, nil
+}
+
 func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time) (*dbgen.Trip, error) {
 	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
 		return nil, fmt.Errorf("end_date (%s) cannot be before start_date (%s)", endDate.Format("2006-01-02"), startDate.Format("2006-01-02"))

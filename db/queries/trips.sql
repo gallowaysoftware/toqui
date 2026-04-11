@@ -89,3 +89,10 @@ RETURNING expert_calls;
 -- name: GetExpertCalls :one
 SELECT expert_calls FROM trips
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
+
+-- name: SearchTripsByUser :many
+SELECT * FROM trips
+WHERE user_id = $1
+  AND search_vector @@ plainto_tsquery('english', sqlc.arg(query))
+ORDER BY ts_rank(search_vector, plainto_tsquery('english', sqlc.arg(query))) DESC
+LIMIT sqlc.arg(max_results);

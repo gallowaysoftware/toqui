@@ -184,6 +184,7 @@ type Trip struct {
 	TrialEndsAt          pgtype.Timestamptz `json:"trial_ends_at"`
 	DestinationCountries []string           `json:"destination_countries"`
 	ExpertCalls          int32              `json:"expert_calls"`
+	SearchVector         interface{}        `json:"search_vector"`
 }
 
 type TripCollaborator struct {

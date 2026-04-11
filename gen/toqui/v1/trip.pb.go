@@ -670,9 +670,13 @@ func (x *GetTripResponse) GetTrip() *Trip {
 }
 
 type ListTripsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        TripStatus             `protobuf:"varint,1,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
-	Pagination    *PaginationRequest     `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Status     TripStatus             `protobuf:"varint,1,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
+	Pagination *PaginationRequest     `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	// Optional full-text search query. When non-empty, results are filtered to
+	// trips matching the query against title, description, and destination
+	// country, and ranked by relevance instead of creation date.
+	Query         string `protobuf:"bytes,3,opt,name=query,proto3" json:"query,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -719,6 +723,13 @@ func (x *ListTripsRequest) GetPagination() *PaginationRequest {
 		return x.Pagination
 	}
 	return nil
+}
+
+func (x *ListTripsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
 }
 
 type ListTripsResponse struct {
@@ -1328,12 +1339,13 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\x0eGetTripRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\"5\n" +
 	"\x0fGetTripResponse\x12\"\n" +
-	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"}\n" +
+	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"\x9d\x01\n" +
 	"\x10ListTripsRequest\x12,\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x14.toqui.v1.TripStatusR\x06status\x12;\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1b.toqui.v1.PaginationRequestR\n" +
-	"pagination\"w\n" +
+	"pagination\x12\x1e\n" +
+	"\x05query\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\x05query\"w\n" +
 	"\x11ListTripsResponse\x12$\n" +
 	"\x05trips\x18\x01 \x03(\v2\x0e.toqui.v1.TripR\x05trips\x12<\n" +
 	"\n" +

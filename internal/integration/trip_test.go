@@ -150,6 +150,103 @@ func TestTripListByStatus(t *testing.T) {
 	}
 }
 
+func TestTripSearch(t *testing.T) {
+	env := NewTestEnv(t)
+	env.CleanDB(t)
+	ctx := context.Background()
+	queries := dbgen.New(env.Pool)
+
+	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
+		GoogleID: pgtype.Text{String: "test-google-search", Valid: true},
+		Email:    "search@example.com",
+		Name:     pgtype.Text{String: "Search User", Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	tripSvc := trip.NewService(env.Pool)
+
+	// Create trips with distinct content for search targeting.
+	_, err = tripSvc.Create(ctx, user.ID, "Japan Trip", "Two weeks in Tokyo and Kyoto exploring temples", nil, nil)
+	if err != nil {
+		t.Fatalf("create japan trip: %v", err)
+	}
+	_, err = tripSvc.Create(ctx, user.ID, "Barcelona Beach Getaway", "Relaxing on the Mediterranean coast of Spain", nil, nil)
+	if err != nil {
+		t.Fatalf("create barcelona trip: %v", err)
+	}
+	_, err = tripSvc.Create(ctx, user.ID, "Tokyo Food Tour", "Street food and sushi in Shinjuku and Shibuya", nil, nil)
+	if err != nil {
+		t.Fatalf("create tokyo food trip: %v", err)
+	}
+
+	// Search for "Tokyo" — should match Japan Trip (description) and Tokyo Food Tour (title).
+	results, err := tripSvc.SearchByUser(ctx, user.ID, "Tokyo", 10)
+	if err != nil {
+		t.Fatalf("search Tokyo: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("search 'Tokyo': got %d results, want 2", len(results))
+	}
+
+	// Search for "Barcelona" — should match exactly one trip.
+	results, err = tripSvc.SearchByUser(ctx, user.ID, "Barcelona", 10)
+	if err != nil {
+		t.Fatalf("search Barcelona: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("search 'Barcelona': got %d results, want 1", len(results))
+	}
+	if len(results) == 1 && results[0].Title != "Barcelona Beach Getaway" {
+		t.Errorf("search 'Barcelona': got title %q, want %q", results[0].Title, "Barcelona Beach Getaway")
+	}
+
+	// Search for "temples" (in description only) — should match Japan Trip.
+	results, err = tripSvc.SearchByUser(ctx, user.ID, "temples", 10)
+	if err != nil {
+		t.Fatalf("search temples: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("search 'temples': got %d results, want 1", len(results))
+	}
+
+	// Search with no results — nonsense query.
+	results, err = tripSvc.SearchByUser(ctx, user.ID, "xyzzyplugh", 10)
+	if err != nil {
+		t.Fatalf("search no results: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("search 'xyzzyplugh': got %d results, want 0", len(results))
+	}
+
+	// Search respects limit parameter.
+	results, err = tripSvc.SearchByUser(ctx, user.ID, "Tokyo", 1)
+	if err != nil {
+		t.Fatalf("search with limit: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("search 'Tokyo' limit=1: got %d results, want 1", len(results))
+	}
+
+	// Search is scoped to the user — another user should get no results.
+	otherUser, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
+		GoogleID: pgtype.Text{String: "test-google-other", Valid: true},
+		Email:    "other@example.com",
+		Name:     pgtype.Text{String: "Other User", Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("create other user: %v", err)
+	}
+	results, err = tripSvc.SearchByUser(ctx, otherUser.ID, "Tokyo", 10)
+	if err != nil {
+		t.Fatalf("search other user: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("search other user 'Tokyo': got %d results, want 0", len(results))
+	}
+}
+
 func TestItineraryItemCRUD(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
