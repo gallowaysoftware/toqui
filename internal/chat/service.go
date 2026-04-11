@@ -105,6 +105,11 @@ type SendMessageParams struct {
 	// between tool loop iterations and rebuilds the system prompt so the
 	// expert answers in the same turn (#175).
 	PersonaSwitchCh chan *persona.Persona
+
+	// PriorityModel indicates that the user's subscription tier grants access
+	// to the "best" AI model. When true, the classifier may upgrade the model
+	// tier for planning and companion mode requests.
+	PriorityModel bool
 }
 
 // Attachment represents a file attached to a chat message.
@@ -237,11 +242,12 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	}
 
 	aiReq := &ai.ChatRequest{
-		SystemPrompt: systemPrompt,
-		Messages:     messages,
-		Tools:        toolDefs,
-		Temperature:  0.7,
-		Mode:         params.Mode,
+		SystemPrompt:  systemPrompt,
+		Messages:      messages,
+		Tools:         toolDefs,
+		Temperature:   0.7,
+		Mode:          params.Mode,
+		PriorityModel: params.PriorityModel,
 	}
 
 	// Classify the request to determine model tier. This uses deterministic

@@ -43,11 +43,17 @@ func classifyByHeuristics(req *ChatRequest) ModelTier {
 		if msgLen > 0 && msgLen < 100 && !hasTools {
 			return ModelTierFast
 		}
+		if req.PriorityModel {
+			return ModelTierBest
+		}
 		return ModelTierSmart
 
 	case "planning":
 		// Planning always needs at least smart for reliable tool calling
-		// and quality responses.
+		// and quality responses. Voyager subscribers get the best model.
+		if req.PriorityModel {
+			return ModelTierBest
+		}
 		return ModelTierSmart
 	}
 

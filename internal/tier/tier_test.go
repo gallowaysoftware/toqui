@@ -69,6 +69,122 @@ func TestUserTier_IsUnlimited(t *testing.T) {
 	}
 }
 
+func TestUserTier_HasPriorityModel(t *testing.T) {
+	tests := []struct {
+		tier UserTier
+		want bool
+	}{
+		{Free, false},
+		{Pro, false},
+		{Explorer, false},
+		{Voyager, true},
+		{UserTier(""), false},
+		{UserTier("unknown"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			if got := tt.tier.HasPriorityModel(); got != tt.want {
+				t.Errorf("UserTier(%q).HasPriorityModel() = %v, want %v", tt.tier, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserTier_HasExportAccess(t *testing.T) {
+	tests := []struct {
+		tier UserTier
+		want bool
+	}{
+		{Free, false},
+		{Pro, false},
+		{Explorer, true},
+		{Voyager, true},
+		{UserTier(""), false},
+		{UserTier("unknown"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			if got := tt.tier.HasExportAccess(); got != tt.want {
+				t.Errorf("UserTier(%q).HasExportAccess() = %v, want %v", tt.tier, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserTier_HasPrioritySupport(t *testing.T) {
+	tests := []struct {
+		tier UserTier
+		want bool
+	}{
+		{Free, false},
+		{Pro, false},
+		{Explorer, false},
+		{Voyager, true},
+		{UserTier(""), false},
+		{UserTier("unknown"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			if got := tt.tier.HasPrioritySupport(); got != tt.want {
+				t.Errorf("UserTier(%q).HasPrioritySupport() = %v, want %v", tt.tier, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserTier_Features(t *testing.T) {
+	tests := []struct {
+		tier     UserTier
+		contains []string
+		excludes []string
+	}{
+		{
+			tier:     Free,
+			contains: nil,
+			excludes: []string{"unlimited_experts", "unlimited_messages", "export_pdf_ical", "priority_ai_model", "priority_support"},
+		},
+		{
+			tier:     Pro,
+			contains: []string{"unlimited_experts", "booking_parsing"},
+			excludes: []string{"unlimited_messages", "export_pdf_ical", "priority_ai_model", "priority_support"},
+		},
+		{
+			tier:     Explorer,
+			contains: []string{"unlimited_experts", "booking_parsing", "unlimited_messages", "export_pdf_ical"},
+			excludes: []string{"priority_ai_model", "priority_support"},
+		},
+		{
+			tier:     Voyager,
+			contains: []string{"unlimited_experts", "booking_parsing", "unlimited_messages", "export_pdf_ical", "priority_ai_model", "priority_support"},
+			excludes: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.tier), func(t *testing.T) {
+			features := tt.tier.Features()
+			featureSet := make(map[string]bool, len(features))
+			for _, f := range features {
+				featureSet[f] = true
+			}
+
+			for _, want := range tt.contains {
+				if !featureSet[want] {
+					t.Errorf("UserTier(%q).Features() missing %q, got %v", tt.tier, want, features)
+				}
+			}
+			for _, exclude := range tt.excludes {
+				if featureSet[exclude] {
+					t.Errorf("UserTier(%q).Features() should not contain %q, got %v", tt.tier, exclude, features)
+				}
+			}
+		})
+	}
+}
+
 func TestParse(t *testing.T) {
 	tests := []struct {
 		input string

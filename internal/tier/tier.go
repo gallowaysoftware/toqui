@@ -48,6 +48,47 @@ func (t UserTier) IsUnlimited() bool {
 	return t == Explorer || t == Voyager
 }
 
+// HasPriorityModel returns true when the user gets the "best" AI model tier
+// instead of "smart". Currently only Voyager subscribers receive this.
+func (t UserTier) HasPriorityModel() bool {
+	return t == Voyager
+}
+
+// HasExportAccess returns true when the user can export trips (PDF/iCal).
+// Available to Explorer and Voyager subscribers.
+func (t UserTier) HasExportAccess() bool {
+	return t == Explorer || t == Voyager
+}
+
+// HasPrioritySupport returns true when the user has access to priority
+// customer support. Currently only Voyager subscribers receive this.
+func (t UserTier) HasPrioritySupport() bool {
+	return t == Voyager
+}
+
+// Features returns the list of feature names enabled for this tier.
+// Used by the subscription status endpoint so the frontend can show what
+// each tier includes.
+func (t UserTier) Features() []string {
+	var features []string
+	if t.IsPro() {
+		features = append(features, "unlimited_experts", "booking_parsing")
+	}
+	if t.IsUnlimited() {
+		features = append(features, "unlimited_messages")
+	}
+	if t.HasExportAccess() {
+		features = append(features, "export_pdf_ical")
+	}
+	if t.HasPriorityModel() {
+		features = append(features, "priority_ai_model")
+	}
+	if t.HasPrioritySupport() {
+		features = append(features, "priority_support")
+	}
+	return features
+}
+
 // Parse converts a raw string to a UserTier. Unrecognised values fall
 // back to Free so callers never have to handle an error path.
 func Parse(raw string) UserTier {

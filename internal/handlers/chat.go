@@ -168,10 +168,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		if err != nil {
 			if errors.Is(err, usage.ErrDailyLimitExceeded) {
 				upgradeHint := ""
-				if userTier.IsFree() {
-					upgradeHint = " Upgrade to Explorer or Voyager for unlimited messages — visit your account settings to learn more."
-				} else if !userTier.IsUnlimited() {
-					upgradeHint = " Upgrade to Explorer or Voyager for unlimited messages."
+				switch {
+				case userTier.IsFree():
+					upgradeHint = " Upgrade to Voyager for unlimited messages + priority AI model, or Explorer for unlimited messages — visit your account settings to learn more."
+				case userTier == tier.Pro:
+					upgradeHint = " Upgrade to Voyager for unlimited messages + priority AI model, or Explorer for unlimited messages."
+				case userTier == tier.Explorer:
+					upgradeHint = " Upgrade to Voyager for priority AI model + priority support."
 				}
 				return connect.NewError(
 					connect.CodeResourceExhausted,
@@ -277,6 +280,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		DestinationCountry: destinationCountry,
 		TripThemes:         tripThemes,
 		Attachments:        attachments,
+		PriorityModel:      userTier.HasPriorityModel(),
 	}
 
 	// Inject ephemeral location (companion mode only).

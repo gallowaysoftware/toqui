@@ -149,10 +149,12 @@ func (h *SubscriptionHandler) HandleGetSubscription(w http.ResponseWriter, r *ht
 
 	if sub == nil {
 		// No subscription — return free tier info.
+		freeTier := tier.Free
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"tier":   string(tier.Free),
-			"status": "none",
+			"tier":     string(freeTier),
+			"status":   "none",
+			"features": freeTier.Features(),
 		})
 		return
 	}
@@ -161,6 +163,7 @@ func (h *SubscriptionHandler) HandleGetSubscription(w http.ResponseWriter, r *ht
 		"tier":                 string(sub.Tier),
 		"status":               sub.Status,
 		"cancel_at_period_end": sub.CancelAtPeriodEnd,
+		"features":             sub.Tier.Features(),
 	}
 	if sub.CurrentPeriodEnd != nil {
 		resp["current_period_end"] = sub.CurrentPeriodEnd.Format(time.RFC3339)

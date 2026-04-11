@@ -36,6 +36,11 @@ type ChatRequest struct {
 	// the classifier to pick an appropriate model tier. This is informational
 	// for routing purposes and does not affect the AI request payload.
 	Mode string
+
+	// PriorityModel indicates that the user's subscription tier grants access
+	// to the "best" model. When true, the classifier upgrades planning-mode
+	// requests from ModelTierSmart to ModelTierBest.
+	PriorityModel bool
 }
 
 type Message struct {

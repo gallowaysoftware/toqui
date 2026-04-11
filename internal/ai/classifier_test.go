@@ -142,6 +142,67 @@ func TestClassifyRequest(t *testing.T) {
 			wantTier: ModelTierSmart,
 		},
 
+		// --- PriorityModel (Voyager) ---
+		{
+			name: "planning with priority model gets best",
+			req: &ChatRequest{
+				Mode:          "planning",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: "Plan me a 2-week itinerary for Japan"}},
+				Tools:         withTools(),
+			},
+			wantTier: ModelTierBest,
+		},
+		{
+			name: "companion long query with priority model gets best",
+			req: &ChatRequest{
+				Mode:          "companion",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: strings.Repeat("x", 150)}},
+			},
+			wantTier: ModelTierBest,
+		},
+		{
+			name: "companion with tools and priority model gets best",
+			req: &ChatRequest{
+				Mode:          "companion",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: "Find me a restaurant nearby"}},
+				Tools:         withTools(),
+			},
+			wantTier: ModelTierBest,
+		},
+		{
+			name: "companion short question with priority model still fast",
+			req: &ChatRequest{
+				Mode:          "companion",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: "What time?"}},
+			},
+			wantTier: ModelTierFast,
+		},
+		{
+			name: "selection with priority model unchanged (still smart with tools)",
+			req: &ChatRequest{
+				Mode:          "selection",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: "I want to plan a trip"}},
+				Tools:         withTools(),
+			},
+			wantTier: ModelTierSmart,
+		},
+		{
+			name: "explicit override takes precedence over priority model",
+			req: &ChatRequest{
+				ModelTier:     ModelTierFast,
+				Mode:          "planning",
+				PriorityModel: true,
+				Messages:      []Message{{Role: "user", Content: "Plan something"}},
+				Tools:         withTools(),
+			},
+			wantTier: ModelTierFast,
+		},
+
 		// --- Edge cases ---
 		{
 			name: "empty messages is smart (conservative)",
