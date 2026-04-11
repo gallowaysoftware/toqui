@@ -275,6 +275,18 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 	case "flight":
 		var d booking.FlightDetails
 		if json.Unmarshal(raw, &d) == nil {
+			var protoLegs []*toquiv1.FlightLeg
+			for _, leg := range d.Legs {
+				protoLegs = append(protoLegs, &toquiv1.FlightLeg{
+					FlightNumber:     leg.FlightNumber,
+					Airline:          leg.Airline,
+					DepartureAirport: leg.DepartureAirport,
+					ArrivalAirport:   leg.ArrivalAirport,
+					DepartureTime:    leg.DepartureTime,
+					ArrivalTime:      leg.ArrivalTime,
+					Cabin:            leg.Cabin,
+				})
+			}
 			proto.BookingDetails = &toquiv1.Booking_FlightDetails{
 				FlightDetails: &toquiv1.FlightDetails{
 					Airline:           d.Airline,
@@ -286,6 +298,7 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 					Seat:              d.Seat,
 					CabinClass:        d.CabinClass,
 					Passengers:        d.Passengers,
+					Legs:              protoLegs,
 				},
 			}
 		}

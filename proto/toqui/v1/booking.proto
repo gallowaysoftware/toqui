@@ -48,6 +48,16 @@ message Booking {
   }
 }
 
+message FlightLeg {
+  string flight_number = 1;
+  string airline = 2;
+  string departure_airport = 3;
+  string arrival_airport = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string cabin = 7;
+}
+
 message FlightDetails {
   string airline = 1;
   string flight_number = 2;
@@ -58,6 +68,9 @@ message FlightDetails {
   string seat = 7;
   string cabin_class = 8;
   repeated string passengers = 9;
+  // Multi-leg support: individual segments for connecting/round-trip flights.
+  // Top-level fields always reflect the first outbound leg.
+  repeated FlightLeg legs = 10;
 }
 
 message HotelDetails {

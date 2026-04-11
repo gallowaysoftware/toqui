@@ -5,6 +5,17 @@ import (
 	"fmt"
 )
 
+// FlightLeg represents a single segment of a multi-leg flight.
+type FlightLeg struct {
+	FlightNumber     string `json:"flight_number,omitempty"`
+	Airline          string `json:"airline,omitempty"`
+	DepartureAirport string `json:"departure_airport,omitempty"`
+	ArrivalAirport   string `json:"arrival_airport,omitempty"`
+	DepartureTime    string `json:"departure_time,omitempty"`
+	ArrivalTime      string `json:"arrival_time,omitempty"`
+	Cabin            string `json:"cabin,omitempty"`
+}
+
 type FlightDetails struct {
 	Airline           string   `json:"airline,omitempty"`
 	FlightNumber      string   `json:"flight_number,omitempty"`
@@ -15,6 +26,10 @@ type FlightDetails struct {
 	Seat              string   `json:"seat,omitempty"`
 	CabinClass        string   `json:"cabin_class,omitempty"`
 	Passengers        []string `json:"passengers,omitempty"`
+	// Legs holds individual segments for multi-leg, connecting, or round-trip
+	// flights. The top-level fields (FlightNumber, DepartureAirport, etc.)
+	// always reflect the first outbound leg for backward compatibility.
+	Legs []FlightLeg `json:"legs,omitempty"`
 }
 
 type HotelDetails struct {
