@@ -178,8 +178,26 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	}
 	_ = userMsg.ID // populated by AddMessage (no longer used for cleanup)
 
+	// Load the session to check message count for summarization.
+	// Best-effort: if the session can't be loaded, we skip summarization
+	// and proceed with the standard 50-message window.
+	session, sessionErr := s.chatStore.GetSession(ctx, params.UserID.String(), storeTripID, sessionID)
+	if sessionErr != nil {
+		slog.Warn("failed to load session for summarization check, proceeding without summary",
+			"session_id", sessionID,
+			"error", sessionErr,
+		)
+	}
+
+	// Generate or refresh the conversation summary if the session has
+	// accumulated enough messages. This is a best-effort background
+	// operation — failures are logged but do not block the chat flow.
+	if session != nil {
+		s.MaybeRefreshSummary(ctx, params.UserID.String(), storeTripID, sessionID, session)
+	}
+
 	// Load history
-	history, err := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, 50)
+	history, err := s.chatStore.GetMessages(ctx, params.UserID.String(), storeTripID, sessionID, recentMessageWindow)
 	if err != nil {
 		return nil, "", fmt.Errorf("load history: %w", err)
 	}
@@ -220,11 +238,18 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	}
 
 	// buildPrompt assembles the full system prompt for a given persona,
-	// including ephemeral location context and extra trip context. Captured
-	// as a closure so the tool loop can rebuild the prompt when an expert
-	// hands off mid-turn (#175).
+	// including ephemeral location context, extra trip context, and any
+	// conversation summary from older messages. Captured as a closure so
+	// the tool loop can rebuild the prompt when an expert hands off
+	// mid-turn (#175).
 	buildPrompt := func(p *persona.Persona) string {
 		sp := p.SystemPrompt(params.Mode)
+
+		// Inject conversation summary for context continuity (#250).
+		if summaryCtx := BuildSummaryContext(session); summaryCtx != "" {
+			sp += "\n\n" + summaryCtx
+		}
+
 		if params.LocationLat != 0 && params.LocationLng != 0 {
 			sp += fmt.Sprintf("\n\nThe user's current location is approximately: %.4f, %.4f. Use this to provide relevant nearby recommendations. Do NOT repeat these coordinates back to the user.", params.LocationLat, params.LocationLng)
 		}

@@ -20,6 +20,16 @@ type ChatSession struct {
 	LastMessageAt time.Time  `firestore:"lastMessageAt"`
 	MessageCount  int        `firestore:"messageCount"`
 	ExpireAt      *time.Time `firestore:"expireAt,omitempty"`
+
+	// Summary holds an AI-generated summary of older messages that fall
+	// outside the 50-message recent window. Injected into the system prompt
+	// so the AI retains context from earlier in the conversation.
+	Summary string `firestore:"summary,omitempty"`
+
+	// SummaryMessageCount records the session's MessageCount at the time the
+	// summary was last generated. A new summary is triggered when
+	// MessageCount - SummaryMessageCount > SummaryRefreshThreshold.
+	SummaryMessageCount int `firestore:"summaryMessageCount,omitempty"`
 }
 
 type ChatMessage struct {
@@ -258,6 +268,46 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 		messages[i], messages[j] = messages[j], messages[i]
 	}
 
+	return messages, nil
+}
+
+// UpdateSummary writes a conversation summary and the messageCount at which
+// it was generated to the session document. The summary is used to retain
+// context from older messages that fall outside the 50-message window.
+func (s *Store) UpdateSummary(ctx context.Context, userID, tripID, sessionID, summary string, messageCount int) error {
+	_, err := s.sessionsCol(userID, tripID).Doc(sessionID).Update(ctx, []firestore.Update{
+		{Path: "summary", Value: summary},
+		{Path: "summaryMessageCount", Value: messageCount},
+	})
+	if err != nil {
+		return fmt.Errorf("update summary: %w", err)
+	}
+	return nil
+}
+
+// GetOldestMessages returns the oldest messages in a session, ordered
+// chronologically. Used to fetch the messages that fall outside the
+// recent-message window for summarization.
+func (s *Store) GetOldestMessages(ctx context.Context, userID, tripID, sessionID string, limit int) ([]*ChatMessage, error) {
+	iter := s.messagesCol(userID, tripID, sessionID).OrderBy("createdAt", firestore.Asc).Limit(limit).Documents(ctx)
+	defer iter.Stop()
+
+	var messages []*ChatMessage
+	for {
+		doc, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("get oldest messages: %w", err)
+		}
+
+		var msg ChatMessage
+		if err := doc.DataTo(&msg); err != nil {
+			return nil, fmt.Errorf("decode message: %w", err)
+		}
+		messages = append(messages, &msg)
+	}
 	return messages, nil
 }
 
