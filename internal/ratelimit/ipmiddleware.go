@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/time/rate"
 )
 
@@ -19,11 +21,12 @@ type ipEntry struct {
 // IPRateLimiter provides per-IP rate limiting as HTTP middleware.
 // It uses a token bucket algorithm to limit the number of requests per IP.
 type IPRateLimiter struct {
-	mu          sync.Mutex
-	ips         map[string]*ipEntry
-	ratePerSec  rate.Limit
-	burst       int
-	cleanupStop chan struct{}
+	mu            sync.Mutex
+	ips           map[string]*ipEntry
+	ratePerSec    rate.Limit
+	burst         int
+	cleanupStop   chan struct{}
+	rateLimitHits rateLimitCounter // nil when metrics are disabled
 }
 
 // NewIPRateLimiter creates a per-IP rate limiter.
@@ -39,6 +42,11 @@ func NewIPRateLimiter(requestsPerMinute, burst int) *IPRateLimiter {
 	return l
 }
 
+// SetRateLimitHitsMetric enables OpenTelemetry metric recording for IP rate limit rejections.
+func (l *IPRateLimiter) SetRateLimitHitsMetric(counter rateLimitCounter) {
+	l.rateLimitHits = counter
+}
+
 // Middleware returns an http.Handler that enforces per-identity rate limits.
 // If the request has an Authorization Bearer token, it uses that as the key
 // (resistant to X-Forwarded-For spoofing). Otherwise falls back to client IP.
@@ -49,6 +57,11 @@ func (l *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 		entry := l.getOrCreate(key)
 		if !entry.limiter.Allow() {
 			slog.Warn("rate limit exceeded", "key", key, "path", r.URL.Path)
+			if l.rateLimitHits != nil {
+				l.rateLimitHits.Add(r.Context(), 1, metric.WithAttributes(
+					attribute.String("ratelimit.type", "ip"),
+				))
+			}
 			w.Header().Set("Retry-After", "60")
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return

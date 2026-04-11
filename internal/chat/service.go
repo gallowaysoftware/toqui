@@ -14,6 +14,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ledongthuc/pdf"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
@@ -22,18 +24,25 @@ import (
 )
 
 type Service struct {
-	provider  ai.Provider
-	chatStore *chatstore.Store
-	tools     *tools.Registry
-	personas  *persona.Registry
-	cache     *ai.ResponseCache // nil when caching is disabled
-	budget    *ai.TokenBudget   // nil when budget is unlimited
-	usageSvc  usageCostRecorder // nil when cost tracking is disabled
+	provider      ai.Provider
+	chatStore     *chatstore.Store
+	tools         *tools.Registry
+	personas      *persona.Registry
+	cache         *ai.ResponseCache // nil when caching is disabled
+	budget        *ai.TokenBudget   // nil when budget is unlimited
+	usageSvc      usageCostRecorder // nil when cost tracking is disabled
+	aiTokenMetric aiTokenCounter    // nil when metrics are disabled
 }
 
 // usageCostRecorder is the subset of usage.Service needed for cost recording.
 type usageCostRecorder interface {
 	RecordAICost(ctx context.Context, userID uuid.UUID, costCents int32) error
+}
+
+// aiTokenCounter records AI token usage as an OpenTelemetry metric.
+// Matches the signature of metric.Int64Counter.Add.
+type aiTokenCounter interface {
+	Add(ctx context.Context, incr int64, options ...metric.AddOption)
 }
 
 func NewService(provider ai.Provider, chatStore *chatstore.Store, toolRegistry *tools.Registry, personas *persona.Registry) *Service {
@@ -58,6 +67,12 @@ func (s *Service) SetBudget(budget *ai.TokenBudget) {
 // SetUsageService enables AI cost recording to the database. Pass nil to disable.
 func (s *Service) SetUsageService(svc usageCostRecorder) {
 	s.usageSvc = svc
+}
+
+// SetAITokenMetric enables OpenTelemetry metric recording for AI token usage.
+// Pass nil to disable.
+func (s *Service) SetAITokenMetric(counter aiTokenCounter) {
+	s.aiTokenMetric = counter
 }
 
 type StreamEvent struct {
@@ -865,6 +880,16 @@ func (s *Service) logUsage(ctx context.Context, userID uuid.UUID, tier ai.ModelT
 
 	if s.budget != nil {
 		s.budget.Record(totalTokens)
+	}
+
+	// Record OpenTelemetry metric for AI token usage.
+	if s.aiTokenMetric != nil {
+		attrs := metric.WithAttributes(
+			attribute.String("ai.provider", s.provider.Name()),
+			attribute.String("ai.model_tier", string(tier)),
+			attribute.String("deployment.environment", os.Getenv("TARGET_ENV")),
+		)
+		s.aiTokenMetric.Add(ctx, int64(totalTokens), attrs)
 	}
 
 	// Persist cost to database (convert USD to cents, round up to at least 1 cent

@@ -9,10 +9,17 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/time/rate"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 )
+
+// rateLimitCounter records rate limit rejections as an OpenTelemetry metric.
+type rateLimitCounter interface {
+	Add(ctx context.Context, incr int64, options ...metric.AddOption)
+}
 
 type userEntry struct {
 	aiLimiter      *rate.Limiter
@@ -29,6 +36,7 @@ type interceptor struct {
 	geoPerMinute  int
 	generalPerMin int
 	cleanupStop   chan struct{}
+	rateLimitHits rateLimitCounter // nil when metrics are disabled
 }
 
 // NewInterceptor creates a rate-limiting interceptor. aiPerMinute controls the
@@ -44,6 +52,11 @@ func NewInterceptor(aiPerMinute, generalPerMinute int) *interceptor {
 	}
 	go i.cleanupLoop()
 	return i
+}
+
+// SetRateLimitHitsMetric enables OpenTelemetry metric recording for rate limit rejections.
+func (i *interceptor) SetRateLimitHitsMetric(counter rateLimitCounter) {
+	i.rateLimitHits = counter
 }
 
 func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -86,6 +99,11 @@ func (i *interceptor) check(ctx context.Context, procedure string) error {
 	}
 
 	if !limiter.Allow() {
+		if i.rateLimitHits != nil {
+			i.rateLimitHits.Add(ctx, 1, metric.WithAttributes(
+				attribute.String("ratelimit.type", "user"),
+			))
+		}
 		return connect.NewError(
 			connect.CodeResourceExhausted,
 			fmt.Errorf("rate limit exceeded, please try again later"),

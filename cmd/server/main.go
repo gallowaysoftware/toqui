@@ -63,11 +63,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// OpenTelemetry tracing — non-fatal, server continues without traces if init fails.
+	// OpenTelemetry tracing + metrics — non-fatal, server continues without telemetry if init fails.
 	// Resolves gcsm:// in OTEL_EXPORTER_OTLP_HEADERS via GCP Secret Manager.
 	otelShutdown, otelErr := telemetry.Init(ctx, "toqui-backend", cfg.FirestoreProjectID)
 	if otelErr != nil {
-		slog.Error("failed to initialize OpenTelemetry, continuing without tracing", "error", otelErr)
+		slog.Error("failed to initialize OpenTelemetry, continuing without telemetry", "error", otelErr)
 	}
 	if otelShutdown != nil {
 		defer func() {
@@ -75,6 +75,12 @@ func main() {
 				slog.Error("OpenTelemetry shutdown error", "error", err)
 			}
 		}()
+	}
+
+	// OpenTelemetry metrics instruments — safe no-ops when exporter is not configured.
+	otelMetrics, metricsErr := telemetry.NewMetrics()
+	if metricsErr != nil {
+		slog.Error("failed to create OpenTelemetry metrics, continuing without metrics", "error", metricsErr)
 	}
 
 	// Use JSON structured logging in non-local environments for Cloud Logging.
@@ -245,9 +251,15 @@ func main() {
 	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).
 		WithTierLimits(cfg.DailyMessageLimitFree, cfg.DailyMessageLimitPro)
 	chatSvc.SetUsageService(usageSvc)
+	if otelMetrics != nil {
+		chatSvc.SetAITokenMetric(otelMetrics.AITokenUsage)
+	}
 
 	// Interceptors — handles both unary and streaming RPCs
 	rateLimiter := ratelimit.NewInterceptor(10, 60)
+	if otelMetrics != nil {
+		rateLimiter.SetRateLimitHitsMetric(otelMetrics.RateLimitHits)
+	}
 	defer rateLimiter.Stop()
 
 	queries := dbgen.New(pool)
@@ -577,6 +589,9 @@ func main() {
 	// Applies to all routes (public + authenticated). The per-user ConnectRPC
 	// interceptor provides tighter limits on authenticated AI endpoints.
 	ipLimiter := ratelimit.NewIPRateLimiter(120, 20)
+	if otelMetrics != nil {
+		ipLimiter.SetRateLimitHitsMetric(otelMetrics.RateLimitHits)
+	}
 	defer ipLimiter.Stop()
 
 	// Build CORS allowed origins: use CORS_ALLOWED_ORIGINS if set, otherwise
@@ -590,12 +605,13 @@ func main() {
 	// Webhooks are exempt (they use ECDSA signature verification).
 	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/", "/api/subscription/webhook"})
 
-	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → handler
+	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → metrics → handler
 	// IP rate limiter runs after cookie auth so it can use Bearer token (set by
 	// CookieAuth for web browsers) as the rate limit key instead of spoofable X-Forwarded-For.
 	// otelhttp wraps the outermost layer to trace all incoming HTTP requests.
+	// telemetry.Middleware sits inside the chain to record request duration/count with accurate status codes.
 	handler := otelhttp.NewHandler(
-		recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(csrfProtected)), corsOrigins))))),
+		recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(telemetry.Middleware(otelMetrics, csrfProtected))), corsOrigins))))),
 		"toqui-backend",
 	)
 
