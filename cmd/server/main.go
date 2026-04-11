@@ -239,7 +239,7 @@ func main() {
 	}
 
 	bookingSvc := booking.NewService(pool, aiProvider)
-	locationSvc := location.NewService()
+	locationSvc := location.NewService(cfg.GooglePlacesAPIKey)
 	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
 	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).

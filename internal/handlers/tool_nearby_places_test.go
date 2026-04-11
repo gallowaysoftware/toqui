@@ -9,7 +9,7 @@ import (
 )
 
 func TestNearbyPlacesTool_Definition(t *testing.T) {
-	svc := location.NewService()
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 35.6762, 139.6503)
 	def := tool.Definition()
 
@@ -44,7 +44,7 @@ func TestNearbyPlacesTool_Definition(t *testing.T) {
 }
 
 func TestNearbyPlacesTool_Execute_InvalidJSON(t *testing.T) {
-	svc := location.NewService()
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 35.6762, 139.6503)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`not json`))
@@ -54,7 +54,7 @@ func TestNearbyPlacesTool_Execute_InvalidJSON(t *testing.T) {
 }
 
 func TestNearbyPlacesTool_Execute_EmptyQuery(t *testing.T) {
-	svc := location.NewService()
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 35.6762, 139.6503)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{"query": ""}`))
@@ -64,7 +64,7 @@ func TestNearbyPlacesTool_Execute_EmptyQuery(t *testing.T) {
 }
 
 func TestNearbyPlacesTool_Execute_NoLocation(t *testing.T) {
-	svc := location.NewService()
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 0, 0)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{"query": "restaurants"}`))
@@ -116,9 +116,9 @@ func TestNearbyPlacesTool_Execute_DefaultRadius(t *testing.T) {
 }
 
 func TestNearbyPlacesTool_Execute_RadiusCap(t *testing.T) {
-	// With a location set, the tool should cap the radius at 5000
-	// and return empty results from the stub service.
-	svc := location.NewService()
+	// With no API key configured, GetNearby returns an error.
+	// The tool handler should catch this and return a lookup_failed response.
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 35.6762, 139.6503)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{"query": "restaurants", "radius": 99999}`))
@@ -131,19 +131,16 @@ func TestNearbyPlacesTool_Execute_RadiusCap(t *testing.T) {
 		t.Fatalf("failed to parse result: %v", err)
 	}
 
-	// The stub service returns nil/empty, so we should get an empty list
-	places, ok := parsed["places"].([]any)
-	if !ok {
-		t.Fatal("expected places array in result")
-	}
-	if len(places) != 0 {
-		t.Errorf("expected empty places (stub service), got %d", len(places))
+	// No API key → GetNearby returns error → tool returns lookup_failed
+	if errStr, ok := parsed["error"].(string); !ok || errStr != "lookup_failed" {
+		t.Errorf("expected error 'lookup_failed', got %v", parsed["error"])
 	}
 }
 
-func TestNearbyPlacesTool_Execute_EmptyResults(t *testing.T) {
-	// The stub location service returns nil, which should be handled gracefully
-	svc := location.NewService()
+func TestNearbyPlacesTool_Execute_NoAPIKey(t *testing.T) {
+	// Without an API key, the service returns an error. The tool handler
+	// should catch it and return a user-friendly lookup_failed response.
+	svc := location.NewService("")
 	tool := NewNearbyPlacesTool(svc, 48.8566, 2.3522)
 
 	result, err := tool.Execute(context.Background(), json.RawMessage(`{"query": "restaurants"}`))
@@ -156,14 +153,10 @@ func TestNearbyPlacesTool_Execute_EmptyResults(t *testing.T) {
 		t.Fatalf("failed to parse result: %v", err)
 	}
 
-	places, ok := parsed["places"].([]any)
-	if !ok {
-		t.Fatal("expected places array in result")
-	}
-	if len(places) != 0 {
-		t.Errorf("expected empty places, got %d", len(places))
+	if errStr, ok := parsed["error"].(string); !ok || errStr != "lookup_failed" {
+		t.Errorf("expected error 'lookup_failed', got %v", parsed["error"])
 	}
 	if msg, ok := parsed["message"].(string); !ok || msg == "" {
-		t.Error("expected non-empty message for empty results")
+		t.Error("expected non-empty message for lookup failure")
 	}
 }
