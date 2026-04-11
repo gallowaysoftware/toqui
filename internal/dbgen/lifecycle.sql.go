@@ -79,7 +79,7 @@ func (q *Queries) CompleteTrip(ctx context.Context, arg CompleteTripParams) erro
 const createDeletionRequest = `-- name: CreateDeletionRequest :one
 INSERT INTO deletion_requests (user_id)
 VALUES ($1)
-RETURNING id, user_id, requested_at, completed_at, status
+RETURNING id, user_id, requested_at, completed_at, status, retry_count
 `
 
 func (q *Queries) CreateDeletionRequest(ctx context.Context, userID uuid.UUID) (DeletionRequest, error) {
@@ -91,6 +91,7 @@ func (q *Queries) CreateDeletionRequest(ctx context.Context, userID uuid.UUID) (
 		&i.RequestedAt,
 		&i.CompletedAt,
 		&i.Status,
+		&i.RetryCount,
 	)
 	return i, err
 }
@@ -136,6 +137,17 @@ DELETE FROM users WHERE id = $1
 
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteUserByID, id)
+	return err
+}
+
+const failDeletionRequest = `-- name: FailDeletionRequest :exec
+UPDATE deletion_requests
+SET status = 'failed'
+WHERE id = $1
+`
+
+func (q *Queries) FailDeletionRequest(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, failDeletionRequest, id)
 	return err
 }
 
@@ -186,6 +198,46 @@ func (q *Queries) GetPendingDeletionRequests(ctx context.Context) ([]GetPendingD
 	for rows.Next() {
 		var i GetPendingDeletionRequestsRow
 		if err := rows.Scan(&i.ID, &i.UserID, &i.RequestedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStaleDeletionRequests = `-- name: GetStaleDeletionRequests :many
+SELECT id, user_id, requested_at, retry_count
+FROM deletion_requests
+WHERE status = 'processing'
+  AND requested_at < NOW() - INTERVAL '1 hour'
+ORDER BY requested_at ASC
+`
+
+type GetStaleDeletionRequestsRow struct {
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	RequestedAt time.Time `json:"requested_at"`
+	RetryCount  int32     `json:"retry_count"`
+}
+
+func (q *Queries) GetStaleDeletionRequests(ctx context.Context) ([]GetStaleDeletionRequestsRow, error) {
+	rows, err := q.db.Query(ctx, getStaleDeletionRequests)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetStaleDeletionRequestsRow{}
+	for rows.Next() {
+		var i GetStaleDeletionRequestsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RequestedAt,
+			&i.RetryCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -272,4 +324,26 @@ func (q *Queries) GetUserExportRequests(ctx context.Context, userID uuid.UUID) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const incrementDeletionRetryCount = `-- name: IncrementDeletionRetryCount :exec
+UPDATE deletion_requests
+SET retry_count = retry_count + 1, status = 'processing'
+WHERE id = $1
+`
+
+func (q *Queries) IncrementDeletionRetryCount(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, incrementDeletionRetryCount, id)
+	return err
+}
+
+const setDeletionRequestProcessing = `-- name: SetDeletionRequestProcessing :exec
+UPDATE deletion_requests
+SET status = 'processing'
+WHERE id = $1
+`
+
+func (q *Queries) SetDeletionRequestProcessing(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setDeletionRequestProcessing, id)
+	return err
 }

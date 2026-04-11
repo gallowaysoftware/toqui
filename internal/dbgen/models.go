@@ -48,6 +48,7 @@ type DeletionRequest struct {
 	RequestedAt time.Time          `json:"requested_at"`
 	CompletedAt pgtype.Timestamptz `json:"completed_at"`
 	Status      string             `json:"status"`
+	RetryCount  int32              `json:"retry_count"`
 }
 
 type ExportRequest struct {

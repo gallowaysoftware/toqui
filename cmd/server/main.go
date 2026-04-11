@@ -572,11 +572,21 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	// Background lifecycle jobs — token cleanup, trip archival, deletion retries.
+	// Cancelling jobsCtx signals the jobs goroutine to stop gracefully.
+	jobsCtx, jobsCancel := context.WithCancel(context.Background())
+	defer jobsCancel()
+	lifecycleJobs := lifecycle.NewJobs(lifecycleSvc, pool)
+	go lifecycleJobs.Start(jobsCtx)
+
 	// Graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
+
+		// Stop background jobs first.
+		jobsCancel()
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

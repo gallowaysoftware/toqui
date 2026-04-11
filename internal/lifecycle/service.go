@@ -137,6 +137,11 @@ func (s *Service) RequestDeletion(ctx context.Context, userID uuid.UUID) (uuid.U
 		return uuid.Nil, fmt.Errorf("create deletion request: %w", err)
 	}
 
+	// Transition to processing so RetryFailedDeletions can detect stale entries.
+	if err := s.queries.SetDeletionRequestProcessing(ctx, req.ID); err != nil {
+		slog.Warn("failed to set deletion request to processing", "request_id", req.ID, "error", err)
+	}
+
 	// Launch deletion in a background goroutine so the HTTP response returns
 	// immediately. Use a detached context with a generous timeout.
 	go func() {
@@ -163,6 +168,80 @@ func (s *Service) RequestDeletion(ctx context.Context, userID uuid.UUID) (uuid.U
 	}()
 
 	return req.ID, nil
+}
+
+// maxDeletionRetries is the maximum number of retry attempts before a deletion
+// request is marked as permanently failed.
+const maxDeletionRetries = 5
+
+// RetryFailedDeletions finds deletion requests stuck in "processing" status
+// for over 1 hour and retries them. After maxDeletionRetries attempts, the
+// request is marked as "failed" for manual intervention.
+func (s *Service) RetryFailedDeletions(ctx context.Context) (retried int, failed int, err error) {
+	stale, err := s.queries.GetStaleDeletionRequests(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("get stale deletion requests: %w", err)
+	}
+
+	for _, req := range stale {
+		if req.RetryCount >= maxDeletionRetries {
+			if err := s.queries.FailDeletionRequest(ctx, req.ID); err != nil {
+				slog.Error("failed to mark deletion request as failed",
+					"request_id", req.ID,
+					"error", err,
+				)
+			} else {
+				slog.Warn("deletion request permanently failed after max retries",
+					"request_id", req.ID,
+					"user_id", req.UserID,
+					"retry_count", req.RetryCount,
+				)
+				failed++
+			}
+			continue
+		}
+
+		// Increment retry count before attempting deletion.
+		if err := s.queries.IncrementDeletionRetryCount(ctx, req.ID); err != nil {
+			slog.Error("failed to increment retry count",
+				"request_id", req.ID,
+				"error", err,
+			)
+			continue
+		}
+
+		slog.Info("retrying stale deletion request",
+			"request_id", req.ID,
+			"user_id", req.UserID,
+			"retry_count", req.RetryCount+1,
+		)
+
+		if err := s.DeleteUser(ctx, req.UserID); err != nil {
+			slog.Error("deletion retry failed",
+				"request_id", req.ID,
+				"user_id", req.UserID,
+				"retry_count", req.RetryCount+1,
+				"error", err,
+			)
+			continue
+		}
+
+		if err := s.queries.CompleteDeletionRequest(ctx, req.ID); err != nil {
+			slog.Warn("deletion retry completed but failed to update status",
+				"request_id", req.ID,
+				"error", err,
+			)
+		} else {
+			slog.Info("deletion retry succeeded",
+				"request_id", req.ID,
+				"user_id", req.UserID,
+				"retry_count", req.RetryCount+1,
+			)
+			retried++
+		}
+	}
+
+	return retried, failed, nil
 }
 
 // UserExport is the JSON structure returned by ExportUserData.

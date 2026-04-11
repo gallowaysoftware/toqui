@@ -60,3 +60,25 @@ FROM export_requests
 WHERE user_id = $1
 ORDER BY requested_at DESC
 LIMIT 10;
+
+-- name: SetDeletionRequestProcessing :exec
+UPDATE deletion_requests
+SET status = 'processing'
+WHERE id = $1;
+
+-- name: GetStaleDeletionRequests :many
+SELECT id, user_id, requested_at, retry_count
+FROM deletion_requests
+WHERE status = 'processing'
+  AND requested_at < NOW() - INTERVAL '1 hour'
+ORDER BY requested_at ASC;
+
+-- name: IncrementDeletionRetryCount :exec
+UPDATE deletion_requests
+SET retry_count = retry_count + 1, status = 'processing'
+WHERE id = $1;
+
+-- name: FailDeletionRequest :exec
+UPDATE deletion_requests
+SET status = 'failed'
+WHERE id = $1;
