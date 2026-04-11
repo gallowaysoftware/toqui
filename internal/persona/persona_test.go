@@ -42,14 +42,15 @@ func TestAllLocationProfilesRegistered(t *testing.T) {
 }
 
 func TestAllThemeProfilesRegistered(t *testing.T) {
-	// All 20 themes should be registered (3 core + 17 extended)
+	// All 21 themes should be registered (3 core + 18 extended)
 	expectedSlugs := []string{
 		// Core 3
 		"food", "history", "distilleries",
-		// Extended 17
+		// Extended 18
 		"adventure", "wellness", "wine", "architecture", "nightlife",
 		"shopping", "family", "photography", "nature", "romance",
 		"budget", "luxury", "art", "music", "craft-beer", "diving", "hiking",
+		"accessibility",
 	}
 
 	for _, slug := range expectedSlugs {
@@ -71,8 +72,8 @@ func TestAllThemeProfilesRegistered(t *testing.T) {
 
 	// Verify count
 	count := len(themeProfiles)
-	if count != 20 {
-		t.Errorf("expected 20 theme profiles, got %d", count)
+	if count != 21 {
+		t.Errorf("expected 21 theme profiles, got %d", count)
 	}
 }
 
@@ -114,6 +115,13 @@ func TestComposerTemplateIdentity(t *testing.T) {
 			themes:     []string{"diving"},
 			checkName:  true,
 			nameSubstr: "Philippines",
+		},
+		{
+			name:       "new theme: Italy accessibility",
+			region:     "IT",
+			themes:     []string{"accessibility"},
+			checkName:  true,
+			nameSubstr: "Italy",
 		},
 		{
 			name:    "multiple themes",

@@ -77,7 +77,7 @@ graph TB
 | `cmd/migrate`           | Database migration runner                                                                 |
 | `internal/handlers/`    | ConnectRPC service handlers (auth, trip, chat, booking, location, persona)                |
 | `internal/chat/`        | Chat service — AI streaming, tool execution, persona resolution                           |
-| `internal/persona/`     | Persona composition — 40 locations × 20 themes = 800 expert combos                        |
+| `internal/persona/`     | Persona composition — 40 locations × 21 themes = 840 expert combos                        |
 | `internal/ai/`          | AI provider abstraction (Gemini primary, Claude fallback)                                 |
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
@@ -312,7 +312,7 @@ graph LR
         L4[...]
     end
 
-    subgraph "20 Themes"
+    subgraph "21 Themes"
         TH1[Food]
         TH2[History]
         TH3[Distilleries]
@@ -324,7 +324,7 @@ Toqui (the global orchestrator) hands off to composed experts. Each expert is dy
 
 **40 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG, ID, PH, CN, CZ, AT, CH, IE, SE, AR, CL, JO, TZ, IS, SG, HK, KH (4 core in `profiles.go`, 36 extended in `profiles_extended.go`).
 
-**20 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury, art, music, craft-beer, diving, hiking (3 core, 17 extended).
+**21 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury, art, music, craft-beer, diving, hiking, accessibility (3 core, 18 extended).
 
 ## Chat Tool System
 
