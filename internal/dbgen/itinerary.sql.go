@@ -12,6 +12,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cloneItineraryItems = `-- name: CloneItineraryItems :exec
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata)
+SELECT $1::uuid, day_number, order_in_day, type, title, description, metadata
+FROM itinerary_items
+WHERE trip_id = $2::uuid
+`
+
+type CloneItineraryItemsParams struct {
+	NewTripID    uuid.UUID `json:"new_trip_id"`
+	SourceTripID uuid.UUID `json:"source_trip_id"`
+}
+
+func (q *Queries) CloneItineraryItems(ctx context.Context, arg CloneItineraryItemsParams) error {
+	_, err := q.db.Exec(ctx, cloneItineraryItems, arg.NewTripID, arg.SourceTripID)
+	return err
+}
+
 const createItineraryItem = `-- name: CreateItineraryItem :one
 INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)

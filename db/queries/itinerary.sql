@@ -25,3 +25,9 @@ WHERE itinerary_items.id = $1
 DELETE FROM itinerary_items
 WHERE trip_id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = $1 AND trips.user_id = $2);
+
+-- name: CloneItineraryItems :exec
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata)
+SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata
+FROM itinerary_items
+WHERE trip_id = sqlc.arg(source_trip_id)::uuid;

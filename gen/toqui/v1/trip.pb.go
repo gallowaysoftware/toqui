@@ -1169,6 +1169,103 @@ func (x *UpdateItineraryResponse) GetItinerary() *Itinerary {
 	return nil
 }
 
+type CloneTripRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TripId string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	// Optional new title for the cloned trip. Defaults to "Copy of <original>".
+	Title         string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloneTripRequest) Reset() {
+	*x = CloneTripRequest{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloneTripRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloneTripRequest) ProtoMessage() {}
+
+func (x *CloneTripRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloneTripRequest.ProtoReflect.Descriptor instead.
+func (*CloneTripRequest) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CloneTripRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+func (x *CloneTripRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CloneTripResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Trip          *Trip                  `protobuf:"bytes,1,opt,name=trip,proto3" json:"trip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloneTripResponse) Reset() {
+	*x = CloneTripResponse{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloneTripResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloneTripResponse) ProtoMessage() {}
+
+func (x *CloneTripResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloneTripResponse.ProtoReflect.Descriptor instead.
+func (*CloneTripResponse) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CloneTripResponse) GetTrip() *Trip {
+	if x != nil {
+		return x.Trip
+	}
+	return nil
+}
+
 var File_toqui_v1_trip_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_trip_proto_rawDesc = "" +
@@ -1263,13 +1360,18 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\atrip_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06tripId\x129\n" +
 	"\titinerary\x18\x02 \x01(\v2\x13.toqui.v1.ItineraryB\x06\xbaH\x03\xc8\x01\x01R\titinerary\"L\n" +
 	"\x17UpdateItineraryResponse\x121\n" +
-	"\titinerary\x18\x01 \x01(\v2\x13.toqui.v1.ItineraryR\titinerary*v\n" +
+	"\titinerary\x18\x01 \x01(\v2\x13.toqui.v1.ItineraryR\titinerary\"U\n" +
+	"\x10CloneTripRequest\x12!\n" +
+	"\atrip_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06tripId\x12\x1e\n" +
+	"\x05title\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\x05title\"7\n" +
+	"\x11CloneTripResponse\x12\"\n" +
+	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip*v\n" +
 	"\n" +
 	"TripStatus\x12\x1b\n" +
 	"\x17TRIP_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TRIP_STATUS_PLANNING\x10\x01\x12\x16\n" +
 	"\x12TRIP_STATUS_ACTIVE\x10\x02\x12\x19\n" +
-	"\x15TRIP_STATUS_COMPLETED\x10\x032\x95\x04\n" +
+	"\x15TRIP_STATUS_COMPLETED\x10\x032\xdb\x04\n" +
 	"\vTripService\x12G\n" +
 	"\n" +
 	"CreateTrip\x12\x1b.toqui.v1.CreateTripRequest\x1a\x1c.toqui.v1.CreateTripResponse\x12>\n" +
@@ -1280,7 +1382,8 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
 	"DeleteTrip\x12\x1b.toqui.v1.DeleteTripRequest\x1a\x1c.toqui.v1.DeleteTripResponse\x12M\n" +
 	"\fGetItinerary\x12\x1d.toqui.v1.GetItineraryRequest\x1a\x1e.toqui.v1.GetItineraryResponse\x12V\n" +
-	"\x0fUpdateItinerary\x12 .toqui.v1.UpdateItineraryRequest\x1a!.toqui.v1.UpdateItineraryResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\x0fUpdateItinerary\x12 .toqui.v1.UpdateItineraryRequest\x1a!.toqui.v1.UpdateItineraryResponse\x12D\n" +
+	"\tCloneTrip\x12\x1a.toqui.v1.CloneTripRequest\x1a\x1b.toqui.v1.CloneTripResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_trip_proto_rawDescOnce sync.Once
@@ -1295,7 +1398,7 @@ func file_toqui_v1_trip_proto_rawDescGZIP() []byte {
 }
 
 var file_toqui_v1_trip_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_toqui_v1_trip_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_toqui_v1_trip_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_toqui_v1_trip_proto_goTypes = []any{
 	(TripStatus)(0),                 // 0: toqui.v1.TripStatus
 	(*Trip)(nil),                    // 1: toqui.v1.Trip
@@ -1316,53 +1419,58 @@ var file_toqui_v1_trip_proto_goTypes = []any{
 	(*GetItineraryResponse)(nil),    // 16: toqui.v1.GetItineraryResponse
 	(*UpdateItineraryRequest)(nil),  // 17: toqui.v1.UpdateItineraryRequest
 	(*UpdateItineraryResponse)(nil), // 18: toqui.v1.UpdateItineraryResponse
-	nil,                             // 19: toqui.v1.ItineraryItem.MetadataEntry
-	(*timestamppb.Timestamp)(nil),   // 20: google.protobuf.Timestamp
-	(*LatLng)(nil),                  // 21: toqui.v1.LatLng
-	(*PaginationRequest)(nil),       // 22: toqui.v1.PaginationRequest
-	(*PaginationResponse)(nil),      // 23: toqui.v1.PaginationResponse
+	(*CloneTripRequest)(nil),        // 19: toqui.v1.CloneTripRequest
+	(*CloneTripResponse)(nil),       // 20: toqui.v1.CloneTripResponse
+	nil,                             // 21: toqui.v1.ItineraryItem.MetadataEntry
+	(*timestamppb.Timestamp)(nil),   // 22: google.protobuf.Timestamp
+	(*LatLng)(nil),                  // 23: toqui.v1.LatLng
+	(*PaginationRequest)(nil),       // 24: toqui.v1.PaginationRequest
+	(*PaginationResponse)(nil),      // 25: toqui.v1.PaginationResponse
 }
 var file_toqui_v1_trip_proto_depIdxs = []int32{
 	0,  // 0: toqui.v1.Trip.status:type_name -> toqui.v1.TripStatus
-	20, // 1: toqui.v1.Trip.created_at:type_name -> google.protobuf.Timestamp
-	20, // 2: toqui.v1.Trip.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 1: toqui.v1.Trip.created_at:type_name -> google.protobuf.Timestamp
+	22, // 2: toqui.v1.Trip.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: toqui.v1.Itinerary.days:type_name -> toqui.v1.ItineraryDay
 	4,  // 4: toqui.v1.ItineraryDay.items:type_name -> toqui.v1.ItineraryItem
-	21, // 5: toqui.v1.ItineraryItem.location:type_name -> toqui.v1.LatLng
-	20, // 6: toqui.v1.ItineraryItem.start_time:type_name -> google.protobuf.Timestamp
-	20, // 7: toqui.v1.ItineraryItem.end_time:type_name -> google.protobuf.Timestamp
-	19, // 8: toqui.v1.ItineraryItem.metadata:type_name -> toqui.v1.ItineraryItem.MetadataEntry
+	23, // 5: toqui.v1.ItineraryItem.location:type_name -> toqui.v1.LatLng
+	22, // 6: toqui.v1.ItineraryItem.start_time:type_name -> google.protobuf.Timestamp
+	22, // 7: toqui.v1.ItineraryItem.end_time:type_name -> google.protobuf.Timestamp
+	21, // 8: toqui.v1.ItineraryItem.metadata:type_name -> toqui.v1.ItineraryItem.MetadataEntry
 	0,  // 9: toqui.v1.CreateTripRequest.status:type_name -> toqui.v1.TripStatus
 	1,  // 10: toqui.v1.CreateTripResponse.trip:type_name -> toqui.v1.Trip
 	1,  // 11: toqui.v1.GetTripResponse.trip:type_name -> toqui.v1.Trip
 	0,  // 12: toqui.v1.ListTripsRequest.status:type_name -> toqui.v1.TripStatus
-	22, // 13: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	24, // 13: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
 	1,  // 14: toqui.v1.ListTripsResponse.trips:type_name -> toqui.v1.Trip
-	23, // 15: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	25, // 15: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
 	0,  // 16: toqui.v1.UpdateTripRequest.status:type_name -> toqui.v1.TripStatus
 	1,  // 17: toqui.v1.UpdateTripResponse.trip:type_name -> toqui.v1.Trip
 	2,  // 18: toqui.v1.GetItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
 	2,  // 19: toqui.v1.UpdateItineraryRequest.itinerary:type_name -> toqui.v1.Itinerary
 	2,  // 20: toqui.v1.UpdateItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
-	5,  // 21: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
-	7,  // 22: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
-	9,  // 23: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
-	11, // 24: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
-	13, // 25: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
-	15, // 26: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
-	17, // 27: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
-	6,  // 28: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
-	8,  // 29: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
-	10, // 30: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
-	12, // 31: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
-	14, // 32: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
-	16, // 33: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
-	18, // 34: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
-	28, // [28:35] is the sub-list for method output_type
-	21, // [21:28] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	1,  // 21: toqui.v1.CloneTripResponse.trip:type_name -> toqui.v1.Trip
+	5,  // 22: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
+	7,  // 23: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
+	9,  // 24: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
+	11, // 25: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
+	13, // 26: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
+	15, // 27: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
+	17, // 28: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
+	19, // 29: toqui.v1.TripService.CloneTrip:input_type -> toqui.v1.CloneTripRequest
+	6,  // 30: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
+	8,  // 31: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
+	10, // 32: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
+	12, // 33: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
+	14, // 34: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
+	16, // 35: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
+	18, // 36: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
+	20, // 37: toqui.v1.TripService.CloneTrip:output_type -> toqui.v1.CloneTripResponse
+	30, // [30:38] is the sub-list for method output_type
+	22, // [22:30] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_trip_proto_init() }
@@ -1377,7 +1485,7 @@ func file_toqui_v1_trip_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_toqui_v1_trip_proto_rawDesc), len(file_toqui_v1_trip_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

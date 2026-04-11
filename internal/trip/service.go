@@ -304,6 +304,94 @@ func (s *Service) Delete(ctx context.Context, userID, tripID uuid.UUID) error {
 	return nil
 }
 
+// CloneTrip duplicates an existing trip owned by userID, creating a new trip
+// with the same description, destination countries, and itinerary items. The
+// cloned trip always starts in "planning" status. Bookings, chat history,
+// share tokens, and trial/unlock state are NOT copied.
+//
+// If newTitle is empty it defaults to "Copy of <original title>".
+func (s *Service) CloneTrip(ctx context.Context, userID, sourceTripID uuid.UUID, newTitle string) (*dbgen.Trip, error) {
+	// Load source trip and verify ownership.
+	source, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     sourceTripID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get source trip: %w", err)
+	}
+
+	if newTitle == "" {
+		newTitle = "Copy of " + source.Title
+	}
+
+	// Run the clone in a transaction so a failure in any step rolls back.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
+	// Create the new trip with the same description and dates.
+	cloned, err := qtx.CreateTrip(ctx, dbgen.CreateTripParams{
+		UserID:      userID,
+		Title:       newTitle,
+		Description: source.Description,
+		StartDate:   source.StartDate,
+		EndDate:     source.EndDate,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create cloned trip: %w", err)
+	}
+
+	// Copy destination countries if present.
+	if len(source.DestinationCountries) > 0 {
+		primary := source.DestinationCountries[0]
+		_, err = qtx.UpdateTripDestinations(ctx, dbgen.UpdateTripDestinationsParams{
+			ID:                   cloned.ID,
+			UserID:               userID,
+			DestinationCountries: source.DestinationCountries,
+			PrimaryCountry:       primary,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("set cloned destinations: %w", err)
+		}
+	} else if source.DestinationCountry.Valid && source.DestinationCountry.String != "" {
+		_, err = qtx.UpdateTripDestination(ctx, dbgen.UpdateTripDestinationParams{
+			ID:                 cloned.ID,
+			DestinationCountry: source.DestinationCountry,
+			UserID:             userID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("set cloned destination: %w", err)
+		}
+	}
+
+	// Clone itinerary items.
+	if err := qtx.CloneItineraryItems(ctx, dbgen.CloneItineraryItemsParams{
+		NewTripID:    cloned.ID,
+		SourceTripID: sourceTripID,
+	}); err != nil {
+		return nil, fmt.Errorf("clone itinerary items: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	// Re-read the trip after commit to pick up any changes from the
+	// destination update (the CreateTrip return won't have them).
+	final, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     cloned.ID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("reload cloned trip: %w", err)
+	}
+
+	return &final, nil
+}
+
 func (s *Service) EnableSharing(ctx context.Context, userID, tripID uuid.UUID) (string, error) {
 	token, err := generateShareToken()
 	if err != nil {

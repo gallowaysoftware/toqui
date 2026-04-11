@@ -49,6 +49,8 @@ const (
 	// TripServiceUpdateItineraryProcedure is the fully-qualified name of the TripService's
 	// UpdateItinerary RPC.
 	TripServiceUpdateItineraryProcedure = "/toqui.v1.TripService/UpdateItinerary"
+	// TripServiceCloneTripProcedure is the fully-qualified name of the TripService's CloneTrip RPC.
+	TripServiceCloneTripProcedure = "/toqui.v1.TripService/CloneTrip"
 )
 
 // TripServiceClient is a client for the toqui.v1.TripService service.
@@ -60,6 +62,7 @@ type TripServiceClient interface {
 	DeleteTrip(context.Context, *connect.Request[v1.DeleteTripRequest]) (*connect.Response[v1.DeleteTripResponse], error)
 	GetItinerary(context.Context, *connect.Request[v1.GetItineraryRequest]) (*connect.Response[v1.GetItineraryResponse], error)
 	UpdateItinerary(context.Context, *connect.Request[v1.UpdateItineraryRequest]) (*connect.Response[v1.UpdateItineraryResponse], error)
+	CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error)
 }
 
 // NewTripServiceClient constructs a client for the toqui.v1.TripService service. By default, it
@@ -115,6 +118,12 @@ func NewTripServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(tripServiceMethods.ByName("UpdateItinerary")),
 			connect.WithClientOptions(opts...),
 		),
+		cloneTrip: connect.NewClient[v1.CloneTripRequest, v1.CloneTripResponse](
+			httpClient,
+			baseURL+TripServiceCloneTripProcedure,
+			connect.WithSchema(tripServiceMethods.ByName("CloneTrip")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -127,6 +136,7 @@ type tripServiceClient struct {
 	deleteTrip      *connect.Client[v1.DeleteTripRequest, v1.DeleteTripResponse]
 	getItinerary    *connect.Client[v1.GetItineraryRequest, v1.GetItineraryResponse]
 	updateItinerary *connect.Client[v1.UpdateItineraryRequest, v1.UpdateItineraryResponse]
+	cloneTrip       *connect.Client[v1.CloneTripRequest, v1.CloneTripResponse]
 }
 
 // CreateTrip calls toqui.v1.TripService.CreateTrip.
@@ -164,6 +174,11 @@ func (c *tripServiceClient) UpdateItinerary(ctx context.Context, req *connect.Re
 	return c.updateItinerary.CallUnary(ctx, req)
 }
 
+// CloneTrip calls toqui.v1.TripService.CloneTrip.
+func (c *tripServiceClient) CloneTrip(ctx context.Context, req *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error) {
+	return c.cloneTrip.CallUnary(ctx, req)
+}
+
 // TripServiceHandler is an implementation of the toqui.v1.TripService service.
 type TripServiceHandler interface {
 	CreateTrip(context.Context, *connect.Request[v1.CreateTripRequest]) (*connect.Response[v1.CreateTripResponse], error)
@@ -173,6 +188,7 @@ type TripServiceHandler interface {
 	DeleteTrip(context.Context, *connect.Request[v1.DeleteTripRequest]) (*connect.Response[v1.DeleteTripResponse], error)
 	GetItinerary(context.Context, *connect.Request[v1.GetItineraryRequest]) (*connect.Response[v1.GetItineraryResponse], error)
 	UpdateItinerary(context.Context, *connect.Request[v1.UpdateItineraryRequest]) (*connect.Response[v1.UpdateItineraryResponse], error)
+	CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error)
 }
 
 // NewTripServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -224,6 +240,12 @@ func NewTripServiceHandler(svc TripServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(tripServiceMethods.ByName("UpdateItinerary")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tripServiceCloneTripHandler := connect.NewUnaryHandler(
+		TripServiceCloneTripProcedure,
+		svc.CloneTrip,
+		connect.WithSchema(tripServiceMethods.ByName("CloneTrip")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/toqui.v1.TripService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TripServiceCreateTripProcedure:
@@ -240,6 +262,8 @@ func NewTripServiceHandler(svc TripServiceHandler, opts ...connect.HandlerOption
 			tripServiceGetItineraryHandler.ServeHTTP(w, r)
 		case TripServiceUpdateItineraryProcedure:
 			tripServiceUpdateItineraryHandler.ServeHTTP(w, r)
+		case TripServiceCloneTripProcedure:
+			tripServiceCloneTripHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -275,4 +299,8 @@ func (UnimplementedTripServiceHandler) GetItinerary(context.Context, *connect.Re
 
 func (UnimplementedTripServiceHandler) UpdateItinerary(context.Context, *connect.Request[v1.UpdateItineraryRequest]) (*connect.Response[v1.UpdateItineraryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.TripService.UpdateItinerary is not implemented"))
+}
+
+func (UnimplementedTripServiceHandler) CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.TripService.CloneTrip is not implemented"))
 }

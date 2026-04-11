@@ -16,6 +16,7 @@ service TripService {
   rpc DeleteTrip(DeleteTripRequest) returns (DeleteTripResponse);
   rpc GetItinerary(GetItineraryRequest) returns (GetItineraryResponse);
   rpc UpdateItinerary(UpdateItineraryRequest) returns (UpdateItineraryResponse);
+  rpc CloneTrip(CloneTripRequest) returns (CloneTripResponse);
 }
 
 message Trip {
@@ -144,4 +145,14 @@ message UpdateItineraryRequest {
 
 message UpdateItineraryResponse {
   Itinerary itinerary = 1;
+}
+
+message CloneTripRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional new title for the cloned trip. Defaults to "Copy of <original>".
+  string title = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message CloneTripResponse {
+  Trip trip = 1;
 }

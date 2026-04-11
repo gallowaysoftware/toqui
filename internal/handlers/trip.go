@@ -244,6 +244,33 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 	return connect.NewResponse(&toquiv1.DeleteTripResponse{}), nil
 }
 
+func (h *TripHandler) CloneTrip(ctx context.Context, req *connect.Request[toquiv1.CloneTripRequest]) (*connect.Response[toquiv1.CloneTripResponse], error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	tripID, err := uuid.Parse(req.Msg.TripId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	cloned, err := h.tripSvc.CloneTrip(ctx, userID, tripID, req.Msg.Title)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
+		}
+		return nil, internalError(ctx, "clone trip", err)
+	}
+
+	// Fire-and-forget: tag themes for the cloned trip.
+	if h.themeSvc != nil {
+		h.themeSvc.TagTripAsync(userID, cloned.ID, cloned.Title, cloned.Description.String)
+	}
+
+	return connect.NewResponse(&toquiv1.CloneTripResponse{Trip: tripToProto(cloned)}), nil
+}
+
 func (h *TripHandler) GetItinerary(ctx context.Context, req *connect.Request[toquiv1.GetItineraryRequest]) (*connect.Response[toquiv1.GetItineraryResponse], error) {
 	userID, ok := auth.UserIDFromContext(ctx)
 	if !ok {

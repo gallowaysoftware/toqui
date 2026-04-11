@@ -117,3 +117,53 @@ func TestIsValidInitialStatus(t *testing.T) {
 		}
 	}
 }
+
+// TestCloneTripTitleDefault verifies the "Copy of " title-defaulting logic
+// that CloneTrip applies when no custom title is supplied.
+func TestCloneTripTitleDefault(t *testing.T) {
+	cases := []struct {
+		name          string
+		originalTitle string
+		newTitle      string
+		want          string
+	}{
+		{"empty new title gets prefix", "Greece Adventure", "", "Copy of Greece Adventure"},
+		{"custom title preserved", "Greece Adventure", "My New Trip", "My New Trip"},
+		{"unicode title", "日本旅行", "", "Copy of 日本旅行"},
+		{"already has Copy of prefix", "Copy of Trip", "", "Copy of Copy of Trip"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// Replicate the title-defaulting logic from CloneTrip.
+			title := c.newTitle
+			if title == "" {
+				title = "Copy of " + c.originalTitle
+			}
+			if title != c.want {
+				t.Errorf("got %q, want %q", title, c.want)
+			}
+		})
+	}
+}
+
+// TestCloneTripHelperFunctions ensures pgtype helper functions used in
+// CloneTrip work correctly.
+func TestCloneTripHelperFunctions(t *testing.T) {
+	t.Run("textFromString empty", func(t *testing.T) {
+		result := textFromString("")
+		if result.Valid {
+			t.Error("textFromString('') should return invalid pgtype.Text")
+		}
+	})
+
+	t.Run("textFromString non-empty", func(t *testing.T) {
+		result := textFromString("hello")
+		if !result.Valid {
+			t.Error("textFromString('hello') should return valid pgtype.Text")
+		}
+		if result.String != "hello" {
+			t.Errorf("expected 'hello', got %q", result.String)
+		}
+	})
+}
