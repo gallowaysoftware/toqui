@@ -203,6 +203,40 @@ func (q *Queries) GetItineraryItemByBooking(ctx context.Context, arg GetItinerar
 	return i, err
 }
 
+const getItineraryItemByID = `-- name: GetItineraryItemByID :one
+SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id FROM itinerary_items
+WHERE itinerary_items.id = $1
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2)
+`
+
+type GetItineraryItemByIDParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetItineraryItemByID(ctx context.Context, arg GetItineraryItemByIDParams) (ItineraryItem, error) {
+	row := q.db.QueryRow(ctx, getItineraryItemByID, arg.ID, arg.UserID)
+	var i ItineraryItem
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.DayNumber,
+		&i.OrderInDay,
+		&i.Type,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
+		&i.BookingID,
+	)
+	return i, err
+}
+
 const listItineraryItemsByTrip = `-- name: ListItineraryItemsByTrip :many
 SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id FROM itinerary_items
 WHERE trip_id = $1
@@ -243,6 +277,49 @@ func (q *Queries) ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID
 		return nil, err
 	}
 	return items, nil
+}
+
+const moveItineraryItem = `-- name: MoveItineraryItem :one
+UPDATE itinerary_items
+SET day_number = $1, order_in_day = $2
+WHERE itinerary_items.id = $3
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $4)
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
+`
+
+type MoveItineraryItemParams struct {
+	DayNumber  pgtype.Int4 `json:"day_number"`
+	OrderInDay pgtype.Int4 `json:"order_in_day"`
+	ID         uuid.UUID   `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+}
+
+func (q *Queries) MoveItineraryItem(ctx context.Context, arg MoveItineraryItemParams) (ItineraryItem, error) {
+	row := q.db.QueryRow(ctx, moveItineraryItem,
+		arg.DayNumber,
+		arg.OrderInDay,
+		arg.ID,
+		arg.UserID,
+	)
+	var i ItineraryItem
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.DayNumber,
+		&i.OrderInDay,
+		&i.Type,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
+		&i.BookingID,
+	)
+	return i, err
 }
 
 const updateItineraryItem = `-- name: UpdateItineraryItem :one

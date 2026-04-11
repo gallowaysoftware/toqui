@@ -530,6 +530,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					mu.Unlock()
 				})
 
+				var reorderTool tools.Tool = NewReorderItineraryTool(h.queries, tripID, userID)
+
 				// In companion mode, wrap tools with an intent gate that
 				// only allows calls when the user explicitly requests
 				// itinerary changes ("add this to my plan", "remove the
@@ -539,9 +541,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					getUserMsg := func() string { return userMsg }
 					createTool = NewCompanionGate(createTool, h.aiProvider, getUserMsg)
 					deleteTool = NewCompanionGate(deleteTool, h.aiProvider, getUserMsg)
+					reorderTool = NewCompanionGate(reorderTool, h.aiProvider, getUserMsg)
 				}
 
-				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, updateTripTool)
+				params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, updateTripTool, reorderTool)
 			}
 		}
 

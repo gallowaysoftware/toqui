@@ -36,6 +36,18 @@ SELECT * FROM itinerary_items
 WHERE booking_id = $1 AND trip_id = $2
 LIMIT 1;
 
+-- name: MoveItineraryItem :one
+UPDATE itinerary_items
+SET day_number = sqlc.arg(day_number), order_in_day = sqlc.arg(order_in_day)
+WHERE itinerary_items.id = sqlc.arg(id)
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = sqlc.arg(user_id))
+RETURNING *;
+
+-- name: GetItineraryItemByID :one
+SELECT * FROM itinerary_items
+WHERE itinerary_items.id = $1
+  AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2);
+
 -- name: CloneItineraryItems :exec
 INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency)
 SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency
