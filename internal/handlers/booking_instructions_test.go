@@ -146,8 +146,8 @@ func TestBuildTripContext_IncludesStatus(t *testing.T) {
 	}
 }
 
-func TestBuildTripContext_CapsItineraryAt20(t *testing.T) {
-	items := make([]dbgen.ItineraryItem, 25)
+func TestBuildTripContext_CapsItineraryAt60(t *testing.T) {
+	items := make([]dbgen.ItineraryItem, 65)
 	for i := range items {
 		items[i] = dbgen.ItineraryItem{
 			DayNumber: pgtype.Int4{Int32: 1, Valid: true},
@@ -157,6 +157,14 @@ func TestBuildTripContext_CapsItineraryAt20(t *testing.T) {
 	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free)
 
 	if !strings.Contains(ctx, "more items not shown") {
-		t.Error("trip context should cap itinerary at 20 items")
+		t.Error("trip context should cap itinerary at 60 items")
+	}
+	// Verify items beyond the cap are not shown
+	if strings.Contains(ctx, "Item 61") {
+		t.Error("items beyond the cap should not appear in context")
+	}
+	// Verify items within the cap ARE shown
+	if !strings.Contains(ctx, "Item 1") {
+		t.Error("items within the cap should appear in context")
 	}
 }

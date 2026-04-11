@@ -167,10 +167,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		remaining, err := h.usageSvc.IncrementAndCheckTier(ctx, userID, userTier)
 		if err != nil {
 			if errors.Is(err, usage.ErrDailyLimitExceeded) {
+				upgradeHint := ""
+				if userTier.IsFree() {
+					upgradeHint = " Upgrade to Explorer or Voyager for unlimited messages — visit your account settings to learn more."
+				} else if !userTier.IsUnlimited() {
+					upgradeHint = " Upgrade to Explorer or Voyager for unlimited messages."
+				}
 				return connect.NewError(
 					connect.CodeResourceExhausted,
-					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s",
-						limit, usage.ResetTime().Format("2006-01-02T15:04:05Z")),
+					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s.%s",
+						limit, usage.ResetTime().Format("2006-01-02T15:04:05Z"), upgradeHint),
 				)
 			}
 			// Log but don't block on usage tracking errors
@@ -903,6 +909,10 @@ func buildTripContext(title, description, destinationCountry string, destination
 			dayItems[day] = append(dayItems[day], item)
 		}
 		fmt.Fprintf(&sb, " (%d items):\n", len(itineraryItems))
+		// Show up to 60 items (enough for a 12-day trip at 5 items/day).
+		// Uses a compact one-line-per-day format to minimize token usage
+		// while giving the AI full visibility of the itinerary.
+		const maxContextItems = 60
 		itemCount := 0
 		for _, day := range dayNums {
 			items := dayItems[day]
@@ -913,16 +923,16 @@ func buildTripContext(title, description, destinationCountry string, destination
 			}
 			titles := make([]string, 0, len(items))
 			for _, item := range items {
-				if itemCount >= 20 {
+				if itemCount >= maxContextItems {
 					break
 				}
 				if item.Title.Valid && item.Title.String != "" {
-					titles = append(titles, sanitizeForPrompt(item.Title.String, 100))
+					titles = append(titles, sanitizeForPrompt(item.Title.String, 80))
 				}
 				itemCount++
 			}
 			fmt.Fprintf(&sb, " %s\n", strings.Join(titles, ", "))
-			if itemCount >= 20 {
+			if itemCount >= maxContextItems {
 				sb.WriteString("  ... (more items not shown)\n")
 				break
 			}

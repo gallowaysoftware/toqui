@@ -33,6 +33,11 @@ func (t UserTier) Valid() bool {
 	}
 }
 
+// IsFree returns true when the user is on the default free tier.
+func (t UserTier) IsFree() bool {
+	return t == Free
+}
+
 // IsPro returns true when the user has at least Pro-level access.
 func (t UserTier) IsPro() bool {
 	return t == Pro || t == Explorer || t == Voyager

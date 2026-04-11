@@ -83,7 +83,8 @@ func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripI
 	}
 
 	params := &stripe.CheckoutSessionCreateParams{
-		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		Mode:                stripe.String(string(stripe.CheckoutSessionModePayment)),
+		AllowPromotionCodes: stripe.Bool(true),
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
 			{
 				PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
