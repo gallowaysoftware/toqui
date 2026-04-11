@@ -507,8 +507,9 @@ func main() {
 		}
 	})
 
-	// iCal export handler (authenticated)
+	// Export handlers (authenticated)
 	icalHandler := handlers.NewICalExportHandler(tripSvc, authSvc, pool)
+	pdfHandler := handlers.NewPDFExportHandler(tripSvc, authSvc, pool)
 
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
@@ -521,6 +522,8 @@ func main() {
 		switch {
 		case strings.HasSuffix(path, "/export/ical") && r.Method == http.MethodGet:
 			icalHandler.HandleExportICal(w, r)
+		case strings.HasSuffix(path, "/export/pdf") && r.Method == http.MethodGet:
+			pdfHandler.HandleExportPDF(w, r)
 		case strings.HasSuffix(path, "/invite") && r.Method == http.MethodPost:
 			collabHandler.HandleInvite(w, r)
 		case strings.HasSuffix(path, "/collaborators") && r.Method == http.MethodGet:
