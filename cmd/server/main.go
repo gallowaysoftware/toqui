@@ -461,6 +461,10 @@ func main() {
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
 	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
 
+	// Affiliate click tracking (public — no auth required)
+	affiliateHandler := handlers.NewAffiliateHandler(posthogClient)
+	mux.HandleFunc("/api/affiliate/click", affiliateHandler.HandleClick)
+
 	// Data export download (GDPR Article 20)
 	mux.HandleFunc("/api/export/", authHandler.HandleExportDownload)
 

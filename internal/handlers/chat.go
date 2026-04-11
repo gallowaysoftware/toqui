@@ -400,8 +400,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			recommendations = append(recommendations, rec)
 			mu.Unlock()
 		})
-		if destinationCountry != "" || tripStartDateISO != "" {
-			rbt = rbt.WithTripContext(destinationCountry, tripStartDateISO, tripEndDateISO)
+		if destinationCountry != "" || tripStartDateISO != "" || req.Msg.TripId != "" {
+			rbt = rbt.WithTripContext(destinationCountry, tripStartDateISO, tripEndDateISO, req.Msg.TripId)
+		}
+		if h.analytics != nil {
+			rbt = rbt.WithAnalytics(h.analytics, userID.String())
 		}
 		recommendBookingTool = rbt
 	}

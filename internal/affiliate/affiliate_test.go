@@ -1,6 +1,8 @@
 package affiliate
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 	"testing"
 )
@@ -304,5 +306,165 @@ func TestPartnerForCategory(t *testing.T) {
 func TestFTCDisclosure(t *testing.T) {
 	if FTCDisclosure == "" {
 		t.Error("FTCDisclosure should not be empty")
+	}
+}
+
+// --- HashTripID tests ---
+
+func TestHashTripID_SHA256(t *testing.T) {
+	tripID := "550e8400-e29b-41d4-a716-446655440000"
+	got := HashTripID(tripID)
+
+	// Verify length: 12 hex chars
+	if len(got) != 12 {
+		t.Errorf("HashTripID(%q) length = %d, want 12", tripID, len(got))
+	}
+
+	// Verify it matches our expected SHA-256 computation (first 6 bytes)
+	h := sha256.Sum256([]byte(tripID))
+	expected := hex.EncodeToString(h[:6])
+	if got != expected {
+		t.Errorf("HashTripID(%q) = %q, want %q", tripID, got, expected)
+	}
+}
+
+func TestHashTripID_Empty(t *testing.T) {
+	got := HashTripID("")
+	if got != "" {
+		t.Errorf("HashTripID(\"\") = %q, want empty string", got)
+	}
+}
+
+func TestHashTripID_Deterministic(t *testing.T) {
+	id := "some-trip-uuid-12345"
+	first := HashTripID(id)
+	for i := 0; i < 100; i++ {
+		if HashTripID(id) != first {
+			t.Fatal("HashTripID is not deterministic")
+		}
+	}
+}
+
+func TestHashTripID_DifferentInputsDifferentOutputs(t *testing.T) {
+	ids := []string{
+		"trip-1",
+		"trip-2",
+		"550e8400-e29b-41d4-a716-446655440000",
+		"660e8400-e29b-41d4-a716-446655440000",
+	}
+	seen := make(map[string]string)
+	for _, id := range ids {
+		h := HashTripID(id)
+		if prev, ok := seen[h]; ok {
+			t.Errorf("collision: HashTripID(%q) == HashTripID(%q) == %q", id, prev, h)
+		}
+		seen[h] = id
+	}
+}
+
+// --- Sub-ID parameter tests ---
+
+func TestFlightSearchURL_WithSubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
+	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15", "abc123def456")
+
+	if !strings.Contains(u, "associateid=sky123") {
+		t.Errorf("expected affiliate ID in URL: %s", u)
+	}
+	if !strings.Contains(u, "utm_content=abc123def456") {
+		t.Errorf("expected utm_content sub-ID in URL: %s", u)
+	}
+}
+
+func TestFlightSearchURL_SubIDOmittedWithoutAffiliateID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15", "abc123def456")
+
+	if strings.Contains(u, "utm_content") {
+		t.Errorf("should not contain utm_content when affiliate ID is empty: %s", u)
+	}
+}
+
+func TestFlightSearchURL_EmptySubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
+	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15", "")
+
+	if strings.Contains(u, "utm_content") {
+		t.Errorf("should not contain utm_content when sub-ID is empty: %s", u)
+	}
+}
+
+func TestFlightSearchURL_NoSubIDArg(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
+	u := b.FlightSearchURL("JFK", "PRG", "2026-06-15")
+
+	if strings.Contains(u, "utm_content") {
+		t.Errorf("should not contain utm_content when no sub-ID arg: %s", u)
+	}
+	if !strings.Contains(u, "associateid=sky123") {
+		t.Errorf("expected affiliate ID in URL: %s", u)
+	}
+}
+
+func TestHotelSearchURL_WithSubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
+	u := b.HotelSearchURL("", "Prague", "2026-06-15", "2026-06-20", "abc123def456")
+
+	if !strings.Contains(u, "aid=book456") {
+		t.Errorf("expected affiliate ID in URL: %s", u)
+	}
+	if !strings.Contains(u, "label=abc123def456") {
+		t.Errorf("expected label sub-ID in URL: %s", u)
+	}
+}
+
+func TestHotelSearchURL_SubIDOmittedWithoutAffiliateID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.HotelSearchURL("", "Prague", "2026-06-15", "2026-06-20", "abc123def456")
+
+	if strings.Contains(u, "label=") {
+		t.Errorf("should not contain label when affiliate ID is empty: %s", u)
+	}
+}
+
+func TestActivityURL_WithSubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{GetYourGuideID: "gyg789"})
+	u := b.ActivityURL("walking tour Prague", "abc123def456")
+
+	if !strings.Contains(u, "partner_id=gyg789") {
+		t.Errorf("expected partner ID in URL: %s", u)
+	}
+	if !strings.Contains(u, "cmp=abc123def456") {
+		t.Errorf("expected cmp sub-ID in URL: %s", u)
+	}
+}
+
+func TestActivityURL_SubIDOmittedWithoutPartnerID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.ActivityURL("walking tour Prague", "abc123def456")
+
+	if strings.Contains(u, "cmp=") {
+		t.Errorf("should not contain cmp when partner ID is empty: %s", u)
+	}
+}
+
+func TestViatorActivityURL_WithSubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{ViatorID: "vtr101"})
+	u := b.ViatorActivityURL("food tour Rome", "abc123def456")
+
+	if !strings.Contains(u, "pid=vtr101") {
+		t.Errorf("expected partner ID in URL: %s", u)
+	}
+	if !strings.Contains(u, "cmp=abc123def456") {
+		t.Errorf("expected cmp sub-ID in URL: %s", u)
+	}
+}
+
+func TestViatorActivityURL_SubIDOmittedWithoutPartnerID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.ViatorActivityURL("food tour Rome", "abc123def456")
+
+	if strings.Contains(u, "cmp=") {
+		t.Errorf("should not contain cmp when partner ID is empty: %s", u)
 	}
 }

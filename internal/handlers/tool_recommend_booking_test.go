@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
@@ -631,5 +632,166 @@ func TestRecommendBookingTool_ProTier_InsuranceDisclosure(t *testing.T) {
 
 	if rec.Disclosure != affiliate.ProDisclosure {
 		t.Errorf("pro tier insurance should have pro disclosure, got %q", rec.Disclosure)
+	}
+}
+
+// --- Sub-ID tracking tests ---
+
+func TestRecommendBookingTool_FlightWithTripID_HasSubID(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	tool = tool.WithTripContext("France", "2026-06-15", "2026-06-20", "550e8400-e29b-41d4-a716-446655440000")
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights from NYC to Paris",
+		"origin": "JFK",
+		"destination": "CDG",
+		"date_from": "2026-06-15"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	expectedHash := affiliate.HashTripID("550e8400-e29b-41d4-a716-446655440000")
+	if !strings.Contains(rec.URL, "utm_content="+expectedHash) {
+		t.Errorf("expected utm_content sub-ID in URL, got %q", rec.URL)
+	}
+}
+
+func TestRecommendBookingTool_HotelWithTripID_HasSubID(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{BookingComID: "book456"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	tool = tool.WithTripContext("France", "", "", "trip-uuid-123")
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "hotel",
+		"query": "hotels in Paris",
+		"destination": "Paris"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	expectedHash := affiliate.HashTripID("trip-uuid-123")
+	if !strings.Contains(rec.URL, "label="+expectedHash) {
+		t.Errorf("expected label sub-ID in URL, got %q", rec.URL)
+	}
+}
+
+func TestRecommendBookingTool_ActivityWithTripID_HasSubID(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{GetYourGuideID: "gyg789"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	tool = tool.WithTripContext("Czech Republic", "", "", "trip-uuid-456")
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "activity",
+		"query": "walking tour Prague"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	expectedHash := affiliate.HashTripID("trip-uuid-456")
+	if !strings.Contains(rec.URL, "cmp="+expectedHash) {
+		t.Errorf("expected cmp sub-ID in URL, got %q", rec.URL)
+	}
+}
+
+func TestRecommendBookingTool_NoTripID_NoSubID(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	// No WithTripContext call — tripID is empty
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to London",
+		"origin": "JFK",
+		"destination": "LHR",
+		"date_from": "2026-09-01"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if strings.Contains(rec.URL, "utm_content=") {
+		t.Errorf("should not contain utm_content when no trip ID: %s", rec.URL)
+	}
+}
+
+// --- Analytics tracking tests ---
+
+func TestRecommendBookingTool_WithAnalytics_FreeTier_TracksEvent(t *testing.T) {
+	// Use a no-op analytics client (disabled) — just verify the wiring doesn't panic
+	client := analytics.NewClient("")
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	tool = tool.WithAnalytics(client, "user-123")
+	tool = tool.WithTripContext("France", "", "", "trip-123")
+
+	_, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to Paris",
+		"origin": "JFK",
+		"destination": "CDG"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRecommendBookingTool_WithAnalytics_ProTier_NoTracking(t *testing.T) {
+	// Pro-tier users should NOT have affiliate events tracked since they
+	// don't receive affiliate links
+	client := analytics.NewClient("")
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+	tool = tool.WithAnalytics(client, "user-456")
+
+	_, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to Paris",
+		"origin": "JFK",
+		"destination": "CDG"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRecommendBookingTool_NilAnalytics_NoPanic(t *testing.T) {
+	// Verify that nil analytics client doesn't cause a panic
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	// Don't call WithAnalytics — analyticsClient is nil
+
+	_, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights to Paris",
+		"origin": "JFK",
+		"destination": "CDG"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

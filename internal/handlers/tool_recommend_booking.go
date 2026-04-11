@@ -8,6 +8,7 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
@@ -21,6 +22,9 @@ type RecommendBookingTool struct {
 	tripDestination string // fallback destination from trip context
 	tripStartDate   string // fallback start date (YYYY-MM-DD)
 	tripEndDate     string // fallback end date (YYYY-MM-DD)
+	tripID          string // raw trip ID for sub-ID hashing
+	userID          string // raw user ID for analytics (hashed before sending)
+	analyticsClient *analytics.Client
 }
 
 type recommendBookingArgs struct {
@@ -44,13 +48,23 @@ func NewRecommendBookingTool(linkBuilder *affiliate.LinkBuilder, userTier tier.U
 	}
 }
 
-// WithTripContext sets fallback destination/dates from the current trip so
-// affiliate URLs are pre-populated when the AI doesn't specify them (#176).
-func (t *RecommendBookingTool) WithTripContext(destination, startDate, endDate string) *RecommendBookingTool {
+// WithTripContext sets fallback destination/dates and trip ID from the current
+// trip so affiliate URLs are pre-populated when the AI doesn't specify them
+// (#176). The tripID is hashed for sub-ID tracking in affiliate URLs.
+func (t *RecommendBookingTool) WithTripContext(destination, startDate, endDate, tripID string) *RecommendBookingTool {
 	cp := *t
 	cp.tripDestination = destination
 	cp.tripStartDate = startDate
 	cp.tripEndDate = endDate
+	cp.tripID = tripID
+	return &cp
+}
+
+// WithAnalytics configures PostHog event tracking for affiliate link generation.
+func (t *RecommendBookingTool) WithAnalytics(client *analytics.Client, userID string) *RecommendBookingTool {
+	cp := *t
+	cp.analyticsClient = client
+	cp.userID = userID
 	return &cp
 }
 
@@ -126,6 +140,19 @@ func (t *RecommendBookingTool) Execute(ctx context.Context, args json.RawMessage
 
 	rec := t.buildRecommendation(params)
 
+	// Track affiliate link generation (async, non-blocking, privacy-safe).
+	// Only tracked for free-tier users who actually receive affiliate links.
+	if t.analyticsClient != nil && !t.userTier.IsPro() {
+		props := map[string]any{
+			"partner":  string(rec.Partner),
+			"category": rec.Category,
+		}
+		if t.tripDestination != "" {
+			props["destination_country"] = t.tripDestination
+		}
+		t.analyticsClient.Track(t.userID, "affiliate_link_generated", props)
+	}
+
 	if t.onRecommend != nil {
 		t.onRecommend(rec)
 	}
@@ -137,6 +164,7 @@ func (t *RecommendBookingTool) Execute(ctx context.Context, args json.RawMessage
 // parsed tool arguments, user tier, and the configured link builder.
 func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) affiliate.Recommendation {
 	partner := affiliate.PartnerForCategory(params.Category)
+	tripHash := affiliate.HashTripID(t.tripID)
 
 	var searchURL string
 	var title, description string
@@ -161,7 +189,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if date == "" {
 			date = "anytime"
 		}
-		searchURL = t.linkBuilder.FlightSearchURL(origin, dest, date)
+		searchURL = t.linkBuilder.FlightSearchURL(origin, dest, date, tripHash)
 		title = fmt.Sprintf("Search flights: %s to %s", origin, dest)
 		description = fmt.Sprintf("Find and compare flight prices from %s to %s", origin, dest)
 		if params.DateFrom != "" {
@@ -176,7 +204,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if city == "" {
 			city = "your destination"
 		}
-		searchURL = t.linkBuilder.HotelSearchURL(params.PropertyName, city, params.DateFrom, params.DateTo)
+		searchURL = t.linkBuilder.HotelSearchURL(params.PropertyName, city, params.DateFrom, params.DateTo, tripHash)
 		if params.PropertyName != "" {
 			title = fmt.Sprintf("Book %s", params.PropertyName)
 			description = fmt.Sprintf("View rates and availability for %s in %s", params.PropertyName, city)
@@ -190,7 +218,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 
 	case "activity":
 		query := params.Query
-		searchURL = t.linkBuilder.ActivityURL(query)
+		searchURL = t.linkBuilder.ActivityURL(query, tripHash)
 		title = fmt.Sprintf("Search activities: %s", params.Query)
 		description = fmt.Sprintf("Discover tours, experiences, and activities: %s", params.Query)
 

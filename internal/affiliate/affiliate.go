@@ -1,6 +1,8 @@
 package affiliate
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 )
@@ -72,11 +74,15 @@ func NewLinkBuilder(cfg LinkBuilderConfig) *LinkBuilder {
 
 // FlightSearchURL returns a Skyscanner flight search URL with affiliate tracking.
 // origin and dest are IATA airport codes or city names. date is YYYY-MM-DD format.
-func (b *LinkBuilder) FlightSearchURL(origin, dest, date string) string {
+// tripIDHash, if non-empty, is appended as a utm_content sub-ID for conversion attribution.
+func (b *LinkBuilder) FlightSearchURL(origin, dest, date string, tripIDHash ...string) string {
 	u := fmt.Sprintf("https://www.skyscanner.com/transport/flights/%s/%s/%s",
 		url.PathEscape(origin), url.PathEscape(dest), url.PathEscape(date))
 	if b.skyscannerID != "" {
 		u += "?associateid=" + url.QueryEscape(b.skyscannerID)
+		if len(tripIDHash) > 0 && tripIDHash[0] != "" {
+			u += "&utm_content=" + url.QueryEscape(tripIDHash[0])
+		}
 	}
 	return u
 }
@@ -86,7 +92,8 @@ func (b *LinkBuilder) FlightSearchURL(origin, dest, date string) string {
 // over city — this produces a property-specific deep link for known hotels
 // (#176). When propertyName is empty, the destination city is used instead.
 // checkin and checkout are YYYY-MM-DD format.
-func (b *LinkBuilder) HotelSearchURL(propertyName, city, checkin, checkout string) string {
+// tripIDHash, if non-empty, is appended as a label sub-ID for conversion attribution.
+func (b *LinkBuilder) HotelSearchURL(propertyName, city, checkin, checkout string, tripIDHash ...string) string {
 	params := url.Values{}
 	searchStr := propertyName
 	if searchStr == "" {
@@ -101,28 +108,39 @@ func (b *LinkBuilder) HotelSearchURL(propertyName, city, checkin, checkout strin
 	}
 	if b.bookingComID != "" {
 		params.Set("aid", b.bookingComID)
+		if len(tripIDHash) > 0 && tripIDHash[0] != "" {
+			params.Set("label", tripIDHash[0])
+		}
 	}
 	return "https://www.booking.com/searchresults.html?" + params.Encode()
 }
 
 // ActivityURL returns a GetYourGuide activity search URL with affiliate tracking.
 // query is a search term like "walking tour Prague" or "cooking class Tokyo".
-func (b *LinkBuilder) ActivityURL(query string) string {
+// tripIDHash, if non-empty, is appended as a cmp sub-ID for conversion attribution.
+func (b *LinkBuilder) ActivityURL(query string, tripIDHash ...string) string {
 	params := url.Values{}
 	params.Set("q", query)
 	if b.getYourGuideID != "" {
 		params.Set("partner_id", b.getYourGuideID)
+		if len(tripIDHash) > 0 && tripIDHash[0] != "" {
+			params.Set("cmp", tripIDHash[0])
+		}
 	}
 	return "https://www.getyourguide.com/s/?" + params.Encode()
 }
 
 // ViatorActivityURL returns a Viator activity search URL with affiliate tracking.
 // query is a search term like "food tour Rome" or "snorkeling Bali".
-func (b *LinkBuilder) ViatorActivityURL(query string) string {
+// tripIDHash, if non-empty, is appended as a cmp sub-ID for conversion attribution.
+func (b *LinkBuilder) ViatorActivityURL(query string, tripIDHash ...string) string {
 	params := url.Values{}
 	params.Set("text", query)
 	if b.viatorID != "" {
 		params.Set("pid", b.viatorID)
+		if len(tripIDHash) > 0 && tripIDHash[0] != "" {
+			params.Set("cmp", tripIDHash[0])
+		}
 	}
 	return "https://www.viator.com/search/" + query + "?" + params.Encode()
 }
@@ -172,6 +190,18 @@ func (b *LinkBuilder) HasPartner(p Partner) bool {
 	default:
 		return false
 	}
+}
+
+// HashTripID produces a short, privacy-safe identifier from a raw trip ID
+// (typically a UUID). Algorithm: SHA-256 → first 6 bytes → hex-encoded (12 chars).
+// This is used as a sub-ID in affiliate URLs so we can correlate conversions
+// back to trips without exposing the raw UUID.
+func HashTripID(tripID string) string {
+	if tripID == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(tripID))
+	return hex.EncodeToString(h[:6]) // 12 hex chars = 48 bits
 }
 
 // PartnerForCategory returns the default affiliate partner for a booking category.
