@@ -112,6 +112,7 @@ type ItineraryItem struct {
 	EndTime     pgtype.Timestamptz `json:"end_time"`
 	Metadata    []byte             `json:"metadata"`
 	CreatedAt   time.Time          `json:"created_at"`
+	BookingID   pgtype.UUID        `json:"booking_id"`
 }
 
 type ProInterest struct {

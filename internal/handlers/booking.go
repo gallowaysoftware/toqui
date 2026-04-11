@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
@@ -22,10 +23,11 @@ import (
 
 type BookingHandler struct {
 	bookingSvc *booking.Service
+	queries    *dbgen.Queries
 }
 
-func NewBookingHandler(bookingSvc *booking.Service) *BookingHandler {
-	return &BookingHandler{bookingSvc: bookingSvc}
+func NewBookingHandler(bookingSvc *booking.Service, queries *dbgen.Queries) *BookingHandler {
+	return &BookingHandler{bookingSvc: bookingSvc, queries: queries}
 }
 
 func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request[toquiv1.IngestBookingRequest]) (*connect.Response[toquiv1.IngestBookingResponse], error) {
@@ -41,6 +43,13 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 	b, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
 	if err != nil {
 		return nil, aiAwareError(ctx, "booking ingest", err)
+	}
+
+	// Auto-link: create an itinerary item for the booking so it appears
+	// in the day-by-day view. This is best-effort — failure does not
+	// block the booking response.
+	if h.queries != nil && b.TripID.Valid {
+		h.autoLinkBookingToItinerary(ctx, uuid.UUID(b.TripID.Bytes), b)
 	}
 
 	return connect.NewResponse(&toquiv1.IngestBookingResponse{
@@ -383,4 +392,63 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 			}
 		}
 	}
+}
+
+// autoLinkBookingToItinerary creates an itinerary item linked to a booking
+// so it appears in the day-by-day view. Skips if a linked item already exists.
+func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, tripID uuid.UUID, b *dbgen.Booking) {
+	// Check if an itinerary item is already linked to this booking.
+	_, err := h.queries.GetItineraryItemByBooking(ctx, dbgen.GetItineraryItemByBookingParams{
+		BookingID: pgtype.UUID{Bytes: b.ID, Valid: true},
+		TripID:    tripID,
+	})
+	if err == nil {
+		// Already linked, nothing to do.
+		return
+	}
+
+	// Map booking type to itinerary item type.
+	itemType := "booking"
+	switch b.Type {
+	case "BOOKING_TYPE_FLIGHT", "flight":
+		itemType = "flight"
+	case "BOOKING_TYPE_HOTEL", "hotel":
+		itemType = "hotel"
+	case "BOOKING_TYPE_CAR_RENTAL", "car_rental":
+		itemType = "car_rental"
+	case "BOOKING_TYPE_TOUR", "BOOKING_TYPE_ACTIVITY", "tour", "activity":
+		itemType = "activity"
+	case "BOOKING_TYPE_RESTAURANT", "restaurant":
+		itemType = "restaurant"
+	case "BOOKING_TYPE_TRAIN", "train":
+		itemType = "train"
+	}
+
+	// Determine day number from start_time if available.
+	var dayNumber int32
+	// Default to day 1 if no start_time — the user can reorder later.
+	if b.StartTime.Valid {
+		dayNumber = 1 // Will be placed on day 1; proper date→day mapping requires trip start_date
+	}
+
+	_, createErr := h.queries.CreateItineraryItemFromBooking(ctx, dbgen.CreateItineraryItemFromBookingParams{
+		TripID:     tripID,
+		DayNumber:  pgtype.Int4{Int32: dayNumber, Valid: true},
+		OrderInDay: pgtype.Int4{Int32: 0, Valid: true}, // top of the day
+		Type:       pgtype.Text{String: itemType, Valid: true},
+		Title:      pgtype.Text{String: b.Title, Valid: true},
+		Description: pgtype.Text{
+			String: fmt.Sprintf("Booking: %s (confirmation: %s)",
+				b.Provider.String, b.ConfirmationCode.String),
+			Valid: b.Provider.Valid || b.ConfirmationCode.Valid,
+		},
+		StartTime: b.StartTime,
+		EndTime:   b.EndTime,
+		BookingID: pgtype.UUID{Bytes: b.ID, Valid: true},
+	})
+	if createErr != nil {
+		slog.Warn("auto-link booking to itinerary failed", "error", createErr, "booking_id", b.ID, "trip_id", tripID)
+		return
+	}
+	slog.Info("auto-linked booking to itinerary", "booking_id", b.ID, "trip_id", tripID, "type", itemType)
 }

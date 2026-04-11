@@ -297,7 +297,7 @@ func main() {
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
 		WithAnalytics(posthogClient).
 		WithAIProvider(aiProvider)
-	bookingHandler := handlers.NewBookingHandler(bookingSvc)
+	bookingHandler := handlers.NewBookingHandler(bookingSvc, queries)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
 	personaHandler := handlers.NewPersonaHandler(personaRegistry, pool)
 	secureCookies := cfg.TargetEnv != "local"
