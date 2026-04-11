@@ -1,0 +1,89 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "run_id": "run17",
+  "trip_destination": "Mexico City + Oaxaca",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingestion",
+    "booking_extraction",
+    "activate",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage count lower than expected message count",
+      "description": "Sent 4 SendMessage calls but /api/usage reports used=3. The first selection-mode message may not be counted, or the counter increments per AI response rather than per user message. Not blocking but could confuse users checking their daily limit.",
+      "expected": "used=4 after 4 SendMessage calls",
+      "actual": "used=3"
+    },
+    {
+      "severity": "P2",
+      "title": "Day 5 itinerary has only evening item, missing travel/arrival activity",
+      "description": "The AI placed a Late Night Tlayuda Experience on Day 5 but this was described as the CDMX-to-Oaxaca travel day. The itinerary has no explicit travel/transit item for the flight. A food blogger would want to know when to leave for the airport. This is an AI planning quality issue rather than a bug.",
+      "expected": "Day 5 should include a transit item (flight CDMX to Oaxaca) plus the evening food activity",
+      "actual": "Day 5 only has 'Late Night Tlayuda Experience'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI response in step 2 (selection mode) was extremely long -- it included a full 10-day itinerary breakdown, cultural tips, booking links, AND mezcal education all in a single response. This would be overwhelming on a mobile screen. Splitting into shorter, more digestible messages would improve the experience.",
+      "severity": "P2",
+      "suggestion": "Consider capping initial response length or breaking the response into phases (trip creation confirmation first, then itinerary details on follow-up)"
+    },
+    {
+      "description": "The first AI response contained some duplicated content -- the 10-day blueprint was outlined once, then the mezcal/Dia de Muertos details repeated some of the same day assignments. The fullContent in messageComplete had clearly redundant sections.",
+      "severity": "P2",
+      "suggestion": "The tool loop continuation may be causing the AI to re-explain things it already covered in earlier text chunks"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI response in step 2 contained duplicated/overlapping content across tool loop iterations. The fullContent shows the CDMX vs Oaxaca food comparison appearing three times with slight variations in the step 3a response, suggesting the tool loop continuation regenerates content that was already produced.",
+      "context": "Step 3a planning message about CDMX vs Oaxaca street food -- the fullContent had the same comparison framework repeated 3 times with minor wording changes",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "best culinary cooking classes Oaxaca Dia de Muertos 2026",
+      "error": "Real-time web search is not configured in this environment. This is expected in local/test environments but worth noting -- the AI gracefully fell back to existing knowledge."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI expert Julian demonstrated genuinely deep knowledge of Mexican regional cuisine, distinguishing CDMX from Oaxacan food culture with specific dishes, neighborhoods, and cooking techniques. The mezcal knowledge was impressive -- naming specific agave varieties (tobala, tepeztate, cuishe, jabali, arroqueno), explaining ancestral vs artesanal distillation, and recommending specific palenques. The booking parsing was flawless. The main issues were response length (overwhelming on first message) and content duplication in the tool loop continuation. Companion mode was appropriately concise with practical details like peso amounts for tipping and transport costs."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "expert_handoff",
+    "itinerary_creation",
+    "booking_ingestion",
+    "booking_extraction",
+    "recommend_booking",
+    "affiliate_disclosure",
+    "companion",
+    "trip_sharing",
+    "trip_unsharing",
+    "chat_history",
+    "usage_tracking",
+    "trip_lifecycle"
+  ]
+}

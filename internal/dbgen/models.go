@@ -100,19 +100,21 @@ type HelcimPayment struct {
 }
 
 type ItineraryItem struct {
-	ID          uuid.UUID          `json:"id"`
-	TripID      uuid.UUID          `json:"trip_id"`
-	DayNumber   pgtype.Int4        `json:"day_number"`
-	OrderInDay  pgtype.Int4        `json:"order_in_day"`
-	Type        pgtype.Text        `json:"type"`
-	Title       pgtype.Text        `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	Location    interface{}        `json:"location"`
-	StartTime   pgtype.Timestamptz `json:"start_time"`
-	EndTime     pgtype.Timestamptz `json:"end_time"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   time.Time          `json:"created_at"`
-	BookingID   pgtype.UUID        `json:"booking_id"`
+	ID                 uuid.UUID          `json:"id"`
+	TripID             uuid.UUID          `json:"trip_id"`
+	DayNumber          pgtype.Int4        `json:"day_number"`
+	OrderInDay         pgtype.Int4        `json:"order_in_day"`
+	Type               pgtype.Text        `json:"type"`
+	Title              pgtype.Text        `json:"title"`
+	Description        pgtype.Text        `json:"description"`
+	Location           interface{}        `json:"location"`
+	StartTime          pgtype.Timestamptz `json:"start_time"`
+	EndTime            pgtype.Timestamptz `json:"end_time"`
+	Metadata           []byte             `json:"metadata"`
+	CreatedAt          time.Time          `json:"created_at"`
+	EstimatedCostCents pgtype.Int8        `json:"estimated_cost_cents"`
+	CostCurrency       pgtype.Text        `json:"cost_currency"`
+	BookingID          pgtype.UUID        `json:"booking_id"`
 }
 
 type ProInterest struct {
@@ -185,6 +187,8 @@ type Trip struct {
 	DestinationCountries []string           `json:"destination_countries"`
 	ExpertCalls          int32              `json:"expert_calls"`
 	SearchVector         interface{}        `json:"search_vector"`
+	BudgetCents          pgtype.Int8        `json:"budget_cents"`
+	Currency             pgtype.Text        `json:"currency"`
 }
 
 type TripCollaborator struct {

@@ -39,6 +39,8 @@ SET title = COALESCE(NULLIF(sqlc.arg(title)::text, ''), title),
     status = COALESCE(NULLIF(sqlc.arg(status)::text, ''), status),
     start_date = COALESCE(sqlc.arg(start_date), start_date),
     end_date = COALESCE(sqlc.arg(end_date), end_date),
+    budget_cents = COALESCE(sqlc.arg(budget_cents), budget_cents),
+    currency = COALESCE(NULLIF(sqlc.arg(currency)::text, ''), currency),
     updated_at = NOW()
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING *;

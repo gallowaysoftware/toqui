@@ -73,6 +73,17 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 		return nil, internalError(ctx, "trip operation", err)
 	}
 
+	// If the client provided budget fields at creation, apply them via Update
+	// (the CreateTrip SQL query doesn't include budget columns).
+	if req.Msg.BudgetCents != nil || req.Msg.Currency != "" {
+		updated, err := h.tripSvc.Update(ctx, userID, t.ID, "", "", "", nil, nil, req.Msg.BudgetCents, req.Msg.Currency)
+		if err != nil {
+			slog.Warn("failed to set budget on newly created trip", "trip_id", t.ID, "error", err)
+		} else {
+			t = updated
+		}
+	}
+
 	// Fire-and-forget: tag trip themes via AI
 	if h.themeSvc != nil {
 		h.themeSvc.TagTripAsync(userID, t.ID, t.Title, t.Description.String)
@@ -225,7 +236,13 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 
 	status := tripStatusToString(req.Msg.Status)
 
-	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate)
+	// Budget fields — proto optional int64 produces a pointer when set.
+	var budgetCents *int64
+	if req.Msg.BudgetCents != nil {
+		budgetCents = req.Msg.BudgetCents
+	}
+
+	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate, budgetCents, req.Msg.Currency)
 	if err != nil {
 		if errors.Is(err, trip.ErrInvalidStatusTransition) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
@@ -364,15 +381,20 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 	var flat []trip.ReplaceItineraryItem
 	for _, day := range itin.GetDays() {
 		for _, item := range day.GetItems() {
-			flat = append(flat, trip.ReplaceItineraryItem{
-				DayNumber:   int(day.GetDayNumber()),
-				OrderInDay:  int(item.GetOrderInDay()),
-				Type:        item.GetType(),
-				Title:       item.GetTitle(),
-				Description: item.GetDescription(),
-				DaySummary:  day.GetSummary(),
-				DayDate:     day.GetDate(),
-			})
+			ri := trip.ReplaceItineraryItem{
+				DayNumber:    int(day.GetDayNumber()),
+				OrderInDay:   int(item.GetOrderInDay()),
+				Type:         item.GetType(),
+				Title:        item.GetTitle(),
+				Description:  item.GetDescription(),
+				DaySummary:   day.GetSummary(),
+				DayDate:      day.GetDate(),
+				CostCurrency: item.GetCostCurrency(),
+			}
+			if item.EstimatedCostCents != nil {
+				ri.EstimatedCostCents = item.EstimatedCostCents
+			}
+			flat = append(flat, ri)
 		}
 	}
 	if err := h.tripSvc.ReplaceItinerary(ctx, userID, tripID, flat); err != nil {
@@ -415,6 +437,12 @@ func tripToProto(t *dbgen.Trip) *toquiv1.Trip {
 		proto.DestinationCountries = t.DestinationCountries
 	} else if t.DestinationCountry.Valid && t.DestinationCountry.String != "" {
 		proto.DestinationCountries = []string{t.DestinationCountry.String}
+	}
+	if t.BudgetCents.Valid {
+		proto.BudgetCents = &t.BudgetCents.Int64
+	}
+	if t.Currency.Valid && t.Currency.String != "" {
+		proto.Currency = t.Currency.String
 	}
 	return proto
 }
@@ -533,6 +561,12 @@ func itineraryToProto(tripID string, items []dbgen.ItineraryItem, coordsMap map[
 				Latitude:  c.Latitude,
 				Longitude: c.Longitude,
 			}
+		}
+		if item.EstimatedCostCents.Valid {
+			protoItem.EstimatedCostCents = &item.EstimatedCostCents.Int64
+		}
+		if item.CostCurrency.Valid {
+			protoItem.CostCurrency = item.CostCurrency.String
 		}
 
 		day.Items = append(day.Items, protoItem)

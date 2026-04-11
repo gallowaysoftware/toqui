@@ -213,7 +213,7 @@ func (s *Service) SearchByUser(ctx context.Context, userID uuid.UUID, query stri
 	return trips, nil
 }
 
-func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time) (*dbgen.Trip, error) {
+func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time, budgetCents *int64, currency string) (*dbgen.Trip, error) {
 	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
 		return nil, fmt.Errorf("end_date (%s) cannot be before start_date (%s)", endDate.Format("2006-01-02"), startDate.Format("2006-01-02"))
 	}
@@ -239,6 +239,8 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 		Status:      status,
 		StartDate:   dateFromTime(startDate),
 		EndDate:     dateFromTime(endDate),
+		BudgetCents: int8FromPtr(budgetCents),
+		Currency:    currency,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update trip: %w", err)
@@ -459,13 +461,22 @@ func generateShareToken() (string, error) {
 }
 
 func (s *Service) CreateItineraryItem(ctx context.Context, tripID uuid.UUID, dayNumber, orderInDay int, itemType, title, description string) (dbgen.ItineraryItem, error) {
+	return s.CreateItineraryItemWithCost(ctx, tripID, dayNumber, orderInDay, itemType, title, description, nil, "")
+}
+
+// CreateItineraryItemWithCost creates an itinerary item with optional cost
+// fields (estimated_cost_cents, cost_currency). When costCents is nil or
+// currency is empty the item is created without cost data.
+func (s *Service) CreateItineraryItemWithCost(ctx context.Context, tripID uuid.UUID, dayNumber, orderInDay int, itemType, title, description string, costCents *int64, costCurrency string) (dbgen.ItineraryItem, error) {
 	item, err := s.queries.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
-		TripID:      tripID,
-		DayNumber:   int4FromInt(dayNumber),
-		OrderInDay:  int4FromInt(orderInDay),
-		Type:        textFromString(itemType),
-		Title:       textFromString(title),
-		Description: textFromString(description),
+		TripID:             tripID,
+		DayNumber:          int4FromInt(dayNumber),
+		OrderInDay:         int4FromInt(orderInDay),
+		Type:               textFromString(itemType),
+		Title:              textFromString(title),
+		Description:        textFromString(description),
+		EstimatedCostCents: int8FromPtr(costCents),
+		CostCurrency:       textFromString(costCurrency),
 	})
 	if err != nil {
 		return dbgen.ItineraryItem{}, fmt.Errorf("create itinerary item: %w", err)
@@ -518,13 +529,15 @@ func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.I
 // This avoids a schema migration while making the UpdateItinerary RPC
 // round-trip day-level data correctly (Run 5 R-07/N-05 P2).
 type ReplaceItineraryItem struct {
-	DayNumber   int
-	OrderInDay  int
-	Type        string
-	Title       string
-	Description string
-	DaySummary  string
-	DayDate     string
+	DayNumber          int
+	OrderInDay         int
+	Type               string
+	Title              string
+	Description        string
+	DaySummary         string
+	DayDate            string
+	EstimatedCostCents *int64
+	CostCurrency       string
 }
 
 // ReplaceItinerary deletes all existing itinerary items for a trip and
@@ -565,13 +578,15 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 			}
 		}
 		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
-			TripID:      tripID,
-			DayNumber:   int4FromInt(item.DayNumber),
-			OrderInDay:  int4FromInt(item.OrderInDay),
-			Type:        textFromString(item.Type),
-			Title:       textFromString(item.Title),
-			Description: textFromString(item.Description),
-			Metadata:    metadata,
+			TripID:             tripID,
+			DayNumber:          int4FromInt(item.DayNumber),
+			OrderInDay:         int4FromInt(item.OrderInDay),
+			Type:               textFromString(item.Type),
+			Title:              textFromString(item.Title),
+			Description:        textFromString(item.Description),
+			Metadata:           metadata,
+			EstimatedCostCents: int8FromPtr(item.EstimatedCostCents),
+			CostCurrency:       textFromString(item.CostCurrency),
 		}); err != nil {
 			return fmt.Errorf("insert item %q: %w", item.Title, err)
 		}
@@ -645,4 +660,14 @@ func int4FromInt(n int) pgtype.Int4 {
 		return pgtype.Int4{}
 	}
 	return pgtype.Int4{Int32: int32(n), Valid: true}
+}
+
+// int8FromPtr converts a *int64 to a nullable pgtype.Int8.
+// A nil pointer maps to NULL (Valid=false). A non-nil pointer sets
+// the value including zero (so callers can explicitly clear a budget to 0).
+func int8FromPtr(p *int64) pgtype.Int8 {
+	if p == nil {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: *p, Valid: true}
 }

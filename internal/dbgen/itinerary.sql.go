@@ -13,8 +13,8 @@ import (
 )
 
 const cloneItineraryItems = `-- name: CloneItineraryItems :exec
-INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata)
-SELECT $1::uuid, day_number, order_in_day, type, title, description, metadata
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency)
+SELECT $1::uuid, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency
 FROM itinerary_items
 WHERE trip_id = $2::uuid
 `
@@ -30,22 +30,24 @@ func (q *Queries) CloneItineraryItems(ctx context.Context, arg CloneItineraryIte
 }
 
 const createItineraryItem = `-- name: CreateItineraryItem :one
-INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, booking_id
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, estimated_cost_cents, cost_currency)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
 `
 
 type CreateItineraryItemParams struct {
-	TripID      uuid.UUID          `json:"trip_id"`
-	DayNumber   pgtype.Int4        `json:"day_number"`
-	OrderInDay  pgtype.Int4        `json:"order_in_day"`
-	Type        pgtype.Text        `json:"type"`
-	Title       pgtype.Text        `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	Location    interface{}        `json:"location"`
-	StartTime   pgtype.Timestamptz `json:"start_time"`
-	EndTime     pgtype.Timestamptz `json:"end_time"`
-	Metadata    []byte             `json:"metadata"`
+	TripID             uuid.UUID          `json:"trip_id"`
+	DayNumber          pgtype.Int4        `json:"day_number"`
+	OrderInDay         pgtype.Int4        `json:"order_in_day"`
+	Type               pgtype.Text        `json:"type"`
+	Title              pgtype.Text        `json:"title"`
+	Description        pgtype.Text        `json:"description"`
+	Location           interface{}        `json:"location"`
+	StartTime          pgtype.Timestamptz `json:"start_time"`
+	EndTime            pgtype.Timestamptz `json:"end_time"`
+	Metadata           []byte             `json:"metadata"`
+	EstimatedCostCents pgtype.Int8        `json:"estimated_cost_cents"`
+	CostCurrency       pgtype.Text        `json:"cost_currency"`
 }
 
 func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryItemParams) (ItineraryItem, error) {
@@ -60,6 +62,8 @@ func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryIt
 		arg.StartTime,
 		arg.EndTime,
 		arg.Metadata,
+		arg.EstimatedCostCents,
+		arg.CostCurrency,
 	)
 	var i ItineraryItem
 	err := row.Scan(
@@ -75,6 +79,8 @@ func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryIt
 		&i.EndTime,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
 		&i.BookingID,
 	)
 	return i, err
@@ -83,7 +89,7 @@ func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryIt
 const createItineraryItemFromBooking = `-- name: CreateItineraryItemFromBooking :one
 INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, start_time, end_time, booking_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, booking_id
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
 `
 
 type CreateItineraryItemFromBookingParams struct {
@@ -124,6 +130,8 @@ func (q *Queries) CreateItineraryItemFromBooking(ctx context.Context, arg Create
 		&i.EndTime,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
 		&i.BookingID,
 	)
 	return i, err
@@ -162,7 +170,7 @@ func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItin
 }
 
 const getItineraryItemByBooking = `-- name: GetItineraryItemByBooking :one
-SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, booking_id FROM itinerary_items
+SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id FROM itinerary_items
 WHERE booking_id = $1 AND trip_id = $2
 LIMIT 1
 `
@@ -188,13 +196,15 @@ func (q *Queries) GetItineraryItemByBooking(ctx context.Context, arg GetItinerar
 		&i.EndTime,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
 		&i.BookingID,
 	)
 	return i, err
 }
 
 const listItineraryItemsByTrip = `-- name: ListItineraryItemsByTrip :many
-SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, booking_id FROM itinerary_items
+SELECT id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id FROM itinerary_items
 WHERE trip_id = $1
 ORDER BY day_number, order_in_day, start_time, id
 `
@@ -221,6 +231,8 @@ func (q *Queries) ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID
 			&i.EndTime,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.EstimatedCostCents,
+			&i.CostCurrency,
 			&i.BookingID,
 		); err != nil {
 			return nil, err
@@ -239,7 +251,7 @@ SET day_number = $2, order_in_day = $3, type = $4, title = $5, description = $6,
     location = $7, start_time = $8, end_time = $9, metadata = $10
 WHERE itinerary_items.id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $11)
-RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, booking_id
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
 `
 
 type UpdateItineraryItemParams struct {
@@ -284,6 +296,8 @@ func (q *Queries) UpdateItineraryItem(ctx context.Context, arg UpdateItineraryIt
 		&i.EndTime,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
 		&i.BookingID,
 	)
 	return i, err

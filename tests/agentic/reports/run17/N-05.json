@@ -1,0 +1,28 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural — Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "trip_destination": "Japan",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "share_enable", "share_access", "share_disable", "share_revocation_verify", "share_re_enable", "share_new_token_verify", "share_old_token_still_invalid", "content_completeness", "activate", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Usage counter shows 0 after sending 1 chat message. The daily_usage count does not appear to increment for messages sent via SendMessage. This may be intentional if usage tracking counts differently, but it is confusing for QA verification.",
+      "severity": "P2",
+      "suggestion": "Verify that usage tracking increments on each SendMessage call or document what 'used' actually tracks."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The trip sharing lifecycle is rock-solid. Token revocation works correctly — old tokens return 404 after unsharing, and re-enabling sharing generates a new distinct token. The shared view contains rich content: full itinerary with 11 items across 6 days, booking summary, and trip metadata, with no private data leakage. The AI created a well-structured Japan itinerary on the first message with expert persona handoff. Booking ingestion parsed the ryokan confirmation accurately including check-in/out dates, room type, and address."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingest", "sharing_enable", "sharing_access", "sharing_disable", "sharing_revocation", "sharing_re_enable", "sharing_token_uniqueness", "sharing_content_completeness", "trip_activate", "trip_complete", "chat_sessions", "usage"]
+}

@@ -1,6 +1,6 @@
 -- name: CreateItineraryItem :one
-INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, estimated_cost_cents, cost_currency)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: ListItineraryItemsByTrip :many
@@ -37,7 +37,7 @@ WHERE booking_id = $1 AND trip_id = $2
 LIMIT 1;
 
 -- name: CloneItineraryItems :exec
-INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata)
-SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency)
+SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency
 FROM itinerary_items
 WHERE trip_id = sqlc.arg(source_trip_id)::uuid;

@@ -39,6 +39,10 @@ message Trip {
   // All destination countries for multi-country trips (e.g. ["GR", "TR"]).
   // ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
   repeated string destination_countries = 13;
+  // Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+  optional int64 budget_cents = 14;
+  // ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+  string currency = 15;
 }
 
 enum TripStatus {
@@ -71,6 +75,10 @@ message ItineraryItem {
   google.protobuf.Timestamp start_time = 7;
   google.protobuf.Timestamp end_time = 8;
   map<string, string> metadata = 9;
+  // Estimated cost in cents (e.g. 2500 = $25.00). Optional.
+  optional int64 estimated_cost_cents = 10;
+  // ISO 4217 currency code for the cost (e.g. "USD", "EUR"). Optional.
+  string cost_currency = 11;
 }
 
 message CreateTripRequest {
@@ -83,6 +91,10 @@ message CreateTripRequest {
   // and enter companion mode directly (e.g. a traveller who is already on
   // the ground when they create the trip).
   TripStatus status = 5;
+  // Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+  optional int64 budget_cents = 6;
+  // ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+  string currency = 7;
 }
 
 message CreateTripResponse {
@@ -118,6 +130,10 @@ message UpdateTripRequest {
   TripStatus status = 4;
   string start_date = 5;
   string end_date = 6;
+  // Trip budget in cents. Optional — omit or set to 0 to leave unchanged.
+  optional int64 budget_cents = 7;
+  // ISO 4217 currency code. Optional — omit or leave empty to keep current value.
+  string currency = 8;
 }
 
 message UpdateTripResponse {

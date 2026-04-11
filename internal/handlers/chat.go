@@ -207,6 +207,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var existingItinerary []dbgen.ItineraryItem
 	var existingBookings []dbgen.Booking
 	var collaboratorCount int64
+	var tripBudgetCents *int64
+	var tripCurrency string
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 			if t, err := h.tripSvc.GetByID(ctx, userID, tripID); err == nil {
@@ -231,6 +233,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				if t.EndDate.Valid {
 					tripEndDate = t.EndDate.Time.Format(dateFormatLong)
 					tripEndDateISO = t.EndDate.Time.Format("2006-01-02")
+				}
+				if t.BudgetCents.Valid {
+					tripBudgetCents = &t.BudgetCents.Int64
+				}
+				if t.Currency.Valid && t.Currency.String != "" {
+					tripCurrency = t.Currency.String
 				}
 			}
 			if h.themeSvc != nil {
@@ -465,7 +473,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier, tripBudgetCents, tripCurrency)
 	}
 
 	// Inject user preferences into the system context (all modes).
@@ -821,6 +829,28 @@ type personaSwitchInfo struct {
 // sanitizeForPrompt strips control characters and truncates user-controlled text
 // before injection into AI system prompts. This prevents prompt injection via
 // crafted trip titles/descriptions.
+// currencySymbol returns the common symbol for well-known ISO 4217 codes.
+// Falls back to empty string for unknown currencies so the code still
+// appears (e.g. "150.00 SEK" rather than "$150.00 SEK").
+func currencySymbol(code string) string {
+	switch strings.ToUpper(code) {
+	case "USD":
+		return "$"
+	case "EUR":
+		return "\u20ac"
+	case "GBP":
+		return "\u00a3"
+	case "JPY":
+		return "\u00a5"
+	case "CAD":
+		return "CA$"
+	case "AUD":
+		return "A$"
+	default:
+		return ""
+	}
+}
+
 func sanitizeForPrompt(s string, maxLen int) string {
 	// Replace newlines, tabs, and other control characters with spaces
 	var b strings.Builder
@@ -861,7 +891,7 @@ func sanitizeForPrompt(s string, maxLen int) string {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier) string {
+func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier, budgetCents *int64, currency string) string {
 	if title == "" && description == "" && destinationCountry == "" && len(destinationCountries) == 0 {
 		return ""
 	}
@@ -906,6 +936,14 @@ func buildTripContext(title, description, destinationCountry string, destination
 		}
 		fmt.Fprintf(&sb, "- Trip themes: %s\n", strings.Join(sanitized, ", "))
 	}
+	if budgetCents != nil {
+		cur := currency
+		if cur == "" {
+			cur = "USD"
+		}
+		sym := currencySymbol(cur)
+		fmt.Fprintf(&sb, "- Trip budget: %s%.2f %s\n", sym, float64(*budgetCents)/100, cur)
+	}
 	if collaboratorCount > 0 {
 		fmt.Fprintf(&sb, "- Collaborators: %d people on this trip\n", collaboratorCount+1) // +1 for the owner
 	}
@@ -945,7 +983,15 @@ func buildTripContext(title, description, destinationCountry string, destination
 					break
 				}
 				if item.Title.Valid && item.Title.String != "" {
-					titles = append(titles, sanitizeForPrompt(item.Title.String, 80))
+					label := sanitizeForPrompt(item.Title.String, 80)
+					if item.EstimatedCostCents.Valid {
+						cur := "USD"
+						if item.CostCurrency.Valid && item.CostCurrency.String != "" {
+							cur = item.CostCurrency.String
+						}
+						label += fmt.Sprintf(" (%s%.2f)", currencySymbol(cur), float64(item.EstimatedCostCents.Int64)/100)
+					}
+					titles = append(titles, label)
 				}
 				itemCount++
 			}

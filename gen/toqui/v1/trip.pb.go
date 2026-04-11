@@ -96,8 +96,12 @@ type Trip struct {
 	// All destination countries for multi-country trips (e.g. ["GR", "TR"]).
 	// ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
 	DestinationCountries []string `protobuf:"bytes,13,rep,name=destination_countries,json=destinationCountries,proto3" json:"destination_countries,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+	BudgetCents *int64 `protobuf:"varint,14,opt,name=budget_cents,json=budgetCents,proto3,oneof" json:"budget_cents,omitempty"`
+	// ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+	Currency      string `protobuf:"bytes,15,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Trip) Reset() {
@@ -219,6 +223,20 @@ func (x *Trip) GetDestinationCountries() []string {
 		return x.DestinationCountries
 	}
 	return nil
+}
+
+func (x *Trip) GetBudgetCents() int64 {
+	if x != nil && x.BudgetCents != nil {
+		return *x.BudgetCents
+	}
+	return 0
+}
+
+func (x *Trip) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 type Itinerary struct {
@@ -350,16 +368,20 @@ func (x *ItineraryDay) GetItems() []*ItineraryItem {
 }
 
 type ItineraryItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OrderInDay    int32                  `protobuf:"varint,2,opt,name=order_in_day,json=orderInDay,proto3" json:"order_in_day,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Location      *LatLng                `protobuf:"bytes,6,opt,name=location,proto3" json:"location,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,9,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OrderInDay  int32                  `protobuf:"varint,2,opt,name=order_in_day,json=orderInDay,proto3" json:"order_in_day,omitempty"`
+	Type        string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	Title       string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Location    *LatLng                `protobuf:"bytes,6,opt,name=location,proto3" json:"location,omitempty"`
+	StartTime   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Metadata    map[string]string      `protobuf:"bytes,9,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Estimated cost in cents (e.g. 2500 = $25.00). Optional.
+	EstimatedCostCents *int64 `protobuf:"varint,10,opt,name=estimated_cost_cents,json=estimatedCostCents,proto3,oneof" json:"estimated_cost_cents,omitempty"`
+	// ISO 4217 currency code for the cost (e.g. "USD", "EUR"). Optional.
+	CostCurrency  string `protobuf:"bytes,11,opt,name=cost_currency,json=costCurrency,proto3" json:"cost_currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -457,6 +479,20 @@ func (x *ItineraryItem) GetMetadata() map[string]string {
 	return nil
 }
 
+func (x *ItineraryItem) GetEstimatedCostCents() int64 {
+	if x != nil && x.EstimatedCostCents != nil {
+		return *x.EstimatedCostCents
+	}
+	return 0
+}
+
+func (x *ItineraryItem) GetCostCurrency() string {
+	if x != nil {
+		return x.CostCurrency
+	}
+	return ""
+}
+
 type CreateTripRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Title       string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
@@ -467,7 +503,11 @@ type CreateTripRequest struct {
 	// Clients can set this to TRIP_STATUS_ACTIVE to skip the planning phase
 	// and enter companion mode directly (e.g. a traveller who is already on
 	// the ground when they create the trip).
-	Status        TripStatus `protobuf:"varint,5,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
+	Status TripStatus `protobuf:"varint,5,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
+	// Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+	BudgetCents *int64 `protobuf:"varint,6,opt,name=budget_cents,json=budgetCents,proto3,oneof" json:"budget_cents,omitempty"`
+	// ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+	Currency      string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -535,6 +575,20 @@ func (x *CreateTripRequest) GetStatus() TripStatus {
 		return x.Status
 	}
 	return TripStatus_TRIP_STATUS_UNSPECIFIED
+}
+
+func (x *CreateTripRequest) GetBudgetCents() int64 {
+	if x != nil && x.BudgetCents != nil {
+		return *x.BudgetCents
+	}
+	return 0
+}
+
+func (x *CreateTripRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 type CreateTripResponse struct {
@@ -785,13 +839,17 @@ func (x *ListTripsResponse) GetPagination() *PaginationResponse {
 }
 
 type UpdateTripRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Status        TripStatus             `protobuf:"varint,4,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
-	StartDate     string                 `protobuf:"bytes,5,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       string                 `protobuf:"bytes,6,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title       string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Status      TripStatus             `protobuf:"varint,4,opt,name=status,proto3,enum=toqui.v1.TripStatus" json:"status,omitempty"`
+	StartDate   string                 `protobuf:"bytes,5,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate     string                 `protobuf:"bytes,6,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// Trip budget in cents. Optional — omit or set to 0 to leave unchanged.
+	BudgetCents *int64 `protobuf:"varint,7,opt,name=budget_cents,json=budgetCents,proto3,oneof" json:"budget_cents,omitempty"`
+	// ISO 4217 currency code. Optional — omit or leave empty to keep current value.
+	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -864,6 +922,20 @@ func (x *UpdateTripRequest) GetStartDate() string {
 func (x *UpdateTripRequest) GetEndDate() string {
 	if x != nil {
 		return x.EndDate
+	}
+	return ""
+}
+
+func (x *UpdateTripRequest) GetBudgetCents() int64 {
+	if x != nil && x.BudgetCents != nil {
+		return *x.BudgetCents
+	}
+	return 0
+}
+
+func (x *UpdateTripRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
 	}
 	return ""
 }
@@ -1281,7 +1353,7 @@ var File_toqui_v1_trip_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xe4\x03\n" +
+	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xb9\x04\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
@@ -1300,7 +1372,10 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\x13destination_country\x18\v \x01(\tR\x12destinationCountry\x12\x1f\n" +
 	"\vis_unlocked\x18\f \x01(\bR\n" +
 	"isUnlocked\x123\n" +
-	"\x15destination_countries\x18\r \x03(\tR\x14destinationCountries\"P\n" +
+	"\x15destination_countries\x18\r \x03(\tR\x14destinationCountries\x12&\n" +
+	"\fbudget_cents\x18\x0e \x01(\x03H\x00R\vbudgetCents\x88\x01\x01\x12\x1a\n" +
+	"\bcurrency\x18\x0f \x01(\tR\bcurrencyB\x0f\n" +
+	"\r_budget_cents\"P\n" +
 	"\tItinerary\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12*\n" +
 	"\x04days\x18\x02 \x03(\v2\x16.toqui.v1.ItineraryDayR\x04days\"\x9a\x01\n" +
@@ -1310,7 +1385,7 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"day_number\x18\x02 \x01(\x05R\tdayNumber\x12\x12\n" +
 	"\x04date\x18\x03 \x01(\tR\x04date\x12\x18\n" +
 	"\asummary\x18\x04 \x01(\tR\asummary\x12-\n" +
-	"\x05items\x18\x05 \x03(\v2\x17.toqui.v1.ItineraryItemR\x05items\"\xad\x03\n" +
+	"\x05items\x18\x05 \x03(\v2\x17.toqui.v1.ItineraryItemR\x05items\"\xa2\x04\n" +
 	"\rItineraryItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\forder_in_day\x18\x02 \x01(\x05R\n" +
@@ -1322,10 +1397,14 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
 	"start_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
 	"\bend_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x12A\n" +
-	"\bmetadata\x18\t \x03(\v2%.toqui.v1.ItineraryItem.MetadataEntryR\bmetadata\x1a;\n" +
+	"\bmetadata\x18\t \x03(\v2%.toqui.v1.ItineraryItem.MetadataEntryR\bmetadata\x125\n" +
+	"\x14estimated_cost_cents\x18\n" +
+	" \x01(\x03H\x00R\x12estimatedCostCents\x88\x01\x01\x12#\n" +
+	"\rcost_currency\x18\v \x01(\tR\fcostCurrency\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc9\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x17\n" +
+	"\x15_estimated_cost_cents\"\x9e\x02\n" +
 	"\x11CreateTripRequest\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x04R\x05title\x12*\n" +
@@ -1333,7 +1412,10 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
 	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x04 \x01(\tR\aendDate\x12,\n" +
-	"\x06status\x18\x05 \x01(\x0e2\x14.toqui.v1.TripStatusR\x06status\"8\n" +
+	"\x06status\x18\x05 \x01(\x0e2\x14.toqui.v1.TripStatusR\x06status\x12&\n" +
+	"\fbudget_cents\x18\x06 \x01(\x03H\x00R\vbudgetCents\x88\x01\x01\x12\x1a\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrencyB\x0f\n" +
+	"\r_budget_cents\"8\n" +
 	"\x12CreateTripResponse\x12\"\n" +
 	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"*\n" +
 	"\x0eGetTripRequest\x12\x18\n" +
@@ -1350,7 +1432,7 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\x05trips\x18\x01 \x03(\v2\x0e.toqui.v1.TripR\x05trips\x12<\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1c.toqui.v1.PaginationResponseR\n" +
-	"pagination\"\xe1\x01\n" +
+	"pagination\"\xb6\x02\n" +
 	"\x11UpdateTripRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12\x1e\n" +
 	"\x05title\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\x05title\x12*\n" +
@@ -1358,7 +1440,10 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\x06status\x18\x04 \x01(\x0e2\x14.toqui.v1.TripStatusR\x06status\x12\x1d\n" +
 	"\n" +
 	"start_date\x18\x05 \x01(\tR\tstartDate\x12\x19\n" +
-	"\bend_date\x18\x06 \x01(\tR\aendDate\"8\n" +
+	"\bend_date\x18\x06 \x01(\tR\aendDate\x12&\n" +
+	"\fbudget_cents\x18\a \x01(\x03H\x00R\vbudgetCents\x88\x01\x01\x12\x1a\n" +
+	"\bcurrency\x18\b \x01(\tR\bcurrencyB\x0f\n" +
+	"\r_budget_cents\"8\n" +
 	"\x12UpdateTripResponse\x12\"\n" +
 	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"-\n" +
 	"\x11DeleteTripRequest\x12\x18\n" +
@@ -1491,6 +1576,10 @@ func file_toqui_v1_trip_proto_init() {
 		return
 	}
 	file_toqui_v1_common_proto_init()
+	file_toqui_v1_trip_proto_msgTypes[0].OneofWrappers = []any{}
+	file_toqui_v1_trip_proto_msgTypes[3].OneofWrappers = []any{}
+	file_toqui_v1_trip_proto_msgTypes[4].OneofWrappers = []any{}
+	file_toqui_v1_trip_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

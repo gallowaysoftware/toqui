@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Selection mode response was 5692 characters — very long for a user sitting at an airport gate about to board. The AI proactively created 6 itinerary items, did 2 web searches, handed off to a food expert, AND called recommend_booking all in a single turn. While thorough, this is too much for a last-minute traveler who just needs 'help me fast'. The companion mode responses (692-875 chars) were much better calibrated.",
+      "severity": "P2",
+      "suggestion": "In selection mode, when urgency signals are present (e.g., 'right now', 'boards in 2 hours'), the AI should create the trip and give a brief acknowledgment, deferring detailed planning to follow-up messages rather than front-loading everything."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "The initial selection-mode response attempted to build the entire trip plan in one message instead of just creating the trip and giving a quick acknowledgment. It called 7 tools (create_trip, 2x web_search, 2x create_itinerary_items, suggest_expert, recommend_booking) in a single turn. For a user who said 'I'm at the airport right now', this is overkill — create the trip, give 2-3 bullet points, and let the user drive.",
+      "context": "Selection mode, first message",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI did not mention that the user is a photographer or suggest photography-optimized spots (morning light at Alfama, golden hour viewpoints). The persona mentions Jake is a freelance photographer, but this was only in the persona background — the AI wouldn't know this from the chat message alone. Not a bug, just a note.",
+      "context": "One-day planning question",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI excelled in companion mode — responses were concise (692-875 chars), practical, and full of specific Lisbon knowledge (Cervejaria Ramiro, Pasteis de Belem, metro Red Line to airport, Bolt/Uber pricing). The trip was created instantly without unnecessary clarifying questions, which is exactly right for a last-minute traveler. The only weakness was the selection mode response being too verbose and tool-heavy for the urgency of the situation. Companion mode was the star — bullet points, specific names, actionable advice."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage"]
+}

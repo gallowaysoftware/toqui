@@ -65,7 +65,7 @@ func TestTripCRUD(t *testing.T) {
 	}
 
 	// Update
-	updated, err := tripSvc.Update(ctx, user.ID, created.ID, "Japan + Korea", "", "active", nil, nil)
+	updated, err := tripSvc.Update(ctx, user.ID, created.ID, "Japan + Korea", "", "active", nil, nil, nil, "")
 	if err != nil {
 		t.Fatalf("update trip: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestTripListByStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create active trip: %v", err)
 	}
-	if _, err := tripSvc.Update(ctx, user.ID, activeTrip.ID, "Active Trip", "", "active", nil, nil); err != nil {
+	if _, err := tripSvc.Update(ctx, user.ID, activeTrip.ID, "Active Trip", "", "active", nil, nil, nil, ""); err != nil {
 		t.Fatalf("update to active: %v", err)
 	}
 

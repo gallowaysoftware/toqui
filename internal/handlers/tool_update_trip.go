@@ -84,7 +84,7 @@ func (t *UpdateTripTool) Execute(ctx context.Context, args json.RawMessage) (jso
 
 	// Update title/description via the trip service. The Update method uses
 	// COALESCE so empty strings leave the existing value untouched.
-	updated, err := t.tripSvc.Update(ctx, t.userID, t.tripID, params.Title, params.Description, "", nil, nil)
+	updated, err := t.tripSvc.Update(ctx, t.userID, t.tripID, params.Title, params.Description, "", nil, nil, nil, "")
 	if err != nil {
 		return nil, fmt.Errorf("update trip: %w", err)
 	}

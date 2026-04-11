@@ -48,12 +48,14 @@ type createItineraryArgs struct {
 }
 
 type createItineraryItemArg struct {
-	DayNumber    int    `json:"day_number"`
-	OrderInDay   int    `json:"order_in_day"`
-	Type         string `json:"type"`
-	Title        string `json:"title"`
-	Description  string `json:"description"`
-	LocationName string `json:"location_name"`
+	DayNumber          int    `json:"day_number"`
+	OrderInDay         int    `json:"order_in_day"`
+	Type               string `json:"type"`
+	Title              string `json:"title"`
+	Description        string `json:"description"`
+	LocationName       string `json:"location_name"`
+	EstimatedCostCents *int64 `json:"estimated_cost_cents,omitempty"`
+	CostCurrency       string `json:"cost_currency,omitempty"`
 }
 
 func NewCreateItineraryTool(tripSvc *trip.Service, tripID uuid.UUID, onCreated func(items []dbgen.ItineraryItem)) *CreateItineraryTool {
@@ -124,6 +126,14 @@ func (t *CreateItineraryTool) Definition() ai.ToolDefinition {
 							"location_name": {
 								"type": "string",
 								"description": "Specific, geocodable place name including city/region, e.g. 'Fushimi Inari Shrine, Kyoto, Japan' or 'Eiffel Tower, Paris, France'. Be precise enough to place on a map."
+							},
+							"estimated_cost_cents": {
+								"type": "integer",
+								"description": "Estimated cost in cents (e.g. 2500 = $25.00). Only set when the user has a trip budget or asks about costs."
+							},
+							"cost_currency": {
+								"type": "string",
+								"description": "ISO 4217 currency code for the cost (e.g. 'USD', 'EUR'). Use the trip's budget currency when available."
 							}
 						},
 						"required": ["day_number", "title", "type"]
@@ -181,7 +191,7 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 			skipped++
 			continue
 		}
-		dbItem, err := t.tripSvc.CreateItineraryItem(ctx, tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description)
+		dbItem, err := t.tripSvc.CreateItineraryItemWithCost(ctx, tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description, item.EstimatedCostCents, item.CostCurrency)
 		if err != nil {
 			slog.Error("create itinerary item", "title", item.Title, "error", err)
 			failed = append(failed, item.Title)

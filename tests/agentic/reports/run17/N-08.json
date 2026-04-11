@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Structural — Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_gettrip_nonexistent", "test2_gettrip_malformed", "test3_createtrip_empty_title", "test4_createtrip_oversized_title", "test5_invalid_status_transition", "test6_sendmessage_empty", "test7_sendmessage_oversized", "test8_deletebooking_nonexistent", "test9_ingestbooking_empty", "test10_listtrips"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This was a structural adversarial test, not a user experience evaluation. All 10 edge-case tests passed: validation interceptor correctly rejects malformed IDs, empty/oversized fields, and invalid status transitions. Error codes are precise (INVALID_ARGUMENT vs NOT_FOUND vs FAILED_PRECONDITION). DeleteBooking on non-existent ID is idempotent (silent success). No panics or 500s observed."
+  },
+  "feature_coverage": ["validation", "error_handling", "status_transitions", "idempotent_delete"]
+}

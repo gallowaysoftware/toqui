@@ -1,0 +1,32 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand (Bangkok)",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Text generation stutter/repetition at end of responses",
+      "description": "Two AI responses had garbled repetitive text at the end. Message 1 ended with 'Safe travels a long way here! Safe travels.' (minor duplication). Message 6 was worse: 'Enjoy the early lunch! Enjoy! early lunch! Enjoy the line isn't too long for antsy too long yet! Enjoy the too long! Enjoy the view!' — a clear generation loop/stutter.",
+      "steps_to_reproduce": "Send 6 companion mode messages in sequence. Observe the fullContent of messages 1 and 6.",
+      "expected": "Clean, coherent sentence endings",
+      "actual": "Repetitive garbled text fragments at the end of responses",
+      "api_command": "buf curl SendMessage with content 'actually, add that temple visit to my itinerary for tomorrow morning'"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Companion mode performed excellently across all 6 messages. Responses were concise (all under 200 words), Thailand-specific, and actionable. The AI correctly identified Wat Saket from a vague 'big gold temple' description, gave accurate tipping etiquette with specific baht amounts, recommended age-appropriate evening activities with photography context, and properly respected companion mode by not creating itinerary items until explicitly asked. The only issue was minor text generation stutter at the end of two responses. As Jake, I would absolutely use this travel companion again."
+  },
+  "feature_coverage": ["companion", "create_itinerary_items_on_demand", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

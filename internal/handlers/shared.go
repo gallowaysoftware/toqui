@@ -75,6 +75,8 @@ type sharedTripInfo struct {
 	Status               string   `json:"status"`
 	StartDate            string   `json:"start_date,omitempty"`
 	EndDate              string   `json:"end_date,omitempty"`
+	BudgetCents          *int64   `json:"budget_cents,omitempty"`
+	Currency             string   `json:"currency,omitempty"`
 }
 
 type sharedItineraryDay struct {
@@ -281,6 +283,12 @@ func buildSharedTripInfo(t *dbgen.Trip) sharedTripInfo {
 	}
 	if t.EndDate.Valid {
 		info.EndDate = t.EndDate.Time.Format("2006-01-02")
+	}
+	if t.BudgetCents.Valid {
+		info.BudgetCents = &t.BudgetCents.Int64
+	}
+	if t.Currency.Valid && t.Currency.String != "" {
+		info.Currency = t.Currency.String
 	}
 	return info
 }
