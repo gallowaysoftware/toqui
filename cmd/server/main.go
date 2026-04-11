@@ -491,6 +491,9 @@ func main() {
 		}
 	})
 
+	// iCal export handler (authenticated)
+	icalHandler := handlers.NewICalExportHandler(tripSvc, authSvc, pool)
+
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)
@@ -500,6 +503,8 @@ func main() {
 	mux.HandleFunc("/api/trips/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		switch {
+		case strings.HasSuffix(path, "/export/ical") && r.Method == http.MethodGet:
+			icalHandler.HandleExportICal(w, r)
 		case strings.HasSuffix(path, "/invite") && r.Method == http.MethodPost:
 			collabHandler.HandleInvite(w, r)
 		case strings.HasSuffix(path, "/collaborators") && r.Method == http.MethodGet:
