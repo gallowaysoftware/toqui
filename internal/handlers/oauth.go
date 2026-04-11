@@ -239,6 +239,10 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	isNewUser := time.Since(user.CreatedAt) < time.Minute
 
+	// TODO(#235): For new users, the frontend should prompt for consent (terms, privacy_policy)
+	// after signup and call POST /api/privacy/consents for each consent type.
+	// The backend records consent with IP and User-Agent for GDPR/PIPEDA audit trail.
+
 	// Send welcome email for new users.
 	if h.emailSvc != nil && isNewUser {
 		name := ""
@@ -673,6 +677,10 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
+
+	// TODO(#235): For new users, the frontend should prompt for consent (terms, privacy_policy)
+	// after signup and call POST /api/privacy/consents for each consent type.
+	// The backend records consent with IP and User-Agent for GDPR/PIPEDA audit trail.
 
 	// Send welcome email for new users.
 	if h.emailSvc != nil && fbIsNewUser {

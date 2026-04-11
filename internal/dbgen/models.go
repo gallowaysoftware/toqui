@@ -228,6 +228,17 @@ type User struct {
 	FacebookID       pgtype.Text        `json:"facebook_id"`
 }
 
+type UserConsent struct {
+	ID          uuid.UUID          `json:"id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	ConsentType string             `json:"consent_type"`
+	GrantedAt   time.Time          `json:"granted_at"`
+	WithdrawnAt pgtype.Timestamptz `json:"withdrawn_at"`
+	IpAddress   pgtype.Text        `json:"ip_address"`
+	UserAgent   pgtype.Text        `json:"user_agent"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
+
 type Waitlist struct {
 	ID          uuid.UUID          `json:"id"`
 	Email       string             `json:"email"`

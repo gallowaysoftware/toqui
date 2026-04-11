@@ -464,6 +464,20 @@ func main() {
 	// Data export download (GDPR Article 20)
 	mux.HandleFunc("/api/export/", authHandler.HandleExportDownload)
 
+	// Privacy consent management (GDPR/PIPEDA compliance)
+	consentHandler := handlers.NewConsentHandler(authSvc, pool)
+	mux.HandleFunc("/api/privacy/consents", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			consentHandler.HandleGetConsents(w, r)
+		case http.MethodPost:
+			consentHandler.HandleRecordConsent(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/api/privacy/consents/", consentHandler.HandleWithdrawConsent)
+
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)
