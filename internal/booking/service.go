@@ -185,6 +185,10 @@ var validBookingTypes = map[string]bool{
 	"tour":       true,
 	"activity":   true,
 	"restaurant": true,
+	"ferry":      true,
+	"bus":        true,
+	"cruise":     true,
+	"transfer":   true,
 	"other":      true,
 }
 

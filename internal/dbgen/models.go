@@ -189,6 +189,7 @@ type Trip struct {
 	SearchVector         interface{}        `json:"search_vector"`
 	BudgetCents          pgtype.Int8        `json:"budget_cents"`
 	Currency             pgtype.Text        `json:"currency"`
+	Notes                pgtype.Text        `json:"notes"`
 }
 
 type TripCollaborator struct {
