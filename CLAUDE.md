@@ -77,7 +77,7 @@ graph TB
 | `cmd/migrate`           | Database migration runner                                                                 |
 | `internal/handlers/`    | ConnectRPC service handlers (auth, trip, chat, booking, location, persona)                |
 | `internal/chat/`        | Chat service — AI streaming, tool execution, persona resolution                           |
-| `internal/persona/`     | Persona composition — 40 locations × 21 themes = 840 expert combos                        |
+| `internal/persona/`     | Persona composition — 43 locations × 23 themes = 989 expert combos                        |
 | `internal/ai/`          | AI provider abstraction (Gemini primary, Claude fallback)                                 |
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
@@ -305,14 +305,14 @@ graph LR
     TH[Theme Profile] --> C
     C --> E[Composed Expert]
 
-    subgraph "40 Locations"
+    subgraph "43 Locations"
         L1[Japan]
         L2[Italy]
         L3[France]
         L4[...]
     end
 
-    subgraph "21 Themes"
+    subgraph "23 Themes"
         TH1[Food]
         TH2[History]
         TH3[Distilleries]
@@ -322,9 +322,9 @@ graph LR
 
 Toqui (the global orchestrator) hands off to composed experts. Each expert is dynamically built from a location profile + theme profile(s). Persona identities (names, descriptions, greetings) are AI-generated and cached for consistency.
 
-**40 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG, ID, PH, CN, CZ, AT, CH, IE, SE, AR, CL, JO, TZ, IS, SG, HK, KH (4 core in `profiles.go`, 36 extended in `profiles_extended.go`).
+**43 locations**: IT, JP, FR, GB, US, ES, DE, PT, GR, TH, MX, AU, BR, IN, KR, VN, MA, PE, NZ, TR, HR, ZA, CO, EG, ID, PH, CN, CZ, AT, CH, IE, SE, AR, CL, JO, TZ, IS, SG, HK, KH, TW, NO, LK (4 core in `profiles.go`, 39 extended in `profiles_extended.go`).
 
-**21 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury, art, music, craft-beer, diving, hiking, accessibility (3 core, 18 extended).
+**23 themes**: food, history, distilleries, adventure, wellness, wine, architecture, nightlife, shopping, family, photography, nature, romance, budget, luxury, art, music, craft-beer, diving, hiking, accessibility, sustainability, road-trip (3 core, 20 extended).
 
 ## Chat Tool System
 

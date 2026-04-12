@@ -6,15 +6,15 @@ import (
 )
 
 func TestAllLocationProfilesRegistered(t *testing.T) {
-	// All 40 locations should be registered (4 core + 36 extended)
+	// All 43 locations should be registered (4 core + 39 extended)
 	expectedCodes := []string{
 		// Core 4
 		"IT", "JP", "FR", "GB",
-		// Extended 36
+		// Extended 39
 		"US", "ES", "DE", "PT", "GR", "TH", "MX", "AU", "BR", "IN",
 		"KR", "VN", "MA", "PE", "NZ", "TR", "HR", "ZA", "CO", "EG",
 		"ID", "PH", "CN", "CZ", "AT", "CH", "IE", "SE", "AR", "CL",
-		"JO", "TZ", "IS", "SG", "HK", "KH",
+		"JO", "TZ", "IS", "SG", "HK", "KH", "TW", "NO", "LK",
 	}
 
 	for _, code := range expectedCodes {
@@ -36,21 +36,21 @@ func TestAllLocationProfilesRegistered(t *testing.T) {
 
 	// Verify count
 	count := len(locationProfiles)
-	if count != 40 {
-		t.Errorf("expected 40 location profiles, got %d", count)
+	if count != 43 {
+		t.Errorf("expected 43 location profiles, got %d", count)
 	}
 }
 
 func TestAllThemeProfilesRegistered(t *testing.T) {
-	// All 21 themes should be registered (3 core + 18 extended)
+	// All 23 themes should be registered (3 core + 20 extended)
 	expectedSlugs := []string{
 		// Core 3
 		"food", "history", "distilleries",
-		// Extended 18
+		// Extended 20
 		"adventure", "wellness", "wine", "architecture", "nightlife",
 		"shopping", "family", "photography", "nature", "romance",
 		"budget", "luxury", "art", "music", "craft-beer", "diving", "hiking",
-		"accessibility",
+		"accessibility", "sustainability", "road-trip",
 	}
 
 	for _, slug := range expectedSlugs {
@@ -72,8 +72,8 @@ func TestAllThemeProfilesRegistered(t *testing.T) {
 
 	// Verify count
 	count := len(themeProfiles)
-	if count != 21 {
-		t.Errorf("expected 21 theme profiles, got %d", count)
+	if count != 23 {
+		t.Errorf("expected 23 theme profiles, got %d", count)
 	}
 }
 
