@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -183,5 +184,63 @@ func TestIPRateLimiter_EvictsStaleEntries(t *testing.T) {
 	defer limiter.mu.Unlock()
 	if len(limiter.ips) != 0 {
 		t.Fatalf("expected 0 entries after eviction, got %d", len(limiter.ips))
+	}
+}
+
+func TestHashToken_Deterministic(t *testing.T) {
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-payload.signature"
+	h1 := hashToken(token)
+	h2 := hashToken(token)
+	if h1 != h2 {
+		t.Errorf("same token produced different hashes: %q vs %q", h1, h2)
+	}
+}
+
+func TestHashToken_DifferentTokensDifferentKeys(t *testing.T) {
+	h1 := hashToken("token-aaa-111")
+	h2 := hashToken("token-bbb-222")
+	if h1 == h2 {
+		t.Errorf("different tokens produced the same hash: %q", h1)
+	}
+}
+
+func TestHashToken_NoRawTokenInOutput(t *testing.T) {
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+	h := hashToken(token)
+	if strings.Contains(h, token[:16]) {
+		t.Errorf("hash output %q contains raw token prefix %q", h, token[:16])
+	}
+	if len(h) != 16 {
+		t.Errorf("hash output length = %d, want 16", len(h))
+	}
+}
+
+func TestExtractRateLimitKey_AuthenticatedUsesHash(t *testing.T) {
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
+	r := httptest.NewRequest(http.MethodGet, "/test", nil)
+	r.Header.Set("Authorization", "Bearer "+token)
+
+	key := extractRateLimitKey(r)
+	if !strings.HasPrefix(key, "user:") {
+		t.Fatalf("expected key to start with 'user:', got %q", key)
+	}
+	// Must not contain any raw token material
+	if strings.Contains(key, token[:16]) {
+		t.Errorf("rate limit key %q contains raw token prefix", key)
+	}
+	// The hash portion should be exactly 16 hex chars
+	hashPart := strings.TrimPrefix(key, "user:")
+	if len(hashPart) != 16 {
+		t.Errorf("hash portion length = %d, want 16", len(hashPart))
+	}
+}
+
+func TestExtractRateLimitKey_UnauthenticatedFallsBackToIP(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/test", nil)
+	r.RemoteAddr = "10.0.0.1:54321"
+
+	key := extractRateLimitKey(r)
+	if key != "10.0.0.1" {
+		t.Errorf("expected IP key %q, got %q", "10.0.0.1", key)
 	}
 }

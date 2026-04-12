@@ -44,6 +44,8 @@ func SetOAuthResultCookie(w http.ResponseWriter, value string, secure bool) {
 }
 
 // ClearOAuthResultCookie removes the temporary OAuth result cookie.
+// SameSite must match SetOAuthResultCookie (Lax) for the browser to
+// actually clear the correct cookie.
 func ClearOAuthResultCookie(w http.ResponseWriter, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     OAuthResultCookie,
@@ -52,7 +54,7 @@ func ClearOAuthResultCookie(w http.ResponseWriter, secure bool) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 

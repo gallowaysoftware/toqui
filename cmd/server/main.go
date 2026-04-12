@@ -375,9 +375,8 @@ func main() {
 
 	// Public waitlist status (no auth) — looks up an email's position in the
 	// waitlist queue. Documented in CLAUDE.md but was previously unregistered
-	// (#186). Returns {"position":N,"total":M} when the email is on the
-	// waitlist (1-indexed; position 0 means already accepted), or 404 when
-	// not found. Total is the count of verified, not-yet-accepted entries.
+	// (#186). Returns {"position":N,"total":M} for all emails. Unknown emails
+	// receive {"position":0,"total":0} to prevent email enumeration attacks.
 	mux.HandleFunc("/waitlist/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -390,9 +389,10 @@ func main() {
 		}
 		entry, err := queries.GetWaitlistByEmail(r.Context(), email)
 		if err != nil {
+			// Return 200 with zeroed response to prevent email enumeration.
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"error":"not_found"}`))
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"position":0,"total":0}`))
 			return
 		}
 		total, _ := queries.CountWaitlist(r.Context())

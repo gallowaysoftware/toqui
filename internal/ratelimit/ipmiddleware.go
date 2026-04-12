@@ -1,6 +1,8 @@
 package ratelimit
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 	"net"
 	"net/http"
@@ -72,18 +74,23 @@ func (l *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 }
 
 // extractRateLimitKey returns a rate limit key for the request. Authenticated
-// requests use "user:<token-prefix>" to prevent X-Forwarded-For bypass.
+// requests use "user:<hash>" to prevent X-Forwarded-For bypass. The token is
+// SHA-256 hashed so no raw token material appears in logs or memory.
 // Unauthenticated requests fall back to client IP.
 func extractRateLimitKey(r *http.Request) string {
 	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		token := auth[7:]
-		// Use a prefix of the token as the key (enough to be unique, avoids storing full tokens)
-		if len(token) > 16 {
-			return "user:" + token[:16]
-		}
-		return "user:" + token
+		return "user:" + hashToken(token)
 	}
 	return ExtractClientIP(r)
+}
+
+// hashToken returns the first 16 hex characters of the SHA-256 digest of the
+// given token. This is sufficient for uniqueness as a rate-limit key while
+// ensuring no raw token material is stored or logged.
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])[:16]
 }
 
 func (l *IPRateLimiter) getOrCreate(ip string) *ipEntry {
