@@ -94,12 +94,19 @@ func (h *ICalExportHandler) HandleExportICal(w http.ResponseWriter, r *http.Requ
 }
 
 // parseTripIDFromExportPath extracts the trip UUID from a path like
-// /api/trips/{id}/export/ical.
+// /api/trips/{id}/export/ical or /api/trips/{id}/export/pdf.
 func parseTripIDFromExportPath(path string) (uuid.UUID, bool) {
-	// Expected: /api/trips/<uuid>/export/ical
+	// Expected: /api/trips/<uuid>/export/{format}
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	// parts: [api, trips, <uuid>, export, ical]
-	if len(parts) < 5 || parts[0] != "api" || parts[1] != "trips" || parts[3] != "export" || parts[4] != "ical" {
+	// parts: [api, trips, <uuid>, export, ical|pdf]
+	if len(parts) < 5 || parts[0] != "api" || parts[1] != "trips" || parts[3] != "export" {
+		return uuid.Nil, false
+	}
+	// Validate the export format
+	switch parts[4] {
+	case "ical", "pdf":
+		// valid
+	default:
 		return uuid.Nil, false
 	}
 	id, err := uuid.Parse(parts[2])

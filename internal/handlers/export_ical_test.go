@@ -401,7 +401,10 @@ func TestParseTripIDFromExportPath(t *testing.T) {
 		wantID uuid.UUID
 	}{
 		{"/api/trips/" + validID.String() + "/export/ical", true, validID},
+		{"/api/trips/" + validID.String() + "/export/pdf", true, validID},
 		{"/api/trips/not-a-uuid/export/ical", false, uuid.Nil},
+		{"/api/trips/not-a-uuid/export/pdf", false, uuid.Nil},
+		{"/api/trips/" + validID.String() + "/export/csv", false, uuid.Nil},
 		{"/api/trips/", false, uuid.Nil},
 		{"/api/trips/" + validID.String() + "/invite", false, uuid.Nil},
 		{"/something/else", false, uuid.Nil},
