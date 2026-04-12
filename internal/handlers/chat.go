@@ -582,6 +582,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			nearbyTool := NewNearbyPlacesTool(h.locationSvc, params.LocationLat, params.LocationLng)
 			params.ExtraTools = append(params.ExtraTools, nearbyTool)
 		}
+
+		// Global tools available in all modes: weather and currency.
+		params.ExtraTools = append(params.ExtraTools, NewWeatherTool(), NewCurrencyTool())
 	}
 
 	eventCh, sessionID, err := h.chatSvc.SendMessage(ctx, params)
