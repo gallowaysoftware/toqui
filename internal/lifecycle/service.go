@@ -374,14 +374,20 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 }
 
 // RequestExport creates a data export request, generates the export
-// synchronously, and stores the download URL.
+// in a background goroutine, and stores the download URL on completion.
+//
+// TODO(#273): The export result is not persisted to durable storage — the
+// download endpoint re-generates data live from the DB. If the user's data
+// changes between export request and download, the result may differ. To
+// guarantee point-in-time consistency, the export payload should be serialized
+// to Cloud Storage (or a DB blob) at generation time and served from there.
 func (s *Service) RequestExport(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	req, err := s.queries.CreateExportRequest(ctx, userID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create export request: %w", err)
 	}
 
-	// Generate export synchronously — user data is small enough.
+	// Generate export in background — user data is small enough for a single pass.
 	// The download is served via a REST endpoint using the request ID.
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)

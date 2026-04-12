@@ -3,6 +3,7 @@
 package audit
 
 import (
+	"context"
 	"log/slog"
 )
 
@@ -37,11 +38,34 @@ const (
 	EventFacebookLink        = "auth.facebook_link"
 )
 
+// severityForEvent returns the appropriate slog level for an audit event.
+// Security-critical events are routed to Error, suspicious events to Warn,
+// and normal operational events to Info.
+func severityForEvent(event string) slog.Level {
+	switch event {
+	// Security-critical: active attacks or account lockouts.
+	case EventTokenReuse, EventAuthLockout, EventCSRFRejected:
+		return slog.LevelError
+
+	// Suspicious / denied: failed auth attempts, payment validation failures.
+	case EventLoginDeniedDomain, EventLoginDeniedCapacity,
+		EventTokenRefreshDenied, EventPaymentValidation:
+		return slog.LevelWarn
+
+	// Everything else: normal operational events.
+	default:
+		return slog.LevelInfo
+	}
+}
+
 // Log records a structured audit event. All audit events include the event
 // type and any number of additional key-value attributes for context.
+// Events are routed to the appropriate slog severity level based on their
+// security implications (Error for active threats, Warn for denied attempts,
+// Info for normal operations).
 func Log(event string, attrs ...any) {
 	args := make([]any, 0, len(attrs)+2)
 	args = append(args, "audit_event", event)
 	args = append(args, attrs...)
-	slog.Info("audit", args...)
+	slog.Log(context.Background(), severityForEvent(event), "audit", args...)
 }

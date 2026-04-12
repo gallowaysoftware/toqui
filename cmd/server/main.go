@@ -770,8 +770,8 @@ func (sw *statusWriter) Flush() {
 // Cloud Logging, queryable for dashboards and alerting.
 func requestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip noisy health probes.
-		if r.URL.Path == "/healthz" || r.URL.Path == "/livez" {
+		// Skip noisy health/readiness probes.
+		if r.URL.Path == "/healthz" || r.URL.Path == "/livez" || r.URL.Path == "/readyz" || r.URL.Path == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}

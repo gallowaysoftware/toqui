@@ -181,6 +181,25 @@ jobs:
             --region=northamerica-northeast1 \
             --project=toqui-staging
 
+      - name: Smoke test staging health endpoint
+        run: |
+          STAGING_URL=$(gcloud run services describe toqui-backend \
+            --region=northamerica-northeast1 \
+            --project=toqui-staging \
+            --format='value(status.url)')
+          echo "Checking staging health at ${STAGING_URL}/health"
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${STAGING_URL}/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Staging health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: got HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Staging health check failed after 5 attempts"
+          exit 1
+
   deploy-prod:
     needs: [lint, test, build]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
