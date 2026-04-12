@@ -209,6 +209,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var collaboratorCount int64
 	var tripBudgetCents *int64
 	var tripCurrency string
+	var trialExpired bool         // true if trial existed but has expired (conversion nudge)
 	var isCollaboratorEditor bool // true if user is an editor collaborator (not owner)
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
@@ -240,6 +241,11 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				if t.Currency.Valid && t.Currency.String != "" {
 					tripCurrency = t.Currency.String
+				}
+				// Detect expired trial for conversion nudge (#271):
+				// trial existed (TrialStartedAt set) but is no longer active.
+				if t.TrialStartedAt.Valid && t.TrialEndsAt.Valid && !t.TrialEndsAt.Time.After(time.Now()) {
+					trialExpired = true
 				}
 				// Check if user is a collaborator editor (not the owner).
 				// This gates itinerary write tools for collaborators (#263).
@@ -482,7 +488,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier, tripBudgetCents, tripCurrency)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier, tripBudgetCents, tripCurrency, trialExpired)
 	}
 
 	// Inject user preferences into the system context (all modes).
@@ -920,7 +926,7 @@ func sanitizeForPrompt(s string, maxLen int) string {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier, budgetCents *int64, currency string) string {
+func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier, budgetCents *int64, currency string, trialExpired bool) string {
 	if title == "" && description == "" && destinationCountry == "" && len(destinationCountries) == 0 {
 		return ""
 	}
@@ -1116,6 +1122,12 @@ func buildTripContext(title, description, destinationCountry string, destination
 	}
 	if hasAccommodation {
 		sb.WriteString("\nThe traveler has accommodation bookings listed above. When planning daily activities, consider proximity to their hotel/accommodation and suggest activities in nearby neighborhoods first.\n")
+	}
+
+	// Trial expired conversion nudge (#271): gently remind the AI to mention
+	// upgrade when users ask about premium features on an expired-trial trip.
+	if trialExpired {
+		sb.WriteString("\nNote: This trip's free trial has expired. If the user asks about expert personas or premium features, mention that they can upgrade to Trip Pro ($19) to unlock unlimited expert access for this trip.\n")
 	}
 
 	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. If USER PREFERENCES are provided below, use them without asking again — only ask about preferences that are NOT already listed. For any unlisted preferences (interests, mobility needs, travel style, etc.), DO ask clarifying questions to give better recommendations.")

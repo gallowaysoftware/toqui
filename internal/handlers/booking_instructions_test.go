@@ -44,7 +44,7 @@ func TestBookingInstructionsForTier_Pro(t *testing.T) {
 }
 
 func TestBuildTripContext_IncludesBookingInstructions(t *testing.T) {
-	ctx := buildTripContext("Japan Trip", "Two weeks in Japan", "JP", nil, "", "", "planning", []string{"food", "culture"}, nil, nil, 0, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "Two weeks in Japan", "JP", nil, "", "", "planning", []string{"food", "culture"}, nil, nil, 0, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "BOOKING RECOMMENDATIONS") {
 		t.Error("trip context should include booking recommendations section")
@@ -55,7 +55,7 @@ func TestBuildTripContext_IncludesBookingInstructions(t *testing.T) {
 }
 
 func TestBuildTripContext_ProTier(t *testing.T) {
-	ctx := buildTripContext("Japan Trip", "Two weeks in Japan", "JP", nil, "", "", "planning", []string{"food", "culture"}, nil, nil, 0, tier.Pro, nil, "")
+	ctx := buildTripContext("Japan Trip", "Two weeks in Japan", "JP", nil, "", "", "planning", []string{"food", "culture"}, nil, nil, 0, tier.Pro, nil, "", false)
 
 	if !strings.Contains(ctx, "BOOKING RECOMMENDATIONS") {
 		t.Error("trip context should include booking recommendations section")
@@ -66,7 +66,7 @@ func TestBuildTripContext_ProTier(t *testing.T) {
 }
 
 func TestBuildTripContext_Empty_ReturnsEmpty(t *testing.T) {
-	ctx := buildTripContext("", "", "", nil, "", "", "", nil, nil, nil, 0, tier.Free, nil, "")
+	ctx := buildTripContext("", "", "", nil, "", "", "", nil, nil, nil, 0, tier.Free, nil, "", false)
 	if ctx != "" {
 		t.Errorf("expected empty string for empty trip context, got %q", ctx)
 	}
@@ -87,7 +87,7 @@ func TestBuildTripContext_IncludesItinerary(t *testing.T) {
 			Title:     pgtype.Text{String: "Mount Fuji Day Trip", Valid: true},
 		},
 	}
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "Existing itinerary") {
 		t.Error("trip context should include itinerary section")
@@ -117,7 +117,7 @@ func TestBuildTripContext_IncludesBookings(t *testing.T) {
 			EndTime:   pgtype.Timestamptz{Time: time.Date(2026, 5, 15, 0, 0, 0, 0, time.UTC), Valid: true},
 		},
 	}
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, bookings, 0, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, bookings, 0, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "Existing bookings") {
 		t.Error("trip context should include bookings section")
@@ -131,7 +131,7 @@ func TestBuildTripContext_IncludesBookings(t *testing.T) {
 }
 
 func TestBuildTripContext_IncludesCollaborators(t *testing.T) {
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 3, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 3, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "4 people") {
 		t.Error("trip context should show collaborator count (+1 for owner)")
@@ -139,10 +139,29 @@ func TestBuildTripContext_IncludesCollaborators(t *testing.T) {
 }
 
 func TestBuildTripContext_IncludesStatus(t *testing.T) {
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "active", nil, nil, nil, 0, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "active", nil, nil, nil, 0, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "(active)") {
 		t.Error("trip context should include trip status")
+	}
+}
+
+func TestBuildTripContext_TrialExpiredNudge(t *testing.T) {
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, tier.Free, nil, "", true)
+
+	if !strings.Contains(ctx, "free trial has expired") {
+		t.Error("trip context should include trial expired nudge when trialExpired is true")
+	}
+	if !strings.Contains(ctx, "Trip Pro") {
+		t.Error("trip context should mention Trip Pro upgrade when trial expired")
+	}
+}
+
+func TestBuildTripContext_NoTrialExpiredNudge(t *testing.T) {
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, tier.Free, nil, "", false)
+
+	if strings.Contains(ctx, "free trial has expired") {
+		t.Error("trip context should not include trial expired nudge when trialExpired is false")
 	}
 }
 
@@ -154,7 +173,7 @@ func TestBuildTripContext_CapsItineraryAt60(t *testing.T) {
 			Title:     pgtype.Text{String: fmt.Sprintf("Item %d", i+1), Valid: true},
 		}
 	}
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free, nil, "")
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free, nil, "", false)
 
 	if !strings.Contains(ctx, "more items not shown") {
 		t.Error("trip context should cap itinerary at 60 items")

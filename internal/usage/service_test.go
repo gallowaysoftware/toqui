@@ -34,7 +34,6 @@ func TestErrDailyLimitExceeded(t *testing.T) {
 
 func TestLimitForTier(t *testing.T) {
 	svc := &Service{
-		limit:     30,
 		limitFree: 10,
 		limitPro:  50,
 	}
@@ -59,7 +58,7 @@ func TestLimitForTier(t *testing.T) {
 }
 
 func TestWithTierLimits(t *testing.T) {
-	svc := &Service{limit: 30, limitFree: 30, limitPro: 30}
+	svc := &Service{limitFree: 30, limitPro: 30}
 	svc.WithTierLimits(15, 75)
 
 	if svc.limitFree != 15 {

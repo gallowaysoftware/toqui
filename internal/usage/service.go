@@ -21,18 +21,18 @@ var ErrDailyLimitExceeded = errors.New("daily message limit exceeded")
 // Service tracks per-user daily usage and enforces message limits.
 type Service struct {
 	queries   *dbgen.Queries
-	limit     int // legacy single limit (fallback)
 	limitFree int // daily limit for free tier
 	limitPro  int // daily limit for pro tier
 }
 
 // NewService creates a new usage tracking service.
+// The dailyMessageLimit is used as the default for both free and pro tiers.
+// Call WithTierLimits to set tier-specific limits.
 func NewService(pool *pgxpool.Pool, dailyMessageLimit int) *Service {
 	return &Service{
 		queries:   dbgen.New(pool),
-		limit:     dailyMessageLimit,
-		limitFree: dailyMessageLimit, // default: same as legacy
-		limitPro:  dailyMessageLimit, // default: same as legacy
+		limitFree: dailyMessageLimit,
+		limitPro:  dailyMessageLimit,
 	}
 }
 
@@ -106,54 +106,6 @@ func (s *Service) IncrementAndCheckTier(ctx context.Context, userID uuid.UUID, t
 	return remaining, nil
 }
 
-// IncrementAndCheck atomically increments today's message count for the user
-// and checks whether the daily limit has been exceeded. Uses the legacy single limit.
-//
-// Deprecated: Use IncrementAndCheckTier for tier-aware enforcement.
-func (s *Service) IncrementAndCheck(ctx context.Context, userID uuid.UUID) (remaining int, err error) {
-	if s.limit <= 0 {
-		return 0, ErrDailyLimitExceeded
-	}
-
-	usage, err := s.queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
-		UserID:   userID,
-		MaxCount: int32(s.limit),
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			slog.Info("daily message limit exceeded",
-				"user_id", userID,
-				"limit", s.limit,
-			)
-			return 0, ErrDailyLimitExceeded
-		}
-		return 0, fmt.Errorf("increment daily usage: %w", err)
-	}
-
-	count := int(usage.MessageCount)
-	remaining = s.limit - count
-	return remaining, nil
-}
-
-// GetDailyUsage returns the current day's message count and the configured limit.
-// If no usage row exists for today, count is 0.
-func (s *Service) GetDailyUsage(ctx context.Context, userID uuid.UUID) (count, limit int, err error) {
-	now := time.Now().UTC()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	usage, err := s.queries.GetDailyUsage(ctx, dbgen.GetDailyUsageParams{
-		UserID: userID,
-		Date:   &today,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, s.limit, nil
-		}
-		return 0, 0, fmt.Errorf("get daily usage: %w", err)
-	}
-
-	return int(usage.MessageCount), s.limit, nil
-}
-
 // GetDailyUsageForTier returns the current day's message count and the tier-specific limit.
 // If no usage row exists for today, count is 0.
 func (s *Service) GetDailyUsageForTier(ctx context.Context, userID uuid.UUID, t tier.UserTier) (count, limit int, err error) {
@@ -171,11 +123,6 @@ func (s *Service) GetDailyUsageForTier(ctx context.Context, userID uuid.UUID, t 
 	}
 
 	return int(usage.MessageCount), s.LimitForTier(t), nil
-}
-
-// Limit returns the configured daily message limit (legacy).
-func (s *Service) Limit() int {
-	return s.limit
 }
 
 // RecordAICost records the AI cost in cents for the current day's usage row.
