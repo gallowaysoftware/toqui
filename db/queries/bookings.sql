@@ -31,3 +31,10 @@ LIMIT 1;
 
 -- name: DeleteBooking :exec
 DELETE FROM bookings WHERE id = $1 AND user_id = $2;
+
+-- name: SearchBookings :many
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id)
+  AND (title ILIKE '%' || sqlc.arg(query) || '%' OR provider ILIKE '%' || sqlc.arg(query) || '%' OR confirmation_code ILIKE '%' || sqlc.arg(query) || '%')
+ORDER BY created_at DESC
+LIMIT sqlc.arg(max_results);

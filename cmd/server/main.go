@@ -477,6 +477,15 @@ func main() {
 	affiliateHandler := handlers.NewAffiliateHandler(posthogClient)
 	mux.HandleFunc("/api/affiliate/click", affiliateHandler.HandleClick)
 
+	// Destination autocomplete (public — no auth required)
+	destinationHandler := handlers.NewDestinationSearchHandler()
+	mux.HandleFunc("/api/destinations/search", destinationHandler.HandleSearch)
+
+	// Cross-trip search endpoints (authenticated)
+	searchHandler := handlers.NewSearchHandler(authSvc, pool)
+	mux.HandleFunc("/api/search/itinerary", searchHandler.HandleSearchItinerary)
+	mux.HandleFunc("/api/search/bookings", searchHandler.HandleSearchBookings)
+
 	// Data export download (GDPR Article 20)
 	mux.HandleFunc("/api/export/", authHandler.HandleExportDownload)
 

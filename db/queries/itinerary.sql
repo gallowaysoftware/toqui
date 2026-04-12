@@ -79,3 +79,11 @@ INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, des
 SELECT sqlc.arg(new_trip_id)::uuid, day_number, order_in_day, type, title, description, metadata, estimated_cost_cents, cost_currency
 FROM itinerary_items
 WHERE trip_id = sqlc.arg(source_trip_id)::uuid;
+
+-- name: SearchItineraryItems :many
+SELECT ii.* FROM itinerary_items ii
+JOIN trips t ON t.id = ii.trip_id
+WHERE t.user_id = sqlc.arg(user_id)
+  AND (ii.title ILIKE '%' || sqlc.arg(query) || '%' OR ii.description ILIKE '%' || sqlc.arg(query) || '%')
+ORDER BY ii.created_at DESC
+LIMIT sqlc.arg(max_results);

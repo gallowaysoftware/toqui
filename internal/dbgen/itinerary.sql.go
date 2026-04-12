@@ -370,6 +370,57 @@ func (q *Queries) MoveItineraryItem(ctx context.Context, arg MoveItineraryItemPa
 	return i, err
 }
 
+const searchItineraryItems = `-- name: SearchItineraryItems :many
+SELECT ii.id, ii.trip_id, ii.day_number, ii.order_in_day, ii.type, ii.title, ii.description, ii.location, ii.start_time, ii.end_time, ii.metadata, ii.created_at, ii.estimated_cost_cents, ii.cost_currency, ii.booking_id FROM itinerary_items ii
+JOIN trips t ON t.id = ii.trip_id
+WHERE t.user_id = $1
+  AND (ii.title ILIKE '%' || $2 || '%' OR ii.description ILIKE '%' || $2 || '%')
+ORDER BY ii.created_at DESC
+LIMIT $3
+`
+
+type SearchItineraryItemsParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	Query      pgtype.Text `json:"query"`
+	MaxResults int32       `json:"max_results"`
+}
+
+func (q *Queries) SearchItineraryItems(ctx context.Context, arg SearchItineraryItemsParams) ([]ItineraryItem, error) {
+	rows, err := q.db.Query(ctx, searchItineraryItems, arg.UserID, arg.Query, arg.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ItineraryItem{}
+	for rows.Next() {
+		var i ItineraryItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.TripID,
+			&i.DayNumber,
+			&i.OrderInDay,
+			&i.Type,
+			&i.Title,
+			&i.Description,
+			&i.Location,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.EstimatedCostCents,
+			&i.CostCurrency,
+			&i.BookingID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateItineraryItem = `-- name: UpdateItineraryItem :one
 UPDATE itinerary_items
 SET day_number = $2, order_in_day = $3, type = $4, title = $5, description = $6,

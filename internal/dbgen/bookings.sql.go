@@ -308,3 +308,56 @@ func (q *Queries) ListBookingsByUser(ctx context.Context, arg ListBookingsByUser
 	}
 	return items, nil
 }
+
+const searchBookings = `-- name: SearchBookings :many
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+WHERE user_id = $1
+  AND (title ILIKE '%' || $2 || '%' OR provider ILIKE '%' || $2 || '%' OR confirmation_code ILIKE '%' || $2 || '%')
+ORDER BY created_at DESC
+LIMIT $3
+`
+
+type SearchBookingsParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	Query      pgtype.Text `json:"query"`
+	MaxResults int32       `json:"max_results"`
+}
+
+func (q *Queries) SearchBookings(ctx context.Context, arg SearchBookingsParams) ([]Booking, error) {
+	rows, err := q.db.Query(ctx, searchBookings, arg.UserID, arg.Query, arg.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Booking{}
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.TripID,
+			&i.UserID,
+			&i.Type,
+			&i.ConfirmationCode,
+			&i.Provider,
+			&i.Title,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Location,
+			&i.Address,
+			&i.DetailsJson,
+			&i.RawSource,
+			&i.Source,
+			&i.CreatedAt,
+			&i.DepartureLocation,
+			&i.ArrivalLocation,
+			&i.NumGuests,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
