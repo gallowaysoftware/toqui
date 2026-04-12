@@ -126,7 +126,8 @@ Return a JSON object with these fields:
 - num_guests: number of guests/passengers if available
 - details: a type-specific JSON object with the following schema based on type:
 
-flight: {"airline":"","flight_number":"","departure_airport":"","arrival_airport":"","departure_terminal":"","arrival_terminal":"","seat":"","cabin_class":"","passengers":[]}
+flight: {"airline":"","flight_number":"","departure_airport":"","arrival_airport":"","departure_terminal":"","arrival_terminal":"","seat":"","cabin_class":"","passengers":[],"legs":[{"flight_number":"","airline":"","departure_airport":"","arrival_airport":"","departure_time":"","arrival_time":"","cabin":""}]}
+  For multi-segment, connecting, or round-trip flights, populate the "legs" array with one entry per flight segment (outbound leg first, then connecting segments, then return leg). Always keep the top-level flight fields (airline, flight_number, departure_airport, arrival_airport, etc.) populated with the FIRST outbound leg's values for backward compatibility. For single non-stop one-way flights, omit the "legs" array.
 hotel: {"hotel_name":"","check_in_date":"","check_out_date":"","room_type":"","num_guests":0,"address":"","phone":""}
   For multi-property bookings (hostels, chains): use a "properties" array instead: {"properties":[{"hotel_name":"","address":"","check_in_date":"","check_out_date":"","room_type":"","nights":0,"rate_per_night":0}]}
 car_rental: {"company":"","pickup_location":"","dropoff_location":"","pickup_time":"","dropoff_time":"","car_type":"","driver_name":""}
