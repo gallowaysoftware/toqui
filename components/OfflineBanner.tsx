@@ -6,7 +6,26 @@ import { useNetworkStatus } from "@/lib/hooks/useNetworkStatus";
 
 const BANNER_HEIGHT = 44;
 
-export function OfflineBanner() {
+function formatSyncAge(isoTimestamp: string | null): string | null {
+  if (!isoTimestamp) return null;
+  const syncTime = new Date(isoTimestamp).getTime();
+  if (Number.isNaN(syncTime)) return null;
+  const diffMs = Date.now() - syncTime;
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+export interface OfflineBannerProps {
+  /** ISO timestamp of the last successful sync, used to show "Last synced: Xh ago" */
+  lastSyncedAt?: string | null;
+}
+
+export function OfflineBanner({ lastSyncedAt }: OfflineBannerProps = {}) {
   const { isConnected } = useNetworkStatus();
   const { isDark } = useTheme();
   const heightAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +73,9 @@ export function OfflineBanner() {
   const textColor = isDark ? "#fef3c7" : "#78350f";
   const iconColor = textColor;
 
+  const syncAge = formatSyncAge(lastSyncedAt ?? null);
+  const syncSuffix = syncAge ? ` — Last synced: ${syncAge}` : "";
+
   return (
     <Animated.View
       style={[
@@ -67,7 +89,7 @@ export function OfflineBanner() {
       <View style={styles.content}>
         <WifiOff size={16} color={iconColor} />
         <Text style={[styles.text, { color: textColor }]}>
-          You're offline — some features may not work
+          You're offline{syncSuffix}
         </Text>
       </View>
       <Pressable
