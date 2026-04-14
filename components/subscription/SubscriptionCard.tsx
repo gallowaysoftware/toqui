@@ -552,6 +552,16 @@ export function SubscriptionCard() {
                 : t("subscription.active")}
             </Text>
           </View>
+          {subscription?.billingPeriod && (
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>{t("subscription.billingPeriod")}</Text>
+              <Text style={styles.statusValue}>
+                {subscription.billingPeriod === "annual"
+                  ? t("subscription.annual")
+                  : t("subscription.monthly")}
+              </Text>
+            </View>
+          )}
           {subscription?.currentPeriodEnd && (
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>
