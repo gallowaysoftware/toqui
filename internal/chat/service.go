@@ -784,9 +784,21 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		responseText += iterLimitNote
 	}
 
+	// Use completeResponse for storage when responseText is empty. This
+	// handles the case where the AI produced text in an earlier iteration
+	// but only called tools in the final iteration — fullResponse.Reset()
+	// cleared the text, making responseText empty. Without this fallback,
+	// the stored message has empty content and gets filtered as an
+	// "intermediate" by isToolLoopIntermediate (Run 21 N-02 P1).
+	storedContent := responseText
+	if strings.TrimSpace(storedContent) == "" && completeResponse.Len() > 0 {
+		storedContent = completeResponse.String()
+	}
+	storedContent = stripTemplatePlaceholders(storedContent)
+
 	assistantMsg := &chatstore.ChatMessage{
 		Role:    "assistant",
-		Content: responseText,
+		Content: storedContent,
 	}
 	if err := s.chatStore.AddMessage(ctx, userID.String(), tripID, sessionID, assistantMsg); err != nil {
 		slog.Error("failed to store assistant message", "error", err)
@@ -794,7 +806,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 
 	iterFullContent := completeResponse.String()
 	if iterFullContent == "" {
-		iterFullContent = responseText
+		iterFullContent = storedContent
 	}
 	sendOrDrop(outCh, ctx, StreamEvent{
 		Type:      "message_complete",
