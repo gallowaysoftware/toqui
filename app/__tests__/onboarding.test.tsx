@@ -170,6 +170,12 @@ describe("OnboardingScreen", () => {
       fireEvent.change(input, { target: { value: "Tokyo" } });
     });
 
+    // Accept terms before clicking Start Planning
+    const termsCheckbox = screen.getByTestId("onboarding-terms-checkbox");
+    await act(async () => {
+      fireEvent.click(termsCheckbox);
+    });
+
     const startButton = screen.getByTestId("onboarding-start-planning");
     await act(async () => {
       fireEvent.click(startButton);
@@ -185,6 +191,12 @@ describe("OnboardingScreen", () => {
   it("Browse trip ideas sets completion flag and navigates to home", async () => {
     await act(async () => {
       renderOnboarding();
+    });
+
+    // Accept terms before clicking Browse trip ideas
+    const termsCheckbox = screen.getByTestId("onboarding-terms-checkbox");
+    await act(async () => {
+      fireEvent.click(termsCheckbox);
     });
 
     const browseButton = screen.getByTestId("onboarding-browse-ideas");
