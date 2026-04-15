@@ -521,6 +521,10 @@ func main() {
 	icalHandler := handlers.NewICalExportHandler(tripSvc, authSvc, pool)
 	pdfHandler := handlers.NewPDFExportHandler(tripSvc, authSvc, pool)
 
+	// Offline bundle handler (authenticated) — returns a complete trip
+	// snapshot for offline companion mode (issue #11).
+	bundleHandler := handlers.NewBundleHandler(tripSvc, bookingSvc, authSvc, chatStr, themeSvc, pool, guidesHandler)
+
 	// Trip collaboration routes (authenticated)
 	collabHandler := handlers.NewCollaborateHandler(authSvc, pool, emailSender, cfg.FrontendURL)
 	mux.HandleFunc("/api/trips/accept-invite", collabHandler.HandleAcceptInvite)
@@ -534,6 +538,8 @@ func main() {
 			icalHandler.HandleExportICal(w, r)
 		case strings.HasSuffix(path, "/export/pdf") && r.Method == http.MethodGet:
 			pdfHandler.HandleExportPDF(w, r)
+		case strings.HasSuffix(path, "/bundle") && r.Method == http.MethodGet:
+			bundleHandler.HandleBundle(w, r)
 		case strings.HasSuffix(path, "/invite") && r.Method == http.MethodPost:
 			collabHandler.HandleInvite(w, r)
 		case strings.HasSuffix(path, "/collaborators") && r.Method == http.MethodGet:

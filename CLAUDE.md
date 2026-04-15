@@ -700,6 +700,9 @@ HTTP routes (outside ConnectRPC):
 - `GET /shared/{token}` — Public. Returns shared trip view (no auth required).
 - `POST /api/trips/accept-invite` — Authenticated. Accept a collaboration invite.
 
+### Offline bundle
+- `GET /api/trips/{tripId}/bundle` — Authenticated. Returns a complete trip snapshot for offline companion mode: trip metadata (with themes), full itinerary (with coordinates), all bookings (with confirmation codes), recent chat messages (up to 50 from latest session), and matching destination guides. Supports conditional fetch via `If-Modified-Since` header (returns 304 when unchanged). Response includes `Last-Modified` header and `bundle_version` field for cache management.
+
 ### Referral
 - `GET /api/referral` — Authenticated. Returns user's referral code and stats.
 - `POST /api/referral/redeem` — Authenticated. Redeems a referral code.
