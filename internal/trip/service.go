@@ -202,6 +202,21 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID, status strin
 // against title, description, and destination country. Results are ranked by
 // relevance.
 func (s *Service) SearchByUser(ctx context.Context, userID uuid.UUID, query string, limit int32) ([]dbgen.Trip, error) {
+	// Use tsvector full-text search for ASCII queries. For non-ASCII
+	// (CJK, Arabic, Cyrillic, etc.), fall back to ILIKE since PostgreSQL's
+	// tsvector doesn't tokenize these scripts correctly (N-23 P1).
+	if isNonASCII(query) {
+		trips, err := s.queries.SearchTripsByUserILIKE(ctx, dbgen.SearchTripsByUserILIKEParams{
+			UserID:     userID,
+			Query:      pgtype.Text{String: query, Valid: true},
+			MaxResults: limit,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("search trips (ilike): %w", err)
+		}
+		return trips, nil
+	}
+
 	trips, err := s.queries.SearchTripsByUser(ctx, dbgen.SearchTripsByUserParams{
 		UserID:     userID,
 		Query:      query,
@@ -211,6 +226,16 @@ func (s *Service) SearchByUser(ctx context.Context, userID uuid.UUID, query stri
 		return nil, fmt.Errorf("search trips: %w", err)
 	}
 	return trips, nil
+}
+
+// isNonASCII returns true if the string contains any non-ASCII characters.
+func isNonASCII(s string) bool {
+	for _, r := range s {
+		if r > 127 {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time, budgetCents *int64, currency, notes, coverImageURL, timezone string) (*dbgen.Trip, error) {

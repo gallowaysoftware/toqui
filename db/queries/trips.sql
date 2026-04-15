@@ -102,6 +102,15 @@ WHERE user_id = $1
 ORDER BY ts_rank(search_vector, plainto_tsquery('english', sqlc.arg(query))) DESC
 LIMIT sqlc.arg(max_results);
 
+-- name: SearchTripsByUserILIKE :many
+-- Fallback for non-ASCII queries (CJK, Arabic, etc.) where PostgreSQL's
+-- tsvector doesn't tokenize correctly. Uses ILIKE for substring matching.
+SELECT * FROM trips
+WHERE user_id = $1
+  AND (title ILIKE '%' || sqlc.arg(query) || '%' OR description ILIKE '%' || sqlc.arg(query) || '%')
+ORDER BY created_at DESC
+LIMIT sqlc.arg(max_results);
+
 -- name: ListTripTemplates :many
 SELECT * FROM trips
 WHERE is_template = TRUE

@@ -632,6 +632,68 @@ func (q *Queries) SearchTripsByUser(ctx context.Context, arg SearchTripsByUserPa
 	return items, nil
 }
 
+const searchTripsByUserILIKE = `-- name: SearchTripsByUserILIKE :many
+SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, trial_started_at, trial_ends_at, destination_countries, expert_calls, search_vector, budget_cents, currency, notes, is_template, cover_image_url, timezone FROM trips
+WHERE user_id = $1
+  AND (title ILIKE '%' || $2 || '%' OR description ILIKE '%' || $2 || '%')
+ORDER BY created_at DESC
+LIMIT $3
+`
+
+type SearchTripsByUserILIKEParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	Query      pgtype.Text `json:"query"`
+	MaxResults int32       `json:"max_results"`
+}
+
+// Fallback for non-ASCII queries (CJK, Arabic, etc.) where PostgreSQL's
+// tsvector doesn't tokenize correctly. Uses ILIKE for substring matching.
+func (q *Queries) SearchTripsByUserILIKE(ctx context.Context, arg SearchTripsByUserILIKEParams) ([]Trip, error) {
+	rows, err := q.db.Query(ctx, searchTripsByUserILIKE, arg.UserID, arg.Query, arg.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Trip{}
+	for rows.Next() {
+		var i Trip
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.StartDate,
+			&i.EndDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DestinationCountry,
+			&i.CompletedAt,
+			&i.ArchiveAfter,
+			&i.ArchivedAt,
+			&i.ShareToken,
+			&i.TrialStartedAt,
+			&i.TrialEndsAt,
+			&i.DestinationCountries,
+			&i.ExpertCalls,
+			&i.SearchVector,
+			&i.BudgetCents,
+			&i.Currency,
+			&i.Notes,
+			&i.IsTemplate,
+			&i.CoverImageUrl,
+			&i.Timezone,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setTripTemplate = `-- name: SetTripTemplate :execresult
 UPDATE trips SET is_template = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3

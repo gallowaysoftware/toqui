@@ -821,8 +821,22 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 	storedContent := responseText
 	if strings.TrimSpace(storedContent) == "" && completeResponse.Len() > 0 {
 		storedContent = completeResponse.String()
+		slog.Debug("chat: using completeResponse for storage (responseText was empty)",
+			"session_id", sessionID,
+			"complete_len", len(storedContent),
+		)
 	}
 	storedContent = stripTemplatePlaceholders(storedContent)
+	storedContent = stripTrailingStutter(storedContent)
+
+	if strings.TrimSpace(storedContent) == "" {
+		slog.Warn("chat: assistant message has empty content after processing — will be filtered from history",
+			"session_id", sessionID,
+			"response_text_len", len(responseText),
+			"complete_response_len", completeResponse.Len(),
+			"response_text_empty", len(responseText) == 0,
+		)
+	}
 
 	assistantMsg := &chatstore.ChatMessage{
 		Role:    "assistant",
