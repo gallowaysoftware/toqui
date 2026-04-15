@@ -19,8 +19,8 @@ const vertexAIScope = "https://www.googleapis.com/auth/cloud-platform"
 
 // Gemini model defaults per tier. Override via AI_GEMINI_MODEL_FAST, AI_GEMINI_MODEL_SMART, AI_GEMINI_MODEL_BEST.
 //
-// Gemini 3 Preview models via the Developer API (generativelanguage.googleapis.com).
-// Falls back to Gemini 2.5 GA on Vertex AI when no API key is configured.
+// Gemini 3 Preview models. Used by both the Developer API
+// (generativelanguage.googleapis.com) and Vertex AI (global endpoint).
 var geminiModels = map[ModelTier]string{
 	ModelTierFast:  getEnvOrDefault("AI_GEMINI_MODEL_FAST", "gemini-3.1-flash-lite-preview"),
 	ModelTierSmart: getEnvOrDefault("AI_GEMINI_MODEL_SMART", "gemini-3-flash-preview"),
@@ -28,11 +28,11 @@ var geminiModels = map[ModelTier]string{
 }
 
 // GeminiProvider implements the Provider interface using either the Gemini
-// Developer API (preferred, supports Gemini 3) or Vertex AI (fallback,
-// Gemini 2.5 only).
+// Developer API (preferred) or Vertex AI (fallback). Both use Gemini 3
+// Preview models.
 //
 // Developer API: generativelanguage.googleapis.com — uses API key
-// Vertex AI:     {region}-aiplatform.googleapis.com — uses ADC/OAuth
+// Vertex AI:     aiplatform.googleapis.com (global endpoint) — uses ADC/OAuth
 type GeminiProvider struct {
 	// Developer API fields (preferred)
 	apiKey string
@@ -49,8 +49,8 @@ type GeminiProvider struct {
 }
 
 // NewGeminiProvider creates a Gemini provider. It prefers the Developer API
-// (when apiKey is set) for Gemini 3 access. Falls back to Vertex AI when
-// only projectID is available.
+// (when apiKey is set). Falls back to Vertex AI (global endpoint) when
+// only projectID is available. Both paths use Gemini 3 models.
 func NewGeminiProvider(apiKey, projectID, location string) (*GeminiProvider, error) {
 	p := &GeminiProvider{
 		model:  geminiModels[ModelTierSmart],
@@ -58,32 +58,37 @@ func NewGeminiProvider(apiKey, projectID, location string) (*GeminiProvider, err
 	}
 
 	if apiKey != "" {
-		// Developer API — supports Gemini 3
+		// Developer API
 		p.apiKey = apiKey
 		p.useDevAPI = true
-		slog.Info("gemini provider: using Developer API (Gemini 3)",
+		slog.Info("gemini provider: using Developer API",
 			"model", p.model,
 		)
 		return p, nil
 	}
 
 	if projectID != "" {
-		// Vertex AI fallback — Gemini 2.5 only
+		// Vertex AI — Gemini 3 models require the global endpoint.
 		ctx := context.Background()
 		creds, err := google.FindDefaultCredentials(ctx, vertexAIScope)
 		if err != nil {
 			return nil, fmt.Errorf("find default credentials for Vertex AI: %w", err)
 		}
-		if location == "" {
-			location = "us-central1"
+		// Gemini 3 models are only available on the global endpoint.
+		// Override any configured regional location.
+		if location == "" || location != "global" {
+			if location != "" && location != "global" {
+				slog.Info("gemini provider: overriding location to global (required for Gemini 3)",
+					"configured_location", location,
+				)
+			}
+			location = "global"
 		}
 		p.projectID = projectID
 		p.location = location
 		p.tokenSource = creds.TokenSource
 		p.useDevAPI = false
-		// Override to 2.5 models for Vertex AI
-		p.model = "gemini-2.5-flash"
-		slog.Info("gemini provider: using Vertex AI (Gemini 2.5 fallback)",
+		slog.Info("gemini provider: using Vertex AI",
 			"project", projectID,
 			"location", location,
 			"model", p.model,
@@ -151,9 +156,11 @@ func (g *GeminiProvider) buildURL(model string) string {
 			model, g.apiKey,
 		)
 	}
+	// Vertex AI: Gemini 3 models require the global endpoint
+	// (aiplatform.googleapis.com) rather than regional endpoints.
 	return fmt.Sprintf(
-		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent?alt=sse",
-		g.location, g.projectID, g.location, model,
+		"https://aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent?alt=sse",
+		g.projectID, g.location, model,
 	)
 }
 
@@ -290,12 +297,10 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 		// request, so we pick based on the chat mode:
 		// - Companion mode → Google Maps (real place data: ratings, hours)
 		// - Planning/Selection → Google Search (web data: visa, weather)
-		if g.useDevAPI {
-			if req.Mode == "companion" {
-				toolsList = append(toolsList, map[string]any{"googleMaps": map[string]any{}})
-			} else {
-				toolsList = append(toolsList, map[string]any{"googleSearch": map[string]any{}})
-			}
+		if req.Mode == "companion" {
+			toolsList = append(toolsList, map[string]any{"googleMaps": map[string]any{}})
+		} else {
+			toolsList = append(toolsList, map[string]any{"googleSearch": map[string]any{}})
 		}
 
 		body["tools"] = toolsList
@@ -303,10 +308,8 @@ func (g *GeminiProvider) buildRequest(req *ChatRequest) map[string]any {
 			"functionCallingConfig": map[string]any{
 				"mode": "AUTO",
 			},
-		}
-		// Required for mixing built-in tools with function calling on Gemini 3
-		if g.useDevAPI {
-			toolConfig["includeServerSideToolInvocations"] = true
+			// Required for mixing built-in tools with function calling on Gemini 3
+			"includeServerSideToolInvocations": true,
 		}
 		body["toolConfig"] = toolConfig
 	}

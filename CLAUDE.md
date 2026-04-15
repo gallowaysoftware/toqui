@@ -257,7 +257,7 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `GEMINI_API_KEY` | (none) | Gemini Developer API key (enables Gemini 3 models) |
+| `GEMINI_API_KEY` | (none) | Gemini Developer API key (preferred over Vertex AI) |
 | `STRIPE_SECRET_KEY` | (none) | Stripe API secret key |
 | `STRIPE_WEBHOOK_SECRET` | (none) | Stripe webhook signing secret |
 | `STRIPE_TRIP_PRO_PRODUCT_ID` | (none) | Stripe product ID for Trip Pro one-time purchase |
@@ -896,23 +896,23 @@ Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
 
 ### AI Provider Architecture
 
-**Gemini (primary, default)** — Supports two backends:
-1. **Developer API** (preferred): `generativelanguage.googleapis.com` with API key (`GEMINI_API_KEY`). Supports Gemini 3 Preview models. API key stored in GCP Secret Manager (`gcsm://gemini-api-key`).
-2. **Vertex AI** (fallback): `{region}-aiplatform.googleapis.com` with ADC. Gemini 2.5 GA only. Used when `GEMINI_API_KEY` is not set.
+**Gemini (primary, default)** — Supports two backends, both using Gemini 3 Preview models:
+1. **Developer API** (preferred): `generativelanguage.googleapis.com` with API key (`GEMINI_API_KEY`). API key stored in GCP Secret Manager (`gcsm://gemini-api-key`).
+2. **Vertex AI** (fallback): `aiplatform.googleapis.com` (global endpoint) with ADC. Used when `GEMINI_API_KEY` is not set.
 
-When `GEMINI_API_KEY` is configured, the Developer API is used automatically with Gemini 3 models. Gemini 3 requires "thought signature circulation" — opaque tokens from model responses that must be included in follow-up requests for reasoning continuity across tool-call turns. This is handled automatically by the provider.
+Both backends use Gemini 3 models. Gemini 3 requires "thought signature circulation" — opaque tokens from model responses that must be included in follow-up requests for reasoning continuity across tool-call turns. This is handled automatically by the provider. Gemini 3 models on Vertex AI require the global endpoint (not regional).
 
 **Claude (fallback)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
 
-| Model Tier | Claude                     | Gemini (Vertex AI)        |
-| ---------- | -------------------------- | ------------------------- |
+| Model Tier | Claude                     | Gemini                          |
+| ---------- | -------------------------- | ------------------------------- |
 | fast       | `claude-haiku-4-5`         | `gemini-3.1-flash-lite-preview` |
 | smart      | `claude-sonnet-4-6`        | `gemini-3-flash-preview`        |
 | best       | `claude-sonnet-4-6`        | `gemini-3.1-pro-preview`        |
 
 Override models via env vars: `AI_MODEL_FAST/SMART/BEST` (Claude), `AI_GEMINI_MODEL_FAST/SMART/BEST` (Gemini).
 
-**Gemini 2.5 deprecation**: Google notified (April 2026) that Gemini 2.5 Pro/Flash/Flash-Lite on Vertex AI will be discontinued no earlier than October 16, 2026, with 6 months notice once a date is confirmed. Migration to Gemini 3 will be needed. Model swapping is a config-only change via env vars — no code changes required. Note: Gemini 3 requires "thought signature circulation" (capture thought signatures from responses and include in follow-ups). See Google's migration guide when ready.
+**Gemini 3 migration (completed April 2026)**: Both the Developer API and Vertex AI backends now use Gemini 3 Preview models. The Vertex AI path was migrated from `gemini-2.5-flash` to `gemini-3-flash-preview` and switched to the global endpoint (required for Gemini 3). Thought signature circulation is implemented for both paths. Grounding tools (Google Search / Google Maps) are also enabled on both paths.
 
 ### Token Usage Tracking
 

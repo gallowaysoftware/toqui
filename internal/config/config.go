@@ -37,14 +37,14 @@ type Config struct {
 	// AI providers
 	AnthropicAPIKey string
 
-	// Gemini — supports two backends:
-	// 1. Developer API (generativelanguage.googleapis.com) — uses API key, supports Gemini 3
-	// 2. Vertex AI (aiplatform.googleapis.com) — uses ADC, Gemini 2.5 only
-	// When GeminiAPIKey is set, the Developer API is used (preferred for Gemini 3).
+	// Gemini — supports two backends (both use Gemini 3 models):
+	// 1. Developer API (generativelanguage.googleapis.com) — uses API key
+	// 2. Vertex AI (aiplatform.googleapis.com, global endpoint) — uses ADC
+	// When GeminiAPIKey is set, the Developer API is used (preferred).
 	// When only VertexAIProjectID is set, Vertex AI is used as fallback.
 	GeminiAPIKey      string // Gemini Developer API key (from Secret Manager)
 	VertexAIProjectID string // GCP project for Vertex AI calls (fallback)
-	VertexAILocation  string // Region (default: us-central1)
+	VertexAILocation  string // Overridden to "global" for Gemini 3 (config default: us-central1)
 
 	// Cost control
 	DailyAITokenBudget int // Max total tokens per day (0 = unlimited)

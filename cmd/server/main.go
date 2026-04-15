@@ -144,8 +144,9 @@ func main() {
 		var geminiProvider ai.Provider
 		var claudeProvider ai.Provider
 
-		// Prefer Developer API (Gemini 3) when API key is available;
-		// fall back to Vertex AI (Gemini 2.5) otherwise.
+		// Prefer Developer API when API key is available;
+		// fall back to Vertex AI (global endpoint) otherwise.
+		// Both paths use Gemini 3 models.
 		if gp, err := ai.NewGeminiProvider(cfg.GeminiAPIKey, vertexProjectID, cfg.VertexAILocation); err != nil {
 			slog.Warn("failed to initialize Gemini provider", "error", err)
 		} else {
