@@ -1,0 +1,71 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": [
+    "auth",
+    "self-setup-create-trip",
+    "self-setup-seed-itinerary",
+    "self-setup-activate-trip",
+    "self-setup-verify-n-before",
+    "self-setup-open-companion-session",
+    "companion-msg1-weather",
+    "companion-msg2-lunch",
+    "companion-msg3-tram28",
+    "companion-msg4-directions",
+    "companion-msg5-tipping",
+    "companion-msg6-recommend-tonight",
+    "itinerary-final-check"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "nearby_places",
+      "message": "msg2: nearby_places returned lookup_failed error. AI gracefully fell back to knowledge-based recommendations. Non-blocking.",
+      "severity": "P2"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "All 6 companion-mode informational queries were answered directly and concisely (74-149 words each) without triggering any itinerary tool calls. The critical message 6 ('Recommend something fun to do tonight') -- the known over-fire trigger from Run 5 N-01 msg5 -- passed cleanly with no create_itinerary_items or delete_itinerary_items invocation. Itinerary count remained stable at 12 items throughout (N_BEFORE=12, N_AFTER=12). The AI used get_weather for msg1 (appropriate) and nearby_places for msg2 (appropriate, though it returned a lookup_failed error and the AI gracefully fell back to knowledge). Messages 3-6 required no tool calls and the AI answered directly from knowledge. All responses were phone-friendly and under 300 words. No response falsely claimed to have modified the itinerary, and no response refused to answer due to itinerary modification concerns. The PR #201 companion-mode guardrail is working as designed."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "activate",
+    "companion"
+  ],
+  "guardrail_results": {
+    "n_before": 12,
+    "n_after": 12,
+    "itinerary_mutated": false,
+    "messages_tested": 6,
+    "itinerary_tool_calls": 0,
+    "itinerary_update_events": 0,
+    "tools_observed": {
+      "msg1": ["get_weather"],
+      "msg2": ["nearby_places"],
+      "msg3": [],
+      "msg4": [],
+      "msg5": [],
+      "msg6": []
+    },
+    "response_word_counts": {
+      "msg1": 74,
+      "msg2": 149,
+      "msg3": 132,
+      "msg4": 132,
+      "msg5": 134,
+      "msg6": 145
+    }
+  }
+}

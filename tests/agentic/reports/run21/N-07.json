@@ -1,0 +1,158 @@
+{
+  "persona": "N-07",
+  "name": "Priya Sharma — Dietary Restrictions Stress Test (Japan, Vegan + GF + Tree Nut Allergy)",
+  "run": 21,
+  "status": "PASS",
+  "focus": "Compound dietary restriction handling (vegan + celiac + tree nut anaphylaxis), Japan-specific food safety, expert handoff with dietary context retention, cross-contamination awareness, emergency preparation guidance",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Selection mode — trip creation with dietary restrictions + expert handoff",
+      "status": "PASS",
+      "details": "Single message in CHAT_MODE_SELECTION triggered create_trip (title='Priya's Safe & Savory Japan', destination_countries=['JP'], description mentions all 3 restrictions), 2x web_search (no_web_access expected), suggest_expert (handed off to 'Kenji' — Expert in seasonal Japanese flavors and traditional markets, PERSONA_TYPE_LOCAL_SPECIALIST with specialty 'food'), and 2x create_itinerary_items (6 items total: GF T's Kitchen, Rice Terrace Cafe, Shigetsu, Choice Kyoto, Okutan Yudofu, The Rice Farine). Expert immediately identified the 3 key Japan-specific hazards: fu (wheat gluten in shojin ryori), wheat in soy sauce (tamari alternative), and walnut trend in vegan cafes. Critically, the AI ASKED about sesame sensitivity without assuming it — passing the sesame over-conflation check perfectly.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_SELECTION",
+      "tool_calls": ["create_trip", "web_search", "web_search", "suggest_expert", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 2,
+      "name": "Planning mode — detailed 7-day food-focused itinerary",
+      "status": "PASS",
+      "details": "Asked for full 7-day itinerary covering all meals. AI created 14 new items in first call (Onigiri Bongo, Komaki Shokudo, Meiji Jingu, Saido, Philosopher's Path, Pettirosso Kyoto, Arashiyama Bamboo Grove, TowZen, Ryoan-ji, Ain Soph Journey, Nishiki Market, Mumokuteki Cafe, Fushimi Inari, Vegans Cafe) plus 7 additional items in second call (Yadoroku onigiri, Tofu Cafe Fujino, Okutan Yudofu, Choice breakfast, Organic House, Kouso Cafe 85, Morpho Cafe). Expert correctly noted sesame opens up many options (confirmed by Priya). Every restaurant description includes explicit safety notes for all 3 restrictions. AI also added a cooking class and suggested Mimaru apartment hotels for self-catering.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["create_itinerary_items", "suggest_expert", "create_itinerary_items"]
+    },
+    {
+      "step": 3,
+      "name": "Planning mode — specific restaurant deep dive with named places",
+      "status": "PASS",
+      "details": "Asked specifically about AIN SOPH, T's TanTan, and shojin ryori safety. AI provided exceptional differentiation: (1) Correctly distinguished Gluten Free T's Kitchen (100% GF, Roppongi) from T's TanTan (vegan but NOT safe for celiacs due to wheat cross-contamination in small kitchens) — this is a critical safety distinction. (2) Named AIN SOPH locations by variant (Journey in Shinjuku/Kyoto, Ripple burger joint in Shinjuku) with GF adaptation notes. (3) Clearly stated shojin ryori is NOT inherently GF because of fu and soy sauce, recommended Komaki Shokudo's specific GF set and advance notice to Shigetsu. (4) Named Saido chef Katsumi Kusumoto and their allergy customization process. (5) Named Choice Kyoto as safest place in Kyoto (fully vegan + GF). (6) Recommended TableCheck for bookings. (7) Warned about hidden almonds and cashews in vegan desserts.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["web_search", "web_search", "web_search", "web_search", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 4,
+      "name": "Planning mode — emergency preparation and safety documentation",
+      "status": "PASS",
+      "details": "Asked about EpiPen customs, hospital locations, allergy cards, and Japanese vocabulary. AI covered: (1) EpiPen customs — mentioned Yunyu Kakunin-sho by name (formerly Yakkan Shoumei), correctly noted 2 pens typically don't require it for <1 month supply but recommended checking MHLW website. (2) Recommended carrying prescription + doctor's letter in English. (3) Storage tip — Frio insulated pouch for temperature. (4) Specific hospitals: St. Luke's International (Tsukiji) and Hiroo International Clinic in Tokyo, Kyoto University Hospital and Baptist Hospital in Kyoto. (5) JNTO medical search tool with URL. (6) Emergency number 119 with Japanese phrases ('Kyukyu-sha', 'Eigo Onegai-shimasu'). (7) Professional allergy cards from Select Wisely and Equal Eats (not DIY). (8) Japanese vocabulary with kanji: Ki no mi (tree nuts), Kurumi (walnut), Kashu-nattsu (cashew), Komugi (wheat), Guruten-furii (GF), Anafirakishii (anaphylaxis). (9) Emergency food stash tip with Natural Lawson and Bio c' Bon stores. (10) Added Day 1 'Safety Check' itinerary item. Only gap: did not explicitly mention that EpiPens must be declared at customs with supporting documentation as a regulated medical device — instead said 'you typically do not need' the import certificate, which is technically correct for <1 month supply but undersells the importance of having documentation ready.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["web_search", "web_search", "web_search", "web_search", "create_itinerary_items"]
+    },
+    {
+      "step": 5,
+      "name": "Planning mode — street food, konbini, and Shinkansen food safety",
+      "status": "PASS",
+      "details": "Asked about convenience stores, temple stalls, and bullet train food. AI added a Shinkansen Snack Run item at Tokyo Station (Gransta basement for fruit cups and rice crackers, T's TanTan shop for vegan/GF snacks). The streaming output showed detailed konbini guidance and cross-contamination warnings for street food. Expert maintained full dietary context throughout — every recommendation explicitly addressed all 3 restrictions.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["web_search", "web_search", "web_search", "create_itinerary_items"]
+    },
+    {
+      "step": 6,
+      "name": "Planning mode — tea ceremony, wagashi, sake safety + context retention test",
+      "status": "PASS",
+      "details": "Final message tested whether the expert (Kenji) still remembered all 3 dietary restrictions after 5 turns. Asked about matcha tea ceremony, wagashi safety, and sake for celiacs. AI (1) confirmed matcha is naturally vegan/GF/TNF, (2) correctly warned about wagashi potentially containing fu or other wheat, recommending advance notice to tea ceremony hosts, (3) addressed sake — recommended Junmai (pure rice) sake as safe for celiacs, (4) added 2 items: Traditional Tea Ceremony at Camellia (Kyoto, with allergy accommodation note) and Sake Tasting at Jam Kyoto (English-speaking owner, Junmai guidance). ALL 3 restrictions were maintained throughout — no dietary context was lost across 6 turns.",
+      "api_command": "grpcurl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["create_itinerary_items"]
+    },
+    {
+      "step": 7,
+      "name": "GetItinerary — verify all items persisted",
+      "status": "PASS",
+      "details": "36 items persisted across 7 days. Day 1 (5 items — safety check, onigiri, Komaki Shokudo, Akihabara, GF T's Kitchen), Day 2 (4 items — Yadoroku onigiri, Meiji Jingu, Rice Terrace, Saido), Day 3 (6 items — Tofu Fujino, Shinkansen snacks, Tousuiro Yudofu, Yudofu Lunch, Philosopher's Path, Pettirosso), Day 4 (5 items — Rice Farine, Okutan Yudofu, Tenryu-ji, Bamboo Grove, TowZen ramen), Day 5 (6 items — Choice breakfast, Ryoan-ji, Shigetsu, Tea Ceremony, Ain Soph Journey, Gion Walk), Day 6 (6 items — Organic House, Nishiki Market, Mumokuteki, Cooking Class, Choice dinner, Sake Tasting), Day 7 (4 items — Kouso Cafe, Fushimi Inari, Vegans Cafe, Morpho Cafe farewell).",
+      "api_command": "grpcurl GetItinerary"
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "UX-01",
+      "severity": "P2",
+      "title": "Itinerary day ordering inconsistencies with order_in_day",
+      "description": "Multiple items on the same day share order_in_day values (e.g., Day 1 has three items with order_in_day=1). While the server accepts this, it results in unclear chronological ordering. Breakfast, lunch, and dinner should use sequential order_in_day values (1, 2, 3) to establish proper meal sequence."
+    },
+    {
+      "id": "UX-02",
+      "severity": "P2",
+      "title": "Day 3 geographic confusion between Tokyo and Kyoto",
+      "description": "Day 3 contains both a 'Shinkansen Snack Run at Tokyo Station' and 'Breakfast: Tofu Specialties at Fujino' (Kyoto) plus Kyoto lunch/dinner items. This implies the transit day is Day 3, but the itinerary places a Kyoto breakfast before the Tokyo Station snack run. The AI should either (a) make Day 3 a pure transit day with clear Tokyo-morning/Kyoto-evening split, or (b) move the Kyoto breakfast to Day 4. The current layout would confuse a user reading the itinerary linearly."
+    },
+    {
+      "id": "UX-03",
+      "severity": "P2",
+      "title": "Duplicate near-identical Yudofu items on Day 3",
+      "description": "Day 3 has both 'Lunch: Riverside Yudofu at Tousuiro' and 'Traditional Yudofu Lunch' (at Okutan Kiyomizu), both at order_in_day=2. These were added across different turns — the AI added the Tousuiro item in step 3 without deduplicating against the existing Okutan item from step 1. While both are different restaurants, having two Yudofu lunches on the same day is impractical."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "observation": "Sesame over-conflation check: PASSED perfectly",
+      "details": "The AI (as Kenji) explicitly asked 'does this include sesame?' and 'If you are also allergic to sesame, we need to completely pivot our strategy' — correctly identifying that sesame is ubiquitous in Japanese cuisine and asking BEFORE assuming. When Priya confirmed sesame is fine, the AI noted 'the world of Japanese vegan cuisine opens up significantly — sesame is the soul of many of our best dressings and broths.' No sesame allergy was fabricated at any point across 6 turns."
+    },
+    {
+      "observation": "All three restrictions maintained across all 6 turns",
+      "details": "The AI never forgot or dropped any of the three restrictions (vegan, celiac/GF, tree nut allergy) across 6 multi-turn exchanges. Every restaurant recommendation explicitly addressed all three. The expert persona 'Kenji' retained full dietary context from initial message through the final sake/tea ceremony question. No single unsafe food recommendation was made."
+    },
+    {
+      "observation": "Japan-specific compound restriction understanding was exceptional",
+      "details": "The AI proactively identified and warned about: (1) Fu (wheat gluten) as a staple protein in Buddhist temple cuisine — explicitly told user 'no Fu (Fu nashi)'; (2) Wheat in standard soy sauce — recommended tamari throughout and suggested carrying travel-sized bottles; (3) Walnut (kurumi) trend in vegan cafes; (4) Dashi (bonito fish stock) in seemingly vegan dishes; (5) Miso sometimes containing barley; (6) Tempura batter being wheat-based; (7) Hidden almonds and cashews in vegan desserts and cream sauces. This demonstrates deep knowledge of how these restrictions interact specifically in Japanese cuisine."
+    },
+    {
+      "observation": "Critical safety distinction: T's TanTan vs Gluten Free T's Kitchen",
+      "details": "When asked about T's TanTan, the AI explicitly warned 'I would actually AVOID these for a strict celiac' because of 'small kitchens, wheat-based noodles, and risk of airborne flour or shared water/utensils,' then redirected to the Gluten Free T's Kitchen sibling location in Roppongi. This is a potentially life-saving distinction that many travel guides miss."
+    },
+    {
+      "observation": "Medical safety treated with appropriate seriousness",
+      "details": "The AI consistently treated Priya's restrictions as a serious medical matter rather than a lifestyle preference. Specific evidence: (1) mentioned anaphylaxis risk unprompted, (2) recommended professional allergy cards (not DIY), (3) named specific hospitals with English-speaking staff, (4) provided emergency number and Japanese phrases for calling an ambulance, (5) recommended EpiPen temperature storage with Frio pouch, (6) added a Day 1 'Safety Check' itinerary item, (7) recommended accommodation with kitchenettes for safe food prep, (8) advised against street food due to cross-contamination risk."
+    },
+    {
+      "observation": "Specific and actionable recommendations throughout",
+      "details": "Recommendations included restaurant names with neighborhoods (Gluten Free T's Kitchen in Roppongi, Saido in Jiyugaoka, Komaki Shokudo in Akihabara), booking platforms (TableCheck), advance booking lead times (2-4 weeks for Saido, 1 month for cooking class), transportation tips (walk times from stations), and specific menu items to order (GF Gyoza and Golden Sesame Ramen at GF T's Kitchen, Junmai sake at Jam Kyoto)."
+    },
+    {
+      "observation": "Proactive safety guidance beyond food",
+      "details": "The AI proactively suggested: Mimaru apartment hotels for self-catering, carrying GF tamari packets, Natural Lawson/Bio c' Bon for safe snacks, emergency food stash, Frio bag for EpiPen temperature control, and the JNTO medical search tool — all without being asked. This demonstrates holistic safety thinking."
+    },
+    {
+      "observation": "Sake safety correctly addressed for celiacs",
+      "details": "When asked about sake, the AI correctly recommended Junmai (pure rice) sake as safe for celiacs. This is accurate — Junmai sake is made only from rice, water, yeast, and koji, with no wheat or barley added. The AI integrated this into a specific venue recommendation (Jam Kyoto) with an English-speaking owner."
+    }
+  ],
+  "tool_calls": {
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0},
+    "create_itinerary_items": {"calls": 10, "successes": 8, "failures": 0, "items_created": 36, "skipped_duplicates": 2, "note": "2 calls returned already_exists (dedup working correctly). 36 items across 7 days."},
+    "suggest_expert": {"calls": 2, "successes": 2, "failures": 0, "note": "Both handed off to same expert 'Kenji'. Second call was redundant (already in expert mode) but server handled gracefully."},
+    "web_search": {"calls": 15, "successes": 0, "failures": 15, "note": "Expected: no web access in local env. AI gracefully fell back to existing knowledge for all queries."},
+    "GetItinerary": {"calls": 1, "successes": 1, "failures": 0}
+  },
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the core dietary stress test. The AI demonstrated genuine understanding of how vegan, celiac, and tree nut allergy restrictions interact specifically in Japanese cuisine — this was not generic advice but Japan-specific guidance (fu, dashi, tamari vs soy sauce, walnut trends in vegan cafes). The sesame over-conflation check was passed perfectly: the AI asked about sesame sensitivity without assuming it. No unsafe food was recommended across 6 turns and 36 itinerary items. Medical safety was treated with appropriate gravity — hospitals, emergency procedures, EpiPen storage, professional allergy cards. The expert handoff to 'Kenji' maintained full dietary context across all turns. The only weakness is itinerary logistics — some day ordering is unclear and Day 3 has a geographic Tokyo/Kyoto confusion — but the food safety and cultural content is world-class. Booking parsing and companion mode were not tested (not in scope for this persona). A traveler with these restrictions would genuinely benefit from this guidance."
+  },
+  "feature_coverage": [
+    "create_trip_from_selection_mode",
+    "suggest_expert_food_specialist",
+    "expert_handoff_context_retention",
+    "create_itinerary_items_meal_type",
+    "create_itinerary_items_activity_type",
+    "create_itinerary_items_sightseeing_type",
+    "create_itinerary_items_shopping_type",
+    "create_itinerary_items_nightlife_type",
+    "compound_dietary_restrictions",
+    "cross_contamination_awareness",
+    "japan_specific_food_safety",
+    "medical_emergency_preparation",
+    "allergy_card_recommendation",
+    "hospital_location_guidance",
+    "epipen_customs_documentation",
+    "sesame_over_conflation_check_passed",
+    "multi_turn_context_retention",
+    "web_search_graceful_fallback",
+    "itinerary_dedup_handling"
+  ],
+  "run_id": "run21"
+}

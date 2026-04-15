@@ -1,0 +1,110 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield -- History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "itinerary_verify", "sessions_verify", "usage_verify"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Duplicate itinerary items from multi-step create_itinerary_items calls. Day 7 has two Knossos entries ('Lustral Basins & Ritual Space' and 'Minoan Palace Complex Fieldwork'), Day 8 has two Phaistos entries ('Comparative Lustral Basin Analysis' and 'The Unrestored Minoan Core') and two Gortyna entries ('Epigraphic Fieldwork' and 'Great Law Code Inscriptions'). The itinerary has 22 items where ~16 unique items would be appropriate. This is caused by the AI calling create_itinerary_items multiple times in step 3 (3 calls with 4 items each = 12 items for Days 6-8, creating overlapping entries).",
+      "suggestion": "Consider deduplication logic in the create_itinerary_items handler that detects items with very similar titles on the same day, or have the AI check existing items before creating new ones."
+    },
+    {
+      "severity": "P2",
+      "description": "Days 2, 3, and 11 have minimal or no itinerary coverage. Days 2-3 (Athens) have zero items despite the persona requesting 3 days in Athens. Day 11 (Istanbul) has only 1 item (Serpent Column). The AI focused heavily on archaeology-specific items but missed filling out the full 12-day itinerary evenly.",
+      "suggestion": "The AI could be prompted to check for gaps in the itinerary after creating items and proactively fill missing days."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional academic depth across all test vectors. The Delphi Oracle discussion covered de Boer/Hale ethylene theory, Piccardi's seismic counter-argument, Maurizio's work on the Pythia as ritual agent, the prophetai/hosioi distinction, Amphictyonic League politics, and Plutarch's pneuma accounts. The Ephesus response correctly addressed the Attalid bequest of 133 BCE, the Asian Vespers of 88 BCE, Sulla's punishment, and the Library of Celsus as a heroon in Second Sophistic context. Book recommendations were specific with authors and dates (Gere 2009, Marinatos 1993, Momigliano 2020, Shelmerdine 2008). Itinerary quality is 4 instead of 5 due to duplicate items and uneven day coverage."
+  },
+  "feature_coverage": ["selection", "planning", "create_trip", "suggest_expert", "create_itinerary_items", "recommend_booking", "web_search", "itinerary_verify", "sessions_verify", "usage_verify"],
+  "run_id": "run21",
+  "detailed_steps": [
+    {
+      "step": 0,
+      "name": "GetCurrentUser",
+      "status": "PASS",
+      "details": "Identity confirmed: R-16f-run21@toqui-test.local, user_id=757f7aac-e1d8-40ff-bf8a-42309937559e, tier=free"
+    },
+    {
+      "step": 1,
+      "name": "Selection mode -- create Greece+Turkey trip",
+      "status": "PASS",
+      "details": "create_trip fired (trip_id=607f782c-83bb-4894-8088-e2ed16740762, title='Ancient Oracle Sites Research Trip', dest=['GR','TR']). suggest_expert fired (region=GR, themes=['history','architecture']), switching to 'Dimitris'. create_itinerary_items created 8 items across Days 1,4,5,7,10,11,12. 3 web_search calls and 3 recommend_booking calls (flights HER-ADB, hotels Delphi, hotels Selcuk). AI proactively added Didyma, the Corycian Cave, and the Serpent Column. Session: 9de2f31c-f62e-41ca-b239-e65717bbf192.",
+      "tool_calls": ["create_trip", "suggest_expert", "create_itinerary_items", "web_search", "web_search", "web_search", "recommend_booking", "recommend_booking", "recommend_booking"]
+    },
+    {
+      "step": 2,
+      "name": "Planning mode msg 1 -- Delphi Oracle depth (KEY CHECK)",
+      "status": "PASS",
+      "details": "create_itinerary_items added 3 items (Polygonal Wall, Temple of Apollo Adyton, The Tholos). suggest_expert called again (GR, history+architecture). AI response (6823 chars) provided exceptional academic depth: adyton dimensions (2.5m x 3.5m), de Boer/Hale ethylene hypothesis, Piccardi 2000 seismic counter-argument, Kassotis Spring drainage engineering, Plutarch's pneuma fragrance accounts, Lisa Maurizio's work on Pythia as ritual agent vs passive vessel, prophetai vs hosioi distinction, Amphictyonic League as 'United Nations', Polygonal Wall 800+ manumission inscriptions, preliminary sacrifice with psykron, hexameter editing debate. Offered to facilitate EfA archive access. Far exceeds Wikipedia-level content.",
+      "tool_calls": ["create_itinerary_items", "suggest_expert"]
+    },
+    {
+      "step": 3,
+      "name": "Planning mode msg 2 -- Crete itinerary (KEY CHECK)",
+      "status": "PASS",
+      "details": "create_itinerary_items called 3 times creating 12 items for Days 6-8 (some duplicates). Response (5660 chars) discussed specific artifacts: Snake Goddesses (Hall III), Bull-Leaper Fresco (Hall XIV), Phaistos Disc, Ring of Minos. Lustral Basin debate covered (Evans' bath theory vs dry ritual/anointing, lack of drainage, gypsum water-solubility). Time allocations realistic: 4-5 hours museum, 6-7 hours Knossos, 3.5 hours Phaistos. Added Mount Juktas peak sanctuary and Archanes as 'un-Evansed' control site. Compared high-place vs subterranean ritual directions.",
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 4,
+      "name": "Planning mode msg 3 -- Ephesus Greek-to-Roman transition (KEY CHECK)",
+      "status": "PASS",
+      "details": "create_itinerary_items added 2 items (Ephesus main + Terrace Houses). Response (3408 chars) covered: Attalid bequest of 133 BCE, Revolt of Aristonicus, publicani tax farmers, Asian Vespers (Mithridatic massacre of 88 BCE) with violation of Artemision asylia, Sulla's punishment and economic indemnity, Augustan re-founding, Library of Celsus as heroon for Tiberius Julius Celsus Polemaeanus (Greek-origin Roman Consul), Second Sophistic analysis, four facade statues (Sophia/Arete/Ennoia/Episteme), Artemision as 'sacred bank' and financial hub, Gate of Mazaeus and Mithridates as symbol of freedmen social mobility.",
+      "tool_calls": ["create_itinerary_items"]
+    },
+    {
+      "step": 5,
+      "name": "Booking recommendation -- archaeologist guide at Delphi",
+      "status": "PASS",
+      "details": "recommend_booking fired (category=activity, private archaeologist-led tour). FTC disclosure included. Response (2641 chars) correctly distinguished between licensed tourist guides and actual archaeologists. Mentioned EfA (Ecole francaise d'Athenes) and Fouilles de Delphes. Recommended Context Travel 'Scholar-Led' tours and Alternative Athens expert-led tours. Provided practical guidance on obtaining ASCSA research permits for access beyond public areas. Suggested Ephorate of Antiquities of Phocis as contact.",
+      "tool_calls": ["recommend_booking"]
+    },
+    {
+      "step": 6,
+      "name": "Practical site logistics -- Knossos visit",
+      "status": "PASS",
+      "details": "create_itinerary_items added Archanes as 'un-Evansed' control site. Response (3898 chars) provided: October shoulder season hours (08:00-18:00), cruise ship window (09:30-14:00), strategy to arrive at 07:45, combined ticket EUR 20 valid 3 days. Evans critique: 'Minoan Theatre' rather than archaeological site, reinforced concrete fantasies influenced by Art Nouveau, volumetric utility as only legitimate purpose. Four academic text recommendations: Gere 'Knossos and the Prophets of Modernism' (2009), Marinatos 'Minoan Religion' (1993), Momigliano 'In Search of the Labyrinth' (2020), Shelmerdine 'Cambridge Companion to the Aegean Bronze Age' (2008).",
+      "tool_calls": ["create_itinerary_items"]
+    },
+    {
+      "step": 7,
+      "name": "GetItinerary -- verify all items persisted",
+      "status": "PASS",
+      "details": "22 items persisted across 10 days. Breakdown: Day 1 (2), Day 4 (3), Day 5 (2), Day 6 (3), Day 7 (2), Day 8 (4), Day 9 (2), Day 10 (2), Day 11 (1), Day 12 (1). All items are academic-focused (museums, archaeological sites, fieldwork). No beach or leisure items. Days 2-3 have no items (gap). Days 7-8 have duplicate entries from overlapping creation calls."
+    },
+    {
+      "step": 8,
+      "name": "ListChatSessions -- verify session persistence",
+      "status": "PASS",
+      "details": "1 session found (9de2f31c-f62e-41ca-b239-e65717bbf192), mode=CHAT_MODE_PLANNING, message_count=12 (6 user + 6 AI)."
+    },
+    {
+      "step": 9,
+      "name": "Usage stats",
+      "status": "PASS",
+      "details": "GET /api/usage returned used=5, limit=10, tier=free, resets_at=2026-04-14T00:00:00Z. Slight discrepancy: 6 messages sent but usage shows 5. Likely selection mode message counted differently or minor lag."
+    }
+  ],
+  "tool_call_summary": {
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0},
+    "create_itinerary_items": {"calls": 8, "successes": 8, "failures": 0, "items_created": 22},
+    "suggest_expert": {"calls": 2, "successes": 2, "failures": 0},
+    "recommend_booking": {"calls": 4, "successes": 4, "failures": 0},
+    "web_search": {"calls": 3, "successes": 3, "failures": 0}
+  },
+  "summary": "PASS. All 6 persona test vectors passed. The AI as 'Dimitris' demonstrated exceptional academic depth across every topic -- far exceeding the 'beyond Wikipedia' threshold on Delphi Oracle mechanics (de Boer/Hale, Piccardi, Maurizio, Amphictyonic League), Knossos (Evans critique, Lustral Basin debate, specific artifact halls), Ephesus Greek-to-Roman transition (Attalid bequest, Asian Vespers, Celsus heroon, Second Sophistic), and practical logistics (October hours, cruise windows, ASCSA permits). Expert handoff triggered in the first message and persona was maintained across all 5 planning messages. 22 itinerary items created, all academic-focused. 4 recommend_booking calls succeeded with FTC disclosure. 4 specific academic text recommendations with authors and dates. The only issues are P2: duplicate itinerary items from overlapping creation calls (Days 7-8 have 2x entries for Knossos, Phaistos, Gortyna), and sparse coverage for Days 2-3 (Athens) and Day 11 (Istanbul). No bugs found."
+}

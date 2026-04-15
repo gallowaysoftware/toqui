@@ -1,0 +1,89 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj (Ultra-Budget India Backpacker)",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "itinerary",
+    "accommodation",
+    "food",
+    "transport",
+    "activity_budget_check",
+    "activate",
+    "companion",
+    "sharing",
+    "history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Companion mode fails on existing planning session due to tool_use/tool_result mismatch",
+      "description": "Sending a CHAT_MODE_COMPANION message on the same session_id used for CHAT_MODE_PLANNING returns a 400 error from both Gemini and Claude. Gemini says 'function response turn comes immediately after a function call turn' and Claude says 'unexpected tool_use_id found in tool_result blocks'. The chat history from planning mode (which included many tool calls) corrupts when reused in companion mode. Workaround: omit session_id to create a new session.",
+      "steps_to_reproduce": "1. Create trip in CHAT_MODE_SELECTION (get session_id). 2. Send 7+ planning messages with tools on same session. 3. UpdateTrip to ACTIVE. 4. Send CHAT_MODE_COMPANION message with same session_id.",
+      "expected": "Companion mode should work on the existing session or gracefully create a new one",
+      "actual": "400 error from both AI providers due to malformed tool_use/tool_result history",
+      "api_command": "buf curl SendMessage with mode=CHAT_MODE_COMPANION, trip_id=X, session_id=<planning_session>"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI created duplicate itinerary items on some days (e.g., Day 1 has two 'Arrive in Delhi & Check-in' items with slightly different descriptions). This happened because the AI called create_itinerary_items multiple times across tool loop iterations, adding overlapping items instead of replacing them.",
+      "severity": "P2",
+      "suggestion": "Consider deduplication logic in create_itinerary_items or an upsert-by-day pattern to prevent the AI from adding near-duplicate items."
+    },
+    {
+      "description": "Session mode in ListChatSessions shows the planning session as CHAT_MODE_COMPANION rather than CHAT_MODE_PLANNING. The mode appears to reflect the last message sent on that session rather than the mode it was created with.",
+      "severity": "P2",
+      "suggestion": "Consider recording the original session mode separately from the last-used mode."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Varanasi food response did not explicitly mention that Varanasi is largely vegetarian by default. The persona spec requires the AI to acknowledge this cultural fact.",
+      "context": "Asked 'What about food in Varanasi? What's good and cheap for a vegetarian there?' -- response gave excellent budget vegetarian food recommendations but did not note that the city itself is predominantly vegetarian.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Jaipur-to-Varanasi sleeper train cost of $5.80-$6.60 technically exceeds the $5 single-journey threshold specified in the test, but the AI correctly justified this by noting the overnight train saves a night's accommodation cost. This is actually good budget reasoning, so it is a borderline pass.",
+      "context": "Transport recommendation for Jaipur to Varanasi. The AI recommended Sleeper Class at 480-550 INR ($5.80-$6.60) and explicitly explained it saves a night of accommodation.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI called create_itinerary_items three times in a single turn (first batch of 10 items days 1-7, second batch of 16 items days 8-21, third batch of 10 items days 1-7 again), resulting in duplicate entries for days 1-7. The third call repeated days 1-7 with slightly modified descriptions.",
+      "context": "Step 3: Asked for a full 3-week day-by-day itinerary. The tool loop ran 3 iterations, with the third adding duplicates.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Budget enforcement was strong throughout. The AI consistently respected the $10/day constraint, proactively flagged the Taj Mahal entry fee as exceeding the daily budget, recommended Sleeper/General class trains (not AC), suggested hostel dorms in Paharganj and near Varanasi ghats at appropriate prices, and all food recommendations were vegetarian and under $3. The expert handoff to 'Arjun' retained budget context. Companion mode responses were concise and immediately useful with specific prices. The main issues were duplicate itinerary items from repeated tool calls and a session corruption bug when switching from planning to companion mode on the same session. The 21-day itinerary with 54 items across all 5 cities was comprehensive and genuinely useful for an ultra-budget India trip."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "create_trip",
+    "create_itinerary_items",
+    "suggest_expert",
+    "recommend_booking",
+    "web_search",
+    "companion",
+    "sharing",
+    "unsharing",
+    "chat_history",
+    "usage",
+    "trip_lifecycle"
+  ],
+  "run_id": "run21"
+}

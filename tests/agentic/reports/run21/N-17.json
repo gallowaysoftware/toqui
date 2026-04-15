@@ -1,0 +1,115 @@
+{
+  "persona": "N-17: GDPR Data Rights Exerciser",
+  "date": "2026-04-13",
+  "duration_seconds": 180,
+  "user_id": "7e3365cb-9a1d-4988-91b2-d9bd52376a2b",
+  "token_expired": false,
+  "steps_completed": [
+    "GetCurrentUser",
+    "CreateTrip via chat (selection mode)",
+    "AddItineraryItems via AI (9 items across 5 days)",
+    "IngestBooking (flight confirmation DL7829X)",
+    "POST /api/privacy/consents (terms consent recorded)",
+    "GET /api/privacy/consents (consent persisted)",
+    "PUT /api/preferences (dietary=vegetarian, budget=moderate)",
+    "GET /api/preferences (preferences persisted)",
+    "ExportData RPC (request_id returned)",
+    "GET /api/export/{id} (full export downloaded)",
+    "DeleteAccount RPC (request_id returned, confirm=true)",
+    "Verify deletion (FAILED — all data survives)"
+  ],
+  "bugs": [
+    {
+      "id": "N17-B1",
+      "severity": "P0",
+      "title": "DeleteAccount silently fails: deletion_requests FK blocks CASCADE delete of users",
+      "description": "The deletion_requests table has a foreign key to users with ON DELETE NO ACTION (default). When DeleteAccount is called, it first creates a row in deletion_requests referencing the user, then launches an async goroutine that calls DeleteUserByID (DELETE FROM users WHERE id = $1). The FK constraint on deletion_requests blocks the CASCADE delete because the deletion_requests row still references the user. The error is swallowed in the background goroutine and logged but never surfaced to the user. The deletion_requests row is left in 'processing' status indefinitely. Result: the user, all trips, bookings, itinerary items, preferences, consents, and chat data survive — a complete GDPR Article 17 violation.",
+      "reproduction": "1. Create user with testctl\n2. Create trip, add data\n3. Call DeleteAccount with confirm=true\n4. Wait 15 seconds\n5. Call GetCurrentUser — user still exists\n6. Check DB: SELECT * FROM deletion_requests — status='processing', no completed_at",
+      "fix_suggestion": "Change the deletion_requests_user_id_fkey constraint to ON DELETE CASCADE, or delete the deletion_requests row for the user before calling DeleteUserByID, or use ON DELETE SET NULL. The same issue exists for trip_collaborators_invited_by_fkey (also NO ACTION).",
+      "affected_rpc": "AuthService/DeleteAccount",
+      "affected_code": "internal/lifecycle/service.go:DeleteUser, db/migrations/*deletion_requests*"
+    },
+    {
+      "id": "N17-B2",
+      "severity": "P1",
+      "title": "ExportData omits user consent records (GDPR Article 20 gap)",
+      "description": "The data export at GET /api/export/{id} includes user profile, trips, itinerary, bookings, preferences, and chat data, but does NOT include the user's consent records from the user_consents table. Under GDPR Article 20 (data portability), all personal data — including consent records — must be exportable. The export response top-level keys are: exported_at, user, trips, bookings, usage, referrals, feedback, payments, preferences, chat_data. No 'consents' key is present.",
+      "reproduction": "1. POST /api/privacy/consents to record a consent\n2. Call ExportData RPC to get request_id\n3. GET /api/export/{request_id} to download export\n4. Check JSON — no 'consents' key present",
+      "fix_suggestion": "Add a consents field to the export payload that queries user_consents for the user and includes all consent records.",
+      "affected_rpc": "AuthService/ExportData",
+      "affected_code": "internal/handlers/auth.go:HandleExportDownload, internal/lifecycle/service.go"
+    },
+    {
+      "id": "N17-B3",
+      "severity": "P1",
+      "title": "DeleteAccount async failure is silent — no user notification or retry mechanism triggered",
+      "description": "When the async deletion goroutine fails (due to the FK constraint bug N17-B1), the error is logged via slog.Error but the deletion_requests row stays in 'processing' status. The RetryFailedDeletions mechanism only picks up requests that have been in 'processing' for over 1 hour. Even then, it will hit the same FK constraint error repeatedly until maxDeletionRetries (5) is reached, at which point it is marked 'failed'. The user receives a success message ('Your account deletion has been requested and is being processed') with no way to learn that it failed. There is no notification mechanism to inform the user of deletion failure.",
+      "reproduction": "Same as N17-B1 — user gets success response but data is never deleted.",
+      "fix_suggestion": "1. Fix the root cause (N17-B1). 2. Add a deletion status check endpoint so users/admins can verify deletion completed. 3. Consider making the deletion synchronous for small accounts (most users) to avoid silent failures.",
+      "affected_rpc": "AuthService/DeleteAccount",
+      "affected_code": "internal/lifecycle/service.go:RequestDeletion"
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "N17-UX1",
+      "title": "DeleteAccount returns success message even though deletion will fail",
+      "description": "The RPC returns 'Your account deletion has been requested and is being processed. All associated data will be permanently removed.' but in reality the deletion never completes. Users have no way to check deletion status or learn it failed. A status-check endpoint or email confirmation of completed deletion would be appropriate for GDPR compliance."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "evaluation": {
+    "consent_management": {
+      "score": 5,
+      "notes": "POST /api/privacy/consents and GET /api/privacy/consents work correctly. Consent records are persisted and retrievable. HTTP 201 on creation."
+    },
+    "preferences_management": {
+      "score": 5,
+      "notes": "PUT /api/preferences and GET /api/preferences work correctly. Preferences are persisted and retrievable."
+    },
+    "data_export": {
+      "score": 3,
+      "notes": "ExportData RPC works and the download endpoint returns comprehensive JSON. However, consent records are missing from the export (P1 bug). All other data categories (user, trips, itinerary, bookings, preferences, chat) are present."
+    },
+    "account_deletion": {
+      "score": 1,
+      "notes": "DeleteAccount completely fails to delete any data due to a FK constraint deadlock. The deletion_requests table references users with NO ACTION, so the user row cannot be deleted. This is a P0 GDPR violation. All user data survives: user profile, trips, itinerary items, bookings, consents, preferences, and chat messages."
+    },
+    "trip_creation_via_chat": {
+      "score": 5,
+      "notes": "AI correctly created trip via create_trip tool in selection mode, then immediately generated 9 itinerary items across 5 days in a single create_itinerary_items call. Expert handoff to Tiago (Portugal adventure/nature/food specialist) was proactive and appropriate."
+    },
+    "booking_ingestion": {
+      "score": 5,
+      "notes": "Flight confirmation (Delta DL7829X JFK-BCN round trip) was parsed correctly with all fields: confirmation code, provider, both legs with airports/times/terminals, passenger name, seat, cabin class. Multi-leg parsing correct."
+    },
+    "overall": {
+      "score": 2,
+      "notes": "GDPR data lifecycle is fundamentally broken. Account deletion silently fails due to a FK constraint on the deletion_requests table, leaving all user data intact. This is a GDPR Article 17 violation that must be fixed urgently. Additionally, the data export is missing consent records (Article 20 gap). Non-GDPR features (consent management, preferences, trip creation, booking ingestion) all work well."
+    }
+  },
+  "data_created": {
+    "user_id": "7e3365cb-9a1d-4988-91b2-d9bd52376a2b",
+    "trip_id": "d147a250-0630-43d8-a4b0-1d6ad66e2873",
+    "trip_title": "Portugal Surf & Seafood 2026",
+    "session_id": "bebbc499-4d0d-4927-ac7f-f8419ecb26a7",
+    "booking_id": "d938fd4e-72d3-40c3-9d7c-d53e2d20c257",
+    "itinerary_items": 10,
+    "consent_id": "f0ec62f6-c41e-487c-b368-d42d44a7bf3b",
+    "export_request_id": "e25aaf43-aff4-4f20-a858-1be118b4238b",
+    "deletion_request_id": "1ae97a6d-6f19-41a4-81c6-e1d8717c2c9b"
+  },
+  "db_evidence": {
+    "deletion_requests_status": "processing",
+    "deletion_requests_retry_count": 0,
+    "deletion_requests_completed_at": null,
+    "user_still_exists": true,
+    "trips_still_exist": true,
+    "bookings_still_exist": true,
+    "consents_still_exist": true,
+    "preferences_still_exist": true,
+    "root_cause": "deletion_requests_user_id_fkey has ON DELETE NO ACTION, blocking CASCADE delete of users row",
+    "also_affected": "trip_collaborators_invited_by_fkey also has ON DELETE NO ACTION — would block deletion of users who have invited collaborators"
+  }
+}

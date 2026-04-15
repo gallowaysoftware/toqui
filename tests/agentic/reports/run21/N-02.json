@@ -1,0 +1,224 @@
+{
+  "persona": "N-02",
+  "name": "Structural — Chat History Data Integrity",
+  "destination": "Portugal (generic)",
+  "run": 21,
+  "timestamp": "2026-04-13T16:43:00Z",
+  "trip_id": "a9a2f92d-a2bd-4666-a9cd-838e38fca1f7",
+  "sessions": {
+    "selection": {
+      "session_id": "894ac11c-ff59-4a36-a65b-f0f32b512d7b",
+      "mode": "CHAT_MODE_SELECTION",
+      "created_at": "2026-04-13T16:43:34.887796Z",
+      "last_message_at": "2026-04-13T16:43:40.488160Z",
+      "message_count_from_list": 2,
+      "message_count_from_history": 2
+    },
+    "planning": {
+      "session_id": "5db9e3ea-8fa6-4764-b389-d15be24f580f",
+      "mode": "CHAT_MODE_PLANNING",
+      "created_at": "2026-04-13T16:46:21.937974Z",
+      "last_message_at": "2026-04-13T16:46:21.937974Z",
+      "message_count_from_list": 2,
+      "message_count_from_history": 3
+    },
+    "companion": {
+      "session_id": "32bac16d-1b20-4f75-b548-d1ea38e3a97a",
+      "mode": "CHAT_MODE_COMPANION",
+      "created_at": "2026-04-13T16:46:48.108142Z",
+      "last_message_at": "2026-04-13T16:48:01.502535Z",
+      "message_count_from_list": 2,
+      "message_count_from_history": 2
+    }
+  },
+  "bugs": [
+    {
+      "id": "N02-R21-B01",
+      "severity": "P1",
+      "title": "Assistant response to first planning message missing from GetChatHistory",
+      "description": "The planning session received 2 user messages (Message A: 'I want to visit Lisbon and Porto...' and Message B: 'Add those to my itinerary please.'). The AI generated full responses to both, including a messageComplete event for Message A (messageId: 5f0261d3-dcba-4547-8cdb-e538ba59f0ac) with substantial content. However, GetChatHistory for the planning session returns only 3 messages: userA, userB, assistantB. The assistant response to Message A is completely absent. The messageComplete stream event was sent to the client, so the user saw the response in real time, but it is not retrievable from history. This means if the user closes the app and reopens, the first AI response in the planning session is permanently lost.",
+      "steps_to_reproduce": "1. Create a trip in selection mode. 2. Send a planning mode message that triggers tool calls (e.g., 'I want to visit Lisbon and Porto. Can you suggest a rough itinerary?'). The AI calls create_itinerary_items (Gemini provider, multiple tool loop iterations). 3. Send a second planning message ('Add those to my itinerary please.'). 4. Call GetChatHistory for the planning session. 5. Observe: only 3 messages returned (userA, userB, assistantB). The assistant response to Message A (5f0261d3) is missing.",
+      "expected": "GetChatHistory returns 4 messages: userA, assistantA, userB, assistantB. The assistant response to Message A should be present with non-empty content.",
+      "actual": "GetChatHistory returns 3 messages: userA, userB, assistantB. The assistant response to Message A is missing. This creates two consecutive user messages without an intervening assistant response.",
+      "regression": false,
+      "suggestion": "Investigate whether the Gemini tool-loop intermediate storage (intermediateContent = '' for Gemini) is causing the final assistant response for Message A to be stored with empty content and subsequently filtered by isToolLoopIntermediate. The code stores intermediate assistant messages with empty content for Gemini (line 563-566 in service.go), and the final response uses fullResponse.String() which is reset at each iteration. If the final iteration produces no text (because Gemini re-emitted everything in an earlier iteration), the stored content may be empty. Check the Firestore document for message 5f0261d3 to see if it was stored with empty content."
+    },
+    {
+      "id": "N02-R21-B02",
+      "severity": "P1",
+      "title": "Role alternation violation in planning session history",
+      "description": "GetChatHistory for the planning session returns messages in the order: user, user, assistant. Two consecutive user messages without an intervening assistant message violates the expected role alternation pattern. This is a direct consequence of B01 (the missing assistant response). Clients rendering the chat history will show two user bubbles in a row, which is confusing and implies a persistence failure.",
+      "steps_to_reproduce": "Same as N02-R21-B01. After GetChatHistory returns, inspect message roles in order.",
+      "expected": "Roles should alternate: user, assistant, user, assistant.",
+      "actual": "Roles are: user, user, assistant.",
+      "regression": false,
+      "suggestion": "This is a symptom of B01 and will be resolved when B01 is fixed."
+    },
+    {
+      "id": "N02-R21-B03",
+      "severity": "P2",
+      "title": "Planning session messageCount (2) disagrees with GetChatHistory (3 visible messages)",
+      "description": "ListChatSessions reports messageCount=2 for the planning session, but GetChatHistory returns 3 visible messages (2 user + 1 assistant). The messageCount increment logic (line 226 in chatstore.go) only counts messages with non-empty content in user/assistant roles. Since the missing assistant response (B01) may have been stored with empty content, it would not have been counted. However, there is still a discrepancy: messageCount=2 suggests only 2 non-empty user/assistant messages were stored, but 3 are returned by GetChatHistory.",
+      "steps_to_reproduce": "1. Reproduce B01. 2. Compare ListChatSessions.messageCount with len(GetChatHistory.messages).",
+      "expected": "messageCount should equal the number of visible messages returned by GetChatHistory.",
+      "actual": "messageCount=2, GetChatHistory returns 3 messages.",
+      "regression": false,
+      "suggestion": "Audit the messageCount increment logic. If the assistant response for Message A was stored with empty content (and thus not counted), the count of 2 is explained as: userA(1) + userB(2). But GetChatHistory returns assistantB which should make the count 3. The increment for assistantB may not have fired if the message was stored via the hit-max-iterations code path or an error path."
+    },
+    {
+      "id": "N02-R21-B04",
+      "severity": "P2",
+      "title": "Planning session lastMessageAt equals createdAt despite messages being sent later",
+      "description": "ListChatSessions shows the planning session's lastMessageAt as 2026-04-13T16:46:21.937974Z, which is identical to its createdAt. However, Message B was sent at ~16:45:26 and the assistant response at ~16:46:21, so lastMessageAt should reflect a time after the session was created. The first user message was actually sent at 16:43:57, which is BEFORE the session's createdAt of 16:46:21. This suggests the session document's createdAt was overwritten or set incorrectly (possibly by the assistant message store operation rather than the session creation).",
+      "steps_to_reproduce": "1. Create a planning session with 2 user messages. 2. Call ListChatSessions. 3. Compare createdAt and lastMessageAt.",
+      "expected": "lastMessageAt should be later than createdAt (reflecting the timestamp of the last message).",
+      "actual": "lastMessageAt == createdAt == 2026-04-13T16:46:21.937974Z. The first user message's createdAt (16:43:57) predates the session's createdAt.",
+      "regression": false,
+      "suggestion": "The session's createdAt appears to come from the backfillCreatedAt logic (which substitutes lastMessageAt when createdAt is absent). This is expected for sessions created implicitly via AddMessage. However, the fact that lastMessageAt is not updated for subsequent messages in the planning session is unexpected. Check if the Firestore batch commit for intermediate tool-loop messages is correctly updating lastMessageAt."
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "N02-R21-UX01",
+      "severity": "P2",
+      "title": "Chat history shows two consecutive user bubbles in planning session",
+      "description": "Due to the missing assistant response (B01), a user reopening the planning session would see two consecutive user messages without any AI response between them. This creates a confusing UX where it looks like the AI failed to respond to the first message.",
+      "suggestion": "Fixing B01 resolves this. Additionally, the frontend could add a defensive check for consecutive same-role messages and display a subtle indicator that a message may be missing."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "id": "N02-R21-AI01",
+      "severity": "PASS",
+      "title": "Trip creation via create_trip in selection mode works correctly",
+      "description": "Sending 'I want to plan a trip to Portugal for 10 days' in CHAT_MODE_SELECTION correctly triggered create_trip with title 'Portugal 10-Day Adventure', destination PT, and TRIP_STATUS_PLANNING.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "N02-R21-AI02",
+      "severity": "PASS",
+      "title": "Itinerary creation in planning mode is proactive and comprehensive",
+      "description": "The AI proactively called create_itinerary_items on the first planning message without being explicitly asked. It generated 13 items (days 1-7) in the first tool call, then 4 more items (days 8-10) in a second tool call, covering a full 10-day itinerary. The itinerary includes sightseeing, meals, activities, nightlife, and transport items with specific locations and practical tips.",
+      "verdict": "PASS"
+    }
+  ],
+  "tool_calls": [
+    {
+      "message": "selection_msg1",
+      "tool": "create_trip",
+      "status": "success",
+      "note": "Created trip 'Portugal 10-Day Adventure' with destination PT."
+    },
+    {
+      "message": "planning_msgA",
+      "tool": "create_itinerary_items",
+      "status": "success",
+      "note": "5 tool calls total for Message A: 2 create_itinerary_items calls (13+4=17 items created for 10 days), plus additional iterations. messageComplete confirmed."
+    },
+    {
+      "message": "planning_msgB",
+      "tool": "create_itinerary_items",
+      "status": "already_exists",
+      "note": "2 tool calls for Message B: both returned 'already_exists' (all 19 items skipped). AI tried to re-add the same items — no harm but wasted tool calls."
+    },
+    {
+      "message": "companion_msg",
+      "tool": "nearby_places",
+      "status": "no_location",
+      "note": "nearby_places returned no_location error (expected — no location provided in test). AI fell back to knowledge-based Alfama restaurant recommendations gracefully."
+    }
+  ],
+  "phase_results": {
+    "phase1_selection_mode": {
+      "verdict": "PASS",
+      "details": "Message sent in CHAT_MODE_SELECTION. AI created trip via create_trip. session_id and trip_id recorded."
+    },
+    "phase2_planning_mode": {
+      "verdict": "PASS (with persistence bug)",
+      "details": "Two messages sent in CHAT_MODE_PLANNING. Both got AI responses via stream. However, assistant response to Message A is missing from persisted history (see B01)."
+    },
+    "phase3_companion_mode": {
+      "verdict": "PASS",
+      "details": "One message sent in CHAT_MODE_COMPANION. AI responded with Alfama dinner recommendations. Session created correctly."
+    },
+    "phase4_session_listing": {
+      "verdict": "PASS (with notes)",
+      "details": "ListChatSessions returned 3 sessions (selection, planning, companion) with correct modes. Sessions ordered by created_at DESC (most recent first). All have non-empty IDs. Planning session has timestamp anomalies (B04) and messageCount discrepancy (B03).",
+      "session_count": 3,
+      "ordering": "created_at DESC (most recent first)",
+      "modes_correct": true,
+      "ids_non_empty": true,
+      "timestamps_valid": true,
+      "timestamps_note": "Planning session createdAt equals lastMessageAt, and first message predates session createdAt. See B04."
+    },
+    "phase5_message_history": {
+      "selection_session": {
+        "verdict": "PASS",
+        "total_messages": 2,
+        "user_messages": 1,
+        "assistant_messages": 1,
+        "content_check": "User message contains 'Portugal'. Roles alternate correctly. No empty content.",
+        "chronological_order": true
+      },
+      "planning_session": {
+        "verdict": "FAIL",
+        "total_messages": 3,
+        "user_messages": 2,
+        "assistant_messages": 1,
+        "expected_messages": 4,
+        "missing_messages": "Assistant response to Message A (messageId: 5f0261d3-dcba-4547-8cdb-e538ba59f0ac) — confirmed sent via messageComplete stream event but absent from GetChatHistory.",
+        "content_check": "User messages contain 'Lisbon and Porto' and 'itinerary'. Role alternation VIOLATED: user, user, assistant.",
+        "chronological_order": true
+      },
+      "companion_session": {
+        "verdict": "PASS",
+        "total_messages": 2,
+        "user_messages": 1,
+        "assistant_messages": 1,
+        "content_check": "User message contains 'Lisbon' and 'Alfama'. Roles alternate correctly. No empty content.",
+        "chronological_order": true
+      }
+    },
+    "phase6_cross_session_isolation": {
+      "verdict": "PASS",
+      "details": "All messages have correct sessionId fields. No message from any session appears in another session's GetChatHistory response. Message IDs are globally unique across all 3 sessions (7 unique IDs across 7 messages)."
+    }
+  },
+  "usefulness_scores": {
+    "session_listing": 4,
+    "session_listing_note": "ListChatSessions correctly returns all 3 sessions with correct modes and valid IDs. Minor issues with messageCount accuracy and timestamp handling.",
+    "message_persistence": 3,
+    "message_persistence_note": "Selection and companion sessions persist perfectly. Planning session has a missing assistant response (P1). 6 of 7 expected visible messages are correctly persisted and retrievable.",
+    "role_alternation": 3,
+    "role_alternation_note": "Selection and companion sessions have correct alternation. Planning session has a violation (user, user, assistant) due to missing message.",
+    "cross_session_isolation": 5,
+    "cross_session_isolation_note": "Perfect isolation. No message bleed between sessions. All sessionId fields are correct.",
+    "timestamp_ordering": 4,
+    "timestamp_ordering_note": "Messages within each session are in chronological order. Session-level timestamps have minor inconsistencies (planning session createdAt == lastMessageAt).",
+    "overall": 3,
+    "overall_note": "Core infrastructure works well: sessions are created correctly, cross-session isolation is perfect, selection and companion modes persist all messages. The P1 bug is the missing assistant response in the planning session after a multi-iteration tool loop. This is likely a Gemini-specific issue with how intermediate vs final assistant messages are stored during complex tool-calling sequences."
+  },
+  "message_counts": {
+    "selection_session": {
+      "stored_visible": 2,
+      "user": 1,
+      "assistant": 1
+    },
+    "planning_session": {
+      "stored_visible": 3,
+      "expected_visible": 4,
+      "user": 2,
+      "assistant": 1,
+      "missing_assistant": 1
+    },
+    "companion_session": {
+      "stored_visible": 2,
+      "user": 1,
+      "assistant": 1
+    },
+    "total_visible": 7,
+    "total_expected": 8,
+    "total_missing": 1
+  },
+  "summary": "Chat history data integrity is mostly sound but has one significant P1 bug: the assistant response to the first planning mode message (which involved 5 tool loop iterations with Gemini) is missing from GetChatHistory. The messageComplete stream event was sent with a valid messageId and full content, confirming the response was generated, but it does not appear in the persisted history. This creates a role alternation violation (two consecutive user messages) and a messageCount discrepancy. Cross-session isolation is perfect — no message bleed across the 3 sessions. Selection and companion mode sessions persist all messages correctly. The bug appears specific to multi-iteration tool loops with the Gemini provider, where the final assistant message may be stored with empty content (due to fullResponse.Reset() at the start of each iteration) and subsequently filtered out by isToolLoopIntermediate."
+}

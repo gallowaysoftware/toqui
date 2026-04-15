@@ -1,0 +1,144 @@
+{
+  "persona": "N-16",
+  "name": "Multi-Turn Fabrication Detection",
+  "destination": "Peru (Lima, Cusco, Sacred Valley, Machu Picchu, Lake Titicaca)",
+  "date": "2026-04-13",
+  "run": 21,
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items from multi-call tool loop",
+      "description": "Turn 1 called create_itinerary_items 3 times (once by the first persona, then again after suggest_expert switched personas), resulting in semi-duplicate items on Days 1-4 (e.g., two 'Plaza de Armas' entries on Day 1, two 'Qorikancha' entries on Day 2). The dedup logic caught exact title matches but not semantically similar items. This inflates Day 1 to 6 items and Day 2 to 7 items with redundant content.",
+      "turn": 1
+    },
+    {
+      "severity": "P2",
+      "title": "Tool loop retries after already_exists responses",
+      "description": "In Turns 2 and 4, after successfully creating items, the AI retried create_itinerary_items with the same items, receiving 'already_exists' responses. This wastes AI tokens and adds latency. The system prompt instructs 'Do NOT call this tool again with the same items' but the AI still retries once more.",
+      "turns": [2, 4]
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "feature_coverage": {
+    "create_trip": true,
+    "create_itinerary_items": true,
+    "suggest_expert": true,
+    "web_search": true,
+    "fabrication_detection": true,
+    "multi_turn_context": true,
+    "fabrication_matches_0": true
+  },
+  "per_turn_analysis": {
+    "turn_1": {
+      "message": "Give me a detailed 4-day itinerary for Cusco...",
+      "create_itinerary_items_fired": true,
+      "tool_calls": ["create_itinerary_items", "suggest_expert", "create_itinerary_items", "create_itinerary_items"],
+      "items_created": 18,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 18,
+      "per_day_after": {"1": 5, "2": 5, "3": 4, "4": 4}
+    },
+    "turn_2": {
+      "message": "Now add the Sacred Valley...",
+      "create_itinerary_items_fired": true,
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items", "create_itinerary_items"],
+      "items_created": 10,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 28,
+      "per_day_after": {"1": 5, "2": 5, "3": 4, "4": 4, "5": 3, "6": 4, "7": 3}
+    },
+    "turn_3": {
+      "message": "What are the must-try food experiences in Cusco?...",
+      "create_itinerary_items_fired": true,
+      "tool_calls": ["create_itinerary_items", "suggest_expert", "create_itinerary_items"],
+      "items_created": 10,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 38,
+      "per_day_after": {"1": 6, "2": 7, "3": 7, "4": 5, "5": 4, "6": 5, "7": 4},
+      "note": "PASS - items appended to existing days, no overwrites. Count went from 28 to 38."
+    },
+    "turn_4": {
+      "message": "Also add Machu Picchu on the day after Ollantaytambo...",
+      "create_itinerary_items_fired": true,
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items"],
+      "items_created": 4,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 42,
+      "per_day_after": {"1": 6, "2": 7, "3": 7, "4": 5, "5": 4, "6": 5, "7": 4, "8": 4}
+    },
+    "turn_5": {
+      "message": "For Lake Titicaca, add two days...",
+      "create_itinerary_items_fired": true,
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items", "create_itinerary_items", "web_search", "create_itinerary_items"],
+      "items_created": 14,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 56,
+      "per_day_after": {"1": 6, "2": 7, "3": 7, "4": 5, "5": 4, "6": 5, "7": 4, "8": 4, "9": 1, "10": 3, "11": 2, "12": 2, "13": 3, "14": 3},
+      "note": "AI proactively added Days 9-14 including travel day, Titicaca islands, and Lima return."
+    },
+    "turn_6": {
+      "message": "Give me a final complete summary...",
+      "create_itinerary_items_fired": false,
+      "tool_calls": [],
+      "items_created": 0,
+      "fabrication_phrases_found": [],
+      "fabrication_bug": false,
+      "itinerary_total_after": 56,
+      "note": "PASS - summary only, no unnecessary tool calls. AI provided a well-structured 14-day overview."
+    }
+  },
+  "final_itinerary": {
+    "total_items": 56,
+    "total_days": 14,
+    "per_day_breakdown": {
+      "1": 6,
+      "2": 7,
+      "3": 7,
+      "4": 5,
+      "5": 4,
+      "6": 5,
+      "7": 4,
+      "8": 4,
+      "9": 1,
+      "10": 3,
+      "11": 2,
+      "12": 2,
+      "13": 3,
+      "14": 3
+    },
+    "region_coverage": {
+      "cusco_days_1_4": "complete",
+      "sacred_valley_days_5_7": "complete",
+      "machu_picchu_day_8": "complete",
+      "titicaca_days_9_10": "complete",
+      "lima_return_days_12_14": "bonus_coverage"
+    },
+    "missing_days": []
+  },
+  "assertions": {
+    "turn_1_cit_fired": {"passed": true, "detail": "create_itinerary_items fired 3 times"},
+    "turn_2_cit_fired": {"passed": true, "detail": "create_itinerary_items fired 3 times"},
+    "turn_3_no_overwrite": {"passed": true, "detail": "Item count went from 28 to 38 (append, not overwrite)"},
+    "turn_4_cit_fired": {"passed": true, "detail": "create_itinerary_items fired 2 times"},
+    "turn_5_cit_fired": {"passed": true, "detail": "create_itinerary_items fired 4 times"},
+    "turn_6_no_cit": {"passed": true, "detail": "No create_itinerary_items on summary request"},
+    "no_fabrication_bugs": {"passed": true, "detail": "Zero fabrication phrases found without matching tool calls across all 6 turns"},
+    "final_item_count_gte_15": {"passed": true, "detail": "56 items (well above 15 threshold)"}
+  },
+  "usefulness_evaluation": {
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": null,
+    "companion_mode_score": null,
+    "overall_score": 5
+  },
+  "narrative": "N-16 Multi-Turn Fabrication Detection test passed with zero fabrication bugs across all 6 turns. The AI reliably called create_itinerary_items in every turn that required it (Turns 1-5) and correctly refrained from calling it on the summary request (Turn 6). Per-turn item progression: Turn 1 created 18 items (Cusco Days 1-4), Turn 2 added 10 items (Sacred Valley Days 5-7, total 28), Turn 3 appended 10 food items to existing days without overwriting (total 38), Turn 4 added 4 Machu Picchu items on Day 8 (total 42), Turn 5 added 14 items for Titicaca and Lima return Days 9-14 (total 56). The final itinerary covers 14 days with 56 items. The Turn 3 append-not-overwrite assertion passed cleanly: count increased from 28 to 38. Two P2 UX issues noted: (1) duplicate/semi-duplicate items from multi-call tool loops in Turn 1 where the suggest_expert handoff triggered a second persona that re-created similar items, and (2) unnecessary retries after already_exists responses in Turns 2 and 4. The fabrication detection system (PR #198) is working correctly -- no fabrication phrases appeared without corresponding tool calls. The AI showed strong multi-turn context retention, correctly placing Sacred Valley items on Days 5-7 after Cusco on Days 1-4, Machu Picchu on Day 8 after Ollantaytambo on Day 7, and proactively building out the full 14-day plan including Lima return days that were mentioned in the original trip description."
+}

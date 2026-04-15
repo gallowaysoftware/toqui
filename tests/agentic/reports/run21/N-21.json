@@ -1,0 +1,148 @@
+{
+  "persona_id": "N-21",
+  "persona_name": "Trip Context Persistence Regression Canary",
+  "status": "COMPLETED",
+  "run_id": "run-21b",
+  "trip_destination": "Greece",
+  "trip_id": "e08359ac-32a3-4278-9dfb-4cb3a23d4f8b",
+  "session_ids": [
+    "119039aa-f7ba-41e3-9f89-8e71fde3630b",
+    "35aa8726-29ba-43fc-81de-41e2f3e07914"
+  ],
+  "completed_steps": [
+    "auth",
+    "selection_create_trip",
+    "planning_add_santorini_items",
+    "planning_add_mykonos_items",
+    "planning_move_wine_tasting",
+    "planning_delete_boat_tour",
+    "planning_update_trip_title",
+    "new_session_add_delos",
+    "verify_final_state",
+    "verify_chat_history",
+    "verify_usage"
+  ],
+  "critical_regression_check": {
+    "no_trip_selected_regression": "PASS",
+    "detail": "Step 2 (create_itinerary_items immediately after trip creation in the same session) succeeded with no errors. The no_trip_selected bug from Run 19 did NOT reproduce. The AI called select_trip defensively before create_itinerary_items, which may mask the underlying fix but confirms the user-facing behavior is correct."
+  },
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history drops one user+assistant message pair in multi-turn session",
+      "description": "In a 6-message session (steps 1-6), the Step 2 user message ('Start with 3 days in Santorini...') and its full assistant response were not persisted to chat history. GetChatHistory returns 10 messages (5 user + 5 assistant) instead of the expected 12. ListChatSessions messageCount also shows 10, confirming the messages were never saved to Firestore. The tools (create_itinerary_items, suggest_expert) executed successfully and the stream completed normally, but the persistence layer dropped this message pair. This is a recurrence of the Run 21a P2 bug.",
+      "steps_to_reproduce": "1. Create a trip via SendMessage in selection mode. 2. Immediately send a follow-up in planning mode requesting itinerary items (Step 2). 3. Continue sending 4 more messages (Steps 3-6). 4. Call GetChatHistory -- observe Step 2's message pair is missing.",
+      "expected": "12 messages in session 1 (6 user + 6 assistant)",
+      "actual": "10 messages in session 1 (5 user + 5 assistant). Step 2 pair dropped."
+    },
+    {
+      "severity": "P2",
+      "title": "Text stutter in AI response (garbled repetition)",
+      "description": "Step 2 response ends with 'to keep you close to these spots? I close to these views?' -- garbled repetition of the ending phrase. Step 7 response contains 'Islan life! Isand life on Day 5!' -- garbled repetition of 'Island life'. This is a recurrence of the text stutter bug from Run 19 N-01 P2.",
+      "steps_to_reproduce": "1. Send multi-turn messages in planning mode. 2. Read the fullContent of messageComplete events. 3. Observe garbled/duplicated phrases at the end of some responses.",
+      "expected": "No duplicated or garbled phrases in AI responses",
+      "actual": "Two instances of text stutter detected: (1) 'I close to these views?' in Step 2, (2) 'Islan life! Isand life on Day 5!' in Step 7"
+    },
+    {
+      "severity": "P2",
+      "title": "AI over-generates itinerary items beyond user request",
+      "description": "In multiple steps, the AI created far more items than requested. Step 3: user asked for 2 items (beach day + dinner), AI created 10 items including unsolicited days 6-7 in Athens. Step 5: user asked to remove 1 item, AI also added 6 new items for days 1-3. Step 7: user asked for 1 day trip, AI created 3 items (transport + sightseeing + lunch). While the extra items are high quality, this behavior deviates from user intent and makes the itinerary harder to manage.",
+      "steps_to_reproduce": "1. In planning mode, ask to add 2 specific items. 2. Observe AI creates 10+ items including unsolicited additions.",
+      "expected": "AI creates only the items explicitly requested by the user",
+      "actual": "AI proactively fills entire days and adds items the user did not ask for"
+    },
+    {
+      "severity": "P2",
+      "title": "AI uses delete+create instead of reorder_itinerary_items tool",
+      "description": "When asked to 'move the wine tasting to day 4 in Mykonos', the AI used delete_itinerary_items + create_itinerary_items instead of the reorder_itinerary_items tool. The result was semantically correct (the wine tasting was moved to day 4 and its content was adapted from Santorini to Mykonos context), but the reorder tool from PR #247 was not exercised.",
+      "steps_to_reproduce": "1. Have an itinerary with items. 2. Ask AI to 'move' an item to a different day. 3. Observe AI uses delete+create rather than reorder.",
+      "expected": "reorder_itinerary_items tool fires",
+      "actual": "delete_itinerary_items + create_itinerary_items used instead"
+    },
+    {
+      "severity": "P2",
+      "title": "Redundant tool calls (create_itinerary_items called 3x for same items)",
+      "description": "In Step 7 (new session), the AI called create_itinerary_items 3 times with the same 3 items. The first call succeeded (created_count: 3). The second and third calls returned 'already_exists' with created_count: 0. The duplicate-prevention logic works correctly, but the AI should not be calling the tool repeatedly with identical input.",
+      "steps_to_reproduce": "1. Send a message requesting items. 2. Observe AI calls create_itinerary_items multiple times with the same items in the same response.",
+      "expected": "AI calls create_itinerary_items once per set of items",
+      "actual": "AI called it 3 times with identical items (1 success + 2 already_exists)"
+    },
+    {
+      "severity": "P2",
+      "title": "suggest_expert first call fails with no_destination error",
+      "description": "In Step 2, the AI called suggest_expert with only {themes: ['wine','food']} and no region_code, receiving a 'no_destination' error. It then retried with {region_code: 'GR', themes: ['wine','food']} which succeeded. The AI should include the region_code on the first attempt since it knows the destination from the trip context.",
+      "steps_to_reproduce": "1. Create a trip with destination GR. 2. Ask about wine tasting. 3. Observe AI calls suggest_expert without region_code first, then retries.",
+      "expected": "suggest_expert called with region_code on first attempt",
+      "actual": "First call fails with no_destination, second call succeeds with region_code"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Day 5 in the final itinerary is overcrowded with 5 items (Delos day trip + original beach/dinner items) that logistically conflict. The Delos boat trip and Paradise Beach day are both half-day activities that can't easily coexist on the same day.",
+      "severity": "P2",
+      "suggestion": "AI should recognize temporal conflicts when adding items to a day that's already full and suggest spreading across days or replacing existing items."
+    },
+    {
+      "description": "Day 1 has two items with the same orderInDay value (both orderInDay: 1), suggesting the ordering logic does not properly increment when appending to an existing day.",
+      "severity": "P2",
+      "suggestion": "When adding items to a day that already has items, auto-increment orderInDay to avoid duplicates."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI responded in the voice of the newly switched persona mid-stream",
+      "context": "In Step 2, the AI started responding as Toqui, then mid-response switched to 'Dimitris' persona via suggest_expert. The response contains content from both personas concatenated. In Step 3, the same pattern occurred with a nightlife/food expert handoff.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Response verbosity after tool loops -- same content repeated in different words",
+      "context": "In Step 7, the AI response contains 3 near-identical blocks describing the Delos day trip (once before the second tool call, once after, and once more after the third). Total response is ~1500 words for a simple 'add a day trip' request.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "previous_bugs_status": {
+    "P0_telemetry_flusher": "FIXED -- streaming RPCs work correctly. No statusWriter Flusher errors observed.",
+    "P1_testctl_jwt_claims": "FIXED -- token includes iss='toqui' and aud='toqui-api' claims. Token accepted by all RPCs.",
+    "P2_chat_history_drop": "STILL_PRESENT -- one user+assistant pair dropped in 6-message session (Step 2 pair missing).",
+    "P2_text_stutter": "STILL_PRESENT -- two instances of garbled/duplicated text detected in Steps 2 and 7."
+  },
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 3,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The CRITICAL regression (no_trip_selected on follow-up messages after trip creation) did NOT reproduce -- trip context persistence across messages works correctly. This is the primary finding: the Run 19 fix holds. All key tools fired successfully: create_trip, create_itinerary_items (across 6 consecutive messages and a cross-session test), delete_itinerary_items, update_trip, and suggest_expert. The two P0/P1 infrastructure bugs from the previous run (telemetry Flusher, testctl JWT claims) are both FIXED. Two P2 bugs persist from the previous run: chat history message dropping (Step 2 pair lost) and text stutter (2 instances). New findings: AI over-generates items, uses delete+create instead of reorder tool, makes redundant tool calls, and produces very verbose multi-persona responses. The itinerary content quality remains excellent with practical, detailed descriptions."
+  },
+  "feature_coverage": [
+    "selection_mode_create_trip",
+    "planning_mode_create_itinerary_items",
+    "planning_mode_delete_itinerary_items",
+    "planning_mode_update_trip",
+    "suggest_expert_handoff",
+    "cross_session_planning",
+    "chat_history_persistence",
+    "usage_tracking",
+    "multi_turn_context_retention",
+    "list_chat_sessions",
+    "get_trip_verification"
+  ],
+  "itinerary_final_state": {
+    "total_days": 7,
+    "total_items": 21,
+    "day_breakdown": {
+      "day_1": ["Explore Fira Town (sightseeing)", "Sunset Viewing in Oia (sightseeing)"],
+      "day_2": ["Hike the Caldera Path (activity)", "Lunch at Ammoudi Bay (meal)"],
+      "day_3": ["Discover Ancient Akrotiri (sightseeing)", "Visit the Red Beach (sightseeing)", "Afternoon in Pyrgos Village (sightseeing)"],
+      "day_4": ["Ferry from Santorini to Mykonos (transport)", "Explore Mykonos Town & Windmills (sightseeing)", "Mykonos Wine Tasting Experience (activity)"],
+      "day_5": ["Beach Day at Paradise Beach (activity)", "Boat to Delos Island (transport)", "Dinner in Little Venice (meal)", "Explore the Sacred Island of Delos (sightseeing)", "Lunch in Mykonos Town (meal)"],
+      "day_6": ["Ferry from Mykonos to Athens (transport)", "Dinner in Koukaki Neighborhood (meal)", "Cocktails at The Clumsies (nightlife)"],
+      "day_7": ["Morning at the Acropolis (sightseeing)", "Lunch at the Central Market (meal)", "Farewell Night in Psirri & Kerameikos (nightlife)"]
+    },
+    "deleted_items": ["Caldera Boat Tour & Hot Springs (step 5)", "Santorini Wine Tasting Experience (step 4, moved to Mykonos)"],
+    "moved_items": ["Wine Tasting: moved from day 3 Santorini to day 4 Mykonos (via delete+create)"]
+  }
+}

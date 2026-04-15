@@ -1,0 +1,461 @@
+{
+  "persona": "N-03",
+  "name": "Structural — REST Endpoint Exerciser",
+  "run": 21,
+  "status": "PASS",
+  "date": "2026-04-12",
+  "user_id": "d511c59a-a8ef-4b9a-bbcb-de47377a2257",
+  "trip_id": "1c3f9bb9-5065-4015-a727-ec92165e2e01",
+
+  "bugs": [],
+
+  "ux_issues": [],
+
+  "warnings": [
+    {
+      "id": "N03-R21-W1",
+      "severity": "info",
+      "title": "Affiliate click redirect does not inject affiliate parameters in local env",
+      "description": "GET /api/affiliate/click redirects to the exact input URL without appending affiliate IDs (e.g., aid= for Booking.com). This is expected locally since DISCOVERCARS_AFFILIATE_ID and similar env vars are not set, but worth verifying that affiliate ID injection works in staging/prod."
+    },
+    {
+      "id": "N03-R21-W2",
+      "severity": "info",
+      "title": "AASA file uses TEAM_ID_PLACEHOLDER",
+      "description": "GET /.well-known/apple-app-site-association returns appID 'TEAM_ID_PLACEHOLDER.travel.toqui.app'. This is correct for local dev but should be verified in prod."
+    }
+  ],
+
+  "endpoint_results": {
+    "phase_1_health": {
+      "GET /healthz": {
+        "status": 200,
+        "response_time_ms": 2,
+        "body": {"status": "ok"},
+        "verdict": "PASS"
+      },
+      "GET /health": {
+        "status": 200,
+        "response_time_ms": 1,
+        "body": {
+          "status": "healthy",
+          "components": {
+            "database": {"status": "healthy", "latency_ms": 0},
+            "server": {"status": "healthy", "uptime_seconds": "dynamic"}
+          }
+        },
+        "verdict": "PASS"
+      },
+      "GET /livez": {
+        "status": 200,
+        "response_time_ms": 1,
+        "body": {"status": "alive"},
+        "verdict": "PASS"
+      },
+      "GET /readyz": {
+        "status": 200,
+        "response_time_ms": 1,
+        "body": {"status": "ready"},
+        "verdict": "PASS"
+      }
+    },
+
+    "phase_2_public": {
+      "GET /api/guides": {
+        "status": 200,
+        "guide_count": 25,
+        "sample_fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "cta_text", "cta_url"],
+        "verdict": "PASS"
+      },
+      "GET /api/guides/{slug}": {
+        "status": 200,
+        "slug_tested": "tokyo-food",
+        "response_fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "content", "cta_text", "cta_url"],
+        "content_length": 901,
+        "title_matches_list": true,
+        "verdict": "PASS"
+      },
+      "GET /api/guides/{invalid-slug}": {
+        "status": 404,
+        "body": "guide not found",
+        "verdict": "PASS"
+      },
+      "GET /shared/{invalid-token}": {
+        "status": 404,
+        "body": "not found",
+        "verdict": "PASS"
+      }
+    },
+
+    "phase_3_authenticated": {
+      "GET /api/usage": {
+        "status": 200,
+        "body": {"used": 0, "limit": 10, "tier": "free", "resets_at": "2026-04-13T00:00:00Z"},
+        "fields": ["used", "limit", "tier", "resets_at"],
+        "used_gte_0": true,
+        "limit_gt_0": true,
+        "verdict": "PASS"
+      },
+      "GET /api/referral": {
+        "status": 200,
+        "body": {
+          "code": "F0F1A66E",
+          "link": "http://localhost:3000/?ref=F0F1A66E",
+          "max_rewards": 10,
+          "rewards_earned": 0,
+          "rewards_remaining": 10,
+          "successful_referrals": 0,
+          "referee_reward_granted": false,
+          "referrer_reward_granted": false
+        },
+        "code_non_empty": true,
+        "verdict": "PASS"
+      },
+      "POST /api/feedback": {
+        "status": 200,
+        "body": {"id": "uuid", "status": "received"},
+        "verdict": "PASS"
+      }
+    },
+
+    "phase_4_sharing_flow": {
+      "POST /api/trips/share": {
+        "status": 200,
+        "body_fields": ["share_token", "share_url"],
+        "share_token_non_empty": true,
+        "share_url_format": "http://localhost:3000/shared/{token}",
+        "verdict": "PASS"
+      },
+      "GET /shared/{valid-token}": {
+        "status": 200,
+        "body": {
+          "trip": {"title": "REST Test Trip", "description": "A trip for REST endpoint testing", "status": "planning", "currency": "USD"},
+          "itinerary": []
+        },
+        "title_matches": true,
+        "verdict": "PASS"
+      },
+      "POST /api/trips/unshare": {
+        "status": 200,
+        "body": {"status": "ok"},
+        "verdict": "PASS"
+      },
+      "GET /shared/{token} after unshare": {
+        "status": 404,
+        "body": "not found",
+        "token_invalidated": true,
+        "verdict": "PASS"
+      }
+    },
+
+    "phase_5_error_handling": {
+      "GET /api/usage (no auth)": {
+        "status": 401,
+        "body": "unauthorized",
+        "verdict": "PASS — returns 401, not 500"
+      },
+      "POST /api/trips/share (no auth)": {
+        "status": 401,
+        "body": "unauthorized",
+        "verdict": "PASS — returns 401, not 500"
+      },
+      "POST /api/trips/share (invalid trip_id)": {
+        "status": 404,
+        "body": "trip not found",
+        "verdict": "PASS — returns 404, not 500"
+      },
+      "POST /api/trips/share (malformed trip_id)": {
+        "status": 400,
+        "body": "invalid trip_id",
+        "verdict": "PASS — returns 400, not 500"
+      }
+    },
+
+    "phase_6_new_endpoints": {
+      "privacy_consents": {
+        "GET /api/privacy/consents": {
+          "status": 200,
+          "initial_body": "[]",
+          "verdict": "PASS — empty array when no consents recorded"
+        },
+        "GET /api/privacy/consents (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        },
+        "POST /api/privacy/consents (analytics)": {
+          "status": 201,
+          "body_fields": ["id", "consent_type", "granted_at", "created_at"],
+          "verdict": "PASS"
+        },
+        "POST /api/privacy/consents (terms)": {
+          "status": 201,
+          "verdict": "PASS"
+        },
+        "GET /api/privacy/consents (after recording 2)": {
+          "status": 200,
+          "count": 2,
+          "types_present": ["terms", "analytics"],
+          "verdict": "PASS"
+        },
+        "POST /api/privacy/consents (invalid type)": {
+          "status": 400,
+          "body": "invalid consent_type",
+          "verdict": "PASS — rejects unknown consent types"
+        },
+        "POST /api/privacy/consents (granted=false)": {
+          "status": 400,
+          "body": "granted must be true to record consent; use DELETE to withdraw",
+          "verdict": "PASS — clear guidance to use DELETE for withdrawal"
+        },
+        "DELETE /api/privacy/consents/analytics": {
+          "status": 204,
+          "verdict": "PASS — consent withdrawn"
+        },
+        "GET /api/privacy/consents (after withdrawal)": {
+          "status": 200,
+          "count": 1,
+          "remaining_types": ["terms"],
+          "analytics_removed": true,
+          "verdict": "PASS — full consent lifecycle works"
+        }
+      },
+
+      "preferences": {
+        "GET /api/preferences": {
+          "status": 200,
+          "initial_body": "{}",
+          "verdict": "PASS — empty object when no preferences set"
+        },
+        "GET /api/preferences (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        },
+        "PUT /api/preferences (valid keys)": {
+          "status": 200,
+          "body": {"budget": "moderate", "dietary": "vegan", "interests": "history, food", "pace": "relaxed"},
+          "verdict": "PASS — all 4 preferences saved, returned in response"
+        },
+        "PUT /api/preferences (invalid key 'currency')": {
+          "status": 400,
+          "body": "invalid preference key: currency",
+          "verdict": "PASS — rejects unknown keys"
+        },
+        "PUT /api/preferences (delete via empty string)": {
+          "status": 200,
+          "dietary_removed": true,
+          "remaining_count": 3,
+          "verdict": "PASS — empty string deletes the key"
+        },
+        "PUT /api/preferences (empty body)": {
+          "status": 400,
+          "body": "request body must contain at least one preference",
+          "verdict": "PASS"
+        },
+        "PUT /api/preferences (value too long)": {
+          "status": 400,
+          "body": "preference value too long for key: dietary",
+          "verdict": "PASS — rejects values over 500 chars"
+        },
+        "valid_keys": ["dietary", "budget", "pace", "mobility", "accommodation", "interests"]
+      },
+
+      "export_ical": {
+        "GET /api/trips/{id}/export/ical": {
+          "status": 200,
+          "content_type": "text/calendar; charset=utf-8",
+          "begins_with": "BEGIN:VCALENDAR",
+          "contains_trip_title": true,
+          "verdict": "PASS — valid iCalendar output"
+        },
+        "GET /api/trips/{id}/export/ical (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        },
+        "GET /api/trips/{invalid-id}/export/ical": {
+          "status": 404,
+          "body": "trip not found",
+          "verdict": "PASS"
+        }
+      },
+
+      "export_pdf": {
+        "GET /api/trips/{id}/export/pdf": {
+          "status": 200,
+          "content_type": "application/pdf",
+          "size_bytes": 1640,
+          "verdict": "PASS — returns valid PDF content"
+        },
+        "GET /api/trips/{id}/export/pdf (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        },
+        "GET /api/trips/{invalid-id}/export/pdf": {
+          "status": 404,
+          "body": "trip not found",
+          "verdict": "PASS"
+        }
+      },
+
+      "destination_search": {
+        "GET /api/destinations/search?q=japan": {
+          "status": 200,
+          "body": [{"name": "Japan", "code": "JP"}],
+          "verdict": "PASS"
+        },
+        "GET /api/destinations/search?q=spa": {
+          "status": 200,
+          "body": [{"name": "Spain", "code": "ES"}],
+          "verdict": "PASS — partial match works"
+        },
+        "GET /api/destinations/search (no query)": {
+          "status": 200,
+          "body": "[]",
+          "verdict": "PASS — returns empty array"
+        },
+        "GET /api/destinations/search (no auth)": {
+          "status": 200,
+          "note": "Public endpoint — no auth required (static data, no user-specific info)",
+          "verdict": "PASS"
+        }
+      },
+
+      "search_itinerary": {
+        "GET /api/search/itinerary?q=temple": {
+          "status": 200,
+          "body": {"items": [], "count": 0},
+          "note": "Empty because test trip has no itinerary items",
+          "verdict": "PASS"
+        },
+        "GET /api/search/itinerary (no query)": {
+          "status": 400,
+          "body": "q parameter is required",
+          "verdict": "PASS"
+        },
+        "GET /api/search/itinerary (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        }
+      },
+
+      "search_bookings": {
+        "GET /api/search/bookings?q=delta": {
+          "status": 200,
+          "body": {"bookings": [], "count": 0},
+          "note": "Empty because test user has no bookings",
+          "verdict": "PASS"
+        },
+        "GET /api/search/bookings (no query)": {
+          "status": 400,
+          "body": "q parameter is required",
+          "verdict": "PASS"
+        },
+        "GET /api/search/bookings (no auth)": {
+          "status": 401,
+          "verdict": "PASS"
+        }
+      },
+
+      "affiliate_click": {
+        "GET /api/affiliate/click?url=booking.com": {
+          "status": 302,
+          "redirects_to": "https://www.booking.com/hotel/es/example",
+          "verdict": "PASS — redirects correctly"
+        },
+        "GET /api/affiliate/click?url=skyscanner.com": {
+          "status": 302,
+          "redirects_to": "https://www.skyscanner.com/flights/somewhere",
+          "verdict": "PASS"
+        },
+        "GET /api/affiliate/click?url=getyourguide.com": {
+          "status": 302,
+          "redirects_to": "https://www.getyourguide.com/some-tour",
+          "verdict": "PASS"
+        },
+        "GET /api/affiliate/click (no url)": {
+          "status": 400,
+          "body": "missing required 'url' parameter",
+          "verdict": "PASS"
+        },
+        "GET /api/affiliate/click (no auth)": {
+          "status": 302,
+          "note": "Public endpoint — allows unauthenticated clicks (needed for shared trips)",
+          "verdict": "PASS"
+        },
+        "GET /api/affiliate/click (non-affiliate domain)": {
+          "status": 400,
+          "body": "redirect domain not allowed",
+          "verdict": "PASS — rejects non-allowed domains (open redirect protection)"
+        }
+      }
+    },
+
+    "bonus_endpoints": {
+      "GET /waitlist/status": {
+        "status": 200,
+        "body": {"position": 0, "total": 0},
+        "verdict": "PASS"
+      },
+      "GET /.well-known/apple-app-site-association": {
+        "status": 200,
+        "verdict": "PASS — returns valid AASA JSON"
+      },
+      "GET /.well-known/assetlinks.json": {
+        "status": 200,
+        "verdict": "PASS — returns valid Android asset links JSON"
+      }
+    }
+  },
+
+  "summary": {
+    "total_endpoints_tested": 44,
+    "total_pass": 44,
+    "total_fail": 0,
+    "total_bugs_found": 0,
+    "http_500_count": 0,
+    "auth_enforcement_violations": 0,
+    "all_health_endpoints_under_500ms": true,
+    "sharing_lifecycle_complete": true,
+    "consent_lifecycle_complete": true,
+    "preferences_lifecycle_complete": true,
+    "new_endpoints_since_run19": {
+      "privacy_consents_get": "PASS",
+      "privacy_consents_post": "PASS",
+      "privacy_consents_delete": "PASS",
+      "preferences_get": "PASS",
+      "preferences_put": "PASS",
+      "export_ical": "PASS",
+      "export_pdf": "PASS",
+      "destination_search": "PASS",
+      "search_itinerary": "PASS",
+      "search_bookings": "PASS",
+      "affiliate_click": "PASS"
+    }
+  },
+
+  "evaluation": {
+    "response_shape_consistency": {
+      "score": 5,
+      "notes": "All endpoints return well-formed JSON (or appropriate content types like text/calendar and application/pdf). Error responses are plain text with correct HTTP status codes. No unexpected 500s."
+    },
+    "auth_enforcement": {
+      "score": 5,
+      "notes": "All authenticated endpoints correctly return 401 when called without a Bearer token. Public endpoints (guides, healthz, destination search, affiliate click, AASA) correctly function without auth."
+    },
+    "error_handling": {
+      "score": 5,
+      "notes": "Validation errors return 400 with descriptive messages. Not-found returns 404. All error messages are informative without leaking internal details."
+    },
+    "sharing_security": {
+      "score": 5,
+      "notes": "Full share/unshare lifecycle works correctly. Token is invalidated on unshare, returning 404 for the old token. No data leakage after revocation."
+    },
+    "new_feature_quality": {
+      "score": 5,
+      "notes": "All 11 new endpoints since Run 19 are fully functional with proper auth enforcement, input validation, and error handling. The consent lifecycle (grant + withdraw + verify) and preferences lifecycle (set + update + delete + verify) both work correctly."
+    },
+    "overall": {
+      "score": 5,
+      "notes": "Zero bugs found across 44 endpoint tests. REST API surface is robust, consistent, and well-protected. All new endpoints are production-ready."
+    }
+  }
+}

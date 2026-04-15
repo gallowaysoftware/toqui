@@ -1,0 +1,89 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "run_id": "run21",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": [
+    "auth",
+    "selection_cz",
+    "planning_cz",
+    "selection_is",
+    "planning_is",
+    "list_trips_verify",
+    "activate",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Provided JWT token missing aud/iss claims",
+      "description": "The JWT token provided by the orchestrator was missing the required 'aud' and 'iss' claims (aud=toqui-api, iss=toqui), causing GetCurrentUser to return 'unauthenticated'. Had to generate a new token via testctl. This is an orchestrator issue, not a backend bug — the backend correctly rejects tokens without required claims.",
+      "expected": "Orchestrator-provided token should include aud and iss claims",
+      "actual": "Token had only exp, iat, sub claims"
+    },
+    {
+      "severity": "P2",
+      "title": "AI duplicated tool call for already-created itinerary items",
+      "description": "During Czech planning (Step 3), after creating 9 itinerary items for Days 2-3, the AI called create_itinerary_items a second time with the exact same 9 items. The backend correctly detected duplicates and returned 'already_exists' with 0 new items created, but the redundant tool call wastes tokens and time.",
+      "expected": "AI should not re-call create_itinerary_items with identical items",
+      "actual": "AI called create_itinerary_items twice with the same 9 items; second call returned skipped_count=9"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count appears off by one",
+      "description": "After sending 4 SendMessage calls (2 CZ planning, 1 IS selection, 2 CZ companion), the /api/usage endpoint reported used=3. Expected 4 or 5 depending on how selection mode messages are counted. Minor discrepancy, may be intentional (e.g., selection mode messages may not count toward the planning limit).",
+      "expected": "Usage count should reflect all SendMessage calls",
+      "actual": "used=3 after 4 SendMessage calls (possibly 5 if the second CZ planning call counted as 2 due to tool loop)"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode responses, while concise and helpful, do not reference the user's existing itinerary items. When asked 'what should we do right now', the AI suggested new venues rather than pointing to Day 1 items already in the itinerary.",
+      "severity": "P2",
+      "suggestion": "In companion mode, the AI should cross-reference the current itinerary and suggest what's already planned for today before offering alternatives."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "During Iceland trip creation, the AI briefly said 'let me bring in someone' before the expert handoff, which slightly overlaps with the Toqui-to-expert transition. The directive says not to defer, but Toqui's initial text pre-empted the handoff.",
+      "context": "Selection mode message for Iceland. Toqui wrote 'I'm summoning an adventure expert' in its text before calling suggest_expert.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the core test vectors. The extended location profiles (CZ, IS) loaded correctly and produced deeply knowledgeable expert personas. The Czech beer expert 'Jakub' demonstrated remarkable specificity — naming Zly Casy, BeerGeek, Pivovarsky Dum, Strahov Monastery, Brevnov Monastery, Czech pour styles (Hladinka, Snyt, Mliko), and the tankovna culture. The Iceland hiking expert 'Sigrun' provided precise Laugavegur Trail logistics including hut booking timelines, river crossing safety, the Fimmvorduhals extension, and appropriate weather warnings. Both extended themes (craft-beer and hiking) produced rich, niche-specific content far beyond generic advice. The two-trip workflow was clean — creating the Iceland trip did not interfere with the Czech trip. Companion mode was concise and practical. The only notable gap was that companion mode didn't reference existing itinerary items when answering 'what should we do now'."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "create_trip",
+    "create_itinerary_items",
+    "suggest_expert",
+    "recommend_booking",
+    "web_search",
+    "trip_sharing",
+    "trip_unsharing",
+    "chat_history",
+    "list_chat_sessions",
+    "usage",
+    "trip_activation",
+    "trip_completion",
+    "multi_trip",
+    "extended_location_profiles",
+    "extended_theme_profiles"
+  ]
+}
