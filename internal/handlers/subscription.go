@@ -80,8 +80,9 @@ func (h *SubscriptionHandler) HandleCreateCheckout(w http.ResponseWriter, r *htt
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
-		Tier   string `json:"tier"`   // "explorer" or "voyager"
-		Annual bool   `json:"annual"` // true for annual billing
+		Tier          string `json:"tier"`           // "explorer" or "voyager"
+		BillingPeriod string `json:"billing_period"` // "monthly" or "annual"
+		Annual        bool   `json:"annual"`         // deprecated: use billing_period instead
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -94,6 +95,16 @@ func (h *SubscriptionHandler) HandleCreateCheckout(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Determine billing period: prefer billing_period string, fall back to annual bool.
+	annual := req.Annual
+	if req.BillingPeriod != "" {
+		if req.BillingPeriod != "monthly" && req.BillingPeriod != "annual" {
+			http.Error(w, "billing_period must be 'monthly' or 'annual'", http.StatusBadRequest)
+			return
+		}
+		annual = req.BillingPeriod == "annual"
+	}
+
 	// Look up the user's email for the Stripe customer.
 	user, err := h.queries.GetUserByID(r.Context(), userID)
 	if err != nil {
@@ -102,21 +113,22 @@ func (h *SubscriptionHandler) HandleCreateCheckout(w http.ResponseWriter, r *htt
 		return
 	}
 
-	sessionURL, err := h.subSvc.CreateCheckoutSession(r.Context(), userID, user.Email, t, req.Annual)
+	sessionURL, err := h.subSvc.CreateCheckoutSession(r.Context(), userID, user.Email, t, annual)
 	if err != nil {
 		slog.Error("subscription checkout failed", "error", err, "user_id", userID, "tier", req.Tier)
 		http.Error(w, "failed to create checkout session", http.StatusInternalServerError)
 		return
 	}
 
+	billingPeriod := "monthly"
+	if annual {
+		billingPeriod = "annual"
+	}
+
 	if h.analyticsClient != nil {
-		interval := "monthly"
-		if req.Annual {
-			interval = "annual"
-		}
 		h.analyticsClient.Track(userID.String(), "subscription_checkout_initiated", map[string]any{
 			"tier":     req.Tier,
-			"interval": interval,
+			"interval": billingPeriod,
 		})
 	}
 
@@ -152,9 +164,10 @@ func (h *SubscriptionHandler) HandleGetSubscription(w http.ResponseWriter, r *ht
 		freeTier := tier.Free
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"tier":     string(freeTier),
-			"status":   "none",
-			"features": freeTier.Features(),
+			"tier":           string(freeTier),
+			"status":         "none",
+			"billing_period": "none",
+			"features":       freeTier.Features(),
 		})
 		return
 	}
@@ -163,6 +176,7 @@ func (h *SubscriptionHandler) HandleGetSubscription(w http.ResponseWriter, r *ht
 		"tier":                 string(sub.Tier),
 		"status":               sub.Status,
 		"cancel_at_period_end": sub.CancelAtPeriodEnd,
+		"billing_period":       string(sub.BillingPeriod),
 		"features":             sub.Tier.Features(),
 	}
 	if sub.CurrentPeriodEnd != nil {

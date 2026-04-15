@@ -31,12 +31,32 @@ type ProductConfig struct {
 	VoyagerAnnual   string
 }
 
+// BillingPeriod represents the billing interval for a subscription.
+type BillingPeriod string
+
+const (
+	BillingPeriodMonthly BillingPeriod = "monthly"
+	BillingPeriodAnnual  BillingPeriod = "annual"
+)
+
+// ParseBillingPeriod converts a raw string to a BillingPeriod. Unrecognised
+// values default to monthly.
+func ParseBillingPeriod(raw string) BillingPeriod {
+	switch BillingPeriod(raw) {
+	case BillingPeriodAnnual:
+		return BillingPeriodAnnual
+	default:
+		return BillingPeriodMonthly
+	}
+}
+
 // Subscription represents a user's subscription state returned to the handler.
 type Subscription struct {
 	Tier                 tier.UserTier `json:"tier"`
 	Status               string        `json:"status"`
 	CurrentPeriodEnd     *time.Time    `json:"current_period_end,omitempty"`
 	CancelAtPeriodEnd    bool          `json:"cancel_at_period_end"`
+	BillingPeriod        BillingPeriod `json:"billing_period"`
 	StripeCustomerID     string        `json:"-"`
 	StripeSubscriptionID string        `json:"-"`
 }
@@ -238,6 +258,7 @@ func (s *Service) GetSubscription(ctx context.Context, userID uuid.UUID) (*Subsc
 		Tier:                 tier.Parse(sub.Tier),
 		Status:               sub.Status,
 		CancelAtPeriodEnd:    sub.CancelAtPeriodEnd.Valid && sub.CancelAtPeriodEnd.Bool,
+		BillingPeriod:        ParseBillingPeriod(sub.BillingPeriod),
 		StripeCustomerID:     sub.StripeCustomerID,
 		StripeSubscriptionID: sub.StripeSubscriptionID.String,
 	}
@@ -299,6 +320,9 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		return fmt.Errorf("unexpected tier in metadata: %s", tierStr)
 	}
 
+	// Determine billing period from checkout metadata.
+	billingPeriod := ParseBillingPeriod(session.Metadata["interval"])
+
 	// The subscription ID is on the session object.
 	subscriptionID := ""
 	if session.Subscription != nil {
@@ -310,7 +334,10 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		customerID = session.Customer.ID
 	}
 
-	// Fetch the subscription to get period dates from items.
+	// Fetch the subscription to get period dates from items. Also verify
+	// the billing interval from Stripe's own subscription data as a sanity
+	// check (metadata is set by us, but the Price's recurring interval is
+	// authoritative).
 	var periodStart, periodEnd time.Time
 	if subscriptionID != "" && s.client != nil {
 		stripeSub, err := s.client.V1Subscriptions.Retrieve(ctx, subscriptionID, nil)
@@ -318,6 +345,18 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 			item := stripeSub.Items.Data[0]
 			periodStart = time.Unix(item.CurrentPeriodStart, 0)
 			periodEnd = time.Unix(item.CurrentPeriodEnd, 0)
+
+			// Use Stripe's recurring interval as authoritative source.
+			if item.Price != nil && item.Price.Recurring != nil {
+				billingPeriod = intervalToBillingPeriod(item.Price.Recurring.Interval)
+			}
+
+			// If tier was not in metadata, try to resolve from the price ID.
+			if t != tier.Explorer && t != tier.Voyager && item.Price != nil {
+				if resolved, ok := s.resolveTierFromPriceID(item.Price.ID); ok {
+					t = resolved
+				}
+			}
 		}
 	}
 
@@ -329,6 +368,7 @@ func (s *Service) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		Status:               "active",
 		CurrentPeriodStart:   pgtype.Timestamptz{Time: periodStart, Valid: !periodStart.IsZero()},
 		CurrentPeriodEnd:     pgtype.Timestamptz{Time: periodEnd, Valid: !periodEnd.IsZero()},
+		BillingPeriod:        string(billingPeriod),
 	})
 	if err != nil {
 		return fmt.Errorf("create subscription record: %w", err)
@@ -387,7 +427,7 @@ func (s *Service) handleSubscriptionUpdated(ctx context.Context, event stripe.Ev
 		slog.Warn("failed to set cancel_at_period_end", "error", err, "subscription_id", sub.ID)
 	}
 
-	// Update period dates from items
+	// Update period dates and billing period from items.
 	if sub.Items != nil && len(sub.Items.Data) > 0 {
 		item := sub.Items.Data[0]
 		if err := s.queries.UpdateSubscriptionPeriod(ctx, dbgen.UpdateSubscriptionPeriodParams{
@@ -396,6 +436,39 @@ func (s *Service) handleSubscriptionUpdated(ctx context.Context, event stripe.Ev
 			StripeSubscriptionID: stripeSubID,
 		}); err != nil {
 			slog.Warn("failed to update subscription period", "error", err, "subscription_id", sub.ID)
+		}
+
+		// Update billing period if the subscription's recurring interval changed
+		// (e.g., customer switched from monthly to annual via Stripe portal).
+		if item.Price != nil && item.Price.Recurring != nil {
+			bp := intervalToBillingPeriod(item.Price.Recurring.Interval)
+			if err := s.queries.UpdateSubscriptionBillingPeriod(ctx, dbgen.UpdateSubscriptionBillingPeriodParams{
+				BillingPeriod:        string(bp),
+				StripeSubscriptionID: stripeSubID,
+			}); err != nil {
+				slog.Warn("failed to update billing period", "error", err, "subscription_id", sub.ID)
+			}
+		}
+
+		// Update tier from price ID if the plan changed.
+		if item.Price != nil {
+			if resolved, ok := s.resolveTierFromPriceID(item.Price.ID); ok {
+				if err := s.queries.UpdateSubscriptionTier(ctx, dbgen.UpdateSubscriptionTierParams{
+					Tier:                 string(resolved),
+					StripeSubscriptionID: stripeSubID,
+				}); err != nil {
+					slog.Warn("failed to update subscription tier from price", "error", err, "subscription_id", sub.ID)
+				} else {
+					// Also update user tier column.
+					dbSub, err := s.queries.GetSubscriptionByStripeSubscriptionID(ctx, stripeSubID)
+					if err == nil {
+						_ = s.queries.SetUserSubscriptionTierByID(ctx, dbgen.SetUserSubscriptionTierByIDParams{
+							Tier:   string(resolved),
+							UserID: dbSub.UserID,
+						})
+					}
+				}
+			}
 		}
 	}
 
@@ -548,4 +621,34 @@ func (s *Service) resolvePriceID(t tier.UserTier, annual bool) (string, error) {
 		return "", fmt.Errorf("stripe price ID not configured for %s (annual=%v)", t, annual)
 	}
 	return priceID, nil
+}
+
+// resolveTierFromPriceID reverse-maps a Stripe Price ID to a tier. This is used
+// during webhook processing to determine the tier from the subscription's price
+// when metadata is missing or as a sanity check.
+func (s *Service) resolveTierFromPriceID(priceID string) (tier.UserTier, bool) {
+	if priceID == "" {
+		return "", false
+	}
+	switch priceID {
+	case s.prices.ExplorerMonthly, s.prices.ExplorerAnnual:
+		if priceID != "" {
+			return tier.Explorer, true
+		}
+	case s.prices.VoyagerMonthly, s.prices.VoyagerAnnual:
+		if priceID != "" {
+			return tier.Voyager, true
+		}
+	}
+	return "", false
+}
+
+// intervalToBillingPeriod converts a Stripe Price recurring interval to a BillingPeriod.
+func intervalToBillingPeriod(interval stripe.PriceRecurringInterval) BillingPeriod {
+	switch interval {
+	case stripe.PriceRecurringIntervalYear:
+		return BillingPeriodAnnual
+	default:
+		return BillingPeriodMonthly
+	}
 }

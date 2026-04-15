@@ -263,10 +263,10 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `STRIPE_SECRET_KEY` | (none) | Stripe API secret key |
 | `STRIPE_WEBHOOK_SECRET` | (none) | Stripe webhook signing secret |
 | `STRIPE_TRIP_PRO_PRODUCT_ID` | (none) | Stripe product ID for Trip Pro one-time purchase |
-| `STRIPE_EXPLORER_MONTHLY_PRODUCT` | (none) | Stripe product ID for Explorer monthly subscription |
-| `STRIPE_EXPLORER_ANNUAL_PRODUCT` | (none) | Stripe product ID for Explorer annual subscription |
-| `STRIPE_VOYAGER_MONTHLY_PRODUCT` | (none) | Stripe product ID for Voyager monthly subscription |
-| `STRIPE_VOYAGER_ANNUAL_PRODUCT` | (none) | Stripe product ID for Voyager annual subscription |
+| `STRIPE_EXPLORER_MONTHLY_PRODUCT` | (none) | Stripe Price ID for Explorer monthly subscription |
+| `STRIPE_EXPLORER_ANNUAL_PRODUCT` | (none) | Stripe Price ID for Explorer annual subscription |
+| `STRIPE_VOYAGER_MONTHLY_PRODUCT` | (none) | Stripe Price ID for Voyager monthly subscription |
+| `STRIPE_VOYAGER_ANNUAL_PRODUCT` | (none) | Stripe Price ID for Voyager annual subscription |
 | `TRIP_PRO_PRICE_CENTS` | `1900` | Trip Pro price in cents ($19.00) |
 | `RESEND_API_KEY` | (none) | Resend transactional email API key |
 | `EMAIL_FROM` | `Toqui <hello@toqui.travel>` | From address for outbound emails |
@@ -714,11 +714,11 @@ HTTP routes (outside ConnectRPC):
 - `GET /api/checkout/status?trip_id=...` — Authenticated. Returns `{"unlocked":true/false}`.
 
 ### Subscription
-- `POST /api/subscription/checkout` — Authenticated. Creates Stripe checkout session for Explorer/Voyager subscription.
-- `GET /api/subscription` — Authenticated. Returns current subscription tier and status.
+- `POST /api/subscription/checkout` — Authenticated. Creates Stripe checkout session for Explorer/Voyager subscription. JSON body: `{"tier": "explorer"|"voyager", "billing_period": "monthly"|"annual"}`. The `billing_period` field selects the pricing interval; the legacy `annual` boolean is still accepted but `billing_period` takes precedence when both are set. Returns `{"url": "https://checkout.stripe.com/..."}`.
+- `GET /api/subscription` — Authenticated. Returns current subscription tier, status, and billing period. Response includes `billing_period` ("monthly", "annual", or "none" for free users) alongside `tier`, `status`, `cancel_at_period_end`, `current_period_end`, and `features`.
 - `POST /api/subscription/cancel` — Authenticated. Cancels active subscription at period end.
 - `POST /api/subscription/portal` — Authenticated. Creates Stripe billing portal session URL.
-- `POST /api/subscription/webhook` — Stripe webhook endpoint (signature verified). Processes subscription lifecycle events.
+- `POST /api/subscription/webhook` — Stripe webhook endpoint (signature verified). Processes subscription lifecycle events. Annual subscriptions are detected via the Stripe Price's recurring interval and the billing period is stored alongside the subscription record.
 
 ### Admin (requires admin auth: Bearer + email in ADMIN_EMAILS)
 - `GET /admin/stats` — Dashboard stats (users, waitlist, trips, messages)

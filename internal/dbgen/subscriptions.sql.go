@@ -13,8 +13,8 @@ import (
 )
 
 const createSubscription = `-- name: CreateSubscription :one
-INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, billing_period)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (user_id) DO UPDATE SET
     stripe_customer_id = EXCLUDED.stripe_customer_id,
     stripe_subscription_id = EXCLUDED.stripe_subscription_id,
@@ -22,8 +22,9 @@ ON CONFLICT (user_id) DO UPDATE SET
     status = EXCLUDED.status,
     current_period_start = EXCLUDED.current_period_start,
     current_period_end = EXCLUDED.current_period_end,
+    billing_period = EXCLUDED.billing_period,
     updated_at = NOW()
-RETURNING id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at
+RETURNING id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at, billing_period
 `
 
 type CreateSubscriptionParams struct {
@@ -34,6 +35,7 @@ type CreateSubscriptionParams struct {
 	Status               string             `json:"status"`
 	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
 	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	BillingPeriod        string             `json:"billing_period"`
 }
 
 func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error) {
@@ -45,6 +47,7 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		arg.Status,
 		arg.CurrentPeriodStart,
 		arg.CurrentPeriodEnd,
+		arg.BillingPeriod,
 	)
 	var i Subscription
 	err := row.Scan(
@@ -59,6 +62,7 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		&i.CancelAtPeriodEnd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BillingPeriod,
 	)
 	return i, err
 }
@@ -73,7 +77,7 @@ func (q *Queries) DeleteSubscriptionByUserID(ctx context.Context, userID uuid.UU
 }
 
 const getSubscriptionByStripeCustomer = `-- name: GetSubscriptionByStripeCustomer :one
-SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at FROM subscriptions WHERE stripe_customer_id = $1
+SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at, billing_period FROM subscriptions WHERE stripe_customer_id = $1
 `
 
 func (q *Queries) GetSubscriptionByStripeCustomer(ctx context.Context, stripeCustomerID string) (Subscription, error) {
@@ -91,12 +95,13 @@ func (q *Queries) GetSubscriptionByStripeCustomer(ctx context.Context, stripeCus
 		&i.CancelAtPeriodEnd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BillingPeriod,
 	)
 	return i, err
 }
 
 const getSubscriptionByStripeSubscriptionID = `-- name: GetSubscriptionByStripeSubscriptionID :one
-SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at FROM subscriptions WHERE stripe_subscription_id = $1
+SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at, billing_period FROM subscriptions WHERE stripe_subscription_id = $1
 `
 
 func (q *Queries) GetSubscriptionByStripeSubscriptionID(ctx context.Context, stripeSubscriptionID pgtype.Text) (Subscription, error) {
@@ -114,12 +119,13 @@ func (q *Queries) GetSubscriptionByStripeSubscriptionID(ctx context.Context, str
 		&i.CancelAtPeriodEnd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BillingPeriod,
 	)
 	return i, err
 }
 
 const getSubscriptionByUserID = `-- name: GetSubscriptionByUserID :one
-SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at FROM subscriptions WHERE user_id = $1
+SELECT id, user_id, stripe_customer_id, stripe_subscription_id, tier, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at, billing_period FROM subscriptions WHERE user_id = $1
 `
 
 func (q *Queries) GetSubscriptionByUserID(ctx context.Context, userID uuid.UUID) (Subscription, error) {
@@ -137,6 +143,7 @@ func (q *Queries) GetSubscriptionByUserID(ctx context.Context, userID uuid.UUID)
 		&i.CancelAtPeriodEnd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BillingPeriod,
 	)
 	return i, err
 }
@@ -153,6 +160,21 @@ type SetSubscriptionCancelAtPeriodEndParams struct {
 
 func (q *Queries) SetSubscriptionCancelAtPeriodEnd(ctx context.Context, arg SetSubscriptionCancelAtPeriodEndParams) error {
 	_, err := q.db.Exec(ctx, setSubscriptionCancelAtPeriodEnd, arg.CancelAtPeriodEnd, arg.StripeSubscriptionID)
+	return err
+}
+
+const updateSubscriptionBillingPeriod = `-- name: UpdateSubscriptionBillingPeriod :exec
+UPDATE subscriptions SET billing_period = $1, updated_at = NOW()
+WHERE stripe_subscription_id = $2
+`
+
+type UpdateSubscriptionBillingPeriodParams struct {
+	BillingPeriod        string      `json:"billing_period"`
+	StripeSubscriptionID pgtype.Text `json:"stripe_subscription_id"`
+}
+
+func (q *Queries) UpdateSubscriptionBillingPeriod(ctx context.Context, arg UpdateSubscriptionBillingPeriodParams) error {
+	_, err := q.db.Exec(ctx, updateSubscriptionBillingPeriod, arg.BillingPeriod, arg.StripeSubscriptionID)
 	return err
 }
 

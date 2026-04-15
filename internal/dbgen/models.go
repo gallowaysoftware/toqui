@@ -173,6 +173,7 @@ type Subscription struct {
 	CancelAtPeriodEnd    pgtype.Bool        `json:"cancel_at_period_end"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	BillingPeriod        string             `json:"billing_period"`
 }
 
 type Theme struct {
