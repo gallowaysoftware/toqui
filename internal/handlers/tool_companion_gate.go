@@ -59,6 +59,18 @@ func (g *CompanionGate) Execute(ctx context.Context, args json.RawMessage) (json
 		userMsg = g.lastUserMsg()
 	}
 
+	// Fast path: deterministic keyword check for obvious MODIFY phrases.
+	// This short-circuits the LLM classifier for explicit requests like
+	// "add that to my itinerary" which the classifier sometimes misses
+	// (Run 21/22 N-01 P1). The LLM is still used for ambiguous cases.
+	if hasExplicitModifyIntent(userMsg) {
+		slog.Debug("companion gate: keyword pre-check matched MODIFY",
+			"tool", g.toolNameForLog,
+			"user_msg_preview", userMsg[:min(len(userMsg), 80)],
+		)
+		return g.inner.Execute(ctx, args)
+	}
+
 	if !g.classifyItineraryIntent(ctx, userMsg) {
 		slog.Info("companion gate: blocked tool call on info query",
 			"tool", g.toolNameForLog,
@@ -71,6 +83,92 @@ func (g *CompanionGate) Execute(ctx context.Context, args json.RawMessage) (json
 	}
 
 	return g.inner.Execute(ctx, args)
+}
+
+// explicitModifyPhrases are substrings that unambiguously indicate the user
+// wants to MODIFY their itinerary. These bypass the LLM classifier to avoid
+// false negatives on clear requests like "add that to my itinerary."
+//
+// Only include phrases that are NEVER used in info queries. "recommend" and
+// "suggest" are deliberately excluded since "recommend something to add"
+// could be INFO.
+var explicitModifyPhrases = []string{
+	"add to my itinerary",
+	"add to my plan",
+	"add to the itinerary",
+	"add to the plan",
+	"add that to my",
+	"add this to my",
+	"add it to my",
+	"put on my itinerary",
+	"put on my plan",
+	"put this on my",
+	"put that on my",
+	"save to my itinerary",
+	"save to my plan",
+	"save this to my",
+	"save that to my",
+	"schedule this for",
+	"schedule that for",
+	"remove from my itinerary",
+	"remove from my plan",
+	"remove from the itinerary",
+	"delete from my itinerary",
+	"delete from my plan",
+	"take off my itinerary",
+	"drop from my plan",
+	"add to my schedule",
+	"book this for",
+}
+
+// modifyTargetWords are words that indicate the user is referring to their
+// itinerary/plan as the target of an action.
+var modifyTargetWords = []string{
+	"itinerary", "plan", "schedule", "planner",
+}
+
+// modifyActionWords are verbs that indicate a modification intent.
+var modifyActionWords = []string{
+	"add", "put", "save", "schedule", "remove", "delete", "drop", "take off", "book",
+}
+
+// hasExplicitModifyIntent checks if the user message contains an
+// unambiguous request to modify the itinerary. Uses two strategies:
+// 1. Exact phrase matching for common patterns
+// 2. Action+target co-occurrence (e.g., "add" + "itinerary" in same message)
+//
+// This short-circuits the LLM classifier for obvious MODIFY requests,
+// avoiding false negatives like "add that temple visit to my itinerary"
+// which the classifier sometimes misclassifies as INFO.
+func hasExplicitModifyIntent(msg string) bool {
+	lower := strings.ToLower(msg)
+
+	// Strategy 1: exact phrase match.
+	for _, phrase := range explicitModifyPhrases {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+
+	// Strategy 2: action + target co-occurrence.
+	// If the message contains both an action word (add, remove, save, etc.)
+	// AND a target word (itinerary, plan, schedule), it's a MODIFY.
+	hasAction := false
+	for _, action := range modifyActionWords {
+		if strings.Contains(lower, action) {
+			hasAction = true
+			break
+		}
+	}
+	if hasAction {
+		for _, target := range modifyTargetWords {
+			if strings.Contains(lower, target) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // classifyItineraryIntent uses a fast-tier LLM call to determine whether
