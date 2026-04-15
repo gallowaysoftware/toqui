@@ -577,6 +577,7 @@ func main() {
 	mux.HandleFunc("/admin/metrics", adminHandler.HandleMetrics)
 	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
 	mux.HandleFunc("/admin/ai-costs", adminHandler.HandleAICosts)
+	mux.HandleFunc("/admin/revenue", adminHandler.HandleRevenue)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)
@@ -804,13 +805,18 @@ func requestLoggingMiddleware(next http.Handler) http.Handler {
 			level = slog.LevelWarn
 		}
 
-		slog.Log(r.Context(), level, "http_request",
+		attrs := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", sw.status,
 			"duration_ms", duration.Milliseconds(),
 			"user_agent", r.Header.Get("User-Agent"),
-		)
+		}
+		if reqID := requestid.FromContext(r.Context()); reqID != "" {
+			attrs = append(attrs, "request_id", reqID)
+		}
+
+		slog.Log(r.Context(), level, "http_request", attrs...)
 	})
 }
 

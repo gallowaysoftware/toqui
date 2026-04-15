@@ -37,6 +37,7 @@ type Service struct {
 // usageCostRecorder is the subset of usage.Service needed for cost recording.
 type usageCostRecorder interface {
 	RecordAICost(ctx context.Context, userID uuid.UUID, costCents int32) error
+	RecordAIUsage(ctx context.Context, userID uuid.UUID, provider, modelTier string, inputTokens, outputTokens, costCents int32, userTier string) error
 }
 
 // aiTokenCounter records AI token usage as an OpenTelemetry metric.
@@ -125,6 +126,10 @@ type SendMessageParams struct {
 	// to the "best" AI model. When true, the classifier may upgrade the model
 	// tier for planning and companion mode requests.
 	PriorityModel bool
+
+	// UserTier is the user's subscription tier at the time of the request.
+	// Used for per-request AI cost tracking breakdowns (free/pro/explorer/voyager).
+	UserTier string
 }
 
 // Attachment represents a file attached to a chat message.
@@ -349,7 +354,7 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 				}
 			}
 		}()
-		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID, params.PersonaSwitchCh, buildPrompt)
+		responseText := s.processEventsWithToolLoop(ctx, aiReq, outCh, extraToolsMap, params.UserID, storeTripID, sessionID, params.PersonaSwitchCh, buildPrompt, params.UserTier)
 
 		// Clean up on AI failure: only delete the session if it was freshly
 		// created and the AI produced zero response text. We no longer delete
@@ -401,7 +406,7 @@ const (
 // continuation loop. When the AI stops for tool use, tool results are sent back
 // and the AI continues generating. This loops until the AI produces a final
 // response (stop_reason=end_turn) or the iteration limit is reached.
-func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string) string {
+func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatRequest, outCh chan<- StreamEvent, extraTools map[string]tools.Tool, userID uuid.UUID, tripID, sessionID string, personaSwitchCh <-chan *persona.Persona, buildPrompt func(*persona.Persona) string, userTier string) string {
 	var fullResponse strings.Builder     // reset each iteration (for AI context)
 	var completeResponse strings.Builder // never reset (for messageComplete fullContent)
 	var totalInputTokens, totalOutputTokens int
@@ -763,7 +768,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		})
 
 		// Log usage with environment label for cost tracking.
-		s.logUsage(ctx, userID, aiReq.ModelTier, iteration+1, totalInputTokens, totalOutputTokens)
+		s.logUsage(ctx, userID, aiReq.ModelTier, iteration+1, totalInputTokens, totalOutputTokens, userTier)
 		return responseText
 	}
 
@@ -815,7 +820,7 @@ func (s *Service) processEventsWithToolLoop(ctx context.Context, aiReq *ai.ChatR
 		MessageID: assistantMsg.ID,
 	})
 
-	s.logUsage(ctx, userID, aiReq.ModelTier, maxToolLoopIterations, totalInputTokens, totalOutputTokens)
+	s.logUsage(ctx, userID, aiReq.ModelTier, maxToolLoopIterations, totalInputTokens, totalOutputTokens, userTier)
 	return responseText
 }
 
@@ -872,8 +877,8 @@ func estimateCostUSD(provider string, tier ai.ModelTier, inputTokens, outputToke
 
 // logUsage logs token usage with provider and environment labels for cost tracking,
 // records against the daily token budget if configured, and persists the estimated
-// cost in the daily_usage table via the usage service.
-func (s *Service) logUsage(ctx context.Context, userID uuid.UUID, tier ai.ModelTier, iterations, inputTokens, outputTokens int) {
+// cost in the daily_usage table and per-request ai_usage table via the usage service.
+func (s *Service) logUsage(ctx context.Context, userID uuid.UUID, tier ai.ModelTier, iterations, inputTokens, outputTokens int, userTier string) {
 	if inputTokens == 0 && outputTokens == 0 {
 		return
 	}
@@ -912,6 +917,16 @@ func (s *Service) logUsage(ctx context.Context, userID uuid.UUID, tier ai.ModelT
 			if err := s.usageSvc.RecordAICost(ctx, userID, costCents); err != nil {
 				slog.Error("failed to record AI cost", "error", err, "user_id", userID, "cost_cents", costCents)
 			}
+		}
+
+		// Record detailed per-request usage for the AI cost dashboard.
+		ut := userTier
+		if ut == "" {
+			ut = "free"
+		}
+		if err := s.usageSvc.RecordAIUsage(ctx, userID, s.provider.Name(), string(tier),
+			int32(inputTokens), int32(outputTokens), int32(costUSD*100+0.5), ut); err != nil {
+			slog.Error("failed to record AI usage", "error", err, "user_id", userID)
 		}
 	}
 }

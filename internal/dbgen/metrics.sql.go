@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countActiveSubscriptions = `-- name: CountActiveSubscriptions :one
+SELECT COUNT(*) FROM subscriptions WHERE status = 'active'
+`
+
+func (q *Queries) CountActiveSubscriptions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveSubscriptions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countActiveUsersLast7Days = `-- name: CountActiveUsersLast7Days :one
 SELECT COUNT(DISTINCT user_id) FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '7 days'
 `
@@ -95,4 +106,62 @@ func (q *Queries) CountTripProPurchases(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getActiveSubscriptionsByTier = `-- name: GetActiveSubscriptionsByTier :many
+SELECT tier, COUNT(*)::bigint AS sub_count
+FROM subscriptions
+WHERE status = 'active'
+GROUP BY tier
+`
+
+type GetActiveSubscriptionsByTierRow struct {
+	Tier     string `json:"tier"`
+	SubCount int64  `json:"sub_count"`
+}
+
+func (q *Queries) GetActiveSubscriptionsByTier(ctx context.Context) ([]GetActiveSubscriptionsByTierRow, error) {
+	rows, err := q.db.Query(ctx, getActiveSubscriptionsByTier)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetActiveSubscriptionsByTierRow{}
+	for rows.Next() {
+		var i GetActiveSubscriptionsByTierRow
+		if err := rows.Scan(&i.Tier, &i.SubCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMonthlyTripProRevenueCents = `-- name: GetMonthlyTripProRevenueCents :one
+SELECT COALESCE(SUM(amount_cents), 0)::bigint
+FROM helcim_payments
+WHERE status = 'approved' AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) GetMonthlyTripProRevenueCents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getMonthlyTripProRevenueCents)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getTotalTripProRevenueCents = `-- name: GetTotalTripProRevenueCents :one
+SELECT COALESCE(SUM(amount_cents), 0)::bigint
+FROM helcim_payments
+WHERE status = 'approved'
+`
+
+func (q *Queries) GetTotalTripProRevenueCents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalTripProRevenueCents)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }

@@ -733,6 +733,8 @@ HTTP routes (outside ConnectRPC):
 - `POST /admin/delete-user` — Delete a user and all associated data
 - `GET /admin/feedback` — List user feedback submissions
 - `GET /admin/metrics` — System metrics
+- `GET /admin/ai-costs` — AI cost dashboard (daily/weekly/monthly costs, per-tier breakdown, per-model stats, top users)
+- `GET /admin/revenue` — Revenue dashboard (MRR from subscriptions, Trip Pro monthly/total revenue)
 
 ### Webhooks
 - `POST /webhooks/email/inbound` — SendGrid inbound email webhook (ECDSA signature verified). Processes forwarded booking emails.
@@ -897,7 +899,9 @@ These enable deep linking from `toqui.travel` URLs directly into the native app.
 
 Daily message limits are tier-specific: free=10, pro=50, explorer/voyager=unlimited. Configurable via `DAILY_MESSAGE_LIMIT_FREE` and `DAILY_MESSAGE_LIMIT_PRO` env vars. The limit is enforced at the start of `SendMessage` in the chat handler. When exceeded, a `ResourceExhausted` error is returned with the reset time (midnight UTC).
 
-Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents)
+Tables: `daily_usage` (user_id, date, message_count, ai_cost_cents), `ai_usage` (user_id, provider, model_tier, input_tokens, output_tokens, cost_cents, user_tier, created_at)
+
+The `ai_usage` table stores per-request AI usage with full detail (provider, model tier, token counts, cost, user subscription tier). This powers the `/admin/ai-costs` dashboard with breakdowns by tier, model, and top users.
 
 ## Cost Management
 

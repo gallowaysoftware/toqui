@@ -34,6 +34,9 @@ func TestNewMetrics(t *testing.T) {
 	if m.ActiveConnections == nil {
 		t.Error("ActiveConnections is nil")
 	}
+	if m.AICostCents == nil {
+		t.Error("AICostCents is nil")
+	}
 }
 
 func TestMiddleware_RecordsMetrics(t *testing.T) {

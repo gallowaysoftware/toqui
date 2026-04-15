@@ -21,3 +21,22 @@ SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days';
 
 -- name: CountSignupsToday :one
 SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE;
+
+-- name: CountActiveSubscriptions :one
+SELECT COUNT(*) FROM subscriptions WHERE status = 'active';
+
+-- name: GetActiveSubscriptionsByTier :many
+SELECT tier, COUNT(*)::bigint AS sub_count
+FROM subscriptions
+WHERE status = 'active'
+GROUP BY tier;
+
+-- name: GetTotalTripProRevenueCents :one
+SELECT COALESCE(SUM(amount_cents), 0)::bigint
+FROM helcim_payments
+WHERE status = 'approved';
+
+-- name: GetMonthlyTripProRevenueCents :one
+SELECT COALESCE(SUM(amount_cents), 0)::bigint
+FROM helcim_payments
+WHERE status = 'approved' AND created_at >= CURRENT_DATE - INTERVAL '30 days';

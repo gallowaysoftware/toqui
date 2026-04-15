@@ -56,3 +56,50 @@ WHERE du.date >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY du.user_id, u.email
 ORDER BY total_cents DESC
 LIMIT 10;
+
+-- name: InsertAIUsage :exec
+INSERT INTO ai_usage (user_id, provider, model_tier, input_tokens, output_tokens, cost_cents, user_tier)
+VALUES (sqlc.arg(user_id), sqlc.arg(provider), sqlc.arg(model_tier), sqlc.arg(input_tokens), sqlc.arg(output_tokens), sqlc.arg(cost_cents), sqlc.arg(user_tier));
+
+-- name: GetDailyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE;
+
+-- name: GetWeeklyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE - INTERVAL '7 days';
+
+-- name: GetMonthlyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE - INTERVAL '30 days';
+
+-- name: GetAIUsageCostByTier :many
+SELECT
+    user_tier AS tier,
+    COALESCE(SUM(cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY user_tier;
+
+-- name: GetAIUsageByModel :many
+SELECT
+    provider,
+    model_tier,
+    COALESCE(SUM(input_tokens), 0)::bigint AS total_input_tokens,
+    COALESCE(SUM(output_tokens), 0)::bigint AS total_output_tokens,
+    COALESCE(SUM(cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY provider, model_tier;
+
+-- name: GetTopAIUsers :many
+SELECT
+    a.user_id,
+    u.email,
+    COALESCE(SUM(a.cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage a
+JOIN users u ON u.id = a.user_id
+WHERE a.created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY a.user_id, u.email
+ORDER BY total_cents DESC
+LIMIT 10;

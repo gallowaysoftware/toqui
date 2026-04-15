@@ -642,6 +642,8 @@ func (h *AdminHandler) HandleDeleteWaitlistEntry(w http.ResponseWriter, r *http.
 }
 
 // HandleAICosts handles GET /admin/ai-costs — AI cost dashboard.
+// Returns costs in dollars and per-tier breakdowns matching the admin panel's
+// AICosts interface: { daily_cost, weekly_cost, monthly_cost, cost_by_tier }.
 func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -653,42 +655,135 @@ func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	dailyTotal, _ := h.queries.GetDailyAICostTotal(ctx)
-	weeklyTotal, _ := h.queries.GetWeeklyAICostTotal(ctx)
-	monthlyTotal, _ := h.queries.GetMonthlyAICostTotal(ctx)
 
-	tierRows, _ := h.queries.GetAICostByTier(ctx)
-	perTier := make(map[string]map[string]any)
-	for _, row := range tierRows {
-		avgCents := int64(0)
-		if row.UserCount > 0 {
-			avgCents = row.TotalCents / row.UserCount
+	// Try detailed ai_usage table first; fall back to daily_usage aggregates.
+	dailyCents, dailyErr := h.queries.GetDailyAIUsageCost(ctx)
+	weeklyCents, weeklyErr := h.queries.GetWeeklyAIUsageCost(ctx)
+	monthlyCents, monthlyErr := h.queries.GetMonthlyAIUsageCost(ctx)
+
+	// Fallback to daily_usage table if ai_usage table has no data or errors.
+	if dailyErr != nil || (dailyCents == 0 && weeklyCents == 0 && monthlyCents == 0) {
+		dailyCents, _ = h.queries.GetDailyAICostTotal(ctx)
+		if weeklyErr != nil {
+			weeklyCents, _ = h.queries.GetWeeklyAICostTotal(ctx)
 		}
-		perTier[row.Tier] = map[string]any{
-			"users":       row.UserCount,
-			"total_cents": row.TotalCents,
-			"avg_cents":   avgCents,
+		if monthlyErr != nil {
+			monthlyCents, _ = h.queries.GetMonthlyAICostTotal(ctx)
 		}
 	}
 
-	topUsers, _ := h.queries.GetTopAICostUsers(ctx)
+	// Per-tier breakdown from ai_usage table.
+	tierRows, _ := h.queries.GetAIUsageCostByTier(ctx)
+	costByTier := make([]map[string]any, 0, len(tierRows))
+	for _, row := range tierRows {
+		costByTier = append(costByTier, map[string]any{
+			"tier":          row.Tier,
+			"cost":          float64(row.TotalCents) / 100.0,
+			"request_count": row.RequestCount,
+		})
+	}
+
+	// If no ai_usage tier data, fall back to daily_usage by subscription tier.
+	if len(costByTier) == 0 {
+		legacyRows, _ := h.queries.GetAICostByTier(ctx)
+		for _, row := range legacyRows {
+			costByTier = append(costByTier, map[string]any{
+				"tier":          row.Tier,
+				"cost":          float64(row.TotalCents) / 100.0,
+				"request_count": row.UserCount, // approximate: user count as proxy
+			})
+		}
+	}
+
+	// Top users by cost.
+	topUsers, _ := h.queries.GetTopAIUsers(ctx)
 	topUsersOut := make([]map[string]any, 0, len(topUsers))
 	for _, u := range topUsers {
 		topUsersOut = append(topUsersOut, map[string]any{
 			"user_id":       u.UserID.String(),
 			"email":         u.Email,
 			"total_cents":   u.TotalCents,
-			"message_count": u.MessageCount,
+			"request_count": u.RequestCount,
+		})
+	}
+
+	// Model breakdown.
+	modelRows, _ := h.queries.GetAIUsageByModel(ctx)
+	byModel := make([]map[string]any, 0, len(modelRows))
+	for _, row := range modelRows {
+		byModel = append(byModel, map[string]any{
+			"provider":      row.Provider,
+			"model_tier":    row.ModelTier,
+			"input_tokens":  row.TotalInputTokens,
+			"output_tokens": row.TotalOutputTokens,
+			"cost":          float64(row.TotalCents) / 100.0,
+			"request_count": row.RequestCount,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"daily_total_cents":   dailyTotal,
-		"weekly_total_cents":  weeklyTotal,
-		"monthly_total_cents": monthlyTotal,
-		"per_tier":            perTier,
-		"top_users":           topUsersOut,
+		"daily_cost":   float64(dailyCents) / 100.0,
+		"weekly_cost":  float64(weeklyCents) / 100.0,
+		"monthly_cost": float64(monthlyCents) / 100.0,
+		"cost_by_tier": costByTier,
+		"top_users":    topUsersOut,
+		"by_model":     byModel,
+	})
+}
+
+// subscriptionMRR maps subscription tiers to their estimated monthly price in
+// dollars. Used to compute MRR from active subscription counts. These should
+// match the Stripe product prices.
+var subscriptionMRR = map[string]float64{
+	"explorer": 9.99,
+	"voyager":  19.99,
+}
+
+// HandleRevenue handles GET /admin/revenue — revenue dashboard.
+// Returns MRR from active subscriptions and Trip Pro one-time purchase revenue.
+func (h *AdminHandler) HandleRevenue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Compute MRR from active subscriptions by tier.
+	var mrr float64
+	subsByTier, err := h.queries.GetActiveSubscriptionsByTier(ctx)
+	if err != nil {
+		slog.Warn("admin revenue: failed to get active subscriptions", "error", err)
+	}
+	for _, row := range subsByTier {
+		if price, ok := subscriptionMRR[row.Tier]; ok {
+			mrr += price * float64(row.SubCount)
+		}
+	}
+
+	// Trip Pro one-time purchase revenue.
+	tripProTotalCents, err := h.queries.GetTotalTripProRevenueCents(ctx)
+	if err != nil {
+		slog.Warn("admin revenue: failed to get trip pro revenue", "error", err)
+	}
+
+	tripProMonthlyCents, err := h.queries.GetMonthlyTripProRevenueCents(ctx)
+	if err != nil {
+		slog.Warn("admin revenue: failed to get monthly trip pro revenue", "error", err)
+	}
+
+	totalRevenue := mrr + float64(tripProTotalCents)/100.0
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"mrr":              mrr,
+		"trip_pro_monthly": float64(tripProMonthlyCents) / 100.0,
+		"total_revenue":    totalRevenue,
 	})
 }
 

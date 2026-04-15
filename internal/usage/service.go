@@ -133,6 +133,20 @@ func (s *Service) RecordAICost(ctx context.Context, userID uuid.UUID, costCents 
 	})
 }
 
+// RecordAIUsage inserts a detailed per-request AI usage record into the
+// ai_usage table for the cost dashboard.
+func (s *Service) RecordAIUsage(ctx context.Context, userID uuid.UUID, provider, modelTier string, inputTokens, outputTokens, costCents int32, userTier string) error {
+	return s.queries.InsertAIUsage(ctx, dbgen.InsertAIUsageParams{
+		UserID:       userID,
+		Provider:     provider,
+		ModelTier:    modelTier,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		CostCents:    costCents,
+		UserTier:     userTier,
+	})
+}
+
 // ResetTime returns the time at which the daily usage counter resets
 // (midnight UTC of the next day).
 func ResetTime() time.Time {

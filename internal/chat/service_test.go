@@ -391,6 +391,83 @@ func TestStripTemplatePlaceholders(t *testing.T) {
 	}
 }
 
+func TestEstimateCostUSD(t *testing.T) {
+	cases := []struct {
+		name         string
+		provider     string
+		tier         ai.ModelTier
+		inputTokens  int
+		outputTokens int
+		wantMin      float64
+		wantMax      float64
+	}{
+		{
+			name:         "claude fast tier",
+			provider:     "claude",
+			tier:         ai.ModelTierFast,
+			inputTokens:  1000,
+			outputTokens: 500,
+			wantMin:      0.001,
+			wantMax:      0.01,
+		},
+		{
+			name:         "claude smart tier",
+			provider:     "claude",
+			tier:         ai.ModelTierSmart,
+			inputTokens:  1000,
+			outputTokens: 500,
+			wantMin:      0.005,
+			wantMax:      0.02,
+		},
+		{
+			name:         "gemini fast tier",
+			provider:     "gemini",
+			tier:         ai.ModelTierFast,
+			inputTokens:  1000,
+			outputTokens: 500,
+			wantMin:      0.0001,
+			wantMax:      0.005,
+		},
+		{
+			name:         "gemini best tier",
+			provider:     "gemini",
+			tier:         ai.ModelTierBest,
+			inputTokens:  10000,
+			outputTokens: 5000,
+			wantMin:      0.05,
+			wantMax:      0.15,
+		},
+		{
+			name:         "unknown provider returns zero",
+			provider:     "unknown",
+			tier:         ai.ModelTierSmart,
+			inputTokens:  1000,
+			outputTokens: 500,
+			wantMin:      0,
+			wantMax:      0,
+		},
+		{
+			name:         "zero tokens returns zero",
+			provider:     "claude",
+			tier:         ai.ModelTierFast,
+			inputTokens:  0,
+			outputTokens: 0,
+			wantMin:      0,
+			wantMax:      0,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := estimateCostUSD(c.provider, c.tier, c.inputTokens, c.outputTokens)
+			if got < c.wantMin || got > c.wantMax {
+				t.Errorf("estimateCostUSD(%s, %s, %d, %d) = %f, want [%f, %f]",
+					c.provider, c.tier, c.inputTokens, c.outputTokens, got, c.wantMin, c.wantMax)
+			}
+		})
+	}
+}
+
 func TestStripOverlappingPrefix(t *testing.T) {
 	cases := []struct {
 		name     string

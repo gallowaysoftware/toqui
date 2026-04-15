@@ -36,6 +36,10 @@ type Metrics struct {
 	// ActiveConnections tracks active SSE streaming connections.
 	// Attributes: (none)
 	ActiveConnections metric.Int64UpDownCounter
+
+	// AICostCents records estimated AI cost in cents per request.
+	// Attributes: ai.provider, ai.model_tier, user.tier
+	AICostCents metric.Int64Counter
 }
 
 // NewMetrics creates and registers all metric instruments. It uses the global
@@ -98,6 +102,15 @@ func NewMetrics() (*Metrics, error) {
 		return nil, err
 	}
 
+	aiCostCents, err := meter.Int64Counter(
+		"ai.cost.cents",
+		metric.WithDescription("Estimated AI cost in cents per request"),
+		metric.WithUnit("{cent}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Metrics{
 		RequestDuration:   requestDuration,
 		RequestCount:      requestCount,
@@ -105,5 +118,6 @@ func NewMetrics() (*Metrics, error) {
 		AITokenUsage:      aiTokenUsage,
 		RateLimitHits:     rateLimitHits,
 		ActiveConnections: activeConnections,
+		AICostCents:       aiCostCents,
 	}, nil
 }

@@ -301,6 +301,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		TripThemes:         tripThemes,
 		Attachments:        attachments,
 		PriorityModel:      userTier.HasPriorityModel(),
+		UserTier:           string(userTier),
 	}
 
 	// Inject ephemeral location (companion mode only).

@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AiUsage struct {
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	Provider     string    `json:"provider"`
+	ModelTier    string    `json:"model_tier"`
+	InputTokens  int32     `json:"input_tokens"`
+	OutputTokens int32     `json:"output_tokens"`
+	CostCents    int32     `json:"cost_cents"`
+	UserTier     string    `json:"user_tier"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type Booking struct {
 	ID                uuid.UUID          `json:"id"`
 	TripID            pgtype.UUID        `json:"trip_id"`

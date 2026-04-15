@@ -71,12 +71,108 @@ func (q *Queries) GetAICostByTier(ctx context.Context) ([]GetAICostByTierRow, er
 	return items, nil
 }
 
+const getAIUsageByModel = `-- name: GetAIUsageByModel :many
+SELECT
+    provider,
+    model_tier,
+    COALESCE(SUM(input_tokens), 0)::bigint AS total_input_tokens,
+    COALESCE(SUM(output_tokens), 0)::bigint AS total_output_tokens,
+    COALESCE(SUM(cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY provider, model_tier
+`
+
+type GetAIUsageByModelRow struct {
+	Provider          string `json:"provider"`
+	ModelTier         string `json:"model_tier"`
+	TotalInputTokens  int64  `json:"total_input_tokens"`
+	TotalOutputTokens int64  `json:"total_output_tokens"`
+	TotalCents        int64  `json:"total_cents"`
+	RequestCount      int64  `json:"request_count"`
+}
+
+func (q *Queries) GetAIUsageByModel(ctx context.Context) ([]GetAIUsageByModelRow, error) {
+	rows, err := q.db.Query(ctx, getAIUsageByModel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAIUsageByModelRow{}
+	for rows.Next() {
+		var i GetAIUsageByModelRow
+		if err := rows.Scan(
+			&i.Provider,
+			&i.ModelTier,
+			&i.TotalInputTokens,
+			&i.TotalOutputTokens,
+			&i.TotalCents,
+			&i.RequestCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAIUsageCostByTier = `-- name: GetAIUsageCostByTier :many
+SELECT
+    user_tier AS tier,
+    COALESCE(SUM(cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY user_tier
+`
+
+type GetAIUsageCostByTierRow struct {
+	Tier         string `json:"tier"`
+	TotalCents   int64  `json:"total_cents"`
+	RequestCount int64  `json:"request_count"`
+}
+
+func (q *Queries) GetAIUsageCostByTier(ctx context.Context) ([]GetAIUsageCostByTierRow, error) {
+	rows, err := q.db.Query(ctx, getAIUsageCostByTier)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAIUsageCostByTierRow{}
+	for rows.Next() {
+		var i GetAIUsageCostByTierRow
+		if err := rows.Scan(&i.Tier, &i.TotalCents, &i.RequestCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDailyAICostTotal = `-- name: GetDailyAICostTotal :one
 SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE
 `
 
 func (q *Queries) GetDailyAICostTotal(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getDailyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getDailyAIUsageCost = `-- name: GetDailyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE
+`
+
+func (q *Queries) GetDailyAIUsageCost(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getDailyAIUsageCost)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -113,6 +209,17 @@ SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CU
 
 func (q *Queries) GetMonthlyAICostTotal(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getMonthlyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getMonthlyAIUsageCost = `-- name: GetMonthlyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) GetMonthlyAIUsageCost(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getMonthlyAIUsageCost)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -165,12 +272,69 @@ func (q *Queries) GetTopAICostUsers(ctx context.Context) ([]GetTopAICostUsersRow
 	return items, nil
 }
 
+const getTopAIUsers = `-- name: GetTopAIUsers :many
+SELECT
+    a.user_id,
+    u.email,
+    COALESCE(SUM(a.cost_cents), 0)::bigint AS total_cents,
+    COUNT(*)::bigint AS request_count
+FROM ai_usage a
+JOIN users u ON u.id = a.user_id
+WHERE a.created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY a.user_id, u.email
+ORDER BY total_cents DESC
+LIMIT 10
+`
+
+type GetTopAIUsersRow struct {
+	UserID       uuid.UUID `json:"user_id"`
+	Email        string    `json:"email"`
+	TotalCents   int64     `json:"total_cents"`
+	RequestCount int64     `json:"request_count"`
+}
+
+func (q *Queries) GetTopAIUsers(ctx context.Context) ([]GetTopAIUsersRow, error) {
+	rows, err := q.db.Query(ctx, getTopAIUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTopAIUsersRow{}
+	for rows.Next() {
+		var i GetTopAIUsersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Email,
+			&i.TotalCents,
+			&i.RequestCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWeeklyAICostTotal = `-- name: GetWeeklyAICostTotal :one
 SELECT COALESCE(SUM(ai_cost_cents), 0)::bigint FROM daily_usage WHERE date >= CURRENT_DATE - INTERVAL '7 days'
 `
 
 func (q *Queries) GetWeeklyAICostTotal(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getWeeklyAICostTotal)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getWeeklyAIUsageCost = `-- name: GetWeeklyAIUsageCost :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+`
+
+func (q *Queries) GetWeeklyAIUsageCost(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getWeeklyAIUsageCost)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -205,6 +369,34 @@ func (q *Queries) IncrementDailyUsage(ctx context.Context, arg IncrementDailyUsa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const insertAIUsage = `-- name: InsertAIUsage :exec
+INSERT INTO ai_usage (user_id, provider, model_tier, input_tokens, output_tokens, cost_cents, user_tier)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertAIUsageParams struct {
+	UserID       uuid.UUID `json:"user_id"`
+	Provider     string    `json:"provider"`
+	ModelTier    string    `json:"model_tier"`
+	InputTokens  int32     `json:"input_tokens"`
+	OutputTokens int32     `json:"output_tokens"`
+	CostCents    int32     `json:"cost_cents"`
+	UserTier     string    `json:"user_tier"`
+}
+
+func (q *Queries) InsertAIUsage(ctx context.Context, arg InsertAIUsageParams) error {
+	_, err := q.db.Exec(ctx, insertAIUsage,
+		arg.UserID,
+		arg.Provider,
+		arg.ModelTier,
+		arg.InputTokens,
+		arg.OutputTokens,
+		arg.CostCents,
+		arg.UserTier,
+	)
+	return err
 }
 
 const recordAICost = `-- name: RecordAICost :exec
