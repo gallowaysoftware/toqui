@@ -213,7 +213,7 @@ func (s *Service) SearchByUser(ctx context.Context, userID uuid.UUID, query stri
 	return trips, nil
 }
 
-func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time, budgetCents *int64, currency string) (*dbgen.Trip, error) {
+func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, description, status string, startDate, endDate *time.Time, budgetCents *int64, currency, notes, coverImageURL, timezone string) (*dbgen.Trip, error) {
 	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
 		return nil, fmt.Errorf("end_date (%s) cannot be before start_date (%s)", endDate.Format("2006-01-02"), startDate.Format("2006-01-02"))
 	}
@@ -232,20 +232,56 @@ func (s *Service) Update(ctx context.Context, userID, tripID uuid.UUID, title, d
 		}
 	}
 	trip, err := s.queries.UpdateTrip(ctx, dbgen.UpdateTripParams{
-		ID:          tripID,
-		UserID:      userID,
-		Title:       title,
-		Description: textFromString(description),
-		Status:      status,
-		StartDate:   dateFromTime(startDate),
-		EndDate:     dateFromTime(endDate),
-		BudgetCents: int8FromPtr(budgetCents),
-		Currency:    currency,
+		ID:            tripID,
+		UserID:        userID,
+		Title:         title,
+		Description:   textFromString(description),
+		Status:        status,
+		StartDate:     dateFromTime(startDate),
+		EndDate:       dateFromTime(endDate),
+		BudgetCents:   int8FromPtr(budgetCents),
+		Currency:      currency,
+		Notes:         textFromString(notes),
+		CoverImageUrl: coverImageURL,
+		Timezone:      timezone,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update trip: %w", err)
 	}
 	return &trip, nil
+}
+
+// ListTemplates returns pre-built trip templates available for cloning.
+func (s *Service) ListTemplates(ctx context.Context, limit, offset int32) ([]dbgen.Trip, int64, error) {
+	templates, err := s.queries.ListTripTemplates(ctx, dbgen.ListTripTemplatesParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list templates: %w", err)
+	}
+	count, err := s.queries.CountTripTemplates(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count templates: %w", err)
+	}
+	return templates, count, nil
+}
+
+// MoveItineraryItem moves a single itinerary item to a new day/position.
+func (s *Service) MoveItineraryItem(ctx context.Context, userID, tripID, itemID uuid.UUID, targetDay, targetPos int) (*dbgen.ItineraryItem, error) {
+	if targetPos <= 0 {
+		targetPos = 1
+	}
+	item, err := s.queries.MoveItineraryItem(ctx, dbgen.MoveItineraryItemParams{
+		DayNumber:  pgtype.Int4{Int32: int32(targetDay), Valid: true},
+		OrderInDay: pgtype.Int4{Int32: int32(targetPos), Valid: true},
+		ID:         itemID,
+		UserID:     userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("move itinerary item: %w", err)
+	}
+	return &item, nil
 }
 
 // isValidStatusTransition reports whether moving from `current` to `next`

@@ -76,7 +76,7 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 	// If the client provided budget fields at creation, apply them via Update
 	// (the CreateTrip SQL query doesn't include budget columns).
 	if req.Msg.BudgetCents != nil || req.Msg.Currency != "" {
-		updated, err := h.tripSvc.Update(ctx, userID, t.ID, "", "", "", nil, nil, req.Msg.BudgetCents, req.Msg.Currency)
+		updated, err := h.tripSvc.Update(ctx, userID, t.ID, "", "", "", nil, nil, req.Msg.BudgetCents, req.Msg.Currency, "", "", "")
 		if err != nil {
 			slog.Warn("failed to set budget on newly created trip", "trip_id", t.ID, "error", err)
 		} else {
@@ -242,7 +242,7 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 		budgetCents = req.Msg.BudgetCents
 	}
 
-	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate, budgetCents, req.Msg.Currency)
+	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate, budgetCents, req.Msg.Currency, req.Msg.Notes, req.Msg.CoverImageUrl, req.Msg.Timezone)
 	if err != nil {
 		if errors.Is(err, trip.ErrInvalidStatusTransition) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
@@ -413,6 +413,92 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 	}), nil
 }
 
+func (h *TripHandler) ReorderItineraryItem(ctx context.Context, req *connect.Request[toquiv1.ReorderItineraryItemRequest]) (*connect.Response[toquiv1.ReorderItineraryItemResponse], error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	tripID, err := uuid.Parse(req.Msg.TripId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid trip_id"))
+	}
+	itemID, err := uuid.Parse(req.Msg.ItemId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid item_id"))
+	}
+
+	// Access check: trip owner or editor collaborator.
+	if !h.tripSvc.CanEditTrip(ctx, userID, tripID) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to reorder itinerary"))
+	}
+
+	moved, err := h.tripSvc.MoveItineraryItem(ctx, userID, tripID, itemID, int(req.Msg.TargetDay), int(req.Msg.TargetPosition))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("itinerary item not found"))
+		}
+		return nil, internalError(ctx, "reorder itinerary item", err)
+	}
+
+	protoItem := &toquiv1.ItineraryItem{
+		Id: moved.ID.String(),
+	}
+	if moved.Title.Valid {
+		protoItem.Title = moved.Title.String
+	}
+	if moved.OrderInDay.Valid {
+		protoItem.OrderInDay = moved.OrderInDay.Int32
+	}
+	if moved.Type.Valid {
+		protoItem.Type = moved.Type.String
+	}
+	if moved.Description.Valid {
+		protoItem.Description = moved.Description.String
+	}
+	if moved.StartTime.Valid {
+		protoItem.StartTime = timestamppb.New(moved.StartTime.Time)
+	}
+	if moved.EndTime.Valid {
+		protoItem.EndTime = timestamppb.New(moved.EndTime.Time)
+	}
+	if moved.EstimatedCostCents.Valid {
+		protoItem.EstimatedCostCents = &moved.EstimatedCostCents.Int64
+	}
+	if moved.CostCurrency.Valid {
+		protoItem.CostCurrency = moved.CostCurrency.String
+	}
+
+	return connect.NewResponse(&toquiv1.ReorderItineraryItemResponse{Item: protoItem}), nil
+}
+
+func (h *TripHandler) ListTripTemplates(ctx context.Context, req *connect.Request[toquiv1.ListTripTemplatesRequest]) (*connect.Response[toquiv1.ListTripTemplatesResponse], error) {
+	// Templates are public — no auth required for listing, but we still want
+	// the request to pass through the auth interceptor for rate limiting.
+	// If we eventually want auth, we can add it here.
+	_, _ = auth.UserIDFromContext(ctx)
+
+	limit := clampPageSize(req.Msg.GetPagination().GetPageSize(), 20, 100)
+	offset := int32(0)
+
+	templates, count, err := h.tripSvc.ListTemplates(ctx, limit, offset)
+	if err != nil {
+		return nil, internalError(ctx, "list templates", err)
+	}
+
+	protoTrips := make([]*toquiv1.Trip, len(templates))
+	for i, t := range templates {
+		protoTrips[i] = tripToProto(&t)
+	}
+
+	return connect.NewResponse(&toquiv1.ListTripTemplatesResponse{
+		Templates: protoTrips,
+		Pagination: &toquiv1.PaginationResponse{
+			TotalCount: int32(count),
+		},
+	}), nil
+}
+
 func tripToProto(t *dbgen.Trip) *toquiv1.Trip {
 	proto := &toquiv1.Trip{
 		Id:        t.ID.String(),
@@ -447,6 +533,16 @@ func tripToProto(t *dbgen.Trip) *toquiv1.Trip {
 	if t.Currency.Valid && t.Currency.String != "" {
 		proto.Currency = t.Currency.String
 	}
+	if t.Notes.Valid {
+		proto.Notes = t.Notes.String
+	}
+	if t.CoverImageUrl.Valid {
+		proto.CoverImageUrl = t.CoverImageUrl.String
+	}
+	if t.Timezone.Valid {
+		proto.Timezone = t.Timezone.String
+	}
+	proto.IsTemplate = t.IsTemplate
 	return proto
 }
 

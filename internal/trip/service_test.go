@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+	"time"
 )
 
 // TestInvalidStatusErrorsWrapSentinels guarantees that the wrapped error
@@ -164,6 +165,76 @@ func TestCloneTripHelperFunctions(t *testing.T) {
 		}
 		if result.String != "hello" {
 			t.Errorf("expected 'hello', got %q", result.String)
+		}
+	})
+}
+
+// TestInt8FromPtr verifies the int64 pointer to pgtype.Int8 conversion.
+func TestInt8FromPtr(t *testing.T) {
+	t.Run("nil pointer", func(t *testing.T) {
+		result := int8FromPtr(nil)
+		if result.Valid {
+			t.Error("int8FromPtr(nil) should return invalid pgtype.Int8")
+		}
+	})
+
+	t.Run("zero value", func(t *testing.T) {
+		v := int64(0)
+		result := int8FromPtr(&v)
+		if !result.Valid {
+			t.Error("int8FromPtr(&0) should return valid pgtype.Int8")
+		}
+		if result.Int64 != 0 {
+			t.Errorf("expected 0, got %d", result.Int64)
+		}
+	})
+
+	t.Run("positive value", func(t *testing.T) {
+		v := int64(200000)
+		result := int8FromPtr(&v)
+		if !result.Valid {
+			t.Error("int8FromPtr(&200000) should return valid pgtype.Int8")
+		}
+		if result.Int64 != 200000 {
+			t.Errorf("expected 200000, got %d", result.Int64)
+		}
+	})
+}
+
+// TestInt4FromInt verifies the int to pgtype.Int4 conversion.
+func TestInt4FromInt(t *testing.T) {
+	t.Run("zero maps to NULL", func(t *testing.T) {
+		result := int4FromInt(0)
+		if result.Valid {
+			t.Error("int4FromInt(0) should return invalid pgtype.Int4")
+		}
+	})
+
+	t.Run("positive value", func(t *testing.T) {
+		result := int4FromInt(3)
+		if !result.Valid {
+			t.Error("int4FromInt(3) should return valid pgtype.Int4")
+		}
+		if result.Int32 != 3 {
+			t.Errorf("expected 3, got %d", result.Int32)
+		}
+	})
+}
+
+// TestDateFromTime verifies the time.Time pointer to pgtype.Date conversion.
+func TestDateFromTime(t *testing.T) {
+	t.Run("nil pointer", func(t *testing.T) {
+		result := dateFromTime(nil)
+		if result.Valid {
+			t.Error("dateFromTime(nil) should return invalid pgtype.Date")
+		}
+	})
+
+	t.Run("non-nil value", func(t *testing.T) {
+		now := time.Now()
+		result := dateFromTime(&now)
+		if !result.Valid {
+			t.Error("dateFromTime(&now) should return valid pgtype.Date")
 		}
 	})
 }

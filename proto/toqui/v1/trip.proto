@@ -17,6 +17,10 @@ service TripService {
   rpc GetItinerary(GetItineraryRequest) returns (GetItineraryResponse);
   rpc UpdateItinerary(UpdateItineraryRequest) returns (UpdateItineraryResponse);
   rpc CloneTrip(CloneTripRequest) returns (CloneTripResponse);
+  // Targeted move of a single itinerary item to a new day/position.
+  rpc ReorderItineraryItem(ReorderItineraryItemRequest) returns (ReorderItineraryItemResponse);
+  // List pre-built trip templates available for cloning.
+  rpc ListTripTemplates(ListTripTemplatesRequest) returns (ListTripTemplatesResponse);
 }
 
 message Trip {
@@ -43,6 +47,15 @@ message Trip {
   optional int64 budget_cents = 14;
   // ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
   string currency = 15;
+  // Free-text notes / user annotations. Optional.
+  string notes = 16;
+  // Cover image URL for trip cards. May be auto-assigned from destination or user-uploaded.
+  string cover_image_url = 17;
+  // IANA timezone for the trip's primary destination (e.g. "Europe/Athens").
+  // Used by the frontend to display local times.
+  string timezone = 18;
+  // Whether this trip is a pre-built template available for cloning.
+  bool is_template = 19;
 }
 
 enum TripStatus {
@@ -134,6 +147,12 @@ message UpdateTripRequest {
   optional int64 budget_cents = 7;
   // ISO 4217 currency code. Optional — omit or leave empty to keep current value.
   string currency = 8;
+  // Free-text notes / user annotations. Optional — omit or leave empty to keep current value.
+  string notes = 9 [(buf.validate.field).string.max_len = 10000];
+  // Cover image URL. Optional — omit or leave empty to keep current value.
+  string cover_image_url = 10 [(buf.validate.field).string.max_len = 2048];
+  // IANA timezone. Optional — omit or leave empty to keep current value.
+  string timezone = 11 [(buf.validate.field).string.max_len = 64];
 }
 
 message UpdateTripResponse {
@@ -175,4 +194,26 @@ message CloneTripRequest {
 
 message CloneTripResponse {
   Trip trip = 1;
+}
+
+message ReorderItineraryItemRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  string item_id = 2 [(buf.validate.field).string.uuid = true];
+  // Target day number to move the item to.
+  int32 target_day = 3 [(buf.validate.field).int32.gte = 0];
+  // Target position within the day (1-indexed). Defaults to 1 if unset.
+  int32 target_position = 4 [(buf.validate.field).int32.gte = 0];
+}
+
+message ReorderItineraryItemResponse {
+  ItineraryItem item = 1;
+}
+
+message ListTripTemplatesRequest {
+  PaginationRequest pagination = 1;
+}
+
+message ListTripTemplatesResponse {
+  repeated Trip templates = 1;
+  PaginationResponse pagination = 2;
 }

@@ -51,6 +51,12 @@ const (
 	TripServiceUpdateItineraryProcedure = "/toqui.v1.TripService/UpdateItinerary"
 	// TripServiceCloneTripProcedure is the fully-qualified name of the TripService's CloneTrip RPC.
 	TripServiceCloneTripProcedure = "/toqui.v1.TripService/CloneTrip"
+	// TripServiceReorderItineraryItemProcedure is the fully-qualified name of the TripService's
+	// ReorderItineraryItem RPC.
+	TripServiceReorderItineraryItemProcedure = "/toqui.v1.TripService/ReorderItineraryItem"
+	// TripServiceListTripTemplatesProcedure is the fully-qualified name of the TripService's
+	// ListTripTemplates RPC.
+	TripServiceListTripTemplatesProcedure = "/toqui.v1.TripService/ListTripTemplates"
 )
 
 // TripServiceClient is a client for the toqui.v1.TripService service.
@@ -63,6 +69,10 @@ type TripServiceClient interface {
 	GetItinerary(context.Context, *connect.Request[v1.GetItineraryRequest]) (*connect.Response[v1.GetItineraryResponse], error)
 	UpdateItinerary(context.Context, *connect.Request[v1.UpdateItineraryRequest]) (*connect.Response[v1.UpdateItineraryResponse], error)
 	CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error)
+	// Targeted move of a single itinerary item to a new day/position.
+	ReorderItineraryItem(context.Context, *connect.Request[v1.ReorderItineraryItemRequest]) (*connect.Response[v1.ReorderItineraryItemResponse], error)
+	// List pre-built trip templates available for cloning.
+	ListTripTemplates(context.Context, *connect.Request[v1.ListTripTemplatesRequest]) (*connect.Response[v1.ListTripTemplatesResponse], error)
 }
 
 // NewTripServiceClient constructs a client for the toqui.v1.TripService service. By default, it
@@ -124,19 +134,33 @@ func NewTripServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(tripServiceMethods.ByName("CloneTrip")),
 			connect.WithClientOptions(opts...),
 		),
+		reorderItineraryItem: connect.NewClient[v1.ReorderItineraryItemRequest, v1.ReorderItineraryItemResponse](
+			httpClient,
+			baseURL+TripServiceReorderItineraryItemProcedure,
+			connect.WithSchema(tripServiceMethods.ByName("ReorderItineraryItem")),
+			connect.WithClientOptions(opts...),
+		),
+		listTripTemplates: connect.NewClient[v1.ListTripTemplatesRequest, v1.ListTripTemplatesResponse](
+			httpClient,
+			baseURL+TripServiceListTripTemplatesProcedure,
+			connect.WithSchema(tripServiceMethods.ByName("ListTripTemplates")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // tripServiceClient implements TripServiceClient.
 type tripServiceClient struct {
-	createTrip      *connect.Client[v1.CreateTripRequest, v1.CreateTripResponse]
-	getTrip         *connect.Client[v1.GetTripRequest, v1.GetTripResponse]
-	listTrips       *connect.Client[v1.ListTripsRequest, v1.ListTripsResponse]
-	updateTrip      *connect.Client[v1.UpdateTripRequest, v1.UpdateTripResponse]
-	deleteTrip      *connect.Client[v1.DeleteTripRequest, v1.DeleteTripResponse]
-	getItinerary    *connect.Client[v1.GetItineraryRequest, v1.GetItineraryResponse]
-	updateItinerary *connect.Client[v1.UpdateItineraryRequest, v1.UpdateItineraryResponse]
-	cloneTrip       *connect.Client[v1.CloneTripRequest, v1.CloneTripResponse]
+	createTrip           *connect.Client[v1.CreateTripRequest, v1.CreateTripResponse]
+	getTrip              *connect.Client[v1.GetTripRequest, v1.GetTripResponse]
+	listTrips            *connect.Client[v1.ListTripsRequest, v1.ListTripsResponse]
+	updateTrip           *connect.Client[v1.UpdateTripRequest, v1.UpdateTripResponse]
+	deleteTrip           *connect.Client[v1.DeleteTripRequest, v1.DeleteTripResponse]
+	getItinerary         *connect.Client[v1.GetItineraryRequest, v1.GetItineraryResponse]
+	updateItinerary      *connect.Client[v1.UpdateItineraryRequest, v1.UpdateItineraryResponse]
+	cloneTrip            *connect.Client[v1.CloneTripRequest, v1.CloneTripResponse]
+	reorderItineraryItem *connect.Client[v1.ReorderItineraryItemRequest, v1.ReorderItineraryItemResponse]
+	listTripTemplates    *connect.Client[v1.ListTripTemplatesRequest, v1.ListTripTemplatesResponse]
 }
 
 // CreateTrip calls toqui.v1.TripService.CreateTrip.
@@ -179,6 +203,16 @@ func (c *tripServiceClient) CloneTrip(ctx context.Context, req *connect.Request[
 	return c.cloneTrip.CallUnary(ctx, req)
 }
 
+// ReorderItineraryItem calls toqui.v1.TripService.ReorderItineraryItem.
+func (c *tripServiceClient) ReorderItineraryItem(ctx context.Context, req *connect.Request[v1.ReorderItineraryItemRequest]) (*connect.Response[v1.ReorderItineraryItemResponse], error) {
+	return c.reorderItineraryItem.CallUnary(ctx, req)
+}
+
+// ListTripTemplates calls toqui.v1.TripService.ListTripTemplates.
+func (c *tripServiceClient) ListTripTemplates(ctx context.Context, req *connect.Request[v1.ListTripTemplatesRequest]) (*connect.Response[v1.ListTripTemplatesResponse], error) {
+	return c.listTripTemplates.CallUnary(ctx, req)
+}
+
 // TripServiceHandler is an implementation of the toqui.v1.TripService service.
 type TripServiceHandler interface {
 	CreateTrip(context.Context, *connect.Request[v1.CreateTripRequest]) (*connect.Response[v1.CreateTripResponse], error)
@@ -189,6 +223,10 @@ type TripServiceHandler interface {
 	GetItinerary(context.Context, *connect.Request[v1.GetItineraryRequest]) (*connect.Response[v1.GetItineraryResponse], error)
 	UpdateItinerary(context.Context, *connect.Request[v1.UpdateItineraryRequest]) (*connect.Response[v1.UpdateItineraryResponse], error)
 	CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error)
+	// Targeted move of a single itinerary item to a new day/position.
+	ReorderItineraryItem(context.Context, *connect.Request[v1.ReorderItineraryItemRequest]) (*connect.Response[v1.ReorderItineraryItemResponse], error)
+	// List pre-built trip templates available for cloning.
+	ListTripTemplates(context.Context, *connect.Request[v1.ListTripTemplatesRequest]) (*connect.Response[v1.ListTripTemplatesResponse], error)
 }
 
 // NewTripServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -246,6 +284,18 @@ func NewTripServiceHandler(svc TripServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(tripServiceMethods.ByName("CloneTrip")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tripServiceReorderItineraryItemHandler := connect.NewUnaryHandler(
+		TripServiceReorderItineraryItemProcedure,
+		svc.ReorderItineraryItem,
+		connect.WithSchema(tripServiceMethods.ByName("ReorderItineraryItem")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tripServiceListTripTemplatesHandler := connect.NewUnaryHandler(
+		TripServiceListTripTemplatesProcedure,
+		svc.ListTripTemplates,
+		connect.WithSchema(tripServiceMethods.ByName("ListTripTemplates")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/toqui.v1.TripService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TripServiceCreateTripProcedure:
@@ -264,6 +314,10 @@ func NewTripServiceHandler(svc TripServiceHandler, opts ...connect.HandlerOption
 			tripServiceUpdateItineraryHandler.ServeHTTP(w, r)
 		case TripServiceCloneTripProcedure:
 			tripServiceCloneTripHandler.ServeHTTP(w, r)
+		case TripServiceReorderItineraryItemProcedure:
+			tripServiceReorderItineraryItemHandler.ServeHTTP(w, r)
+		case TripServiceListTripTemplatesProcedure:
+			tripServiceListTripTemplatesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -303,4 +357,12 @@ func (UnimplementedTripServiceHandler) UpdateItinerary(context.Context, *connect
 
 func (UnimplementedTripServiceHandler) CloneTrip(context.Context, *connect.Request[v1.CloneTripRequest]) (*connect.Response[v1.CloneTripResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.TripService.CloneTrip is not implemented"))
+}
+
+func (UnimplementedTripServiceHandler) ReorderItineraryItem(context.Context, *connect.Request[v1.ReorderItineraryItemRequest]) (*connect.Response[v1.ReorderItineraryItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.TripService.ReorderItineraryItem is not implemented"))
+}
+
+func (UnimplementedTripServiceHandler) ListTripTemplates(context.Context, *connect.Request[v1.ListTripTemplatesRequest]) (*connect.Response[v1.ListTripTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.TripService.ListTripTemplates is not implemented"))
 }

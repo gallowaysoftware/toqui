@@ -105,13 +105,13 @@ graph TB
 | `cmd/testctl/`          | Test user/token management CLI for agentic testing                                        |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
 | `internal/dbgen/`       | Generated sqlc query code (regenerate: `make sqlc`)                                       |
-| `proto/toqui/v1/`       | Protobuf service definitions (7 files, 6 services, 28 RPCs)                               |
+| `proto/toqui/v1/`       | Protobuf service definitions (7 files, 6 services, 30 RPCs)                               |
 | `gen/toqui/v1/`         | Generated Go proto code (regenerate: `make proto`)                                        |
 
 ### Services (proto/toqui/v1/)
 
 - **AuthService** — Google OAuth, JWT refresh, account deletion/export
-- **TripService** — Trip CRUD, itinerary management
+- **TripService** — Trip CRUD, itinerary management, templates, reorder
 - **ChatService** — Streaming chat with AI, history, sessions
 - **BookingService** — Booking ingestion (AI parsing), CRUD
 - **PersonaService** — List/resolve/set default persona
@@ -207,6 +207,8 @@ API test collections live in `tests/bruno/`. These are Bruno HTTP client collect
 | GetItinerary, UpdateItinerary | `trip_id` ✓ |
 | UpdateLocation, GetNearby | `location: {latitude, longitude}` (nested LatLng, NOT flat fields) |
 | ResolvePersona | `trip_id`, `latitude`, `longitude`, `mode`, `themes` (NOT `location_code`) |
+| ReorderItineraryItem | `trip_id`, `item_id`, `target_day`, `target_position` |
+| ListTripTemplates | `pagination` (optional) |
 
 ### CI/CD
 

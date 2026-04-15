@@ -190,6 +190,9 @@ type Trip struct {
 	BudgetCents          pgtype.Int8        `json:"budget_cents"`
 	Currency             pgtype.Text        `json:"currency"`
 	Notes                pgtype.Text        `json:"notes"`
+	IsTemplate           bool               `json:"is_template"`
+	CoverImageUrl        pgtype.Text        `json:"cover_image_url"`
+	Timezone             pgtype.Text        `json:"timezone"`
 }
 
 type TripCollaborator struct {

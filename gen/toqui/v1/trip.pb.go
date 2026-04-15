@@ -99,7 +99,16 @@ type Trip struct {
 	// Trip budget in cents (e.g. 200000 = $2000.00). Optional.
 	BudgetCents *int64 `protobuf:"varint,14,opt,name=budget_cents,json=budgetCents,proto3,oneof" json:"budget_cents,omitempty"`
 	// ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
-	Currency      string `protobuf:"bytes,15,opt,name=currency,proto3" json:"currency,omitempty"`
+	Currency string `protobuf:"bytes,15,opt,name=currency,proto3" json:"currency,omitempty"`
+	// Free-text notes / user annotations. Optional.
+	Notes string `protobuf:"bytes,16,opt,name=notes,proto3" json:"notes,omitempty"`
+	// Cover image URL for trip cards. May be auto-assigned from destination or user-uploaded.
+	CoverImageUrl string `protobuf:"bytes,17,opt,name=cover_image_url,json=coverImageUrl,proto3" json:"cover_image_url,omitempty"`
+	// IANA timezone for the trip's primary destination (e.g. "Europe/Athens").
+	// Used by the frontend to display local times.
+	Timezone string `protobuf:"bytes,18,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// Whether this trip is a pre-built template available for cloning.
+	IsTemplate    bool `protobuf:"varint,19,opt,name=is_template,json=isTemplate,proto3" json:"is_template,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -237,6 +246,34 @@ func (x *Trip) GetCurrency() string {
 		return x.Currency
 	}
 	return ""
+}
+
+func (x *Trip) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *Trip) GetCoverImageUrl() string {
+	if x != nil {
+		return x.CoverImageUrl
+	}
+	return ""
+}
+
+func (x *Trip) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *Trip) GetIsTemplate() bool {
+	if x != nil {
+		return x.IsTemplate
+	}
+	return false
 }
 
 type Itinerary struct {
@@ -849,7 +886,13 @@ type UpdateTripRequest struct {
 	// Trip budget in cents. Optional — omit or set to 0 to leave unchanged.
 	BudgetCents *int64 `protobuf:"varint,7,opt,name=budget_cents,json=budgetCents,proto3,oneof" json:"budget_cents,omitempty"`
 	// ISO 4217 currency code. Optional — omit or leave empty to keep current value.
-	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
+	Currency string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
+	// Free-text notes / user annotations. Optional — omit or leave empty to keep current value.
+	Notes string `protobuf:"bytes,9,opt,name=notes,proto3" json:"notes,omitempty"`
+	// Cover image URL. Optional — omit or leave empty to keep current value.
+	CoverImageUrl string `protobuf:"bytes,10,opt,name=cover_image_url,json=coverImageUrl,proto3" json:"cover_image_url,omitempty"`
+	// IANA timezone. Optional — omit or leave empty to keep current value.
+	Timezone      string `protobuf:"bytes,11,opt,name=timezone,proto3" json:"timezone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -936,6 +979,27 @@ func (x *UpdateTripRequest) GetBudgetCents() int64 {
 func (x *UpdateTripRequest) GetCurrency() string {
 	if x != nil {
 		return x.Currency
+	}
+	return ""
+}
+
+func (x *UpdateTripRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *UpdateTripRequest) GetCoverImageUrl() string {
+	if x != nil {
+		return x.CoverImageUrl
+	}
+	return ""
+}
+
+func (x *UpdateTripRequest) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
 	}
 	return ""
 }
@@ -1349,11 +1413,221 @@ func (x *CloneTripResponse) GetTrip() *Trip {
 	return nil
 }
 
+type ReorderItineraryItemRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TripId string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	ItemId string                 `protobuf:"bytes,2,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	// Target day number to move the item to.
+	TargetDay int32 `protobuf:"varint,3,opt,name=target_day,json=targetDay,proto3" json:"target_day,omitempty"`
+	// Target position within the day (1-indexed). Defaults to 1 if unset.
+	TargetPosition int32 `protobuf:"varint,4,opt,name=target_position,json=targetPosition,proto3" json:"target_position,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ReorderItineraryItemRequest) Reset() {
+	*x = ReorderItineraryItemRequest{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReorderItineraryItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReorderItineraryItemRequest) ProtoMessage() {}
+
+func (x *ReorderItineraryItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReorderItineraryItemRequest.ProtoReflect.Descriptor instead.
+func (*ReorderItineraryItemRequest) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ReorderItineraryItemRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+func (x *ReorderItineraryItemRequest) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *ReorderItineraryItemRequest) GetTargetDay() int32 {
+	if x != nil {
+		return x.TargetDay
+	}
+	return 0
+}
+
+func (x *ReorderItineraryItemRequest) GetTargetPosition() int32 {
+	if x != nil {
+		return x.TargetPosition
+	}
+	return 0
+}
+
+type ReorderItineraryItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          *ItineraryItem         `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReorderItineraryItemResponse) Reset() {
+	*x = ReorderItineraryItemResponse{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReorderItineraryItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReorderItineraryItemResponse) ProtoMessage() {}
+
+func (x *ReorderItineraryItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReorderItineraryItemResponse.ProtoReflect.Descriptor instead.
+func (*ReorderItineraryItemResponse) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ReorderItineraryItemResponse) GetItem() *ItineraryItem {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type ListTripTemplatesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pagination    *PaginationRequest     `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTripTemplatesRequest) Reset() {
+	*x = ListTripTemplatesRequest{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTripTemplatesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTripTemplatesRequest) ProtoMessage() {}
+
+func (x *ListTripTemplatesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTripTemplatesRequest.ProtoReflect.Descriptor instead.
+func (*ListTripTemplatesRequest) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ListTripTemplatesRequest) GetPagination() *PaginationRequest {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type ListTripTemplatesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Templates     []*Trip                `protobuf:"bytes,1,rep,name=templates,proto3" json:"templates,omitempty"`
+	Pagination    *PaginationResponse    `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTripTemplatesResponse) Reset() {
+	*x = ListTripTemplatesResponse{}
+	mi := &file_toqui_v1_trip_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTripTemplatesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTripTemplatesResponse) ProtoMessage() {}
+
+func (x *ListTripTemplatesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_trip_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTripTemplatesResponse.ProtoReflect.Descriptor instead.
+func (*ListTripTemplatesResponse) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_trip_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ListTripTemplatesResponse) GetTemplates() []*Trip {
+	if x != nil {
+		return x.Templates
+	}
+	return nil
+}
+
+func (x *ListTripTemplatesResponse) GetPagination() *PaginationResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
 var File_toqui_v1_trip_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xb9\x04\n" +
+	"\x13toqui/v1/trip.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15toqui/v1/common.proto\"\xb4\x05\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
@@ -1374,7 +1648,12 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"isUnlocked\x123\n" +
 	"\x15destination_countries\x18\r \x03(\tR\x14destinationCountries\x12&\n" +
 	"\fbudget_cents\x18\x0e \x01(\x03H\x00R\vbudgetCents\x88\x01\x01\x12\x1a\n" +
-	"\bcurrency\x18\x0f \x01(\tR\bcurrencyB\x0f\n" +
+	"\bcurrency\x18\x0f \x01(\tR\bcurrency\x12\x14\n" +
+	"\x05notes\x18\x10 \x01(\tR\x05notes\x12&\n" +
+	"\x0fcover_image_url\x18\x11 \x01(\tR\rcoverImageUrl\x12\x1a\n" +
+	"\btimezone\x18\x12 \x01(\tR\btimezone\x12\x1f\n" +
+	"\vis_template\x18\x13 \x01(\bR\n" +
+	"isTemplateB\x0f\n" +
 	"\r_budget_cents\"P\n" +
 	"\tItinerary\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12*\n" +
@@ -1432,7 +1711,7 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\x05trips\x18\x01 \x03(\v2\x0e.toqui.v1.TripR\x05trips\x12<\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1c.toqui.v1.PaginationResponseR\n" +
-	"pagination\"\xb6\x02\n" +
+	"pagination\"\xad\x03\n" +
 	"\x11UpdateTripRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12\x1e\n" +
 	"\x05title\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\x05title\x12*\n" +
@@ -1442,7 +1721,11 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"start_date\x18\x05 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x06 \x01(\tR\aendDate\x12&\n" +
 	"\fbudget_cents\x18\a \x01(\x03H\x00R\vbudgetCents\x88\x01\x01\x12\x1a\n" +
-	"\bcurrency\x18\b \x01(\tR\bcurrencyB\x0f\n" +
+	"\bcurrency\x18\b \x01(\tR\bcurrency\x12\x1e\n" +
+	"\x05notes\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\x90NR\x05notes\x120\n" +
+	"\x0fcover_image_url\x18\n" +
+	" \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\rcoverImageUrl\x12#\n" +
+	"\btimezone\x18\v \x01(\tB\a\xbaH\x04r\x02\x18@R\btimezoneB\x0f\n" +
 	"\r_budget_cents\"8\n" +
 	"\x12UpdateTripResponse\x12\"\n" +
 	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"-\n" +
@@ -1462,13 +1745,30 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"\atrip_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06tripId\x12\x1e\n" +
 	"\x05title\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\x05title\"7\n" +
 	"\x11CloneTripResponse\x12\"\n" +
-	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip*v\n" +
+	"\x04trip\x18\x01 \x01(\v2\x0e.toqui.v1.TripR\x04trip\"\xbd\x01\n" +
+	"\x1bReorderItineraryItemRequest\x12!\n" +
+	"\atrip_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06tripId\x12!\n" +
+	"\aitem_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x06itemId\x12&\n" +
+	"\n" +
+	"target_day\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\ttargetDay\x120\n" +
+	"\x0ftarget_position\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0etargetPosition\"K\n" +
+	"\x1cReorderItineraryItemResponse\x12+\n" +
+	"\x04item\x18\x01 \x01(\v2\x17.toqui.v1.ItineraryItemR\x04item\"W\n" +
+	"\x18ListTripTemplatesRequest\x12;\n" +
+	"\n" +
+	"pagination\x18\x01 \x01(\v2\x1b.toqui.v1.PaginationRequestR\n" +
+	"pagination\"\x87\x01\n" +
+	"\x19ListTripTemplatesResponse\x12,\n" +
+	"\ttemplates\x18\x01 \x03(\v2\x0e.toqui.v1.TripR\ttemplates\x12<\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.toqui.v1.PaginationResponseR\n" +
+	"pagination*v\n" +
 	"\n" +
 	"TripStatus\x12\x1b\n" +
 	"\x17TRIP_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TRIP_STATUS_PLANNING\x10\x01\x12\x16\n" +
 	"\x12TRIP_STATUS_ACTIVE\x10\x02\x12\x19\n" +
-	"\x15TRIP_STATUS_COMPLETED\x10\x032\xdb\x04\n" +
+	"\x15TRIP_STATUS_COMPLETED\x10\x032\xa0\x06\n" +
 	"\vTripService\x12G\n" +
 	"\n" +
 	"CreateTrip\x12\x1b.toqui.v1.CreateTripRequest\x1a\x1c.toqui.v1.CreateTripResponse\x12>\n" +
@@ -1480,7 +1780,9 @@ const file_toqui_v1_trip_proto_rawDesc = "" +
 	"DeleteTrip\x12\x1b.toqui.v1.DeleteTripRequest\x1a\x1c.toqui.v1.DeleteTripResponse\x12M\n" +
 	"\fGetItinerary\x12\x1d.toqui.v1.GetItineraryRequest\x1a\x1e.toqui.v1.GetItineraryResponse\x12V\n" +
 	"\x0fUpdateItinerary\x12 .toqui.v1.UpdateItineraryRequest\x1a!.toqui.v1.UpdateItineraryResponse\x12D\n" +
-	"\tCloneTrip\x12\x1a.toqui.v1.CloneTripRequest\x1a\x1b.toqui.v1.CloneTripResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\tCloneTrip\x12\x1a.toqui.v1.CloneTripRequest\x1a\x1b.toqui.v1.CloneTripResponse\x12e\n" +
+	"\x14ReorderItineraryItem\x12%.toqui.v1.ReorderItineraryItemRequest\x1a&.toqui.v1.ReorderItineraryItemResponse\x12\\\n" +
+	"\x11ListTripTemplates\x12\".toqui.v1.ListTripTemplatesRequest\x1a#.toqui.v1.ListTripTemplatesResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_trip_proto_rawDescOnce sync.Once
@@ -1495,79 +1797,91 @@ func file_toqui_v1_trip_proto_rawDescGZIP() []byte {
 }
 
 var file_toqui_v1_trip_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_toqui_v1_trip_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_toqui_v1_trip_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_toqui_v1_trip_proto_goTypes = []any{
-	(TripStatus)(0),                 // 0: toqui.v1.TripStatus
-	(*Trip)(nil),                    // 1: toqui.v1.Trip
-	(*Itinerary)(nil),               // 2: toqui.v1.Itinerary
-	(*ItineraryDay)(nil),            // 3: toqui.v1.ItineraryDay
-	(*ItineraryItem)(nil),           // 4: toqui.v1.ItineraryItem
-	(*CreateTripRequest)(nil),       // 5: toqui.v1.CreateTripRequest
-	(*CreateTripResponse)(nil),      // 6: toqui.v1.CreateTripResponse
-	(*GetTripRequest)(nil),          // 7: toqui.v1.GetTripRequest
-	(*GetTripResponse)(nil),         // 8: toqui.v1.GetTripResponse
-	(*ListTripsRequest)(nil),        // 9: toqui.v1.ListTripsRequest
-	(*ListTripsResponse)(nil),       // 10: toqui.v1.ListTripsResponse
-	(*UpdateTripRequest)(nil),       // 11: toqui.v1.UpdateTripRequest
-	(*UpdateTripResponse)(nil),      // 12: toqui.v1.UpdateTripResponse
-	(*DeleteTripRequest)(nil),       // 13: toqui.v1.DeleteTripRequest
-	(*DeleteTripResponse)(nil),      // 14: toqui.v1.DeleteTripResponse
-	(*GetItineraryRequest)(nil),     // 15: toqui.v1.GetItineraryRequest
-	(*GetItineraryResponse)(nil),    // 16: toqui.v1.GetItineraryResponse
-	(*UpdateItineraryRequest)(nil),  // 17: toqui.v1.UpdateItineraryRequest
-	(*UpdateItineraryResponse)(nil), // 18: toqui.v1.UpdateItineraryResponse
-	(*CloneTripRequest)(nil),        // 19: toqui.v1.CloneTripRequest
-	(*CloneTripResponse)(nil),       // 20: toqui.v1.CloneTripResponse
-	nil,                             // 21: toqui.v1.ItineraryItem.MetadataEntry
-	(*timestamppb.Timestamp)(nil),   // 22: google.protobuf.Timestamp
-	(*LatLng)(nil),                  // 23: toqui.v1.LatLng
-	(*PaginationRequest)(nil),       // 24: toqui.v1.PaginationRequest
-	(*PaginationResponse)(nil),      // 25: toqui.v1.PaginationResponse
+	(TripStatus)(0),                      // 0: toqui.v1.TripStatus
+	(*Trip)(nil),                         // 1: toqui.v1.Trip
+	(*Itinerary)(nil),                    // 2: toqui.v1.Itinerary
+	(*ItineraryDay)(nil),                 // 3: toqui.v1.ItineraryDay
+	(*ItineraryItem)(nil),                // 4: toqui.v1.ItineraryItem
+	(*CreateTripRequest)(nil),            // 5: toqui.v1.CreateTripRequest
+	(*CreateTripResponse)(nil),           // 6: toqui.v1.CreateTripResponse
+	(*GetTripRequest)(nil),               // 7: toqui.v1.GetTripRequest
+	(*GetTripResponse)(nil),              // 8: toqui.v1.GetTripResponse
+	(*ListTripsRequest)(nil),             // 9: toqui.v1.ListTripsRequest
+	(*ListTripsResponse)(nil),            // 10: toqui.v1.ListTripsResponse
+	(*UpdateTripRequest)(nil),            // 11: toqui.v1.UpdateTripRequest
+	(*UpdateTripResponse)(nil),           // 12: toqui.v1.UpdateTripResponse
+	(*DeleteTripRequest)(nil),            // 13: toqui.v1.DeleteTripRequest
+	(*DeleteTripResponse)(nil),           // 14: toqui.v1.DeleteTripResponse
+	(*GetItineraryRequest)(nil),          // 15: toqui.v1.GetItineraryRequest
+	(*GetItineraryResponse)(nil),         // 16: toqui.v1.GetItineraryResponse
+	(*UpdateItineraryRequest)(nil),       // 17: toqui.v1.UpdateItineraryRequest
+	(*UpdateItineraryResponse)(nil),      // 18: toqui.v1.UpdateItineraryResponse
+	(*CloneTripRequest)(nil),             // 19: toqui.v1.CloneTripRequest
+	(*CloneTripResponse)(nil),            // 20: toqui.v1.CloneTripResponse
+	(*ReorderItineraryItemRequest)(nil),  // 21: toqui.v1.ReorderItineraryItemRequest
+	(*ReorderItineraryItemResponse)(nil), // 22: toqui.v1.ReorderItineraryItemResponse
+	(*ListTripTemplatesRequest)(nil),     // 23: toqui.v1.ListTripTemplatesRequest
+	(*ListTripTemplatesResponse)(nil),    // 24: toqui.v1.ListTripTemplatesResponse
+	nil,                                  // 25: toqui.v1.ItineraryItem.MetadataEntry
+	(*timestamppb.Timestamp)(nil),        // 26: google.protobuf.Timestamp
+	(*LatLng)(nil),                       // 27: toqui.v1.LatLng
+	(*PaginationRequest)(nil),            // 28: toqui.v1.PaginationRequest
+	(*PaginationResponse)(nil),           // 29: toqui.v1.PaginationResponse
 }
 var file_toqui_v1_trip_proto_depIdxs = []int32{
 	0,  // 0: toqui.v1.Trip.status:type_name -> toqui.v1.TripStatus
-	22, // 1: toqui.v1.Trip.created_at:type_name -> google.protobuf.Timestamp
-	22, // 2: toqui.v1.Trip.updated_at:type_name -> google.protobuf.Timestamp
+	26, // 1: toqui.v1.Trip.created_at:type_name -> google.protobuf.Timestamp
+	26, // 2: toqui.v1.Trip.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: toqui.v1.Itinerary.days:type_name -> toqui.v1.ItineraryDay
 	4,  // 4: toqui.v1.ItineraryDay.items:type_name -> toqui.v1.ItineraryItem
-	23, // 5: toqui.v1.ItineraryItem.location:type_name -> toqui.v1.LatLng
-	22, // 6: toqui.v1.ItineraryItem.start_time:type_name -> google.protobuf.Timestamp
-	22, // 7: toqui.v1.ItineraryItem.end_time:type_name -> google.protobuf.Timestamp
-	21, // 8: toqui.v1.ItineraryItem.metadata:type_name -> toqui.v1.ItineraryItem.MetadataEntry
+	27, // 5: toqui.v1.ItineraryItem.location:type_name -> toqui.v1.LatLng
+	26, // 6: toqui.v1.ItineraryItem.start_time:type_name -> google.protobuf.Timestamp
+	26, // 7: toqui.v1.ItineraryItem.end_time:type_name -> google.protobuf.Timestamp
+	25, // 8: toqui.v1.ItineraryItem.metadata:type_name -> toqui.v1.ItineraryItem.MetadataEntry
 	0,  // 9: toqui.v1.CreateTripRequest.status:type_name -> toqui.v1.TripStatus
 	1,  // 10: toqui.v1.CreateTripResponse.trip:type_name -> toqui.v1.Trip
 	1,  // 11: toqui.v1.GetTripResponse.trip:type_name -> toqui.v1.Trip
 	0,  // 12: toqui.v1.ListTripsRequest.status:type_name -> toqui.v1.TripStatus
-	24, // 13: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	28, // 13: toqui.v1.ListTripsRequest.pagination:type_name -> toqui.v1.PaginationRequest
 	1,  // 14: toqui.v1.ListTripsResponse.trips:type_name -> toqui.v1.Trip
-	25, // 15: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	29, // 15: toqui.v1.ListTripsResponse.pagination:type_name -> toqui.v1.PaginationResponse
 	0,  // 16: toqui.v1.UpdateTripRequest.status:type_name -> toqui.v1.TripStatus
 	1,  // 17: toqui.v1.UpdateTripResponse.trip:type_name -> toqui.v1.Trip
 	2,  // 18: toqui.v1.GetItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
 	2,  // 19: toqui.v1.UpdateItineraryRequest.itinerary:type_name -> toqui.v1.Itinerary
 	2,  // 20: toqui.v1.UpdateItineraryResponse.itinerary:type_name -> toqui.v1.Itinerary
 	1,  // 21: toqui.v1.CloneTripResponse.trip:type_name -> toqui.v1.Trip
-	5,  // 22: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
-	7,  // 23: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
-	9,  // 24: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
-	11, // 25: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
-	13, // 26: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
-	15, // 27: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
-	17, // 28: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
-	19, // 29: toqui.v1.TripService.CloneTrip:input_type -> toqui.v1.CloneTripRequest
-	6,  // 30: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
-	8,  // 31: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
-	10, // 32: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
-	12, // 33: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
-	14, // 34: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
-	16, // 35: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
-	18, // 36: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
-	20, // 37: toqui.v1.TripService.CloneTrip:output_type -> toqui.v1.CloneTripResponse
-	30, // [30:38] is the sub-list for method output_type
-	22, // [22:30] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	4,  // 22: toqui.v1.ReorderItineraryItemResponse.item:type_name -> toqui.v1.ItineraryItem
+	28, // 23: toqui.v1.ListTripTemplatesRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	1,  // 24: toqui.v1.ListTripTemplatesResponse.templates:type_name -> toqui.v1.Trip
+	29, // 25: toqui.v1.ListTripTemplatesResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	5,  // 26: toqui.v1.TripService.CreateTrip:input_type -> toqui.v1.CreateTripRequest
+	7,  // 27: toqui.v1.TripService.GetTrip:input_type -> toqui.v1.GetTripRequest
+	9,  // 28: toqui.v1.TripService.ListTrips:input_type -> toqui.v1.ListTripsRequest
+	11, // 29: toqui.v1.TripService.UpdateTrip:input_type -> toqui.v1.UpdateTripRequest
+	13, // 30: toqui.v1.TripService.DeleteTrip:input_type -> toqui.v1.DeleteTripRequest
+	15, // 31: toqui.v1.TripService.GetItinerary:input_type -> toqui.v1.GetItineraryRequest
+	17, // 32: toqui.v1.TripService.UpdateItinerary:input_type -> toqui.v1.UpdateItineraryRequest
+	19, // 33: toqui.v1.TripService.CloneTrip:input_type -> toqui.v1.CloneTripRequest
+	21, // 34: toqui.v1.TripService.ReorderItineraryItem:input_type -> toqui.v1.ReorderItineraryItemRequest
+	23, // 35: toqui.v1.TripService.ListTripTemplates:input_type -> toqui.v1.ListTripTemplatesRequest
+	6,  // 36: toqui.v1.TripService.CreateTrip:output_type -> toqui.v1.CreateTripResponse
+	8,  // 37: toqui.v1.TripService.GetTrip:output_type -> toqui.v1.GetTripResponse
+	10, // 38: toqui.v1.TripService.ListTrips:output_type -> toqui.v1.ListTripsResponse
+	12, // 39: toqui.v1.TripService.UpdateTrip:output_type -> toqui.v1.UpdateTripResponse
+	14, // 40: toqui.v1.TripService.DeleteTrip:output_type -> toqui.v1.DeleteTripResponse
+	16, // 41: toqui.v1.TripService.GetItinerary:output_type -> toqui.v1.GetItineraryResponse
+	18, // 42: toqui.v1.TripService.UpdateItinerary:output_type -> toqui.v1.UpdateItineraryResponse
+	20, // 43: toqui.v1.TripService.CloneTrip:output_type -> toqui.v1.CloneTripResponse
+	22, // 44: toqui.v1.TripService.ReorderItineraryItem:output_type -> toqui.v1.ReorderItineraryItemResponse
+	24, // 45: toqui.v1.TripService.ListTripTemplates:output_type -> toqui.v1.ListTripTemplatesResponse
+	36, // [36:46] is the sub-list for method output_type
+	26, // [26:36] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_trip_proto_init() }
@@ -1586,7 +1900,7 @@ func file_toqui_v1_trip_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_toqui_v1_trip_proto_rawDesc), len(file_toqui_v1_trip_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   21,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

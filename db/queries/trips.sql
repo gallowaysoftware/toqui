@@ -41,6 +41,9 @@ SET title = COALESCE(NULLIF(sqlc.arg(title)::text, ''), title),
     end_date = COALESCE(sqlc.arg(end_date), end_date),
     budget_cents = COALESCE(sqlc.arg(budget_cents), budget_cents),
     currency = COALESCE(NULLIF(sqlc.arg(currency)::text, ''), currency),
+    notes = COALESCE(sqlc.arg(notes), notes),
+    cover_image_url = COALESCE(NULLIF(sqlc.arg(cover_image_url)::text, ''), cover_image_url),
+    timezone = COALESCE(NULLIF(sqlc.arg(timezone)::text, ''), timezone),
     updated_at = NOW()
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING *;
@@ -98,3 +101,16 @@ WHERE user_id = $1
   AND search_vector @@ plainto_tsquery('english', sqlc.arg(query))
 ORDER BY ts_rank(search_vector, plainto_tsquery('english', sqlc.arg(query))) DESC
 LIMIT sqlc.arg(max_results);
+
+-- name: ListTripTemplates :many
+SELECT * FROM trips
+WHERE is_template = TRUE
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountTripTemplates :one
+SELECT COUNT(*) FROM trips WHERE is_template = TRUE;
+
+-- name: SetTripTemplate :execresult
+UPDATE trips SET is_template = sqlc.arg(is_template), updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
