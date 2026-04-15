@@ -6,10 +6,12 @@ import { getConfig } from "@/lib/config";
 
 export type SubscriptionTier = "free" | "pro" | "explorer" | "voyager";
 export type SubscriptionStatus = "active" | "past_due" | "canceled" | "inactive";
+export type BillingPeriod = "monthly" | "annual";
 
 export interface Subscription {
   tier: SubscriptionTier;
   status: SubscriptionStatus;
+  billingPeriod: BillingPeriod | null;
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
 }
@@ -17,6 +19,7 @@ export interface Subscription {
 interface SubscriptionResponse {
   tier: SubscriptionTier;
   status: SubscriptionStatus;
+  billing_period: BillingPeriod | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
 }
@@ -57,6 +60,7 @@ export function useSubscription() {
           setSubscription({
             tier: json.tier,
             status: json.status,
+            billingPeriod: json.billing_period ?? null,
             currentPeriodEnd: json.current_period_end
               ? new Date(json.current_period_end)
               : null,
@@ -84,6 +88,7 @@ export function useSubscription() {
 
   const subscribe = useCallback(
     async (tier: "explorer" | "voyager", annual: boolean) => {
+      const billingPeriod: BillingPeriod = annual ? "annual" : "monthly";
       setError(null);
       try {
         const res = await authFetch(
@@ -91,7 +96,7 @@ export function useSubscription() {
           accessToken,
           {
             method: "POST",
-            body: JSON.stringify({ tier, annual }),
+            body: JSON.stringify({ tier, billing_period: billingPeriod }),
           },
         );
         if (!res.ok) {

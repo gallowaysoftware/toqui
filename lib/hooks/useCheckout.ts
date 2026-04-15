@@ -22,16 +22,17 @@ export function useCheckout(tripId: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // NOTE: price_variant is sent for analytics/logging only.
+  // NOTE: price_variant and billing_period are sent for analytics/logging only.
   // The backend MUST determine the actual charge amount server-side
   // (e.g., by evaluating PostHog flags server-side or from its own config).
-  // Never trust this client-supplied value to set the payment amount.
-  const initCheckout = useCallback(async (priceVariant?: string): Promise<CheckoutInitResponse> => {
+  // Never trust these client-supplied values to set the payment amount.
+  const initCheckout = useCallback(async (priceVariant?: string, billingPeriod?: "monthly" | "annual"): Promise<CheckoutInitResponse> => {
     setIsLoading(true);
     setError(null);
     try {
       const body: Record<string, string> = { trip_id: tripId };
       if (priceVariant) body.price_variant = priceVariant;
+      if (billingPeriod) body.billing_period = billingPeriod;
       const res = await authFetch(
         `${getConfig().apiUrl}/api/checkout`,
         accessToken,

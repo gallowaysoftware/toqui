@@ -210,16 +210,23 @@ export default function SettingsScreen() {
           </View>
         </View>
         {isSubscriber && subscription?.currentPeriodEnd ? (
-          <Text style={styles.billingDescription}>
-            {subscription.cancelAtPeriodEnd
-              ? t("subscription.endsOn")
-              : t("subscription.renewsOn")}{" "}
-            {subscription.currentPeriodEnd.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </Text>
+          <>
+            <Text style={styles.billingDescription}>
+              {subscription.billingPeriod === "annual"
+                ? t("subscription.annual")
+                : t("subscription.monthly")}{" "}
+              {t("settings.billing.plan").toLowerCase()}
+              {" \u2014 "}
+              {subscription.cancelAtPeriodEnd
+                ? t("subscription.endsOn").toLowerCase()
+                : t("subscription.renewsOn").toLowerCase()}{" "}
+              {subscription.currentPeriodEnd.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </Text>
+          </>
         ) : isPro ? (
           <Text style={styles.billingDescription}>{t("settings.billing.proDescription")}</Text>
         ) : (
