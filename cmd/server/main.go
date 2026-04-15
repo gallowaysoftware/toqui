@@ -240,11 +240,33 @@ func main() {
 		slog.Info("llm response cache enabled", "ttl", cfg.LLMCacheTTL)
 	}
 
-	// Daily token budget — global limit across all AI calls.
+	// Daily token budget — legacy in-memory global limit across all AI calls.
 	if cfg.DailyAITokenBudget > 0 {
 		tokenBudget := ai.NewTokenBudget(cfg.DailyAITokenBudget)
 		chatSvc.SetBudget(tokenBudget)
-		slog.Info("daily AI token budget configured", "limit", cfg.DailyAITokenBudget)
+		slog.Info("daily AI token budget configured (legacy)", "limit", cfg.DailyAITokenBudget)
+	}
+
+	// DB-backed daily cost budget — hard limit on total AI spend per day.
+	// Reads actual cost from the ai_usage table and enforces global + per-tier limits.
+	var budgetChecker *usage.BudgetChecker
+	if cfg.AIDailyBudgetCents > 0 {
+		budgetCfg := usage.BudgetConfig{
+			GlobalDailyCents: int64(cfg.AIDailyBudgetCents),
+			FreePct:          cfg.AIBudgetFreePct,
+			ProPct:           cfg.AIBudgetProPct,
+			ExplorerPct:      cfg.AIBudgetExplorerPct,
+			VoyagerPct:       cfg.AIBudgetVoyagerPct,
+		}
+		budgetChecker = usage.NewBudgetChecker(budgetCfg, dbgen.New(pool))
+		chatSvc.SetBudgetChecker(budgetChecker)
+		slog.Info("daily AI cost budget configured",
+			"budget_cents", cfg.AIDailyBudgetCents,
+			"free_pct", cfg.AIBudgetFreePct,
+			"pro_pct", cfg.AIBudgetProPct,
+			"explorer_pct", cfg.AIBudgetExplorerPct,
+			"voyager_pct", cfg.AIBudgetVoyagerPct,
+		)
 	}
 
 	bookingSvc := booking.NewService(pool, aiProvider)
@@ -586,6 +608,9 @@ func main() {
 
 	// Admin endpoints (authenticated + admin email check)
 	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL, lifecycleSvc)
+	if budgetChecker != nil {
+		adminHandler.SetBudgetChecker(budgetChecker)
+	}
 	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
 	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
 	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)

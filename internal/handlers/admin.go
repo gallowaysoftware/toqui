@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -21,15 +22,21 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 )
 
+// BudgetUtilizer is the subset of usage.BudgetChecker needed by the admin handler.
+type BudgetUtilizer interface {
+	Utilization(ctx context.Context) (pct float64, costCents, budgetCents int64, err error)
+}
+
 // AdminHandler serves internal admin endpoints.
 // All endpoints require JWT auth + email in the admin allow-list.
 type AdminHandler struct {
-	authSvc      *auth.Service
-	queries      *dbgen.Queries
-	adminEmails  []string
-	emailSvc     *email.Sender
-	appURL       string
-	lifecycleSvc *lifecycle.Service
+	authSvc       *auth.Service
+	queries       *dbgen.Queries
+	adminEmails   []string
+	emailSvc      *email.Sender
+	appURL        string
+	lifecycleSvc  *lifecycle.Service
+	budgetChecker BudgetUtilizer // nil when budget enforcement is disabled
 }
 
 // NewAdminHandler creates a new AdminHandler.
@@ -42,6 +49,11 @@ func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []st
 		appURL:       appURL,
 		lifecycleSvc: lifecycleSvc,
 	}
+}
+
+// SetBudgetChecker enables budget utilization reporting on the admin dashboard.
+func (h *AdminHandler) SetBudgetChecker(b BudgetUtilizer) {
+	h.budgetChecker = b
 }
 
 // authenticateAdmin verifies JWT + checks admin email list.
@@ -721,15 +733,37 @@ func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	// Budget utilization (if budget enforcement is enabled).
+	var budgetInfo map[string]any
+	if h.budgetChecker != nil {
+		pct, costC, budgetC, budgetErr := h.budgetChecker.Utilization(ctx)
+		if budgetErr != nil {
+			slog.Warn("admin ai-costs: budget utilization query failed", "error", budgetErr)
+		} else {
+			budgetInfo = map[string]any{
+				"utilization_pct": pct,
+				"cost_cents":      costC,
+				"budget_cents":    budgetC,
+				"cost_dollars":    float64(costC) / 100.0,
+				"budget_dollars":  float64(budgetC) / 100.0,
+			}
+		}
+	}
+
+	resp := map[string]any{
 		"daily_cost":   float64(dailyCents) / 100.0,
 		"weekly_cost":  float64(weeklyCents) / 100.0,
 		"monthly_cost": float64(monthlyCents) / 100.0,
 		"cost_by_tier": costByTier,
 		"top_users":    topUsersOut,
 		"by_model":     byModel,
-	})
+	}
+	if budgetInfo != nil {
+		resp["budget"] = budgetInfo
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // subscriptionMRR maps subscription tiers to their estimated monthly price in

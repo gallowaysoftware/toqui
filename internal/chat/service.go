@@ -21,6 +21,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 type Service struct {
@@ -29,7 +30,8 @@ type Service struct {
 	tools         *tools.Registry
 	personas      *persona.Registry
 	cache         *ai.ResponseCache // nil when caching is disabled
-	budget        *ai.TokenBudget   // nil when budget is unlimited
+	budget        *ai.TokenBudget   // nil when budget is unlimited (legacy in-memory)
+	budgetChecker costBudgetChecker // nil when cost-based budget is disabled
 	usageSvc      usageCostRecorder // nil when cost tracking is disabled
 	aiTokenMetric aiTokenCounter    // nil when metrics are disabled
 }
@@ -38,6 +40,11 @@ type Service struct {
 type usageCostRecorder interface {
 	RecordAICost(ctx context.Context, userID uuid.UUID, costCents int32) error
 	RecordAIUsage(ctx context.Context, userID uuid.UUID, provider, modelTier string, inputTokens, outputTokens, costCents int32, userTier string) error
+}
+
+// costBudgetChecker checks the DB-backed daily cost budget before AI calls.
+type costBudgetChecker interface {
+	Check(ctx context.Context, userTier tier.UserTier) error
 }
 
 // aiTokenCounter records AI token usage as an OpenTelemetry metric.
@@ -60,9 +67,14 @@ func (s *Service) SetCache(cache *ai.ResponseCache) {
 	s.cache = cache
 }
 
-// SetBudget enables daily token budget tracking. Pass nil to disable.
+// SetBudget enables daily token budget tracking (legacy in-memory). Pass nil to disable.
 func (s *Service) SetBudget(budget *ai.TokenBudget) {
 	s.budget = budget
+}
+
+// SetBudgetChecker enables DB-backed daily cost budget enforcement. Pass nil to disable.
+func (s *Service) SetBudgetChecker(checker costBudgetChecker) {
+	s.budgetChecker = checker
 }
 
 // SetUsageService enables AI cost recording to the database. Pass nil to disable.
@@ -155,6 +167,17 @@ func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-
 	if s.budget != nil {
 		if err := s.budget.Check(); err != nil {
 			return nil, "", err
+		}
+	}
+
+	// Check DB-backed daily cost budget. This is the authoritative budget
+	// enforcer — it reads actual spend from the ai_usage table and enforces
+	// both global and per-tier limits. The legacy in-memory token budget
+	// above is a fast pre-check; this is the hard limit.
+	if s.budgetChecker != nil {
+		ut := tier.Parse(params.UserTier)
+		if err := s.budgetChecker.Check(ctx, ut); err != nil {
+			return nil, "", ai.ErrBudgetExhausted
 		}
 	}
 

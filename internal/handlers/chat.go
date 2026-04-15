@@ -593,7 +593,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		if errors.Is(err, ai.ErrBudgetExhausted) {
 			return connect.NewError(
 				connect.CodeResourceExhausted,
-				fmt.Errorf("our AI service has reached its daily capacity — please try again tomorrow"),
+				errors.New("we're experiencing high demand, please try again later"),
 			)
 		}
 		return internalError(ctx, "send message", err)

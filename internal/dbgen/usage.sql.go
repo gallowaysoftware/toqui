@@ -178,6 +178,17 @@ func (q *Queries) GetDailyAIUsageCost(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const getDailyAIUsageCostByTier = `-- name: GetDailyAIUsageCostByTier :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE AND user_tier = $1
+`
+
+func (q *Queries) GetDailyAIUsageCostByTier(ctx context.Context, userTier string) (int64, error) {
+	row := q.db.QueryRow(ctx, getDailyAIUsageCostByTier, userTier)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getDailyUsage = `-- name: GetDailyUsage :one
 SELECT id, user_id, date, message_count, ai_cost_cents, created_at, updated_at FROM daily_usage
 WHERE user_id = $1 AND date = $2

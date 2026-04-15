@@ -91,6 +91,9 @@ FROM ai_usage
 WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY provider, model_tier;
 
+-- name: GetDailyAIUsageCostByTier :one
+SELECT COALESCE(SUM(cost_cents), 0)::bigint FROM ai_usage WHERE created_at >= CURRENT_DATE AND user_tier = sqlc.arg(user_tier);
+
 -- name: GetTopAIUsers :many
 SELECT
     a.user_id,

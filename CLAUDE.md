@@ -287,6 +287,11 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `OTEL_SERVICE_NAME` | (none) | OpenTelemetry service name |
 | `GCS_EXPORT_BUCKET` | (none) | GCS bucket for GDPR data exports (empty = local filesystem fallback) |
 | `EXPORT_LOCAL_DIR` | `/tmp/toqui-exports` | Local directory for exports when GCS is not configured |
+| `AI_DAILY_BUDGET_CENTS` | `0` (unlimited) | Daily AI cost hard limit in cents (e.g. 50000 = $500/day). DB-backed via ai_usage table |
+| `AI_BUDGET_FREE_PCT` | `20` | Percentage of daily budget reserved for free-tier users |
+| `AI_BUDGET_PRO_PCT` | `30` | Percentage of daily budget reserved for pro-tier users |
+| `AI_BUDGET_EXPLORER_PCT` | `25` | Percentage of daily budget reserved for explorer-tier users |
+| `AI_BUDGET_VOYAGER_PCT` | `25` | Percentage of daily budget reserved for voyager-tier users |
 
 ## Trip Mode System
 

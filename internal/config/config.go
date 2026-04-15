@@ -47,7 +47,18 @@ type Config struct {
 	VertexAILocation  string // Overridden to "global" for Gemini 3 (config default: us-central1)
 
 	// Cost control
-	DailyAITokenBudget int // Max total tokens per day (0 = unlimited)
+	DailyAITokenBudget int // Max total tokens per day (0 = unlimited) — legacy in-memory guard
+
+	// AI daily cost budget — DB-backed hard limit on total AI spend per day.
+	// Expressed in cents (e.g. 50000 = $500/day). 0 = unlimited.
+	AIDailyBudgetCents int
+
+	// Per-tier budget allocation as percentage of AIDailyBudgetCents (0–100).
+	// 0 means the tier shares the full global budget without a dedicated slice.
+	AIBudgetFreePct     int
+	AIBudgetProPct      int
+	AIBudgetExplorerPct int
+	AIBudgetVoyagerPct  int
 
 	// Firestore
 	FirestoreProjectID    string
@@ -152,6 +163,11 @@ func Load() (*Config, error) {
 		VertexAIProjectID:              os.Getenv("VERTEX_AI_PROJECT_ID"),
 		VertexAILocation:               getEnv("VERTEX_AI_LOCATION", "us-central1"),
 		DailyAITokenBudget:             getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
+		AIDailyBudgetCents:             getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
+		AIBudgetFreePct:                getEnvInt("AI_BUDGET_FREE_PCT", 20),
+		AIBudgetProPct:                 getEnvInt("AI_BUDGET_PRO_PCT", 30),
+		AIBudgetExplorerPct:            getEnvInt("AI_BUDGET_EXPLORER_PCT", 25),
+		AIBudgetVoyagerPct:             getEnvInt("AI_BUDGET_VOYAGER_PCT", 25),
 		FirestoreProjectID:             getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
 		FirestoreDatabaseID:            getEnv("FIRESTORE_DATABASE_ID", ""),
 		FirestoreEmulatorHost:          os.Getenv("FIRESTORE_EMULATOR_HOST"),
