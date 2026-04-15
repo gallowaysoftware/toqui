@@ -9,6 +9,7 @@ import { BookingType } from "@gen/toqui/v1/booking_pb";
 import ForwardingCard from "@/components/bookings/ForwardingCard";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
 import { useTheme } from "@/lib/theme";
+import { useOfflineTrip } from "@/lib/offline";
 
 const typeConfig: Record<number, { i18nKey: string; color: string; Icon: typeof Plane }> = {
   [BookingType.FLIGHT]: { i18nKey: "bookings.typeFlight", color: "#3b82f6", Icon: Plane },
@@ -74,12 +75,20 @@ export default function BookingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { bookings, isLoading, error: bookingsError } = useBookings(tripId!);
+  const { bookings: networkBookings, isLoading: isNetworkLoading, error: bookingsError } = useBookings(tripId!);
   const ingestBooking = useIngestBooking();
   const deleteBooking = useDeleteBooking();
   const { colors } = useTheme();
   const [showAdd, setShowAdd] = useState(false);
   const [rawText, setRawText] = useState("");
+
+  // Offline support: fall back to cached bookings when offline
+  const { isOffline, bundle: offlineBundle, hasCachedData } = useOfflineTrip(tripId);
+  const offlineBookings = isOffline && offlineBundle?.bookings
+    ? offlineBundle.bookings.map((b) => ({ ...b } as unknown as Booking))
+    : [];
+  const bookings = networkBookings.length > 0 || !isOffline ? networkBookings : offlineBookings;
+  const isLoading = isNetworkLoading && !(isOffline && hasCachedData);
 
   const handleIngest = useCallback(async () => {
     if (!rawText.trim()) return;
@@ -218,6 +227,13 @@ export default function BookingsScreen() {
         ListHeaderComponent={
           <>
           <ForwardingCard tripId={tripId!} />
+          {isOffline && hasCachedData && (
+            <View style={{ backgroundColor: colors.warningBg, borderRadius: 8, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: colors.warningBorder }}>
+              <Text style={{ fontSize: 13, color: colors.warning }} testID="bookings-offline-notice">
+                You're viewing cached bookings. Adding or deleting bookings requires an internet connection.
+              </Text>
+            </View>
+          )}
           {showAdd ? (
             <View style={styles.addForm}>
               <TextInput
@@ -248,7 +264,11 @@ export default function BookingsScreen() {
               </View>
             </View>
           ) : (
-            <Pressable style={styles.addButton} onPress={() => setShowAdd(true)}>
+            <Pressable
+              style={[styles.addButton, isOffline && { opacity: 0.5 }]}
+              onPress={() => setShowAdd(true)}
+              disabled={isOffline}
+            >
               <Plus color={colors.accent} size={18} />
               <Text style={styles.addButtonText}>{t("bookings.addBooking")}</Text>
             </Pressable>

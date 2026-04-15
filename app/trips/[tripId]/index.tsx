@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { useWeather } from "@/lib/hooks/useWeather";
+import { useOfflineTrip, useOfflineSync } from "@/lib/offline";
 import { ProUpgrade } from "@/components/checkout/ProUpgrade";
 import { useTrialStatus } from "@/lib/hooks/useTrialStatus";
 import { useDestinationGuide } from "@/lib/hooks/useDestinationGuide";
@@ -44,10 +45,38 @@ function countDays(startDate: string, endDate: string): number {
 export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { trip, isLoading, error: tripError } = useTrip(tripId!);
+  const { trip: networkTrip, isLoading: isNetworkLoading, error: tripError } = useTrip(tripId!);
   const { collaborators } = useCollaborators(tripId!);
   const queryClient = useQueryClient();
-  const { itinerary, coveredDays, isLoading: isItineraryLoading } = useItinerary(tripId!);
+  const { itinerary: networkItinerary, coveredDays: networkCoveredDays, isLoading: isNetworkItineraryLoading } = useItinerary(tripId!);
+
+  // Offline support: sync bundle in background, fall back to cache when offline
+  const { isOffline, bundle: offlineBundle, hasCachedData } = useOfflineTrip(tripId);
+  const { lastSyncedAt } = useOfflineSync(tripId);
+
+  // Use offline data as fallback when network is unavailable
+  const trip = networkTrip ?? (isOffline && offlineBundle
+    ? offlineBundle.trip as unknown as typeof networkTrip
+    : undefined);
+  const isLoading = isNetworkLoading && !(isOffline && hasCachedData);
+
+  const offlineItinerary = isOffline && offlineBundle?.itinerary
+    ? offlineBundle.itinerary as unknown as typeof networkItinerary
+    : undefined;
+  const itinerary = networkItinerary ?? offlineItinerary;
+  const isItineraryLoading = isNetworkItineraryLoading && !(isOffline && hasCachedData);
+
+  // coveredDays calculation with offline fallback
+  const coveredDays = networkCoveredDays > 0 ? networkCoveredDays : (() => {
+    if (!offlineItinerary?.days) return 0;
+    const dayKeys = new Set(
+      offlineItinerary.days
+        .filter((d) => d.items.length > 0)
+        .map((d) => (d.dayNumber ? d.dayNumber : d.date))
+        .filter(Boolean),
+    );
+    return dayKeys.size;
+  })();
   const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
   const { guide } = useDestinationGuide(trip?.destinationCountry || undefined);

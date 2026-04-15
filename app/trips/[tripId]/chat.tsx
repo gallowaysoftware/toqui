@@ -18,6 +18,8 @@ import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native"
 import { useChat } from "@/lib/hooks/useChat";
 import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
 import { useTrip } from "@/lib/hooks/useTrips";
+import { useOfflineTrip, useOfflineSync } from "@/lib/offline";
+import { useNetworkStatus } from "@/lib/hooks/useNetworkStatus";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -70,6 +72,12 @@ export default function ChatScreen() {
   const [isSharePromptSharing, setIsSharePromptSharing] = useState(false);
   const sharePromptCheckedRef = useRef(false);
 
+  // Offline support
+  const { isConnected } = useNetworkStatus();
+  const { bundle: offlineBundle, hasCachedData } = useOfflineTrip(tripId);
+  const { lastSyncedAt } = useOfflineSync(tripId);
+  const isOffline = !isConnected;
+
   // Mark that the user has visited chat for this trip (used to gate pro upsell)
   useEffect(() => {
     if (tripId) {
@@ -97,9 +105,27 @@ export default function ChatScreen() {
     onExpertLimitReached: () => setShowExpertBanner(true),
   });
 
+  // When offline and no network messages loaded, use cached messages from bundle
+  const offlineMessages: ChatMessage[] = useMemo(() => {
+    if (!isOffline || messages.length > 0 || !offlineBundle?.messages) return [];
+    return offlineBundle.messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        personaId: m.metadata?.["persona_id"] || undefined,
+        personaName: m.metadata?.["persona_name"] || undefined,
+        personaAvatar: m.metadata?.["persona_avatar"] || undefined,
+        personaAccentColor: m.metadata?.["persona_accent_color"] || undefined,
+      }));
+  }, [isOffline, messages.length, offlineBundle?.messages]);
+
+  const displayMessages = messages.length > 0 ? messages : offlineMessages;
+
   const flatListRef = useRef<FlatList>(null);
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  const messagesRef = useRef(displayMessages);
+  messagesRef.current = displayMessages;
 
   // Track when the AI generates an itinerary
   useEffect(() => {
@@ -299,6 +325,17 @@ export default function ChatScreen() {
     },
     usageText: { fontSize: 12 },
     upgradeLink: { fontSize: 12, fontWeight: "600", color: colors.accent },
+    offlineInputBar: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.warningBorder,
+      backgroundColor: colors.warningBg,
+    },
+    offlineInputText: {
+      fontSize: 12,
+      textAlign: "center",
+    },
   });
 
   const usageVisible = limit > 0 && used >= limit * 0.75;
@@ -350,7 +387,7 @@ export default function ChatScreen() {
     >
       <FlatList
         ref={flatListRef}
-        data={messages}
+        data={displayMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
@@ -480,6 +517,14 @@ export default function ChatScreen() {
           )}
         </View>
       )}
+      {isOffline && (
+        <View style={styles.offlineInputBar} testID="chat-offline-indicator">
+          <Text style={[styles.offlineInputText, { color: colors.warning }]}>
+            You're offline — sending messages is disabled
+            {lastSyncedAt ? ` (last synced: ${new Date(lastSyncedAt).toLocaleTimeString()})` : ""}
+          </Text>
+        </View>
+      )}
       <ChatInput
         onSend={(text, attachments) => {
           sendMessage(text, attachments);
@@ -491,7 +536,7 @@ export default function ChatScreen() {
             }
           });
         }}
-        disabled={isStreaming}
+        disabled={isStreaming || isOffline}
       />
     </KeyboardAvoidingView>
     <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
