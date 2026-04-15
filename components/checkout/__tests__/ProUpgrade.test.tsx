@@ -13,6 +13,15 @@ vi.mock("lucide-react-native", () => ({
   BookOpen: () => <span data-testid="book-open-icon" />,
   ChevronRight: () => <span data-testid="chevron-right-icon" />,
   X: () => <span data-testid="x-icon" />,
+  ArrowRight: () => <span data-testid="arrow-right-icon" />,
+}));
+
+vi.mock("expo-router", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    back: vi.fn(),
+    replace: vi.fn(),
+  }),
 }));
 
 vi.mock("@/lib/theme", () => ({

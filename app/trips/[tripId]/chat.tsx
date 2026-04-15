@@ -28,6 +28,8 @@ import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { SharePromptCard } from "@/components/chat/SharePromptCard";
 import { PersonaIntroCard } from "@/components/chat/PersonaIntroCard";
+import { UsageIndicator } from "@/components/chat/UsageIndicator";
+import { FreePlanInfoBar } from "@/components/chat/FreePlanInfoBar";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage, PersonaIntroData } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
@@ -77,6 +79,7 @@ export default function ChatScreen() {
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [isSharePromptSharing, setIsSharePromptSharing] = useState(false);
   const sharePromptCheckedRef = useRef(false);
+  const [showFreePlanInfo, setShowFreePlanInfo] = useState(false);
 
   // Offline support
   const { isConnected } = useNetworkStatus();
@@ -84,14 +87,21 @@ export default function ChatScreen() {
   const { lastSyncedAt } = useOfflineSync(tripId);
   const isOffline = !isConnected;
 
+  const { used, limit, resetsAt, tier } = useUsage();
+
   // Mark that the user has visited chat for this trip (used to gate pro upsell)
+  // Also show the free plan info bar on first chat visit for free-tier users
   useEffect(() => {
     if (tripId) {
-      void AsyncStorage.setItem(`toqui_chat_visited_${tripId}`, "true");
+      const key = `toqui_chat_visited_${tripId}`;
+      void AsyncStorage.getItem(key).then((val) => {
+        if (val !== "true" && tier === "free") {
+          setShowFreePlanInfo(true);
+        }
+        void AsyncStorage.setItem(key, "true");
+      });
     }
-  }, [tripId]);
-
-  const { used, limit, resetsAt } = useUsage();
+  }, [tripId, tier]);
   const {
     messages,
     isStreaming,
@@ -267,14 +277,22 @@ export default function ChatScreen() {
     retryButton: { backgroundColor: colors.accent, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 24 },
     retryButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
     expertBanner: {
-      backgroundColor: colors.accentSoft,
-      borderTopWidth: 1,
-      borderTopColor: colors.accent,
-      paddingVertical: 10,
+      backgroundColor: colors.warningBg,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+      borderRadius: 10,
+      paddingVertical: 12,
       paddingHorizontal: 16,
+      marginHorizontal: 16,
+      marginVertical: 8,
       alignItems: "center",
     },
     expertBannerText: { fontSize: 13, color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
+    expertBannerRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 12,
+    },
     expertBannerButton: {
       backgroundColor: colors.accent,
       borderRadius: 16,
@@ -282,6 +300,10 @@ export default function ChatScreen() {
       paddingHorizontal: 16,
     },
     expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+    expertBannerAlt: {
+      paddingVertical: 6,
+    },
+    expertBannerAltText: { fontSize: 12, color: colors.accent, fontWeight: "500" },
     loadMoreButton: {
       alignSelf: "center",
       paddingVertical: 12,
@@ -344,19 +366,10 @@ export default function ChatScreen() {
     },
   });
 
-  const usageVisible = limit > 0 && used >= limit * 0.75;
+  // Bottom usage bar: only show the at-limit CTA for non-free tiers
+  // (free users already see the proactive UsageIndicator at the top)
   const usageAtLimit = limit > 0 && used >= limit;
-  const usageNearLimit = limit > 0 && used >= limit - 1 && !usageAtLimit;
-  const usageTextColor = usageAtLimit
-    ? colors.error
-    : usageNearLimit
-      ? colors.textSecondary
-      : colors.textTertiary;
-  const usageLabel = usageAtLimit
-    ? t("chat.dailyLimitReached", { time: formatTimeUntilReset(resetsAt) })
-    : usageNearLimit
-      ? t("chat.almostAtDailyLimit", { remaining: limit - used })
-      : t("chat.messagesUsage", { used, limit });
+  const showBottomUsageBar = usageAtLimit && tier !== "free";
 
   return (
     <>
@@ -391,6 +404,21 @@ export default function ChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={90}
     >
+      {/* Proactive usage counter — always visible for free users */}
+      {tier === "free" && limit > 0 && (
+        <UsageIndicator
+          used={used}
+          limit={limit}
+          tier={tier}
+          onUpgrade={() => tripId && router.push(`/trips/${tripId}`)}
+        />
+      )}
+      {/* Free plan info bar — shown once on first visit to a new trip chat */}
+      {showFreePlanInfo && tier === "free" && (
+        <FreePlanInfoBar
+          onUpgrade={() => tripId && router.push(`/trips/${tripId}`)}
+        />
+      )}
       <FlatList
         ref={flatListRef}
         data={displayMessages}
@@ -472,13 +500,23 @@ export default function ChatScreen() {
       />
       {showExpertBanner && tripId && (
         <View style={styles.expertBanner}>
-          <Text style={styles.expertBannerText}>{t("chat.expertLimitReached")}</Text>
-          <Pressable
-            onPress={() => router.push(`/trips/${tripId}`)}
-            style={styles.expertBannerButton}
-          >
-            <Text style={styles.expertBannerButtonText}>{t("chat.expertLimitCta")}</Text>
-          </Pressable>
+          <Text style={styles.expertBannerText}>{t("chat.expertLimitSoft")}</Text>
+          <View style={styles.expertBannerRow}>
+            <Pressable
+              onPress={() => router.push(`/trips/${tripId}`)}
+              style={styles.expertBannerButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.expertBannerButtonText}>{t("chat.expertLimitCta")}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/settings" as never)}
+              style={styles.expertBannerAlt}
+              accessibilityRole="button"
+            >
+              <Text style={styles.expertBannerAltText}>{t("chat.subscriptionAlt")}</Text>
+            </Pressable>
+          </View>
         </View>
       )}
       {lastFailedMessage && !isStreaming && (
@@ -513,10 +551,12 @@ export default function ChatScreen() {
           </View>
         </View>
       )}
-      {usageVisible && (
+      {showBottomUsageBar && (
         <View style={styles.usageBar}>
-          <Text style={[styles.usageText, { color: usageTextColor }]}>{usageLabel}</Text>
-          {usageAtLimit && tripId && (
+          <Text style={[styles.usageText, { color: colors.error }]}>
+            {t("chat.dailyLimitReached", { time: formatTimeUntilReset(resetsAt) })}
+          </Text>
+          {tripId && (
             <Pressable onPress={() => router.push(`/trips/${tripId}`)}>
               <Text style={styles.upgradeLink}>{t("chat.upgrade")}</Text>
             </Pressable>
