@@ -897,6 +897,131 @@ func (h *AdminHandler) HandleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleRetention handles GET /admin/retention?since=2026-01-01 — weekly cohort retention data.
+func (h *AdminHandler) HandleRetention(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	since := parseSinceParam(r, 90)
+
+	cohorts, err := h.queries.GetRetentionCohorts(r.Context(), since)
+	if err != nil {
+		slog.Error("admin retention query failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Compute retention rates alongside raw counts.
+	type cohortRow struct {
+		CohortWeek      string  `json:"cohort_week"`
+		CohortSize      int64   `json:"cohort_size"`
+		D1Active        int64   `json:"d1_active"`
+		D7Active        int64   `json:"d7_active"`
+		D30Active       int64   `json:"d30_active"`
+		D1RetentionPct  float64 `json:"d1_retention_pct"`
+		D7RetentionPct  float64 `json:"d7_retention_pct"`
+		D30RetentionPct float64 `json:"d30_retention_pct"`
+	}
+
+	rows := make([]cohortRow, 0, len(cohorts))
+	for _, c := range cohorts {
+		row := cohortRow{
+			CohortSize: c.CohortSize,
+			D1Active:   c.D1Active,
+			D7Active:   c.D7Active,
+			D30Active:  c.D30Active,
+		}
+		if c.CohortWeek != nil {
+			row.CohortWeek = c.CohortWeek.Format("2006-01-02")
+		}
+		if c.CohortSize > 0 {
+			row.D1RetentionPct = float64(c.D1Active) / float64(c.CohortSize) * 100
+			row.D7RetentionPct = float64(c.D7Active) / float64(c.CohortSize) * 100
+			row.D30RetentionPct = float64(c.D30Active) / float64(c.CohortSize) * 100
+		}
+		rows = append(rows, row)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"cohorts":      rows,
+		"since":        since.Format("2006-01-02"),
+		"generated_at": time.Now().UTC(),
+	})
+}
+
+// HandleFunnel handles GET /admin/funnel?days=30 — conversion funnel metrics.
+func (h *AdminHandler) HandleFunnel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := h.authenticateAdmin(r); err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if n := parseInt(d); n > 0 && n <= 365 {
+			days = n
+		}
+	}
+
+	since := time.Now().UTC().AddDate(0, 0, -days)
+
+	funnel, err := h.queries.GetFunnelMetrics(r.Context(), since)
+	if err != nil {
+		slog.Error("admin funnel query failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Compute conversion rates relative to total signups.
+	var activatedPct, engagedPct, paidTripProPct, paidSubPct float64
+	if funnel.TotalSignups > 0 {
+		activatedPct = float64(funnel.Activated) / float64(funnel.TotalSignups) * 100
+		engagedPct = float64(funnel.Engaged) / float64(funnel.TotalSignups) * 100
+		paidTripProPct = float64(funnel.PaidTripPro) / float64(funnel.TotalSignups) * 100
+		paidSubPct = float64(funnel.PaidSubscription) / float64(funnel.TotalSignups) * 100
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"period_days":       days,
+		"since":             since.Format("2006-01-02"),
+		"total_signups":     funnel.TotalSignups,
+		"activated":         funnel.Activated,
+		"engaged":           funnel.Engaged,
+		"paid_trip_pro":     funnel.PaidTripPro,
+		"paid_subscription": funnel.PaidSubscription,
+		"conversion_rates": map[string]float64{
+			"activated_pct":         activatedPct,
+			"engaged_pct":           engagedPct,
+			"paid_trip_pro_pct":     paidTripProPct,
+			"paid_subscription_pct": paidSubPct,
+		},
+		"generated_at": time.Now().UTC(),
+	})
+}
+
+// parseSinceParam parses the "since" query parameter as a date (YYYY-MM-DD),
+// falling back to defaultDaysAgo days before now.
+func parseSinceParam(r *http.Request, defaultDaysAgo int) time.Time {
+	if s := r.URL.Query().Get("since"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			return t
+		}
+	}
+	return time.Now().UTC().AddDate(0, 0, -defaultDaysAgo)
+}
+
 func parseInt(s string) int {
 	var n int
 	for _, c := range s {
