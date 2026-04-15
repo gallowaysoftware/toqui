@@ -652,10 +652,17 @@ func main() {
 	// CookieAuth for web browsers) as the rate limit key instead of spoofable X-Forwarded-For.
 	// otelhttp wraps the outermost layer to trace all incoming HTTP requests.
 	// telemetry.Middleware sits inside the chain to record request duration/count with accurate status codes.
-	handler := otelhttp.NewHandler(
-		recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(telemetry.Middleware(otelMetrics, csrfProtected))), corsOrigins))))),
-		"toqui-backend",
-	)
+	inner := recoveryMiddleware(requestid.Middleware(requestLoggingMiddleware(securityHeadersMiddleware(corsMiddleware(middleware.CookieAuth(ipLimiter.Middleware(telemetry.Middleware(otelMetrics, csrfProtected))), corsOrigins)))))
+
+	// Only wrap with otelhttp when an OTLP exporter endpoint is configured.
+	// otelhttp's response-writer wrapper does not propagate http.Flusher, which
+	// breaks ConnectRPC server-streaming RPCs (e.g. ChatService/SendMessage).
+	var handler http.Handler
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		handler = otelhttp.NewHandler(inner, "toqui-backend")
+	} else {
+		handler = inner
+	}
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

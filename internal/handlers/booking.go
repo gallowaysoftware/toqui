@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -106,6 +107,9 @@ func (h *BookingHandler) UpdateBooking(ctx context.Context, req *connect.Request
 
 	b, err := h.bookingSvc.Update(ctx, userID, bookingID, params)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("booking not found"))
+		}
 		return nil, internalError(ctx, "booking update", err)
 	}
 
