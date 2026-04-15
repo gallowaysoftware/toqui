@@ -625,6 +625,7 @@ func main() {
 	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
 	mux.HandleFunc("/admin/ai-costs", adminHandler.HandleAICosts)
 	mux.HandleFunc("/admin/revenue", adminHandler.HandleRevenue)
+	mux.HandleFunc("/admin/set-admin", adminHandler.HandleSetAdmin)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)

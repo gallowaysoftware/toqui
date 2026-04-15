@@ -56,3 +56,12 @@ UPDATE users SET facebook_id = $2, updated_at = NOW() WHERE id = $1;
 INSERT INTO users (email, name, facebook_id, avatar_url)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
+
+-- name: IsUserAdmin :one
+SELECT is_admin FROM users WHERE id = $1;
+
+-- name: SetAdmin :exec
+UPDATE users SET is_admin = sqlc.arg(is_admin), updated_at = NOW() WHERE id = sqlc.arg(user_id);
+
+-- name: SeedAdminByEmail :exec
+UPDATE users SET is_admin = true, updated_at = NOW() WHERE LOWER(email) = LOWER(sqlc.arg(email));

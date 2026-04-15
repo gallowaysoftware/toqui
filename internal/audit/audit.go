@@ -36,6 +36,8 @@ const (
 	EventFacebookLogin       = "auth.facebook_login"
 	EventFacebookLoginNew    = "auth.facebook_login_new_user"
 	EventFacebookLink        = "auth.facebook_link"
+	EventAdminSeedRole       = "admin.seed_role"
+	EventAdminSetRole        = "admin.set_role"
 )
 
 // severityForEvent returns the appropriate slog level for an audit event.

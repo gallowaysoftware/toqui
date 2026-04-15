@@ -273,7 +273,7 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `TRIP_PRO_PRICE_CENTS` | `1900` | Trip Pro price in cents ($19.00) |
 | `RESEND_API_KEY` | (none) | Resend transactional email API key |
 | `EMAIL_FROM` | `Toqui <hello@toqui.travel>` | From address for outbound emails |
-| `ADMIN_EMAILS` | (none) | Comma-separated list of admin email addresses |
+| `ADMIN_EMAILS` | (none) | Comma-separated admin emails — used only to **seed** `is_admin` on first login (bootstrap). Primary auth uses `users.is_admin` DB column. |
 | `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
 | `FIRESTORE_DATABASE_ID` | (none) | Firestore database ID (uses default if unset) |
@@ -730,7 +730,7 @@ HTTP routes (outside ConnectRPC):
 - `POST /api/subscription/portal` — Authenticated. Creates Stripe billing portal session URL.
 - `POST /api/subscription/webhook` — Stripe webhook endpoint (signature verified). Processes subscription lifecycle events. Annual subscriptions are detected via the Stripe Price's recurring interval and the billing period is stored alongside the subscription record.
 
-### Admin (requires admin auth: Bearer + email in ADMIN_EMAILS)
+### Admin (requires admin auth: Bearer + `users.is_admin = true`)
 - `GET /admin/stats` — Dashboard stats (users, waitlist, trips, messages)
 - `GET /admin/users?search=&limit=&offset=` — Paginated user list
 - `GET /admin/waitlist?limit=&offset=` — Paginated waitlist entries
@@ -745,6 +745,7 @@ HTTP routes (outside ConnectRPC):
 - `GET /admin/metrics` — System metrics
 - `GET /admin/ai-costs` — AI cost dashboard (daily/weekly/monthly costs, per-tier breakdown, per-model stats, top users)
 - `GET /admin/revenue` — Revenue dashboard (MRR from subscriptions, Trip Pro monthly/total revenue)
+- `POST /admin/set-admin` — Grant or revoke admin role (`{email, is_admin}`)
 
 ### Webhooks
 - `POST /webhooks/email/inbound` — SendGrid inbound email webhook (ECDSA signature verified). Processes forwarded booking emails.
@@ -810,7 +811,7 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 - `trip.share`, `trip.unshare`
 - `security.csrf_rejected`
 - `payment.trip_pro_purchase`, `payment.validation_failed` — Stripe payment audit trail
-- `admin.invite`, `admin.trip_unlock`, `admin.grant_pro` — Admin action audit trail
+- `admin.invite`, `admin.trip_unlock`, `admin.grant_pro`, `admin.set_role`, `admin.seed_role` — Admin action audit trail
 - `referral.redeem` — Referral code redemption
 
 ### Cookie Encoding (OAuth)

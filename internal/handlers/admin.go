@@ -56,7 +56,9 @@ func (h *AdminHandler) SetBudgetChecker(b BudgetUtilizer) {
 	h.budgetChecker = b
 }
 
-// authenticateAdmin verifies JWT + checks admin email list.
+// authenticateAdmin verifies JWT + checks the is_admin DB column.
+// Falls back to ADMIN_EMAILS for bootstrapping: if the user's email matches
+// the config list but is_admin is false, promote them and log the seed event.
 func (h *AdminHandler) authenticateAdmin(r *http.Request) (uuid.UUID, error) {
 	userID, ok := authenticateRESTRequest(r, h.authSvc)
 	if !ok {
@@ -68,12 +70,32 @@ func (h *AdminHandler) authenticateAdmin(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, errUnauthorized
 	}
 
-	if !isEmailAllowListed(user.Email, h.adminEmails) {
-		slog.Warn("admin access denied", "email", user.Email, "user_id", userID, "admin_list", h.adminEmails)
-		return uuid.Nil, errForbidden
+	// Primary check: database column.
+	if user.IsAdmin {
+		return userID, nil
 	}
 
-	return userID, nil
+	// Fallback/seed: if the user's email is in ADMIN_EMAILS, promote them in
+	// the DB so subsequent requests use the column directly. This allows new
+	// deployments to bootstrap an initial admin without manual SQL.
+	if isEmailAllowListed(user.Email, h.adminEmails) {
+		if seedErr := h.queries.SetAdmin(r.Context(), dbgen.SetAdminParams{
+			IsAdmin: true,
+			UserID:  userID,
+		}); seedErr != nil {
+			slog.Error("failed to seed admin role from ADMIN_EMAILS", "error", seedErr, "user_id", userID)
+		} else {
+			slog.Info("admin role seeded from ADMIN_EMAILS config", "email", user.Email, "user_id", userID)
+			audit.Log(audit.EventAdminSeedRole,
+				"user_id", userID.String(),
+				"email", user.Email,
+			)
+		}
+		return userID, nil
+	}
+
+	slog.Warn("admin access denied", "email", user.Email, "user_id", userID)
+	return uuid.Nil, errForbidden
 }
 
 var (
@@ -818,6 +840,60 @@ func (h *AdminHandler) HandleRevenue(w http.ResponseWriter, r *http.Request) {
 		"mrr":              mrr,
 		"trip_pro_monthly": float64(tripProMonthlyCents) / 100.0,
 		"total_revenue":    totalRevenue,
+	})
+}
+
+// HandleSetAdmin handles POST /admin/set-admin — grant or revoke admin role.
+func (h *AdminHandler) HandleSetAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	adminID, err := h.authenticateAdmin(r)
+	if err != nil {
+		writeAdminError(w, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		Email   string `json:"email"`
+		IsAdmin bool   `json:"is_admin"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	ctx := r.Context()
+	target, err := h.queries.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.queries.SetAdmin(ctx, dbgen.SetAdminParams{
+		IsAdmin: req.IsAdmin,
+		UserID:  target.ID,
+	}); err != nil {
+		slog.Error("admin set-admin failed", "error", err, "email", req.Email)
+		http.Error(w, "failed to update admin role", http.StatusInternalServerError)
+		return
+	}
+
+	audit.Log(audit.EventAdminSetRole,
+		"admin_id", adminID.String(),
+		"target_user_id", target.ID.String(),
+		"email", req.Email,
+		"is_admin", req.IsAdmin,
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"email":    req.Email,
+		"is_admin": req.IsAdmin,
+		"status":   "updated",
 	})
 }
 
