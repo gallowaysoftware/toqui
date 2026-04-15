@@ -23,6 +23,7 @@ import {
   type SubscriptionTier,
 } from "@/lib/hooks/useSubscription";
 import { useAnalytics } from "@/lib/analytics";
+import { PlanComparisonCard } from "./PlanComparisonCard";
 
 const EXPLORER_MONTHLY = 9.99;
 const EXPLORER_ANNUAL = 79.99;
@@ -306,6 +307,12 @@ export function SubscriptionCard() {
       fontSize: 13,
       color: colors.textTertiary,
     },
+    valueProposition: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.accent,
+      marginTop: 4,
+    },
   });
 
   if (isLoading) {
@@ -336,6 +343,9 @@ export function SubscriptionCard() {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+
+      {/* Plan comparison helper — helps users choose */}
+      {currentTier === "free" && <PlanComparisonCard />}
 
       {/* Monthly / Annual toggle */}
       <View style={styles.toggleRow}>
@@ -437,23 +447,28 @@ export function SubscriptionCard() {
           </View>
         </View>
         {currentTier !== "explorer" && currentTier !== "voyager" && (
-          <Pressable
-            style={[
-              styles.subscribeButton,
-              actionLoading === "explorer" && styles.subscribeButtonDisabled,
-            ]}
-            onPress={() => handleSubscribe("explorer")}
-            disabled={actionLoading !== null}
-            accessibilityRole="button"
-          >
-            {actionLoading === "explorer" ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.subscribeButtonText}>
-                {t("subscription.subscribe")}
-              </Text>
-            )}
-          </Pressable>
+          <>
+            <Text style={styles.valueProposition}>
+              {t("subscription.explorer.valueProp")}
+            </Text>
+            <Pressable
+              style={[
+                styles.subscribeButton,
+                actionLoading === "explorer" && styles.subscribeButtonDisabled,
+              ]}
+              onPress={() => handleSubscribe("explorer")}
+              disabled={actionLoading !== null}
+              accessibilityRole="button"
+            >
+              {actionLoading === "explorer" ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.subscribeButtonText}>
+                  {t("subscription.subscribe")}
+                </Text>
+              )}
+            </Pressable>
+          </>
         )}
       </View>
 
@@ -514,25 +529,30 @@ export function SubscriptionCard() {
           </View>
         </View>
         {currentTier !== "voyager" && (
-          <Pressable
-            style={[
-              styles.subscribeButton,
-              actionLoading === "voyager" && styles.subscribeButtonDisabled,
-            ]}
-            onPress={() => handleSubscribe("voyager")}
-            disabled={actionLoading !== null}
-            accessibilityRole="button"
-          >
-            {actionLoading === "voyager" ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.subscribeButtonText}>
-                {currentTier === "explorer"
-                  ? t("subscription.upgrade")
-                  : t("subscription.subscribe")}
-              </Text>
-            )}
-          </Pressable>
+          <>
+            <Text style={styles.valueProposition}>
+              {t("subscription.voyager.valueProp")}
+            </Text>
+            <Pressable
+              style={[
+                styles.subscribeButton,
+                actionLoading === "voyager" && styles.subscribeButtonDisabled,
+              ]}
+              onPress={() => handleSubscribe("voyager")}
+              disabled={actionLoading !== null}
+              accessibilityRole="button"
+            >
+              {actionLoading === "voyager" ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.subscribeButtonText}>
+                  {currentTier === "explorer"
+                    ? t("subscription.upgrade")
+                    : t("subscription.subscribe")}
+                </Text>
+              )}
+            </Pressable>
+          </>
         )}
       </View>
 

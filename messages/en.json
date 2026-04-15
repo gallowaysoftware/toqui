@@ -262,10 +262,22 @@
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again.",
     "expertLimitReached": "You've used your 3 free persona switches for this trip.",
-    "expertLimitCta": "Unlock unlimited experts for $19 CAD",
+    "expertLimitSoft": "You've used all 3 free expert personas. Unlock 800+ experts to get the best advice for your trip.",
+    "expertLimitCta": "Unlock experts for $19",
+    "subscriptionAlt": "Or save with a monthly plan",
     "personaLimitReached": "You've reached the 3 persona switch limit for free trips.",
     "personaLimitCta": "Upgrade to unlock all 800+ expert personas",
     "dailyLimitReset": "Your messages reset at midnight UTC.",
+    "freePlanInfo": {
+      "message": "Free plan: 1 expert persona included, 10 messages/day.",
+      "upgradeLink": "Upgrade for unlimited."
+    },
+    "usageIndicator": {
+      "normal": "Messages: {{used}}/{{limit}} today",
+      "nearLimit": "Messages: {{used}}/{{limit}} today — running low",
+      "atLimit": "Daily message limit reached",
+      "upgradeCta": "Unlock unlimited"
+    },
     "suggestions": {
       "itinerary": "Build my day 1 itinerary",
       "restaurants": "Best restaurants",
@@ -313,7 +325,8 @@
     "successDescription": "You now have full Pro access for this trip.",
     "error": "Payment failed. Please try again.",
     "paymentProcessing": "Your payment is being processed. This can take a moment — tap retry if it doesn't update.",
-    "unlockInline": "Unlock Pro features"
+    "unlockInline": "Unlock Pro features",
+    "subscriptionAlt": "Or save with a monthly plan"
   },
   "referral": {
     "title": "Refer a Friend",
@@ -477,14 +490,34 @@
       "feature1": "3 active trips",
       "feature2": "Unlimited messages",
       "feature3": "All 800+ expert personas",
-      "annualPrice": "{{price}}/yr — save {{savings}}%"
+      "annualPrice": "{{price}}/yr — save {{savings}}%",
+      "valueProp": "Best for frequent travelers — unlimited messages and experts across 3 trips"
     },
     "voyager": {
       "name": "Voyager",
       "feature1": "Unlimited active trips",
       "feature2": "Unlimited messages",
       "feature3": "Priority AI responses",
-      "annualPrice": "{{price}}/yr — save {{savings}}%"
+      "annualPrice": "{{price}}/yr — save {{savings}}%",
+      "valueProp": "Best for power travelers — unlimited everything with priority responses"
+    },
+    "comparison": {
+      "title": "Which plan is right for me?",
+      "tripPro": {
+        "name": "Trip Pro",
+        "bestFor": "Best for occasional travelers. Pay once, unlock one trip with full expert access.",
+        "price": "$19 CAD / trip"
+      },
+      "explorer": {
+        "name": "Explorer",
+        "bestFor": "Best for frequent travelers. Unlimited messages and experts across 3 active trips.",
+        "price": "$9.99 CAD / month"
+      },
+      "voyager": {
+        "name": "Voyager",
+        "bestFor": "Best for power travelers. Unlimited everything with priority AI and no trip cap.",
+        "price": "$17.99 CAD / month"
+      }
     },
     "upsell": {
       "title": "Save with Explorer",

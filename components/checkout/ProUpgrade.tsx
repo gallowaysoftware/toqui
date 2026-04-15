@@ -7,8 +7,9 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Star, Mail, BookOpen, ChevronRight, X } from "lucide-react-native";
+import { CheckCircle, Star, Mail, BookOpen, ChevronRight, X, ArrowRight } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 import { useTheme } from "@/lib/theme";
@@ -26,6 +27,7 @@ interface ProUpgradeProps {
 export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgradeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const router = useRouter();
   const { initCheckout, checkStatus, isLoading, error } = useCheckout(tripId);
   const { subscription } = useSubscription();
   const { track, getFeatureFlag } = useAnalytics();
@@ -327,6 +329,19 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       color: colors.textSecondary,
       lineHeight: 18,
     },
+    subscriptionAltContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 12,
+      paddingVertical: 8,
+    },
+    subscriptionAltText: {
+      fontSize: 13,
+      color: colors.accent,
+      fontWeight: "500",
+    },
   });
 
   if (checkingStatus) {
@@ -479,6 +494,20 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
           </Text>
         )}
       </Pressable>
+
+      {/* Subscription alternative — nudge users toward monthly plans */}
+      {!isSubscriber && (
+        <Pressable
+          style={styles.subscriptionAltContainer as object}
+          onPress={() => router.push("/(tabs)/settings" as never)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.subscriptionAltText}>
+            {t("checkout.subscriptionAlt")}
+          </Text>
+          <ArrowRight size={14} color={colors.accent} />
+        </Pressable>
+      )}
     </View>
   );
 }
