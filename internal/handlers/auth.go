@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -109,10 +112,19 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	tier := h.lookupTier(ctx, user.ID)
 
+	// Check if the user has accepted required consents (terms + privacy_policy).
+	consentPending := true
+	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
+		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", err)
+	} else {
+		consentPending = !hasRequired
+	}
+
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshResult.Token,
-		User:         userToProto(&user, tier),
+		AccessToken:    accessToken,
+		RefreshToken:   refreshResult.Token,
+		User:           userToProto(&user, tier),
+		ConsentPending: consentPending,
 	}), nil
 }
 
@@ -177,10 +189,19 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 
 	tier := h.lookupTier(ctx, user.ID)
 
+	// Check if the user has accepted required consents (terms + privacy_policy).
+	consentPending := true
+	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
+		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", err)
+	} else {
+		consentPending = !hasRequired
+	}
+
 	return connect.NewResponse(&toquiv1.FacebookLoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshResult.Token,
-		User:         userToProto(user, tier),
+		AccessToken:    accessToken,
+		RefreshToken:   refreshResult.Token,
+		User:           userToProto(user, tier),
+		ConsentPending: consentPending,
 	}), nil
 }
 
@@ -339,6 +360,11 @@ func (h *AuthHandler) ExportData(ctx context.Context, _ *connect.Request[toquiv1
 
 // HandleExportDownload serves the user's data export as a JSON download.
 // GET /api/export/{requestID} — requires authentication, user must own the export.
+//
+// When the export has been persisted to GCS, the response redirects to the
+// signed download URL. When using local storage or when no export store is
+// configured, the export is served directly from the filesystem or regenerated
+// live from the database.
 func (h *AuthHandler) HandleExportDownload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -351,7 +377,45 @@ func (h *AuthHandler) HandleExportDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Generate the export live (no stored files — user data is small enough)
+	// Extract request ID from path: /api/export/{requestID}
+	requestIDStr := strings.TrimPrefix(r.URL.Path, "/api/export/")
+	if requestIDStr != "" {
+		requestID, parseErr := uuid.Parse(requestIDStr)
+		if parseErr == nil {
+			// Look up the export request to check for a persisted download URL.
+			exportReq, lookupErr := h.queries.GetExportRequestByID(r.Context(), requestID)
+			if lookupErr == nil && exportReq.UserID == userID {
+				if exportReq.DownloadUrl.Valid && exportReq.Status == "completed" {
+					url := exportReq.DownloadUrl.String
+					// Check expiry — if the signed URL has expired, fall through to regenerate.
+					if exportReq.ExpiresAt.Valid && time.Now().Before(exportReq.ExpiresAt.Time) {
+						// If the URL is an external URL (GCS signed URL), redirect to it.
+						if strings.HasPrefix(url, "https://") {
+							http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+							return
+						}
+						// If using local storage, the file was persisted locally.
+						// Try to serve it via the lifecycle service's local store.
+						if h.lifecycleSvc.HasLocalExport(requestID) {
+							rc, openErr := h.lifecycleSvc.OpenLocalExport(requestID)
+							if openErr == nil {
+								defer rc.Close()
+								w.Header().Set("Content-Type", "application/json")
+								w.Header().Set("Content-Disposition", `attachment; filename="toqui-data-export.json"`)
+								if _, copyErr := io.Copy(w, rc); copyErr != nil {
+									slog.Error("failed to stream local export", "error", copyErr)
+								}
+								return
+							}
+							slog.Warn("local export file not found, regenerating", "request_id", requestID, "error", openErr)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: generate the export live from the database.
 	export, err := h.lifecycleSvc.ExportUserData(r.Context(), userID)
 	if err != nil {
 		slog.Error("export download failed", "user_id", userID, "error", err)
@@ -360,7 +424,7 @@ func (h *AuthHandler) HandleExportDownload(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"toqui-data-export.json\"")
+	w.Header().Set("Content-Disposition", `attachment; filename="toqui-data-export.json"`)
 	if err := json.NewEncoder(w).Encode(export); err != nil {
 		slog.Error("failed to encode export", "error", err)
 	}

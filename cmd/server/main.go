@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	gcstorage "cloud.google.com/go/storage"
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/db"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/email"
+	"github.com/gallowaysoftware/toqui-backend/internal/exportstorage"
 	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
@@ -249,6 +251,25 @@ func main() {
 	locationSvc := location.NewService(cfg.GooglePlacesAPIKey)
 	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
+
+	// GDPR export storage — GCS in production, local filesystem for development.
+	if cfg.GCSExportBucket != "" {
+		gcsClient, gcsErr := gcstorage.NewClient(ctx)
+		if gcsErr != nil {
+			slog.Error("failed to create GCS client for export storage", "error", gcsErr)
+		} else {
+			lifecycleSvc.SetExportStore(exportstorage.NewGCSStore(gcsClient, cfg.GCSExportBucket))
+			slog.Info("GDPR export storage: GCS", "bucket", cfg.GCSExportBucket)
+		}
+	} else {
+		localStore, localErr := exportstorage.NewLocalStore(cfg.ExportLocalDir)
+		if localErr != nil {
+			slog.Error("failed to create local export store", "error", localErr)
+		} else {
+			lifecycleSvc.SetExportStore(localStore)
+			slog.Info("GDPR export storage: local filesystem", "dir", cfg.ExportLocalDir)
+		}
+	}
 	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).
 		WithTierLimits(cfg.DailyMessageLimitFree, cfg.DailyMessageLimitPro)
 	chatSvc.SetUsageService(usageSvc)
@@ -492,6 +513,7 @@ func main() {
 
 	// Privacy consent management (GDPR/PIPEDA compliance)
 	consentHandler := handlers.NewConsentHandler(authSvc, pool)
+	mux.HandleFunc("/auth/consent", consentHandler.HandleBatchConsent)
 	mux.HandleFunc("/api/privacy/consents", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

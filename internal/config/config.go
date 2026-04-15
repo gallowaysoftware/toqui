@@ -117,6 +117,10 @@ type Config struct {
 	// Referral
 	ReferralMaxRewards int // Max referral trip unlocks a referrer can earn (default: 10)
 
+	// GDPR export storage
+	GCSExportBucket string // GCS bucket for GDPR data exports (empty = local filesystem fallback)
+	ExportLocalDir  string // Local directory for exports when GCS is not configured
+
 	// Staging overrides
 	StagingProAll bool // When true, all trips are treated as unlocked (staging only)
 }
@@ -186,6 +190,8 @@ func Load() (*Config, error) {
 		StripeVoyagerMonthlyProductID:  os.Getenv("STRIPE_VOYAGER_MONTHLY_PRODUCT"),
 		StripeVoyagerAnnualProductID:   os.Getenv("STRIPE_VOYAGER_ANNUAL_PRODUCT"),
 		CORSAllowedOrigins:             parseCSVEnv("CORS_ALLOWED_ORIGINS"),
+		GCSExportBucket:                getEnv("GCS_EXPORT_BUCKET", ""),
+		ExportLocalDir:                 getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
 	}
 
 	// Layer 3: resolve gcsm:// references

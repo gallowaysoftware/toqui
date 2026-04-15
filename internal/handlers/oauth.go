@@ -137,23 +137,25 @@ func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // oauthResult is the JSON payload stored in the temporary cookie
 // and returned by HandleExchange.
 type oauthResult struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	UserID       string `json:"user_id"`
-	Email        string `json:"email"`
-	Name         string `json:"name,omitempty"`
-	AvatarURL    string `json:"avatar_url,omitempty"`
-	ExpiresAt    int64  `json:"expires_at"`
+	AccessToken    string `json:"access_token"`
+	RefreshToken   string `json:"refresh_token"`
+	UserID         string `json:"user_id"`
+	Email          string `json:"email"`
+	Name           string `json:"name,omitempty"`
+	AvatarURL      string `json:"avatar_url,omitempty"`
+	ExpiresAt      int64  `json:"expires_at"`
+	ConsentPending bool   `json:"consent_pending,omitempty"`
 }
 
 // exchangeResponse is the JSON response from POST /auth/exchange.
 // Tokens are in HttpOnly cookies — the body only contains user info and expiry.
 type exchangeResponse struct {
-	UserID    string `json:"user_id"`
-	Email     string `json:"email"`
-	Name      string `json:"name,omitempty"`
-	AvatarURL string `json:"avatar_url,omitempty"`
-	ExpiresAt int64  `json:"expires_at"`
+	UserID         string `json:"user_id"`
+	Email          string `json:"email"`
+	Name           string `json:"name,omitempty"`
+	AvatarURL      string `json:"avatar_url,omitempty"`
+	ExpiresAt      int64  `json:"expires_at"`
+	ConsentPending bool   `json:"consent_pending,omitempty"`
 }
 
 // refreshResponse is the JSON response from POST /auth/refresh.
@@ -239,9 +241,15 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	isNewUser := time.Since(user.CreatedAt) < time.Minute
 
-	// TODO(#235): For new users, the frontend should prompt for consent (terms, privacy_policy)
-	// after signup and call POST /api/privacy/consents for each consent type.
-	// The backend records consent with IP and User-Agent for GDPR/PIPEDA audit trail.
+	// Check if user has accepted required consents (terms + privacy_policy).
+	// For new users this will always be true (no consent rows yet). For returning
+	// users who somehow had consents withdrawn, the frontend re-prompts.
+	consentPending := true
+	if hasRequired, cErr := h.queries.HasRequiredConsents(r.Context(), user.ID); cErr != nil {
+		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
+	} else {
+		consentPending = !hasRequired
+	}
 
 	// Send welcome email for new users.
 	if h.emailSvc != nil && isNewUser {
@@ -290,10 +298,11 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Store auth result in a short-lived HttpOnly cookie instead of URL params.
 	result := oauthResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshResult.Token,
-		UserID:       user.ID.String(),
-		Email:        user.Email,
+		AccessToken:    accessToken,
+		RefreshToken:   refreshResult.Token,
+		UserID:         user.ID.String(),
+		Email:          user.Email,
+		ConsentPending: consentPending,
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String
@@ -374,11 +383,12 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 
 	// Return user info + expiry only — tokens are in HttpOnly cookies.
 	resp := exchangeResponse{
-		UserID:    result.UserID,
-		Email:     result.Email,
-		Name:      result.Name,
-		AvatarURL: result.AvatarURL,
-		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		UserID:         result.UserID,
+		Email:          result.Email,
+		Name:           result.Name,
+		AvatarURL:      result.AvatarURL,
+		ExpiresAt:      time.Now().Add(time.Hour).Unix(),
+		ConsentPending: result.ConsentPending,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -678,9 +688,13 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
 
-	// TODO(#235): For new users, the frontend should prompt for consent (terms, privacy_policy)
-	// after signup and call POST /api/privacy/consents for each consent type.
-	// The backend records consent with IP and User-Agent for GDPR/PIPEDA audit trail.
+	// Check if user has accepted required consents (terms + privacy_policy).
+	fbConsentPending := true
+	if hasRequired, cErr := h.queries.HasRequiredConsents(r.Context(), user.ID); cErr != nil {
+		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
+	} else {
+		fbConsentPending = !hasRequired
+	}
 
 	// Send welcome email for new users.
 	if h.emailSvc != nil && fbIsNewUser {
@@ -726,10 +740,11 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 	}
 
 	result := oauthResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshResult.Token,
-		UserID:       user.ID.String(),
-		Email:        user.Email,
+		AccessToken:    accessToken,
+		RefreshToken:   refreshResult.Token,
+		UserID:         user.ID.String(),
+		Email:          user.Email,
+		ConsentPending: fbConsentPending,
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String

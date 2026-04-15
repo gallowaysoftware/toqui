@@ -84,12 +84,13 @@ func (x *GoogleLoginRequest) GetCodeVerifier() string {
 }
 
 type GoogleLoginResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken    string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken   string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User           *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	ConsentPending bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GoogleLoginResponse) Reset() {
@@ -143,6 +144,13 @@ func (x *GoogleLoginResponse) GetUser() *User {
 	return nil
 }
 
+func (x *GoogleLoginResponse) GetConsentPending() bool {
+	if x != nil {
+		return x.ConsentPending
+	}
+	return false
+}
+
 type FacebookLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
@@ -188,12 +196,13 @@ func (x *FacebookLoginRequest) GetAccessToken() string {
 }
 
 type FacebookLoginResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken    string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken   string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User           *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	ConsentPending bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *FacebookLoginResponse) Reset() {
@@ -245,6 +254,13 @@ func (x *FacebookLoginResponse) GetUser() *User {
 		return x.User
 	}
 	return nil
+}
+
+func (x *FacebookLoginResponse) GetConsentPending() bool {
+	if x != nil {
+		return x.ConsentPending
+	}
+	return false
 }
 
 type RefreshTokenRequest struct {
@@ -710,17 +726,19 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x12GoogleLoginRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
-	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\x81\x01\n" +
+	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\xaa\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
-	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"B\n" +
+	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
+	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\"B\n" +
 	"\x14FacebookLoginRequest\x12*\n" +
-	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\x83\x01\n" +
+	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\xac\x01\n" +
 	"\x15FacebookLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
-	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"C\n" +
+	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
+	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\"C\n" +
 	"\x13RefreshTokenRequest\x12,\n" +
 	"\rrefresh_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\frefreshToken\"\x82\x01\n" +
 	"\x14RefreshTokenResponse\x12!\n" +

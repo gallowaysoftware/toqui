@@ -54,6 +54,11 @@ UPDATE export_requests
 SET status = 'completed', completed_at = NOW(), download_url = $2, expires_at = $3
 WHERE id = $1;
 
+-- name: GetExportRequestByID :one
+SELECT id, user_id, requested_at, completed_at, download_url, expires_at, status
+FROM export_requests
+WHERE id = $1;
+
 -- name: GetUserExportRequests :many
 SELECT id, requested_at, completed_at, download_url, expires_at, status
 FROM export_requests

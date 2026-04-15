@@ -66,6 +66,25 @@ func (q *Queries) HasActiveConsent(ctx context.Context, arg HasActiveConsentPara
 	return has_consent, err
 }
 
+const hasRequiredConsents = `-- name: HasRequiredConsents :one
+SELECT (
+    COUNT(DISTINCT consent_type) FILTER (
+        WHERE consent_type IN ('terms', 'privacy_policy') AND withdrawn_at IS NULL
+    ) = 2
+) AS has_required FROM user_consents
+WHERE user_id = $1
+`
+
+// Returns true when the user has active (non-withdrawn) consents for both
+// 'terms' and 'privacy_policy'. Used to determine if consent_pending should
+// be returned during login flows.
+func (q *Queries) HasRequiredConsents(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRequiredConsents, userID)
+	var has_required bool
+	err := row.Scan(&has_required)
+	return has_required, err
+}
+
 const recordConsent = `-- name: RecordConsent :one
 INSERT INTO user_consents (user_id, consent_type, ip_address, user_agent)
 VALUES ($1, $2, $3, $4)

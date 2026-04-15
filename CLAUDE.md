@@ -82,6 +82,7 @@ graph TB
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
 | `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
+| `internal/exportstorage/` | Export storage abstraction (GCS in prod, local filesystem for dev)                        |
 | `internal/auth/`        | Google OAuth + JWT + auth interceptor + refresh token rotation (JTI/family tracking)      |
 | `internal/trip/`        | Trip CRUD, status transitions, destination management                                     |
 | `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
@@ -136,6 +137,8 @@ Request → validate.Interceptor → auth.Interceptor → age.Interceptor → ra
 - **validate**: Enforces `buf.validate` constraints on request protos (string lengths, UUID format, lat/lng bounds). Returns `InvalidArgument` on failure.
 - **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure.
 - **age**: Enforces age verification gate — users who haven't completed `POST /auth/verify-age` cannot access gated RPCs. Returns `PermissionDenied` if age not verified.
+
+**Consent flow**: Login responses (Google/Facebook OAuth, gRPC `GoogleLogin`/`FacebookLogin`, and `POST /auth/exchange`) include a `consent_pending` flag. When true, the frontend must show a consent modal and call `POST /auth/consent` with `{"terms_accepted": true, "privacy_accepted": true, "marketing_opt_in": bool}` before the user can proceed. Individual consents can also be managed via `POST /api/privacy/consents` and `DELETE /api/privacy/consents/{type}`.
 - **ratelimit**: Per-user token bucket. Separate limits for AI RPCs (SendMessage) vs general RPCs. Returns `ResourceExhausted` when exceeded.
 
 ## Development
@@ -282,6 +285,8 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
 | `OTEL_SERVICE_NAME` | (none) | OpenTelemetry service name |
+| `GCS_EXPORT_BUCKET` | (none) | GCS bucket for GDPR data exports (empty = local filesystem fallback) |
+| `EXPORT_LOCAL_DIR` | `/tmp/toqui-exports` | Local directory for exports when GCS is not configured |
 
 ## Trip Mode System
 

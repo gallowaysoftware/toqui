@@ -175,6 +175,27 @@ func (q *Queries) GetAllTripIDsForUser(ctx context.Context, userID uuid.UUID) ([
 	return items, nil
 }
 
+const getExportRequestByID = `-- name: GetExportRequestByID :one
+SELECT id, user_id, requested_at, completed_at, download_url, expires_at, status
+FROM export_requests
+WHERE id = $1
+`
+
+func (q *Queries) GetExportRequestByID(ctx context.Context, id uuid.UUID) (ExportRequest, error) {
+	row := q.db.QueryRow(ctx, getExportRequestByID, id)
+	var i ExportRequest
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.RequestedAt,
+		&i.CompletedAt,
+		&i.DownloadUrl,
+		&i.ExpiresAt,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getPendingDeletionRequests = `-- name: GetPendingDeletionRequests :many
 SELECT id, user_id, requested_at
 FROM deletion_requests

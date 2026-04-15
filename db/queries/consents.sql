@@ -20,3 +20,14 @@ SELECT EXISTS(
     SELECT 1 FROM user_consents
     WHERE user_id = $1 AND consent_type = $2 AND withdrawn_at IS NULL
 ) AS has_consent;
+
+-- name: HasRequiredConsents :one
+-- Returns true when the user has active (non-withdrawn) consents for both
+-- 'terms' and 'privacy_policy'. Used to determine if consent_pending should
+-- be returned during login flows.
+SELECT (
+    COUNT(DISTINCT consent_type) FILTER (
+        WHERE consent_type IN ('terms', 'privacy_policy') AND withdrawn_at IS NULL
+    ) = 2
+) AS has_required FROM user_consents
+WHERE user_id = $1;

@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -12,13 +13,15 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/exportstorage"
 )
 
 // Service handles data lifecycle operations: deletion, archival, export.
 type Service struct {
-	queries   *dbgen.Queries
-	pool      *pgxpool.Pool
-	chatStore *chatstore.Store
+	queries     *dbgen.Queries
+	pool        *pgxpool.Pool
+	chatStore   *chatstore.Store
+	exportStore exportstorage.Store
 }
 
 func NewService(pool *pgxpool.Pool, chatStore *chatstore.Store) *Service {
@@ -27,6 +30,13 @@ func NewService(pool *pgxpool.Pool, chatStore *chatstore.Store) *Service {
 		pool:      pool,
 		chatStore: chatStore,
 	}
+}
+
+// SetExportStore configures durable storage for GDPR data exports.
+// When set, exports are persisted at generation time for point-in-time
+// consistency. When nil, the download endpoint regenerates data live.
+func (s *Service) SetExportStore(store exportstorage.Store) {
+	s.exportStore = store
 }
 
 // DeleteUser performs a full user data purge (GDPR Article 17).
@@ -386,11 +396,10 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 // RequestExport creates a data export request, generates the export
 // in a background goroutine, and stores the download URL on completion.
 //
-// TODO(#273): The export result is not persisted to durable storage — the
-// download endpoint re-generates data live from the DB. If the user's data
-// changes between export request and download, the result may differ. To
-// guarantee point-in-time consistency, the export payload should be serialized
-// to Cloud Storage (or a DB blob) at generation time and served from there.
+// When an export store is configured (GCS or local filesystem), the export
+// payload is persisted at generation time for point-in-time consistency. The
+// download URL is either a signed GCS URL or a local REST endpoint path.
+// When no store is configured, the download endpoint regenerates data live.
 func (s *Service) RequestExport(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	req, err := s.queries.CreateExportRequest(ctx, userID)
 	if err != nil {
@@ -398,21 +407,30 @@ func (s *Service) RequestExport(ctx context.Context, userID uuid.UUID) (uuid.UUI
 	}
 
 	// Generate export in background — user data is small enough for a single pass.
-	// The download is served via a REST endpoint using the request ID.
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		_, exportErr := s.ExportUserData(bgCtx, userID)
+		exportData, exportErr := s.ExportUserData(bgCtx, userID)
 		if exportErr != nil {
 			slog.Error("data export failed", "user_id", userID, "request_id", req.ID, "error", exportErr)
 			return
 		}
 
-		// Mark as completed — the download endpoint serves the data live
-		// from the DB rather than from a stored file, so we just need the
-		// status update. The "download_url" points to the REST endpoint.
-		downloadURL := fmt.Sprintf("/api/export/%s", req.ID.String())
+		// Persist export to durable storage if configured, otherwise fall
+		// back to a REST endpoint that regenerates data live.
+		var downloadURL string
+		if s.exportStore != nil {
+			url, uploadErr := s.exportStore.Upload(bgCtx, req.ID, exportData)
+			if uploadErr != nil {
+				slog.Error("export upload failed", "user_id", userID, "request_id", req.ID, "error", uploadErr)
+				return
+			}
+			downloadURL = url
+		} else {
+			downloadURL = fmt.Sprintf("/api/export/%s", req.ID.String())
+		}
+
 		expiresAt := time.Now().Add(7 * 24 * time.Hour)
 		if err := s.queries.CompleteExportRequest(bgCtx, dbgen.CompleteExportRequestParams{
 			ID:          req.ID,
@@ -421,9 +439,41 @@ func (s *Service) RequestExport(ctx context.Context, userID uuid.UUID) (uuid.UUI
 		}); err != nil {
 			slog.Warn("export completed but failed to update status", "request_id", req.ID, "error", err)
 		} else {
-			slog.Info("data export completed", "user_id", userID, "request_id", req.ID)
+			slog.Info("data export completed", "user_id", userID, "request_id", req.ID, "download_url", downloadURL)
 		}
 	}()
 
 	return req.ID, nil
+}
+
+// HasLocalExport returns true if the export store is a local filesystem store
+// and the export file exists. Used by the download handler to determine
+// whether to serve a persisted local file or regenerate live.
+func (s *Service) HasLocalExport(requestID uuid.UUID) bool {
+	if s.exportStore == nil {
+		return false
+	}
+	localStore, ok := s.exportStore.(*exportstorage.LocalStore)
+	if !ok {
+		return false
+	}
+	rc, err := localStore.OpenExport(requestID)
+	if err != nil {
+		return false
+	}
+	rc.Close()
+	return true
+}
+
+// OpenLocalExport opens a locally persisted export file for reading.
+// Returns an error if the export store is not local or the file doesn't exist.
+func (s *Service) OpenLocalExport(requestID uuid.UUID) (io.ReadCloser, error) {
+	if s.exportStore == nil {
+		return nil, fmt.Errorf("no export store configured")
+	}
+	localStore, ok := s.exportStore.(*exportstorage.LocalStore)
+	if !ok {
+		return nil, fmt.Errorf("export store is not local")
+	}
+	return localStore.OpenExport(requestID)
 }
