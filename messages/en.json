@@ -190,6 +190,10 @@
       "buildItinerary": "Build my itinerary",
       "findFlights": "Find flights",
       "whereToStay": "Where should I stay?"
+    },
+    "companion": {
+      "title": "Travel Companion",
+      "subtitle": "Your real-time travel assistant — get help on the ground during your trip."
     }
   },
   "tripSettings": {
@@ -434,6 +438,14 @@
     "welcome": {
       "headline": "Welcome to Toqui",
       "valueProp": "Chat with AI travel experts to plan your perfect trip in minutes.",
+      "meetExperts": "Meet Your Experts",
+      "meetExpertsSubtitle": "Toqui connects you with 800+ AI travel experts, each specialized in a destination and style.",
+      "personas": {
+        "tokyo-food": "Tokyo Food Expert",
+        "paris-architecture": "Paris Architecture Guide",
+        "bali-adventure": "Bali Adventure Specialist",
+        "rome-history": "Rome History Guide"
+      },
       "destinationPlaceholder": "Where's your next trip?",
       "startPlanning": "Start Planning",
       "browseIdeas": "View My Trips"
