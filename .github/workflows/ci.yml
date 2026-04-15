@@ -187,9 +187,9 @@ jobs:
             --region=northamerica-northeast1 \
             --project=toqui-staging \
             --format='value(status.url)')
-          echo "Checking staging health at ${STAGING_URL}/health"
+          echo "Checking staging health at ${STAGING_URL}/healthz"
           for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${STAGING_URL}/health" || true)
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${STAGING_URL}/healthz" || true)
             if [ "$STATUS" = "200" ]; then
               echo "Staging health check passed (attempt $i)"
               exit 0
