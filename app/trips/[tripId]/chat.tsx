@@ -27,13 +27,15 @@ import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { SharePromptCard } from "@/components/chat/SharePromptCard";
+import { PersonaIntroCard } from "@/components/chat/PersonaIntroCard";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
-import type { ChatMessage } from "@/lib/hooks/useChat";
+import type { ChatMessage, PersonaIntroData } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
 import { useAnalytics } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
+import { getAutoPersona } from "@/lib/data/autoPersona";
 
 const errorReportStyles = StyleSheet.create({
   link: {
@@ -66,6 +68,10 @@ export default function ChatScreen() {
   const { track } = useAnalytics();
   const { accessToken } = useAuth();
   const { trip } = useTrip(tripId!);
+  const autoPersona = useMemo(
+    () => getAutoPersona(trip?.title),
+    [trip?.title],
+  );
   const [showExpertBanner, setShowExpertBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
@@ -423,7 +429,7 @@ export default function ChatScreen() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>{t("chat.planYourTrip")}</Text>
+              <PersonaIntroCard persona={autoPersona} />
               <Text style={styles.emptySubtitle}>
                 {t("chat.planYourTripSubtitle")}
               </Text>

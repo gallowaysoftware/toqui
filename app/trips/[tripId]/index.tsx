@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Crown } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Crown, Navigation } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -370,6 +370,39 @@ export default function TripDetailScreen() {
       marginBottom: 24,
     },
     shareStatsText: { fontSize: 13, color: colors.textTertiary },
+    companionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      padding: 16,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+    },
+    companionIconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.accentSoft,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    companionContent: {
+      flex: 1,
+    },
+    companionTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 3,
+    },
+    companionSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
   });
 
   if (isLoading) {
@@ -609,6 +642,23 @@ export default function TripDetailScreen() {
             <Text style={styles.actionText}>{t("referral.share")}</Text>
           </Pressable>
         </View>
+
+        <Pressable
+          style={styles.companionCard}
+          onPress={() => router.push("/(tabs)/companion" as never)}
+          accessibilityRole="button"
+          accessibilityLabel={t("tripDetail.companion.title")}
+          testID="companion-entry-card"
+        >
+          <View style={styles.companionIconCircle}>
+            <Navigation color={colors.accent} size={24} />
+          </View>
+          <View style={styles.companionContent}>
+            <Text style={styles.companionTitle}>{t("tripDetail.companion.title")}</Text>
+            <Text style={styles.companionSubtitle}>{t("tripDetail.companion.subtitle")}</Text>
+          </View>
+          <MessageCircle color={colors.textTertiary} size={18} />
+        </Pressable>
 
         {showEmptyState && (
           <View style={styles.emptyStateContainer} testID="empty-trip-cta">

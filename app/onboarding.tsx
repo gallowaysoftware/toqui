@@ -9,14 +9,38 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plane } from "lucide-react-native";
+import { Plane, ChevronRight } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { useAnalytics } from "@/lib/analytics";
+
+const SAMPLE_PERSONAS = [
+  {
+    id: "tokyo-food",
+    initial: "T",
+    accentColor: "#e74c3c",
+  },
+  {
+    id: "paris-architecture",
+    initial: "P",
+    accentColor: "#2563eb",
+  },
+  {
+    id: "bali-adventure",
+    initial: "B",
+    accentColor: "#16a34a",
+  },
+  {
+    id: "rome-history",
+    initial: "R",
+    accentColor: "#d97706",
+  },
+] as const;
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -185,6 +209,56 @@ export default function OnboardingScreen() {
       color: colors.accent,
       textDecorationLine: "underline",
     },
+    expertsSection: {
+      width: "100%",
+      maxWidth: 360,
+      marginBottom: 28,
+    },
+    expertsSectionTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 6,
+    },
+    expertsSectionSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 19,
+      marginBottom: 14,
+    },
+    personaRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    personaCard: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 10,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    personaAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    personaAvatarText: {
+      color: "#ffffff",
+      fontSize: 18,
+      fontWeight: "700",
+    },
+    personaName: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      textAlign: "center",
+      lineHeight: 14,
+    },
   });
 
   const isDisabled = !destination.trim() || !termsAccepted || createTrip.isPending;
@@ -204,6 +278,29 @@ export default function OnboardingScreen() {
         <Text style={styles.valueProp}>
           {t("onboarding.welcome.valueProp")}
         </Text>
+
+        <View style={styles.expertsSection} testID="onboarding-experts-section">
+          <Text style={styles.expertsSectionTitle}>
+            {t("onboarding.welcome.meetExperts")}
+          </Text>
+          <Text style={styles.expertsSectionSubtitle}>
+            {t("onboarding.welcome.meetExpertsSubtitle")}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.personaRow}>
+              {SAMPLE_PERSONAS.map((persona) => (
+                <View key={persona.id} style={styles.personaCard} testID={`persona-card-${persona.id}`}>
+                  <View style={[styles.personaAvatar, { backgroundColor: persona.accentColor }]}>
+                    <Text style={styles.personaAvatarText}>{persona.initial}</Text>
+                  </View>
+                  <Text style={styles.personaName} numberOfLines={2}>
+                    {t(`onboarding.welcome.personas.${persona.id}`)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
 
         <TextInput
           style={styles.input}
