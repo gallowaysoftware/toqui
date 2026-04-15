@@ -32,6 +32,10 @@ vi.mock("@/lib/transport", () => ({
   useTransport: vi.fn(() => ({})), // returns a dummy transport
 }));
 
+vi.mock("@/lib/auth", () => ({
+  useAuth: vi.fn(() => ({ isLoading: false, accessToken: "test-token" })),
+}));
+
 vi.mock("react-native", () => ({
   Platform: { OS: "web" },
 }));

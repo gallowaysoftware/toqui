@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/lib/transport";
+import { useAuth } from "@/lib/auth";
 import { ChatService, ChatMode } from "@gen/toqui/v1/chat_pb";
 import type { ChatMessage as ProtoChatMessage } from "@gen/toqui/v1/chat_pb";
 import type { Persona } from "@gen/toqui/v1/persona_pb";
@@ -144,6 +145,7 @@ export function useChat(
   options?: UseChatOptions,
 ) {
   const transport = useTransport();
+  const { isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
@@ -215,9 +217,12 @@ export function useChat(
     return () => { cancelled = true; };
   }, [tripId]);
 
-  // Load chat history
+  // Load chat history — wait for auth to finish loading so the transport has a
+  // valid Bearer token. Without this guard, direct navigation (page reload) fires
+  // the RPC before tokens are hydrated from storage, causing an Unauthenticated
+  // error (#178).
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || isAuthLoading) return;
     // Skip if we already fired a load for this exact (tripId, historyKey) combination.
     if (historyKeyLoadedRef.current === historyKey && historyLoadedRef.current === tripId) return;
     historyKeyLoadedRef.current = historyKey;
@@ -279,7 +284,7 @@ export function useChat(
     };
     void loadHistory();
     return () => { cancelled = true; };
-  }, [tripId, transport, historyKey]);
+  }, [tripId, transport, historyKey, isAuthLoading]);
 
   const loadMoreHistory = useCallback(async () => {
     if (!tripId || !nextPageTokenRef.current || isLoadingMoreRef.current) return;
