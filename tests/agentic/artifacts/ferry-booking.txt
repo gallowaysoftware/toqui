@@ -1,0 +1,31 @@
+BC Ferries - Booking Confirmation
+
+Confirmation Number: BCF-782341
+Booking Date: June 28, 2026
+
+PASSENGER DETAILS
+Name: GALLOWAY/KYLE
+Vehicle: Standard Vehicle (up to 20ft)
+Passengers: 2 Adults
+
+SAILING DETAILS
+Route: Tsawwassen to Swartz Bay
+Date: July 15, 2026
+Departure: 9:00 AM
+Estimated Arrival: 10:35 AM
+Vessel: Spirit of Vancouver Island
+Deck: 5 - Passenger Deck
+
+FARE SUMMARY
+Adult x 2: C$36.00
+Standard Vehicle: C$81.50
+Total: C$117.50
+
+IMPORTANT INFORMATION
+- Please arrive at least 45 minutes before departure
+- Check-in at the BC Ferries terminal at Tsawwassen
+- Keep your booking confirmation handy for check-in
+- Vehicle height restrictions apply
+
+BC Ferries Customer Service: 1-888-223-3779
+www.bcferries.com

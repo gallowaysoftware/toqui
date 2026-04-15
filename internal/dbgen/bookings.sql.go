@@ -13,9 +13,9 @@ import (
 )
 
 const createBooking = `-- name: CreateBooking :one
-INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests
+INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests, price_cents, currency, timezone)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
 `
 
 type CreateBookingParams struct {
@@ -35,6 +35,9 @@ type CreateBookingParams struct {
 	DepartureLocation pgtype.Text        `json:"departure_location"`
 	ArrivalLocation   pgtype.Text        `json:"arrival_location"`
 	NumGuests         pgtype.Int4        `json:"num_guests"`
+	PriceCents        pgtype.Int8        `json:"price_cents"`
+	Currency          pgtype.Text        `json:"currency"`
+	Timezone          pgtype.Text        `json:"timezone"`
 }
 
 func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (Booking, error) {
@@ -55,6 +58,9 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 		arg.DepartureLocation,
 		arg.ArrivalLocation,
 		arg.NumGuests,
+		arg.PriceCents,
+		arg.Currency,
+		arg.Timezone,
 	)
 	var i Booking
 	err := row.Scan(
@@ -76,6 +82,10 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 		&i.DepartureLocation,
 		&i.ArrivalLocation,
 		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -95,7 +105,7 @@ func (q *Queries) DeleteBooking(ctx context.Context, arg DeleteBookingParams) er
 }
 
 const findBookingByConfirmationCode = `-- name: FindBookingByConfirmationCode :one
-SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings
 WHERE user_id = $1 AND trip_id = $2
   AND confirmation_code = $3
   AND confirmation_code != ''
@@ -130,12 +140,16 @@ func (q *Queries) FindBookingByConfirmationCode(ctx context.Context, arg FindBoo
 		&i.DepartureLocation,
 		&i.ArrivalLocation,
 		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getBookingByID = `-- name: GetBookingByID :one
-SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings WHERE id = $1 AND user_id = $2
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings WHERE id = $1 AND user_id = $2
 `
 
 type GetBookingByIDParams struct {
@@ -165,14 +179,61 @@ func (q *Queries) GetBookingByID(ctx context.Context, arg GetBookingByIDParams) 
 		&i.DepartureLocation,
 		&i.ArrivalLocation,
 		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getTripCostSummary = `-- name: GetTripCostSummary :many
+SELECT
+  COALESCE(currency, 'USD') AS currency,
+  SUM(price_cents) AS total_cents,
+  COUNT(*) AS booking_count
+FROM bookings
+WHERE trip_id = $1 AND user_id = $2
+  AND price_cents IS NOT NULL AND price_cents > 0
+GROUP BY currency
+ORDER BY total_cents DESC
+`
+
+type GetTripCostSummaryParams struct {
+	TripID pgtype.UUID `json:"trip_id"`
+	UserID uuid.UUID   `json:"user_id"`
+}
+
+type GetTripCostSummaryRow struct {
+	Currency     string `json:"currency"`
+	TotalCents   int64  `json:"total_cents"`
+	BookingCount int64  `json:"booking_count"`
+}
+
+func (q *Queries) GetTripCostSummary(ctx context.Context, arg GetTripCostSummaryParams) ([]GetTripCostSummaryRow, error) {
+	rows, err := q.db.Query(ctx, getTripCostSummary, arg.TripID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTripCostSummaryRow{}
+	for rows.Next() {
+		var i GetTripCostSummaryRow
+		if err := rows.Scan(&i.Currency, &i.TotalCents, &i.BookingCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const linkBookingToTrip = `-- name: LinkBookingToTrip :one
 UPDATE bookings SET trip_id = $2
 WHERE id = $1 AND user_id = $3
-RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests
+RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
 `
 
 type LinkBookingToTripParams struct {
@@ -203,12 +264,16 @@ func (q *Queries) LinkBookingToTrip(ctx context.Context, arg LinkBookingToTripPa
 		&i.DepartureLocation,
 		&i.ArrivalLocation,
 		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listBookingsByTrip = `-- name: ListBookingsByTrip :many
-SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings
 WHERE trip_id = $1 AND user_id = $2
 ORDER BY start_time
 `
@@ -246,6 +311,10 @@ func (q *Queries) ListBookingsByTrip(ctx context.Context, arg ListBookingsByTrip
 			&i.DepartureLocation,
 			&i.ArrivalLocation,
 			&i.NumGuests,
+			&i.PriceCents,
+			&i.Currency,
+			&i.Timezone,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -258,7 +327,7 @@ func (q *Queries) ListBookingsByTrip(ctx context.Context, arg ListBookingsByTrip
 }
 
 const listBookingsByUser = `-- name: ListBookingsByUser :many
-SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -298,6 +367,10 @@ func (q *Queries) ListBookingsByUser(ctx context.Context, arg ListBookingsByUser
 			&i.DepartureLocation,
 			&i.ArrivalLocation,
 			&i.NumGuests,
+			&i.PriceCents,
+			&i.Currency,
+			&i.Timezone,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -310,7 +383,7 @@ func (q *Queries) ListBookingsByUser(ctx context.Context, arg ListBookingsByUser
 }
 
 const searchBookings = `-- name: SearchBookings :many
-SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests FROM bookings
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings
 WHERE user_id = $1
   AND (title ILIKE '%' || $2 || '%' OR provider ILIKE '%' || $2 || '%' OR confirmation_code ILIKE '%' || $2 || '%')
 ORDER BY created_at DESC
@@ -351,6 +424,10 @@ func (q *Queries) SearchBookings(ctx context.Context, arg SearchBookingsParams) 
 			&i.DepartureLocation,
 			&i.ArrivalLocation,
 			&i.NumGuests,
+			&i.PriceCents,
+			&i.Currency,
+			&i.Timezone,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -360,4 +437,88 @@ func (q *Queries) SearchBookings(ctx context.Context, arg SearchBookingsParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateBooking = `-- name: UpdateBooking :one
+UPDATE bookings SET
+  title = COALESCE(NULLIF($1, ''), title),
+  type = COALESCE(NULLIF($2, ''), type),
+  confirmation_code = COALESCE(NULLIF($3, ''), confirmation_code),
+  provider = COALESCE(NULLIF($4, ''), provider),
+  start_time = COALESCE($5, start_time),
+  end_time = COALESCE($6, end_time),
+  address = COALESCE(NULLIF($7, ''), address),
+  departure_location = COALESCE(NULLIF($8, ''), departure_location),
+  arrival_location = COALESCE(NULLIF($9, ''), arrival_location),
+  num_guests = COALESCE($10, num_guests),
+  price_cents = COALESCE($11, price_cents),
+  currency = COALESCE(NULLIF($12, ''), currency),
+  timezone = COALESCE(NULLIF($13, ''), timezone),
+  updated_at = NOW()
+WHERE id = $14 AND user_id = $15
+RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
+`
+
+type UpdateBookingParams struct {
+	Title             interface{}        `json:"title"`
+	Type              interface{}        `json:"type"`
+	ConfirmationCode  interface{}        `json:"confirmation_code"`
+	Provider          interface{}        `json:"provider"`
+	StartTime         pgtype.Timestamptz `json:"start_time"`
+	EndTime           pgtype.Timestamptz `json:"end_time"`
+	Address           interface{}        `json:"address"`
+	DepartureLocation interface{}        `json:"departure_location"`
+	ArrivalLocation   interface{}        `json:"arrival_location"`
+	NumGuests         pgtype.Int4        `json:"num_guests"`
+	PriceCents        pgtype.Int8        `json:"price_cents"`
+	Currency          interface{}        `json:"currency"`
+	Timezone          interface{}        `json:"timezone"`
+	ID                uuid.UUID          `json:"id"`
+	UserID            uuid.UUID          `json:"user_id"`
+}
+
+func (q *Queries) UpdateBooking(ctx context.Context, arg UpdateBookingParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, updateBooking,
+		arg.Title,
+		arg.Type,
+		arg.ConfirmationCode,
+		arg.Provider,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Address,
+		arg.DepartureLocation,
+		arg.ArrivalLocation,
+		arg.NumGuests,
+		arg.PriceCents,
+		arg.Currency,
+		arg.Timezone,
+		arg.ID,
+		arg.UserID,
+	)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

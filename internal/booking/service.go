@@ -40,6 +40,9 @@ type ParsedBooking struct {
 	DepartureLocation string          `json:"departure_location"`
 	ArrivalLocation   string          `json:"arrival_location"`
 	NumGuests         int32           `json:"num_guests"`
+	PriceCents        int64           `json:"price_cents"`
+	Currency          string          `json:"currency"`
+	Timezone          string          `json:"timezone"`
 	Details           json.RawMessage `json:"details"`
 }
 
@@ -97,6 +100,9 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		DepartureLocation: pgtype.Text{String: parsed.DepartureLocation, Valid: parsed.DepartureLocation != ""},
 		ArrivalLocation:   pgtype.Text{String: parsed.ArrivalLocation, Valid: parsed.ArrivalLocation != ""},
 		NumGuests:         pgtype.Int4{Int32: parsed.NumGuests, Valid: parsed.NumGuests > 0},
+		PriceCents:        pgtype.Int8{Int64: parsed.PriceCents, Valid: parsed.PriceCents > 0},
+		Currency:          pgtype.Text{String: parsed.Currency, Valid: parsed.Currency != ""},
+		Timezone:          pgtype.Text{String: parsed.Timezone, Valid: parsed.Timezone != ""},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create booking: %w", err)
@@ -114,16 +120,19 @@ func (s *Service) parseWithAI(ctx context.Context, rawText string, typeHint stri
 	req := &ai.ChatRequest{
 		SystemPrompt: `You are a booking confirmation parser. Extract structured booking information from the text provided.
 Return a JSON object with these fields:
-- type: one of "flight", "hotel", "car_rental", "train", "tour", "activity", "restaurant", "other"
+- type: one of "flight", "hotel", "car_rental", "train", "tour", "activity", "restaurant", "ferry", "bus", "cruise", "transfer", "other"
 - confirmation_code: the booking/confirmation number
-- provider: the company name (airline, hotel chain, etc.)
+- provider: the company name (airline, hotel chain, ferry operator, bus company, etc.)
 - title: a brief description of the booking
-- start_time: ISO 8601 datetime if available. For flights, use the OUTBOUND departure time. For hotels, use check-in date+time. For tours/activities, use the start time. ALWAYS populate this if any time info is present.
-- end_time: ISO 8601 datetime if available. For flights, use the OUTBOUND arrival time. For hotels, use check-out date+time. For tours, use the end time.
+- start_time: ISO 8601 datetime if available. For flights, use the OUTBOUND departure time. For hotels, use check-in date+time. For tours/activities, use the start time. For ferries/buses, use departure time. ALWAYS populate this if any time info is present.
+- end_time: ISO 8601 datetime if available. For flights, use the OUTBOUND arrival time. For hotels, use check-out date+time. For tours, use the end time. For ferries/buses, use arrival time.
 - address: the location/address if available
-- departure_location: departure city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's departure.
-- arrival_location: arrival city/airport/station (for flights, trains, tours). For round-trip flights, use the OUTBOUND leg's arrival (the destination), NOT the return leg's arrival.
+- departure_location: departure city/airport/station/port (for flights, trains, ferries, buses, tours). For round-trip flights, use the OUTBOUND leg's departure.
+- arrival_location: arrival city/airport/station/port (for flights, trains, ferries, buses, tours). For round-trip flights, use the OUTBOUND leg's arrival (the destination), NOT the return leg's arrival.
 - num_guests: number of guests/passengers if available
+- price_cents: total price in the smallest currency unit (e.g. cents). Convert dollars to cents (multiply by 100). If the price is "EUR 45.50", set price_cents to 4550. If no price is found, omit or set to 0.
+- currency: ISO 4217 currency code (e.g. "USD", "EUR", "CAD", "GBP"). Infer from currency symbols: $=USD, €=EUR, £=GBP, C$=CAD, A$=AUD, ¥=JPY. If ambiguous, use "USD".
+- timezone: IANA timezone identifier for the booking's local time (e.g. "America/New_York", "Europe/London", "Asia/Tokyo"). Infer from the location if not explicitly stated. If unknown, omit.
 - details: a type-specific JSON object with the following schema based on type:
 
 flight: {"airline":"","flight_number":"","departure_airport":"","arrival_airport":"","departure_terminal":"","arrival_terminal":"","seat":"","cabin_class":"","passengers":[],"legs":[{"flight_number":"","airline":"","departure_airport":"","arrival_airport":"","departure_time":"","arrival_time":"","cabin":""}]}
@@ -135,6 +144,10 @@ train: {"operator":"","train_number":"","departure_station":"","arrival_station"
 tour: {"tour_operator":"","tour_name":"","num_participants":0,"meeting_point":"","date":"YYYY-MM-DD","start_time":"HH:MM","duration":"","guide_name":"","price":"","stops":[{"name":"","location":"","duration":"","notes":""}]}
 activity: {"operator":"","activity_name":"","location":"","num_guests":0,"date":"YYYY-MM-DD","start_time":"HH:MM","duration":"","guide_name":"","price":"","notes":""}
 restaurant: {"restaurant_name":"","cuisine":"","party_size":0,"notes":""}
+ferry: {"operator":"","vessel_name":"","departure_port":"","arrival_port":"","departure_time":"","arrival_time":"","cabin_type":"","deck":"","num_passengers":0,"vehicle_included":false}
+bus: {"operator":"","route_number":"","departure_station":"","arrival_station":"","departure_time":"","arrival_time":"","seat":"","class":"","platform":""}
+cruise: {"cruise_line":"","ship_name":"","departure_port":"","arrival_port":"","cabin_number":"","cabin_type":"","deck":"","num_passengers":0,"ports_of_call":[]}
+transfer: {"operator":"","vehicle_type":"","pickup_location":"","dropoff_location":"","pickup_time":"","num_passengers":0,"driver_name":"","flight_number":""}
 
 Only include fields that are present in the source text. Return ONLY valid JSON, no other text.`,
 		Messages: []ai.Message{
@@ -220,6 +233,42 @@ func stripCodeFences(s string) string {
 		trimmed = strings.TrimSpace(trimmed)
 	}
 	return trimmed
+}
+
+func (s *Service) Update(ctx context.Context, userID, bookingID uuid.UUID, params dbgen.UpdateBookingParams) (*dbgen.Booking, error) {
+	params.ID = bookingID
+	params.UserID = userID
+	booking, err := s.queries.UpdateBooking(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("update booking: %w", err)
+	}
+	return &booking, nil
+}
+
+type CostSummary struct {
+	Currency     string
+	TotalCents   int64
+	BookingCount int64
+}
+
+func (s *Service) GetTripCostSummary(ctx context.Context, userID, tripID uuid.UUID) ([]CostSummary, error) {
+	rows, err := s.queries.GetTripCostSummary(ctx, dbgen.GetTripCostSummaryParams{
+		TripID: pgtype.UUID{Bytes: tripID, Valid: true},
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get trip cost summary: %w", err)
+	}
+
+	summaries := make([]CostSummary, len(rows))
+	for i, r := range rows {
+		summaries[i] = CostSummary{
+			Currency:     r.Currency,
+			TotalCents:   r.TotalCents,
+			BookingCount: r.BookingCount,
+		}
+	}
+	return summaries, nil
 }
 
 func (s *Service) ListByTrip(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) ([]dbgen.Booking, error) {

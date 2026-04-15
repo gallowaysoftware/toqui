@@ -30,6 +30,10 @@ type Booking struct {
 	DepartureLocation pgtype.Text        `json:"departure_location"`
 	ArrivalLocation   pgtype.Text        `json:"arrival_location"`
 	NumGuests         pgtype.Int4        `json:"num_guests"`
+	PriceCents        pgtype.Int8        `json:"price_cents"`
+	Currency          pgtype.Text        `json:"currency"`
+	Timezone          pgtype.Text        `json:"timezone"`
+	UpdatedAt         time.Time          `json:"updated_at"`
 }
 
 type DailyUsage struct {

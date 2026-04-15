@@ -407,3 +407,259 @@ func TestFlightDetails_ConnectingFlight_ThreeLegs(t *testing.T) {
 		t.Errorf("top-level FlightNumber: got %q, want %q", decoded.FlightNumber, "LH401")
 	}
 }
+
+func TestFerryDetails_JSONRoundTrip(t *testing.T) {
+	original := FerryDetails{
+		Operator:        "BC Ferries",
+		VesselName:      "Spirit of Vancouver Island",
+		DeparturePort:   "Tsawwassen",
+		ArrivalPort:     "Swartz Bay",
+		DepartureTime:   "2026-07-15T09:00:00",
+		ArrivalTime:     "2026-07-15T10:35:00",
+		CabinType:       "Passenger",
+		Deck:            "5",
+		NumPassengers:   2,
+		VehicleIncluded: true,
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal FerryDetails: %v", err)
+	}
+
+	var decoded FerryDetails
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal FerryDetails: %v", err)
+	}
+
+	if decoded.Operator != "BC Ferries" {
+		t.Errorf("Operator: got %q, want %q", decoded.Operator, "BC Ferries")
+	}
+	if decoded.DeparturePort != "Tsawwassen" {
+		t.Errorf("DeparturePort: got %q, want %q", decoded.DeparturePort, "Tsawwassen")
+	}
+	if decoded.ArrivalPort != "Swartz Bay" {
+		t.Errorf("ArrivalPort: got %q, want %q", decoded.ArrivalPort, "Swartz Bay")
+	}
+	if !decoded.VehicleIncluded {
+		t.Error("VehicleIncluded: got false, want true")
+	}
+	if decoded.NumPassengers != 2 {
+		t.Errorf("NumPassengers: got %d, want 2", decoded.NumPassengers)
+	}
+}
+
+func TestBusDetails_JSONRoundTrip(t *testing.T) {
+	original := BusDetails{
+		Operator:         "FlixBus",
+		RouteNumber:      "N740",
+		DepartureStation: "Barcelona Nord",
+		ArrivalStation:   "Madrid Estacion Sur",
+		DepartureTime:    "2026-08-01T07:30:00",
+		ArrivalTime:      "2026-08-01T15:00:00",
+		Seat:             "12A",
+		Class:            "Standard",
+		Platform:         "3",
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal BusDetails: %v", err)
+	}
+
+	var decoded BusDetails
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal BusDetails: %v", err)
+	}
+
+	if decoded.Operator != "FlixBus" {
+		t.Errorf("Operator: got %q, want %q", decoded.Operator, "FlixBus")
+	}
+	if decoded.RouteNumber != "N740" {
+		t.Errorf("RouteNumber: got %q, want %q", decoded.RouteNumber, "N740")
+	}
+	if decoded.DepartureStation != "Barcelona Nord" {
+		t.Errorf("DepartureStation: got %q, want %q", decoded.DepartureStation, "Barcelona Nord")
+	}
+	if decoded.Seat != "12A" {
+		t.Errorf("Seat: got %q, want %q", decoded.Seat, "12A")
+	}
+}
+
+func TestCruiseDetails_JSONRoundTrip(t *testing.T) {
+	original := CruiseDetails{
+		CruiseLine:    "Royal Caribbean",
+		ShipName:      "Wonder of the Seas",
+		DeparturePort: "Fort Lauderdale",
+		ArrivalPort:   "Fort Lauderdale",
+		CabinNumber:   "8234",
+		CabinType:     "Balcony",
+		Deck:          "8",
+		NumPassengers: 4,
+		PortsOfCall:   []string{"Cozumel", "Roatan", "Costa Maya"},
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal CruiseDetails: %v", err)
+	}
+
+	var decoded CruiseDetails
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal CruiseDetails: %v", err)
+	}
+
+	if decoded.CruiseLine != "Royal Caribbean" {
+		t.Errorf("CruiseLine: got %q, want %q", decoded.CruiseLine, "Royal Caribbean")
+	}
+	if decoded.ShipName != "Wonder of the Seas" {
+		t.Errorf("ShipName: got %q, want %q", decoded.ShipName, "Wonder of the Seas")
+	}
+	if len(decoded.PortsOfCall) != 3 {
+		t.Fatalf("PortsOfCall count: got %d, want 3", len(decoded.PortsOfCall))
+	}
+	if decoded.PortsOfCall[0] != "Cozumel" {
+		t.Errorf("PortsOfCall[0]: got %q, want %q", decoded.PortsOfCall[0], "Cozumel")
+	}
+	if decoded.NumPassengers != 4 {
+		t.Errorf("NumPassengers: got %d, want 4", decoded.NumPassengers)
+	}
+}
+
+func TestTransferDetails_JSONRoundTrip(t *testing.T) {
+	original := TransferDetails{
+		Operator:        "Welcome Pickups",
+		VehicleType:     "Sedan",
+		PickupLocation:  "Barcelona Airport (BCN)",
+		DropoffLocation: "Hotel Arts Barcelona",
+		PickupTime:      "2026-06-15T14:30:00",
+		NumPassengers:   2,
+		DriverName:      "Carlos",
+		FlightNumber:    "DL472",
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal TransferDetails: %v", err)
+	}
+
+	var decoded TransferDetails
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal TransferDetails: %v", err)
+	}
+
+	if decoded.Operator != "Welcome Pickups" {
+		t.Errorf("Operator: got %q, want %q", decoded.Operator, "Welcome Pickups")
+	}
+	if decoded.FlightNumber != "DL472" {
+		t.Errorf("FlightNumber: got %q, want %q", decoded.FlightNumber, "DL472")
+	}
+	if decoded.PickupLocation != "Barcelona Airport (BCN)" {
+		t.Errorf("PickupLocation: got %q, want %q", decoded.PickupLocation, "Barcelona Airport (BCN)")
+	}
+}
+
+func TestUnmarshalDetails_Ferry(t *testing.T) {
+	input := json.RawMessage(`{
+		"operator": "BC Ferries",
+		"vessel_name": "Spirit of Vancouver Island",
+		"departure_port": "Tsawwassen",
+		"arrival_port": "Swartz Bay",
+		"num_passengers": 2,
+		"vehicle_included": true
+	}`)
+
+	result, err := UnmarshalDetails("ferry", input)
+	if err != nil {
+		t.Fatalf("UnmarshalDetails: %v", err)
+	}
+
+	fd, ok := result.(*FerryDetails)
+	if !ok {
+		t.Fatalf("expected *FerryDetails, got %T", result)
+	}
+	if fd.Operator != "BC Ferries" {
+		t.Errorf("Operator: got %q, want %q", fd.Operator, "BC Ferries")
+	}
+	if !fd.VehicleIncluded {
+		t.Error("VehicleIncluded: got false, want true")
+	}
+}
+
+func TestUnmarshalDetails_Bus(t *testing.T) {
+	input := json.RawMessage(`{
+		"operator": "FlixBus",
+		"route_number": "N740",
+		"departure_station": "Barcelona Nord",
+		"arrival_station": "Madrid Estacion Sur",
+		"seat": "12A"
+	}`)
+
+	result, err := UnmarshalDetails("bus", input)
+	if err != nil {
+		t.Fatalf("UnmarshalDetails: %v", err)
+	}
+
+	bd, ok := result.(*BusDetails)
+	if !ok {
+		t.Fatalf("expected *BusDetails, got %T", result)
+	}
+	if bd.Operator != "FlixBus" {
+		t.Errorf("Operator: got %q, want %q", bd.Operator, "FlixBus")
+	}
+	if bd.Seat != "12A" {
+		t.Errorf("Seat: got %q, want %q", bd.Seat, "12A")
+	}
+}
+
+func TestUnmarshalDetails_Cruise(t *testing.T) {
+	input := json.RawMessage(`{
+		"cruise_line": "Royal Caribbean",
+		"ship_name": "Wonder of the Seas",
+		"departure_port": "Fort Lauderdale",
+		"cabin_type": "Balcony",
+		"ports_of_call": ["Cozumel", "Roatan"]
+	}`)
+
+	result, err := UnmarshalDetails("cruise", input)
+	if err != nil {
+		t.Fatalf("UnmarshalDetails: %v", err)
+	}
+
+	cd, ok := result.(*CruiseDetails)
+	if !ok {
+		t.Fatalf("expected *CruiseDetails, got %T", result)
+	}
+	if cd.CruiseLine != "Royal Caribbean" {
+		t.Errorf("CruiseLine: got %q, want %q", cd.CruiseLine, "Royal Caribbean")
+	}
+	if len(cd.PortsOfCall) != 2 {
+		t.Fatalf("PortsOfCall count: got %d, want 2", len(cd.PortsOfCall))
+	}
+}
+
+func TestUnmarshalDetails_Transfer(t *testing.T) {
+	input := json.RawMessage(`{
+		"operator": "Welcome Pickups",
+		"vehicle_type": "Sedan",
+		"pickup_location": "BCN Airport",
+		"dropoff_location": "Hotel Arts",
+		"flight_number": "DL472"
+	}`)
+
+	result, err := UnmarshalDetails("transfer", input)
+	if err != nil {
+		t.Fatalf("UnmarshalDetails: %v", err)
+	}
+
+	td, ok := result.(*TransferDetails)
+	if !ok {
+		t.Fatalf("expected *TransferDetails, got %T", result)
+	}
+	if td.FlightNumber != "DL472" {
+		t.Errorf("FlightNumber: got %q, want %q", td.FlightNumber, "DL472")
+	}
+	if td.VehicleType != "Sedan" {
+		t.Errorf("VehicleType: got %q, want %q", td.VehicleType, "Sedan")
+	}
+}

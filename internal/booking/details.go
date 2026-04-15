@@ -106,6 +106,54 @@ type RestaurantDetails struct {
 	Notes          string `json:"notes,omitempty"`
 }
 
+type FerryDetails struct {
+	Operator        string `json:"operator,omitempty"`
+	VesselName      string `json:"vessel_name,omitempty"`
+	DeparturePort   string `json:"departure_port,omitempty"`
+	ArrivalPort     string `json:"arrival_port,omitempty"`
+	DepartureTime   string `json:"departure_time,omitempty"`
+	ArrivalTime     string `json:"arrival_time,omitempty"`
+	CabinType       string `json:"cabin_type,omitempty"`
+	Deck            string `json:"deck,omitempty"`
+	NumPassengers   int    `json:"num_passengers,omitempty"`
+	VehicleIncluded bool   `json:"vehicle_included,omitempty"`
+}
+
+type BusDetails struct {
+	Operator         string `json:"operator,omitempty"`
+	RouteNumber      string `json:"route_number,omitempty"`
+	DepartureStation string `json:"departure_station,omitempty"`
+	ArrivalStation   string `json:"arrival_station,omitempty"`
+	DepartureTime    string `json:"departure_time,omitempty"`
+	ArrivalTime      string `json:"arrival_time,omitempty"`
+	Seat             string `json:"seat,omitempty"`
+	Class            string `json:"class,omitempty"`
+	Platform         string `json:"platform,omitempty"`
+}
+
+type CruiseDetails struct {
+	CruiseLine    string   `json:"cruise_line,omitempty"`
+	ShipName      string   `json:"ship_name,omitempty"`
+	DeparturePort string   `json:"departure_port,omitempty"`
+	ArrivalPort   string   `json:"arrival_port,omitempty"`
+	CabinNumber   string   `json:"cabin_number,omitempty"`
+	CabinType     string   `json:"cabin_type,omitempty"`
+	Deck          string   `json:"deck,omitempty"`
+	NumPassengers int      `json:"num_passengers,omitempty"`
+	PortsOfCall   []string `json:"ports_of_call,omitempty"`
+}
+
+type TransferDetails struct {
+	Operator        string `json:"operator,omitempty"`
+	VehicleType     string `json:"vehicle_type,omitempty"`
+	PickupLocation  string `json:"pickup_location,omitempty"`
+	DropoffLocation string `json:"dropoff_location,omitempty"`
+	PickupTime      string `json:"pickup_time,omitempty"`
+	NumPassengers   int    `json:"num_passengers,omitempty"`
+	DriverName      string `json:"driver_name,omitempty"`
+	FlightNumber    string `json:"flight_number,omitempty"`
+}
+
 func UnmarshalDetails(bookingType string, raw json.RawMessage) (any, error) {
 	if len(raw) == 0 || string(raw) == "{}" || string(raw) == "null" {
 		return nil, nil
@@ -127,6 +175,14 @@ func UnmarshalDetails(bookingType string, raw json.RawMessage) (any, error) {
 		target = &ActivityDetails{}
 	case "restaurant":
 		target = &RestaurantDetails{}
+	case "ferry":
+		target = &FerryDetails{}
+	case "bus":
+		target = &BusDetails{}
+	case "cruise":
+		target = &CruiseDetails{}
+	case "transfer":
+		target = &TransferDetails{}
 	default:
 		var generic map[string]any
 		if err := json.Unmarshal(raw, &generic); err != nil {

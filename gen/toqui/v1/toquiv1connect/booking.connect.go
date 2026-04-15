@@ -39,12 +39,18 @@ const (
 	// BookingServiceIngestEmailProcedure is the fully-qualified name of the BookingService's
 	// IngestEmail RPC.
 	BookingServiceIngestEmailProcedure = "/toqui.v1.BookingService/IngestEmail"
+	// BookingServiceUpdateBookingProcedure is the fully-qualified name of the BookingService's
+	// UpdateBooking RPC.
+	BookingServiceUpdateBookingProcedure = "/toqui.v1.BookingService/UpdateBooking"
 	// BookingServiceListBookingsProcedure is the fully-qualified name of the BookingService's
 	// ListBookings RPC.
 	BookingServiceListBookingsProcedure = "/toqui.v1.BookingService/ListBookings"
 	// BookingServiceGetBookingProcedure is the fully-qualified name of the BookingService's GetBooking
 	// RPC.
 	BookingServiceGetBookingProcedure = "/toqui.v1.BookingService/GetBooking"
+	// BookingServiceGetTripCostSummaryProcedure is the fully-qualified name of the BookingService's
+	// GetTripCostSummary RPC.
+	BookingServiceGetTripCostSummaryProcedure = "/toqui.v1.BookingService/GetTripCostSummary"
 	// BookingServiceLinkBookingToTripProcedure is the fully-qualified name of the BookingService's
 	// LinkBookingToTrip RPC.
 	BookingServiceLinkBookingToTripProcedure = "/toqui.v1.BookingService/LinkBookingToTrip"
@@ -60,8 +66,10 @@ const (
 type BookingServiceClient interface {
 	IngestBooking(context.Context, *connect.Request[v1.IngestBookingRequest]) (*connect.Response[v1.IngestBookingResponse], error)
 	IngestEmail(context.Context, *connect.Request[v1.IngestEmailRequest]) (*connect.Response[v1.IngestEmailResponse], error)
+	UpdateBooking(context.Context, *connect.Request[v1.UpdateBookingRequest]) (*connect.Response[v1.UpdateBookingResponse], error)
 	ListBookings(context.Context, *connect.Request[v1.ListBookingsRequest]) (*connect.Response[v1.ListBookingsResponse], error)
 	GetBooking(context.Context, *connect.Request[v1.GetBookingRequest]) (*connect.Response[v1.GetBookingResponse], error)
+	GetTripCostSummary(context.Context, *connect.Request[v1.GetTripCostSummaryRequest]) (*connect.Response[v1.GetTripCostSummaryResponse], error)
 	LinkBookingToTrip(context.Context, *connect.Request[v1.LinkBookingToTripRequest]) (*connect.Response[v1.LinkBookingToTripResponse], error)
 	DeleteBooking(context.Context, *connect.Request[v1.DeleteBookingRequest]) (*connect.Response[v1.DeleteBookingResponse], error)
 	ExtractBookingField(context.Context, *connect.Request[v1.ExtractBookingFieldRequest]) (*connect.Response[v1.ExtractBookingFieldResponse], error)
@@ -90,6 +98,12 @@ func NewBookingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(bookingServiceMethods.ByName("IngestEmail")),
 			connect.WithClientOptions(opts...),
 		),
+		updateBooking: connect.NewClient[v1.UpdateBookingRequest, v1.UpdateBookingResponse](
+			httpClient,
+			baseURL+BookingServiceUpdateBookingProcedure,
+			connect.WithSchema(bookingServiceMethods.ByName("UpdateBooking")),
+			connect.WithClientOptions(opts...),
+		),
 		listBookings: connect.NewClient[v1.ListBookingsRequest, v1.ListBookingsResponse](
 			httpClient,
 			baseURL+BookingServiceListBookingsProcedure,
@@ -100,6 +114,12 @@ func NewBookingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+BookingServiceGetBookingProcedure,
 			connect.WithSchema(bookingServiceMethods.ByName("GetBooking")),
+			connect.WithClientOptions(opts...),
+		),
+		getTripCostSummary: connect.NewClient[v1.GetTripCostSummaryRequest, v1.GetTripCostSummaryResponse](
+			httpClient,
+			baseURL+BookingServiceGetTripCostSummaryProcedure,
+			connect.WithSchema(bookingServiceMethods.ByName("GetTripCostSummary")),
 			connect.WithClientOptions(opts...),
 		),
 		linkBookingToTrip: connect.NewClient[v1.LinkBookingToTripRequest, v1.LinkBookingToTripResponse](
@@ -127,8 +147,10 @@ func NewBookingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type bookingServiceClient struct {
 	ingestBooking       *connect.Client[v1.IngestBookingRequest, v1.IngestBookingResponse]
 	ingestEmail         *connect.Client[v1.IngestEmailRequest, v1.IngestEmailResponse]
+	updateBooking       *connect.Client[v1.UpdateBookingRequest, v1.UpdateBookingResponse]
 	listBookings        *connect.Client[v1.ListBookingsRequest, v1.ListBookingsResponse]
 	getBooking          *connect.Client[v1.GetBookingRequest, v1.GetBookingResponse]
+	getTripCostSummary  *connect.Client[v1.GetTripCostSummaryRequest, v1.GetTripCostSummaryResponse]
 	linkBookingToTrip   *connect.Client[v1.LinkBookingToTripRequest, v1.LinkBookingToTripResponse]
 	deleteBooking       *connect.Client[v1.DeleteBookingRequest, v1.DeleteBookingResponse]
 	extractBookingField *connect.Client[v1.ExtractBookingFieldRequest, v1.ExtractBookingFieldResponse]
@@ -144,6 +166,11 @@ func (c *bookingServiceClient) IngestEmail(ctx context.Context, req *connect.Req
 	return c.ingestEmail.CallUnary(ctx, req)
 }
 
+// UpdateBooking calls toqui.v1.BookingService.UpdateBooking.
+func (c *bookingServiceClient) UpdateBooking(ctx context.Context, req *connect.Request[v1.UpdateBookingRequest]) (*connect.Response[v1.UpdateBookingResponse], error) {
+	return c.updateBooking.CallUnary(ctx, req)
+}
+
 // ListBookings calls toqui.v1.BookingService.ListBookings.
 func (c *bookingServiceClient) ListBookings(ctx context.Context, req *connect.Request[v1.ListBookingsRequest]) (*connect.Response[v1.ListBookingsResponse], error) {
 	return c.listBookings.CallUnary(ctx, req)
@@ -152,6 +179,11 @@ func (c *bookingServiceClient) ListBookings(ctx context.Context, req *connect.Re
 // GetBooking calls toqui.v1.BookingService.GetBooking.
 func (c *bookingServiceClient) GetBooking(ctx context.Context, req *connect.Request[v1.GetBookingRequest]) (*connect.Response[v1.GetBookingResponse], error) {
 	return c.getBooking.CallUnary(ctx, req)
+}
+
+// GetTripCostSummary calls toqui.v1.BookingService.GetTripCostSummary.
+func (c *bookingServiceClient) GetTripCostSummary(ctx context.Context, req *connect.Request[v1.GetTripCostSummaryRequest]) (*connect.Response[v1.GetTripCostSummaryResponse], error) {
+	return c.getTripCostSummary.CallUnary(ctx, req)
 }
 
 // LinkBookingToTrip calls toqui.v1.BookingService.LinkBookingToTrip.
@@ -173,8 +205,10 @@ func (c *bookingServiceClient) ExtractBookingField(ctx context.Context, req *con
 type BookingServiceHandler interface {
 	IngestBooking(context.Context, *connect.Request[v1.IngestBookingRequest]) (*connect.Response[v1.IngestBookingResponse], error)
 	IngestEmail(context.Context, *connect.Request[v1.IngestEmailRequest]) (*connect.Response[v1.IngestEmailResponse], error)
+	UpdateBooking(context.Context, *connect.Request[v1.UpdateBookingRequest]) (*connect.Response[v1.UpdateBookingResponse], error)
 	ListBookings(context.Context, *connect.Request[v1.ListBookingsRequest]) (*connect.Response[v1.ListBookingsResponse], error)
 	GetBooking(context.Context, *connect.Request[v1.GetBookingRequest]) (*connect.Response[v1.GetBookingResponse], error)
+	GetTripCostSummary(context.Context, *connect.Request[v1.GetTripCostSummaryRequest]) (*connect.Response[v1.GetTripCostSummaryResponse], error)
 	LinkBookingToTrip(context.Context, *connect.Request[v1.LinkBookingToTripRequest]) (*connect.Response[v1.LinkBookingToTripResponse], error)
 	DeleteBooking(context.Context, *connect.Request[v1.DeleteBookingRequest]) (*connect.Response[v1.DeleteBookingResponse], error)
 	ExtractBookingField(context.Context, *connect.Request[v1.ExtractBookingFieldRequest]) (*connect.Response[v1.ExtractBookingFieldResponse], error)
@@ -199,6 +233,12 @@ func NewBookingServiceHandler(svc BookingServiceHandler, opts ...connect.Handler
 		connect.WithSchema(bookingServiceMethods.ByName("IngestEmail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	bookingServiceUpdateBookingHandler := connect.NewUnaryHandler(
+		BookingServiceUpdateBookingProcedure,
+		svc.UpdateBooking,
+		connect.WithSchema(bookingServiceMethods.ByName("UpdateBooking")),
+		connect.WithHandlerOptions(opts...),
+	)
 	bookingServiceListBookingsHandler := connect.NewUnaryHandler(
 		BookingServiceListBookingsProcedure,
 		svc.ListBookings,
@@ -209,6 +249,12 @@ func NewBookingServiceHandler(svc BookingServiceHandler, opts ...connect.Handler
 		BookingServiceGetBookingProcedure,
 		svc.GetBooking,
 		connect.WithSchema(bookingServiceMethods.ByName("GetBooking")),
+		connect.WithHandlerOptions(opts...),
+	)
+	bookingServiceGetTripCostSummaryHandler := connect.NewUnaryHandler(
+		BookingServiceGetTripCostSummaryProcedure,
+		svc.GetTripCostSummary,
+		connect.WithSchema(bookingServiceMethods.ByName("GetTripCostSummary")),
 		connect.WithHandlerOptions(opts...),
 	)
 	bookingServiceLinkBookingToTripHandler := connect.NewUnaryHandler(
@@ -235,10 +281,14 @@ func NewBookingServiceHandler(svc BookingServiceHandler, opts ...connect.Handler
 			bookingServiceIngestBookingHandler.ServeHTTP(w, r)
 		case BookingServiceIngestEmailProcedure:
 			bookingServiceIngestEmailHandler.ServeHTTP(w, r)
+		case BookingServiceUpdateBookingProcedure:
+			bookingServiceUpdateBookingHandler.ServeHTTP(w, r)
 		case BookingServiceListBookingsProcedure:
 			bookingServiceListBookingsHandler.ServeHTTP(w, r)
 		case BookingServiceGetBookingProcedure:
 			bookingServiceGetBookingHandler.ServeHTTP(w, r)
+		case BookingServiceGetTripCostSummaryProcedure:
+			bookingServiceGetTripCostSummaryHandler.ServeHTTP(w, r)
 		case BookingServiceLinkBookingToTripProcedure:
 			bookingServiceLinkBookingToTripHandler.ServeHTTP(w, r)
 		case BookingServiceDeleteBookingProcedure:
@@ -262,12 +312,20 @@ func (UnimplementedBookingServiceHandler) IngestEmail(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.BookingService.IngestEmail is not implemented"))
 }
 
+func (UnimplementedBookingServiceHandler) UpdateBooking(context.Context, *connect.Request[v1.UpdateBookingRequest]) (*connect.Response[v1.UpdateBookingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.BookingService.UpdateBooking is not implemented"))
+}
+
 func (UnimplementedBookingServiceHandler) ListBookings(context.Context, *connect.Request[v1.ListBookingsRequest]) (*connect.Response[v1.ListBookingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.BookingService.ListBookings is not implemented"))
 }
 
 func (UnimplementedBookingServiceHandler) GetBooking(context.Context, *connect.Request[v1.GetBookingRequest]) (*connect.Response[v1.GetBookingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.BookingService.GetBooking is not implemented"))
+}
+
+func (UnimplementedBookingServiceHandler) GetTripCostSummary(context.Context, *connect.Request[v1.GetTripCostSummaryRequest]) (*connect.Response[v1.GetTripCostSummaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.BookingService.GetTripCostSummary is not implemented"))
 }
 
 func (UnimplementedBookingServiceHandler) LinkBookingToTrip(context.Context, *connect.Request[v1.LinkBookingToTripRequest]) (*connect.Response[v1.LinkBookingToTripResponse], error) {

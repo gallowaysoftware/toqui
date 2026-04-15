@@ -113,7 +113,7 @@ graph TB
 - **AuthService** — Google OAuth, JWT refresh, account deletion/export
 - **TripService** — Trip CRUD, itinerary management, templates, reorder
 - **ChatService** — Streaming chat with AI, history, sessions
-- **BookingService** — Booking ingestion (AI parsing), CRUD
+- **BookingService** — Booking ingestion (AI parsing), CRUD, update, price tracking, cost summary
 - **PersonaService** — List/resolve/set default persona
 - **LocationService** — Ephemeral location updates, nearby places
 
@@ -203,7 +203,7 @@ API test collections live in `tests/bruno/`. These are Bruno HTTP client collect
 | RPC | Field to use |
 |-----|-------------|
 | GetTrip, UpdateTrip, DeleteTrip | `id` (NOT `trip_id`) |
-| GetBooking, DeleteBooking | `id` (NOT `booking_id`) |
+| GetBooking, UpdateBooking, DeleteBooking | `id` (NOT `booking_id`) |
 | GetItinerary, UpdateItinerary | `trip_id` ✓ |
 | UpdateLocation, GetNearby | `location: {latitude, longitude}` (nested LatLng, NOT flat fields) |
 | ResolvePersona | `trip_id`, `latitude`, `longitude`, `mode`, `themes` (NOT `location_code`) |
@@ -575,6 +575,8 @@ Fake booking confirmation texts for ingestion testing:
 - `hostel-booking.txt` — Vietnam 3-hostel chain
 - `ryokan-booking.txt` — Kyoto traditional inn
 - `tour-booking.txt` — Oaxaca food walking tour
+- `ferry-booking.txt` — BC Ferries Tsawwassen→Swartz Bay
+- `bus-booking.txt` — FlixBus Barcelona→Madrid
 
 ### Adding New Personas
 

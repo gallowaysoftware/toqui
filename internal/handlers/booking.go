@@ -61,6 +61,92 @@ func (h *BookingHandler) IngestEmail(ctx context.Context, req *connect.Request[t
 	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("email ingestion not yet implemented"))
 }
 
+func (h *BookingHandler) UpdateBooking(ctx context.Context, req *connect.Request[toquiv1.UpdateBookingRequest]) (*connect.Response[toquiv1.UpdateBookingResponse], error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	bookingID, err := uuid.Parse(req.Msg.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// Build update params. COALESCE in the SQL handles partial updates:
+	// empty strings and zero values are treated as "no change".
+	bookingType := ""
+	if req.Msg.Type != toquiv1.BookingType_BOOKING_TYPE_UNSPECIFIED {
+		bookingType = bookingTypeToString(req.Msg.Type)
+	}
+
+	params := dbgen.UpdateBookingParams{
+		Title:             req.Msg.Title,
+		Type:              bookingType,
+		ConfirmationCode:  req.Msg.ConfirmationCode,
+		Provider:          req.Msg.Provider,
+		Address:           req.Msg.Address,
+		DepartureLocation: req.Msg.DepartureLocation,
+		ArrivalLocation:   req.Msg.ArrivalLocation,
+		Currency:          req.Msg.Currency,
+		Timezone:          req.Msg.Timezone,
+	}
+
+	if req.Msg.StartTime != nil {
+		params.StartTime = pgtype.Timestamptz{Time: req.Msg.StartTime.AsTime(), Valid: true}
+	}
+	if req.Msg.EndTime != nil {
+		params.EndTime = pgtype.Timestamptz{Time: req.Msg.EndTime.AsTime(), Valid: true}
+	}
+	if req.Msg.NumGuests > 0 {
+		params.NumGuests = pgtype.Int4{Int32: req.Msg.NumGuests, Valid: true}
+	}
+	if req.Msg.PriceCents > 0 {
+		params.PriceCents = pgtype.Int8{Int64: req.Msg.PriceCents, Valid: true}
+	}
+
+	b, err := h.bookingSvc.Update(ctx, userID, bookingID, params)
+	if err != nil {
+		return nil, internalError(ctx, "booking update", err)
+	}
+
+	return connect.NewResponse(&toquiv1.UpdateBookingResponse{
+		Booking: bookingToProto(b),
+	}), nil
+}
+
+func (h *BookingHandler) GetTripCostSummary(ctx context.Context, req *connect.Request[toquiv1.GetTripCostSummaryRequest]) (*connect.Response[toquiv1.GetTripCostSummaryResponse], error) {
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	tripID, err := uuid.Parse(req.Msg.TripId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	summaries, err := h.bookingSvc.GetTripCostSummary(ctx, userID, tripID)
+	if err != nil {
+		return nil, internalError(ctx, "trip cost summary", err)
+	}
+
+	var totalBookings int32
+	totals := make([]*toquiv1.CurrencyTotal, len(summaries))
+	for i, s := range summaries {
+		totals[i] = &toquiv1.CurrencyTotal{
+			Currency:     s.Currency,
+			TotalCents:   s.TotalCents,
+			BookingCount: int32(s.BookingCount),
+		}
+		totalBookings += int32(s.BookingCount)
+	}
+
+	return connect.NewResponse(&toquiv1.GetTripCostSummaryResponse{
+		Totals:       totals,
+		BookingCount: totalBookings,
+	}), nil
+}
+
 func (h *BookingHandler) ListBookings(ctx context.Context, req *connect.Request[toquiv1.ListBookingsRequest]) (*connect.Response[toquiv1.ListBookingsResponse], error) {
 	userID, ok := auth.UserIDFromContext(ctx)
 	if !ok {
@@ -214,6 +300,20 @@ var bookingTypeMap = map[string]toquiv1.BookingType{
 	"restaurant": toquiv1.BookingType_BOOKING_TYPE_RESTAURANT,
 	"other":      toquiv1.BookingType_BOOKING_TYPE_OTHER,
 	"tour":       toquiv1.BookingType_BOOKING_TYPE_TOUR,
+	"ferry":      toquiv1.BookingType_BOOKING_TYPE_FERRY,
+	"bus":        toquiv1.BookingType_BOOKING_TYPE_BUS,
+	"cruise":     toquiv1.BookingType_BOOKING_TYPE_CRUISE,
+	"transfer":   toquiv1.BookingType_BOOKING_TYPE_TRANSFER,
+}
+
+// bookingTypeToString maps proto BookingType enum to the DB string representation.
+func bookingTypeToString(bt toquiv1.BookingType) string {
+	for k, v := range bookingTypeMap {
+		if v == bt {
+			return k
+		}
+	}
+	return ""
 }
 
 var bookingSourceMap = map[string]toquiv1.BookingSource{
@@ -258,6 +358,15 @@ func bookingToProto(b *dbgen.Booking) *toquiv1.Booking {
 	}
 	if b.NumGuests.Valid {
 		proto.NumGuests = b.NumGuests.Int32
+	}
+	if b.PriceCents.Valid {
+		proto.PriceCents = b.PriceCents.Int64
+	}
+	if b.Currency.Valid {
+		proto.Currency = b.Currency.String
+	}
+	if b.Timezone.Valid {
+		proto.Timezone = b.Timezone.String
 	}
 	if len(b.DetailsJson) > 0 {
 		proto.DetailsJson = string(b.DetailsJson)
@@ -404,6 +513,74 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 				},
 			}
 		}
+	case "ferry":
+		var d booking.FerryDetails
+		if json.Unmarshal(raw, &d) == nil {
+			proto.BookingDetails = &toquiv1.Booking_FerryDetails{
+				FerryDetails: &toquiv1.FerryDetails{
+					Operator:        d.Operator,
+					VesselName:      d.VesselName,
+					DeparturePort:   d.DeparturePort,
+					ArrivalPort:     d.ArrivalPort,
+					DepartureTime:   d.DepartureTime,
+					ArrivalTime:     d.ArrivalTime,
+					CabinType:       d.CabinType,
+					Deck:            d.Deck,
+					NumPassengers:   int32(d.NumPassengers),
+					VehicleIncluded: d.VehicleIncluded,
+				},
+			}
+		}
+	case "bus":
+		var d booking.BusDetails
+		if json.Unmarshal(raw, &d) == nil {
+			proto.BookingDetails = &toquiv1.Booking_BusDetails{
+				BusDetails: &toquiv1.BusDetails{
+					Operator:         d.Operator,
+					RouteNumber:      d.RouteNumber,
+					DepartureStation: d.DepartureStation,
+					ArrivalStation:   d.ArrivalStation,
+					DepartureTime:    d.DepartureTime,
+					ArrivalTime:      d.ArrivalTime,
+					Seat:             d.Seat,
+					Class:            d.Class,
+					Platform:         d.Platform,
+				},
+			}
+		}
+	case "cruise":
+		var d booking.CruiseDetails
+		if json.Unmarshal(raw, &d) == nil {
+			proto.BookingDetails = &toquiv1.Booking_CruiseDetails{
+				CruiseDetails: &toquiv1.CruiseDetails{
+					CruiseLine:    d.CruiseLine,
+					ShipName:      d.ShipName,
+					DeparturePort: d.DeparturePort,
+					ArrivalPort:   d.ArrivalPort,
+					CabinNumber:   d.CabinNumber,
+					CabinType:     d.CabinType,
+					Deck:          d.Deck,
+					NumPassengers: int32(d.NumPassengers),
+					PortsOfCall:   d.PortsOfCall,
+				},
+			}
+		}
+	case "transfer":
+		var d booking.TransferDetails
+		if json.Unmarshal(raw, &d) == nil {
+			proto.BookingDetails = &toquiv1.Booking_TransferDetails{
+				TransferDetails: &toquiv1.TransferDetails{
+					Operator:        d.Operator,
+					VehicleType:     d.VehicleType,
+					PickupLocation:  d.PickupLocation,
+					DropoffLocation: d.DropoffLocation,
+					PickupTime:      d.PickupTime,
+					NumPassengers:   int32(d.NumPassengers),
+					DriverName:      d.DriverName,
+					FlightNumber:    d.FlightNumber,
+				},
+			}
+		}
 	}
 }
 
@@ -435,6 +612,14 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, tripID 
 		itemType = "restaurant"
 	case "BOOKING_TYPE_TRAIN", "train":
 		itemType = "train"
+	case "BOOKING_TYPE_FERRY", "ferry":
+		itemType = "ferry"
+	case "BOOKING_TYPE_BUS", "bus":
+		itemType = "bus"
+	case "BOOKING_TYPE_CRUISE", "cruise":
+		itemType = "cruise"
+	case "BOOKING_TYPE_TRANSFER", "transfer":
+		itemType = "transfer"
 	}
 
 	// Determine day number from start_time if available.

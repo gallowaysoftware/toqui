@@ -11,8 +11,10 @@ import "toqui/v1/common.proto";
 service BookingService {
   rpc IngestBooking(IngestBookingRequest) returns (IngestBookingResponse);
   rpc IngestEmail(IngestEmailRequest) returns (IngestEmailResponse);
+  rpc UpdateBooking(UpdateBookingRequest) returns (UpdateBookingResponse);
   rpc ListBookings(ListBookingsRequest) returns (ListBookingsResponse);
   rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
+  rpc GetTripCostSummary(GetTripCostSummaryRequest) returns (GetTripCostSummaryResponse);
   rpc LinkBookingToTrip(LinkBookingToTripRequest) returns (LinkBookingToTripResponse);
   rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse);
   rpc ExtractBookingField(ExtractBookingFieldRequest) returns (ExtractBookingFieldResponse);
@@ -36,6 +38,12 @@ message Booking {
   string departure_location = 15;
   string arrival_location = 16;
   int32 num_guests = 17;
+  // Price tracking: amount in smallest currency unit (cents/pence).
+  int64 price_cents = 18;
+  // ISO 4217 currency code (e.g. "USD", "EUR", "CAD").
+  string currency = 19;
+  // IANA timezone identifier for local display (e.g. "America/New_York").
+  string timezone = 27;
 
   oneof booking_details {
     FlightDetails flight_details = 20;
@@ -45,6 +53,10 @@ message Booking {
     TourDetails tour_details = 24;
     ActivityDetails activity_details = 25;
     RestaurantDetails restaurant_details = 26;
+    FerryDetails ferry_details = 28;
+    BusDetails bus_details = 29;
+    CruiseDetails cruise_details = 30;
+    TransferDetails transfer_details = 31;
   }
 }
 
@@ -149,6 +161,54 @@ message RestaurantDetails {
   string notes = 4;
 }
 
+message FerryDetails {
+  string operator = 1;
+  string vessel_name = 2;
+  string departure_port = 3;
+  string arrival_port = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string cabin_type = 7;
+  string deck = 8;
+  int32 num_passengers = 9;
+  bool vehicle_included = 10;
+}
+
+message BusDetails {
+  string operator = 1;
+  string route_number = 2;
+  string departure_station = 3;
+  string arrival_station = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string seat = 7;
+  string class = 8;
+  string platform = 9;
+}
+
+message CruiseDetails {
+  string cruise_line = 1;
+  string ship_name = 2;
+  string departure_port = 3;
+  string arrival_port = 4;
+  string cabin_number = 5;
+  string cabin_type = 6;
+  string deck = 7;
+  int32 num_passengers = 8;
+  repeated string ports_of_call = 9;
+}
+
+message TransferDetails {
+  string operator = 1;
+  string vehicle_type = 2;
+  string pickup_location = 3;
+  string dropoff_location = 4;
+  string pickup_time = 5;
+  int32 num_passengers = 6;
+  string driver_name = 7;
+  string flight_number = 8;
+}
+
 enum BookingType {
   BOOKING_TYPE_UNSPECIFIED = 0;
   BOOKING_TYPE_FLIGHT = 1;
@@ -159,6 +219,10 @@ enum BookingType {
   BOOKING_TYPE_RESTAURANT = 6;
   BOOKING_TYPE_OTHER = 7;
   BOOKING_TYPE_TOUR = 8;
+  BOOKING_TYPE_FERRY = 9;
+  BOOKING_TYPE_BUS = 10;
+  BOOKING_TYPE_CRUISE = 11;
+  BOOKING_TYPE_TRANSFER = 12;
 }
 
 enum BookingSource {
@@ -186,6 +250,28 @@ message IngestEmailResponse {
   repeated Booking bookings = 1;
 }
 
+message UpdateBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Fields to update — only non-empty values are applied (COALESCE pattern).
+  string title = 2;
+  BookingType type = 3;
+  string confirmation_code = 4;
+  string provider = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+  string address = 8;
+  string departure_location = 9;
+  string arrival_location = 10;
+  int32 num_guests = 11;
+  int64 price_cents = 12;
+  string currency = 13;
+  string timezone = 14;
+}
+
+message UpdateBookingResponse {
+  Booking booking = 1;
+}
+
 message ListBookingsRequest {
   string trip_id = 1 [(buf.validate.field).string.uuid = true];
   PaginationRequest pagination = 2;
@@ -202,6 +288,22 @@ message GetBookingRequest {
 
 message GetBookingResponse {
   Booking booking = 1;
+}
+
+message GetTripCostSummaryRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetTripCostSummaryResponse {
+  // Total cost in cents, grouped by currency.
+  repeated CurrencyTotal totals = 1;
+  int32 booking_count = 2;
+}
+
+message CurrencyTotal {
+  string currency = 1;
+  int64 total_cents = 2;
+  int32 booking_count = 3;
 }
 
 message LinkBookingToTripRequest {
