@@ -28,3 +28,7 @@ buf.lock
 # AI test reports
 **/aitest-reports/
 .claude/worktrees/
+
+# Built binaries (build via `go build -o /tmp/testctl ./cmd/testctl` instead)
+/testctl
+/server

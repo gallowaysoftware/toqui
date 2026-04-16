@@ -217,12 +217,18 @@ API test collections live in `tests/bruno/`. These are Bruno HTTP client collect
 
 GitHub Actions on push to `main` and all PRs (GitHub-hosted runners):
 
-- **toqui-backend**: lint, test (with coverage), build run in parallel → **deploy to prod** (main only, Cloud Run)
+- **toqui-backend**: lint, test (with coverage), build run in parallel → `deploy-staging` auto-runs on push-to-main; `deploy-prod` only runs on manual `workflow_dispatch` (see below)
 - **toqui**: lint+typecheck, test, build run in parallel → **deploy to prod** (main only, Cloud Run)
 - **toqui-site**: build (Cloudflare Pages auto-deploys from main)
 - **toqui-admin**: build (Cloudflare Pages auto-deploys from main)
 
-**Prod auto-deploy**: Push to `main` triggers `deploy-prod` job: Docker build → push to Artifact Registry → run migrations via Cloud Run Jobs → deploy to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). Migrations run BEFORE deploy to avoid schema mismatch.
+**Prod deploy is MANUAL.** The backend `deploy-prod` job is gated on `github.event_name == 'workflow_dispatch'`, so merging to `main` does NOT auto-deploy to prod — it only redeploys staging. To ship a main commit to prod, trigger the workflow manually:
+
+```bash
+gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main
+```
+
+This runs migrations via Cloud Run Jobs first (to avoid schema mismatch), then builds + pushes the image to Artifact Registry, then deploys to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). If you're unsure whether prod is behind, compare `gcloud run services describe toqui-backend --region=northamerica-northeast1 --project=toqui-prod --format='value(spec.template.spec.containers[0].image)'` (the image tag is the git SHA) against `git rev-parse origin/main`.
 
 **Staging**: Kept running (~$32/mo) for continuous testing. Can be torn down via `terraform destroy` in `environments/staging/` if needed. Shared infra (WIF, Artifact Registry) lives in `toqui-infra` GCP project, managed by `environments/infra/` in toqui-terraform.
 
@@ -612,9 +618,23 @@ Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret 
 
 ### Deploying to Prod
 
-**Automatic**: Push to `main` → GitHub Actions runs migrations via Cloud Run Jobs FIRST, then builds Docker image, pushes to Artifact Registry, and deploys to Cloud Run. Migrations run before deploy to avoid schema mismatch. Uses WIF (keyless GCP auth).
+**CI-driven (preferred)**: Prod deploys are **manual via `workflow_dispatch`** (not auto on push to main). Trigger from the CLI:
 
-**Manual** (if needed):
+```bash
+gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main
+```
+
+The `deploy-prod` job runs migrations via Cloud Run Jobs FIRST (to avoid schema mismatch), then builds + pushes the Docker image to Artifact Registry, then deploys to Cloud Run. Uses WIF (keyless GCP auth). Merging a PR to `main` only redeploys staging; prod stays on its current revision until someone dispatches the workflow.
+
+**Verify prod vs main before dispatching**:
+```bash
+gcloud run services describe toqui-backend \
+  --region=northamerica-northeast1 --project=toqui-prod \
+  --format='value(spec.template.spec.containers[0].image)'
+# image tag is the git SHA; compare to: git rev-parse origin/main
+```
+
+**Raw gcloud (if CI is broken)**:
 
 ```bash
 IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
