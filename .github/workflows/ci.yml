@@ -104,6 +104,12 @@ jobs:
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
       - name: Deploy to Cloud Run
+        # Use --update-env-vars (not --set-env-vars) so we don't wipe
+        # Terraform-managed env vars (POSTHOG_KEY, SENTRY_DSN, etc.) on
+        # every deploy. --set-env-vars replaces the ENTIRE env var set;
+        # that was silently clearing analytics + error tracking and, when
+        # vars.GOOGLE_CLIENT_ID was unset, clearing the OAuth client ID
+        # too — which broke Google sign-in on app.toqui.travel.
         run: |
           IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
@@ -113,7 +119,7 @@ jobs:
             --port=8080 \
             --allow-unauthenticated \
             --remove-secrets=GOOGLE_CLIENT_ID \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
+            --update-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
 
   deploy-prod:
     name: Deploy to Production
@@ -136,6 +142,9 @@ jobs:
             --project=toqui-infra || \
             (echo "ERROR: Image $IMAGE:${{ github.sha }} not found. Run staging deploy first." && exit 1)
       - name: Deploy to Cloud Run (promote staging image)
+        # Use --update-env-vars (not --set-env-vars) so we don't wipe
+        # Terraform-managed env vars (POSTHOG_KEY, SENTRY_DSN, etc.) on
+        # every deploy. See staging deploy comment above.
         run: |
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
@@ -144,4 +153,4 @@ jobs:
             --port=8080 \
             --allow-unauthenticated \
             --remove-secrets=GOOGLE_CLIENT_ID \
-            --set-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
+            --update-env-vars="EXPO_PUBLIC_API_URL=https://api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
