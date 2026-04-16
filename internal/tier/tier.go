@@ -12,8 +12,11 @@ const (
 	// affiliate-only; the FTC disclosure is included with every link.
 	Free UserTier = "free"
 
-	// Pro is the paid tier (per-trip unlock). Pro users receive unbiased
-	// recommendations from any source with no affiliate requirement.
+	// Pro is the paid tier (per-trip unlock). Pro users get unlimited
+	// expert handoffs, PDF/calendar export, and extended message limits.
+	// Booking recommendations currently use the same affiliate partners as
+	// the free tier; tier-weighted ranking and a widened candidate pool are
+	// planned but not yet implemented.
 	Pro UserTier = "pro"
 
 	// Explorer is a subscription tier with expanded limits.

@@ -404,8 +404,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		expertTool = newExpertTeaserGate(suggestExpertTool, h.queries, gateTripID, userID)
 	}
 
-	// Recommend booking tool is available in all modes. Free-tier users get
-	// affiliate-linked results; Pro-tier users get unbiased recommendations.
+	// Recommend booking tool is available in all modes. All tiers receive
+	// affiliate-linked results with an FTC disclosure today; tier-weighted
+	// ranking for Pro is planned follow-on work.
 	var recommendBookingTool tools.Tool
 	if h.linkBuilder != nil {
 		rbt := NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
@@ -1208,8 +1209,15 @@ The user's existing trips:
 }
 
 // bookingInstructionsForTier returns the system prompt snippet that tells the
-// AI how to handle booking recommendations based on the user's subscription tier.
-func bookingInstructionsForTier(userTier tier.UserTier) string {
+// AI how to handle booking recommendations.
+//
+// Historically this branched on tier: Pro users got a "recommend the best
+// options regardless of affiliate partnerships" prompt that also dropped the
+// disclosure-inclusion requirement. That was incorrect — the recommend_booking
+// tool returns affiliate-linked URLs for every tier today, so every tier needs
+// the disclosure in the user-visible response for FTC compliance. The branch
+// has been removed until tier-weighted ranking is actually implemented.
+func bookingInstructionsForTier(_ tier.UserTier) string {
 	triggerPhrases := `
 When the user asks about ANY of the following, you MUST call the recommend_booking tool:
 - "book a flight", "find flights", "search for flights"
@@ -1220,9 +1228,6 @@ When the user asks about ANY of the following, you MUST call the recommend_booki
 - Any question about purchasing, reserving, or booking travel services
 Do NOT respond with text-only suggestions when the user is asking to BOOK something. Use the tool.`
 
-	if userTier.IsPro() {
-		return "BOOKING RECOMMENDATIONS: Recommend the best options regardless of affiliate partnerships. Use the recommend_booking tool when the user asks about flights, hotels, activities, car rentals, or travel insurance." + triggerPhrases
-	}
 	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
 }
 

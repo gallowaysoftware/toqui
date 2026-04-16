@@ -30,16 +30,28 @@ func TestBookingInstructionsForTier_Free(t *testing.T) {
 }
 
 func TestBookingInstructionsForTier_Pro(t *testing.T) {
-	instructions := bookingInstructionsForTier(tier.Pro)
+	// Pro and Free share the same booking instructions today. The tool
+	// returns affiliate-linked URLs for every tier, so Pro users still need
+	// the disclosure-inclusion requirement in the system prompt for FTC
+	// compliance. When tier-weighted ranking and a widened candidate pool
+	// land, this test should assert the new Pro-specific framing.
+	proInstructions := bookingInstructionsForTier(tier.Pro)
+	freeInstructions := bookingInstructionsForTier(tier.Free)
 
-	if !strings.Contains(instructions, "best options") {
-		t.Errorf("pro tier instructions should mention best options, got %q", instructions)
+	if proInstructions != freeInstructions {
+		t.Errorf("pro tier instructions should match free tier until tier-weighted ranking ships")
 	}
-	if !strings.Contains(instructions, "regardless of affiliate") {
-		t.Errorf("pro tier instructions should mention ignoring affiliate partnerships, got %q", instructions)
+	if !strings.Contains(proInstructions, "recommend_booking") {
+		t.Errorf("pro tier instructions should mention the recommend_booking tool, got %q", proInstructions)
 	}
-	if strings.Contains(instructions, "always use the recommend_booking tool to generate affiliate links") {
-		t.Errorf("pro tier instructions should not tell AI to always use affiliate links, got %q", instructions)
+	if !strings.Contains(proInstructions, "disclosure") {
+		t.Errorf("pro tier instructions must mention disclosure requirement (every tier gets affiliate URLs today), got %q", proInstructions)
+	}
+	if !strings.Contains(proInstructions, "legal requirement") {
+		t.Errorf("pro tier instructions must mention legal requirement for disclosure, got %q", proInstructions)
+	}
+	if strings.Contains(proInstructions, "regardless of affiliate") {
+		t.Errorf("pro tier instructions must not claim ignore-affiliate framing while URLs still carry affiliate IDs, got %q", proInstructions)
 	}
 }
 
@@ -60,8 +72,10 @@ func TestBuildTripContext_ProTier(t *testing.T) {
 	if !strings.Contains(ctx, "BOOKING RECOMMENDATIONS") {
 		t.Error("trip context should include booking recommendations section")
 	}
-	if !strings.Contains(ctx, "best options") {
-		t.Error("pro tier trip context should mention best options")
+	// Until tier-weighted ranking ships, Pro and Free share the same booking
+	// instructions — including the disclosure-inclusion requirement.
+	if !strings.Contains(ctx, "disclosure") {
+		t.Error("pro tier trip context should still mention disclosure requirement (affiliate URLs today)")
 	}
 }
 

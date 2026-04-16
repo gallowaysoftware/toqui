@@ -13,8 +13,11 @@ import (
 )
 
 // RecommendBookingTool is a chat tool that generates booking recommendations.
-// For free-tier users the recommendations include affiliate links and an FTC
-// disclosure. Pro-tier users receive unbiased recommendations instead.
+// Every recommendation includes an affiliate partner link and an FTC-style
+// disclosure, regardless of user tier. Pro-tier users currently see a softer
+// disclosure label (ProDisclosure) but the link itself still carries the same
+// affiliate IDs as free-tier. Tier-weighted ranking and a widened candidate
+// pool are planned follow-on work.
 type RecommendBookingTool struct {
 	linkBuilder     *affiliate.LinkBuilder
 	userTier        tier.UserTier
@@ -69,10 +72,12 @@ func (t *RecommendBookingTool) WithAnalytics(client *analytics.Client, userID st
 }
 
 func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
+	// NOTE: Description is identical across tiers. The tool's Execute path
+	// generates affiliate-linked URLs in every case, so promising the AI a
+	// "non-affiliate source" for Pro would mislead the model and risk it
+	// producing copy that contradicts the per-link disclosure. When a
+	// widened candidate pool lands, this branch can return.
 	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns partner-linked search results with disclosure."
-	if t.userTier.IsPro() {
-		description = "Generate booking recommendations from the best available sources. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns search results from the best sources."
-	}
 
 	return ai.ToolDefinition{
 		Name:        "recommend_booking",

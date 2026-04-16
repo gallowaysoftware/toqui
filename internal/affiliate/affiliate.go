@@ -35,9 +35,19 @@ type Recommendation struct {
 // FTCDisclosure is the standard disclosure text included with every affiliate recommendation.
 const FTCDisclosure = "This is a partner link. Toqui may earn a commission at no extra cost to you."
 
-// ProDisclosure is the disclosure text for Pro-tier users who receive unbiased
-// recommendations with no affiliate links attached.
-const ProDisclosure = "Unbiased recommendation \u2014 no affiliate links."
+// ProDisclosure is the disclosure text shown to Pro-tier users for booking
+// recommendations.
+//
+// Honest framing: today, Pro-tier URLs are still affiliate URLs. The tier
+// differentiator is that the AI is system-prompted to prioritize fit over
+// commission when choosing what to recommend — not that the link itself is
+// commission-free. Do not claim "no affiliate links" while the URL carries
+// an affiliate ID; that is an FTC-disclosure compliance risk.
+//
+// When the widened-candidate-pool + tier-weighted ranking work lands (the
+// Option A redesign), this string should be revisited to reflect the new
+// reality (e.g., "Ranked by fit; affiliate partners flagged inline").
+const ProDisclosure = "Recommended for your trip. This is a partner link \u2014 Toqui may earn a commission at no extra cost to you."
 
 // LinkBuilder generates affiliate URLs for each supported partner.
 type LinkBuilder struct {

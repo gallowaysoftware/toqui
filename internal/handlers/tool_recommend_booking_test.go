@@ -482,15 +482,26 @@ func TestRecommendBookingTool_FreeTier_DefinitionDescription(t *testing.T) {
 }
 
 func TestRecommendBookingTool_ProTier_DefinitionDescription(t *testing.T) {
+	// Pro and Free share the same tool description today. The Execute path
+	// returns affiliate URLs for every tier, so the description must not
+	// claim Pro results come from a non-affiliate source. When tier-weighted
+	// ranking and a widened candidate pool land, this test should be updated
+	// to assert the new Pro-specific framing.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{})
-	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
-	def := tool.Definition()
+	freeTool := NewRecommendBookingTool(lb, tier.Free, nil)
+	proTool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
-	if !strings.Contains(def.Description, "best available sources") {
-		t.Errorf("pro tier description should mention best available sources, got %q", def.Description)
+	if freeTool.Definition().Description != proTool.Definition().Description {
+		t.Errorf("pro tier description should match free tier until tier-weighted ranking ships; got free=%q pro=%q",
+			freeTool.Definition().Description, proTool.Definition().Description)
 	}
-	if strings.Contains(def.Description, "affiliate") {
-		t.Errorf("pro tier description should not mention affiliate links, got %q", def.Description)
+	if !strings.Contains(proTool.Definition().Description, "affiliate") {
+		t.Errorf("pro tier description must still mention affiliate (today every tier returns affiliate URLs), got %q",
+			proTool.Definition().Description)
+	}
+	if strings.Contains(proTool.Definition().Description, "best available sources") {
+		t.Errorf("pro tier description must not claim best-available-source framing while URLs still carry affiliate IDs, got %q",
+			proTool.Definition().Description)
 	}
 }
 
