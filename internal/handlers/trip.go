@@ -401,6 +401,13 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 		}
 	}
 	if err := h.tripSvc.ReplaceItineraryForOwnerOrEditor(ctx, userID, tripID, flat); err != nil {
+		// Defence-in-depth: the handler already gates via CanEditTrip
+		// above, but the service enforces its own authz precondition
+		// so direct service callers (e.g. tools wired up by future
+		// code) can't sneak in unauthorised writes (#343).
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to modify itinerary"))
+		}
 		return nil, internalError(ctx, "replace itinerary", err)
 	}
 

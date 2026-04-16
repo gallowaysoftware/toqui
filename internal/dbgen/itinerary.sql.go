@@ -153,7 +153,7 @@ func (q *Queries) DeleteItineraryItem(ctx context.Context, arg DeleteItineraryIt
 	return err
 }
 
-const deleteItineraryItemByOwnerOrEditor = `-- name: DeleteItineraryItemByOwnerOrEditor :exec
+const deleteItineraryItemByOwnerOrEditor = `-- name: DeleteItineraryItemByOwnerOrEditor :execrows
 DELETE FROM itinerary_items ii
 WHERE ii.id = $1
   AND ii.trip_id IN (
@@ -172,9 +172,12 @@ type DeleteItineraryItemByOwnerOrEditorParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteItineraryItemByOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemByOwnerOrEditorParams) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItemByOwnerOrEditor, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteItineraryItemByOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemByOwnerOrEditorParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItineraryItemByOwnerOrEditor, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteItineraryItemsByTrip = `-- name: DeleteItineraryItemsByTrip :exec
@@ -193,7 +196,7 @@ func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItin
 	return err
 }
 
-const deleteItineraryItemsByTripForOwnerOrEditor = `-- name: DeleteItineraryItemsByTripForOwnerOrEditor :exec
+const deleteItineraryItemsByTripForOwnerOrEditor = `-- name: DeleteItineraryItemsByTripForOwnerOrEditor :execrows
 DELETE FROM itinerary_items ii
 WHERE ii.trip_id = $1
   AND ii.trip_id IN (
@@ -212,9 +215,12 @@ type DeleteItineraryItemsByTripForOwnerOrEditorParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteItineraryItemsByTripForOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemsByTripForOwnerOrEditorParams) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItemsByTripForOwnerOrEditor, arg.TripID, arg.UserID)
-	return err
+func (q *Queries) DeleteItineraryItemsByTripForOwnerOrEditor(ctx context.Context, arg DeleteItineraryItemsByTripForOwnerOrEditorParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItineraryItemsByTripForOwnerOrEditor, arg.TripID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getItineraryItemByBooking = `-- name: GetItineraryItemByBooking :one

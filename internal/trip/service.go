@@ -29,6 +29,11 @@ var ErrInvalidStatusTransition = errors.New("invalid trip status transition")
 // connect.CodeInvalidArgument.
 var ErrInvalidInitialStatus = errors.New("invalid initial trip status")
 
+// ErrNotOwnerOrEditor is returned by service methods that require owner or
+// editor-role collaborator authz when the caller has neither. Handlers
+// should map this to connect.CodePermissionDenied (#343).
+var ErrNotOwnerOrEditor = errors.New("user is not trip owner or editor-role collaborator")
+
 // shareTokenAlphabet is the character set for generating share tokens.
 const shareTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -572,18 +577,30 @@ func (s *Service) DeleteItineraryItems(ctx context.Context, userID uuid.UUID, it
 }
 
 // DeleteItineraryItemsForOwnerOrEditor is like DeleteItineraryItems but also
-// allows accepted editor-role collaborators to delete items (#263).
+// allows accepted editor-role collaborators to delete items (#263). The
+// underlying query enforces authz in SQL (trip owner OR editor-role
+// collaborator), so a viewer or non-collaborator sees zero rows affected.
+// Callers receive only the IDs that were actually deleted — matching the
+// DB truth, not the mere absence of a pgx error (#343).
 func (s *Service) DeleteItineraryItemsForOwnerOrEditor(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) ([]uuid.UUID, error) {
 	var deleted []uuid.UUID
 	var lastErr error
 	for _, id := range itemIDs {
-		err := s.queries.DeleteItineraryItemByOwnerOrEditor(ctx, dbgen.DeleteItineraryItemByOwnerOrEditorParams{
+		rows, err := s.queries.DeleteItineraryItemByOwnerOrEditor(ctx, dbgen.DeleteItineraryItemByOwnerOrEditorParams{
 			ID:     id,
 			UserID: userID,
 		})
 		if err != nil {
 			slog.Error("delete itinerary item (owner/editor)", "item_id", id, "error", err)
 			lastErr = err
+			continue
+		}
+		// Zero rows means either the item doesn't exist or the caller is
+		// not owner/editor — both should be reported as "not deleted"
+		// rather than silently succeeding. Previously the query was
+		// annotated :exec (no RowsAffected) and callers saw a bogus
+		// success for every ID regardless of authz (#343).
+		if rows == 0 {
 			continue
 		}
 		deleted = append(deleted, id)
@@ -712,7 +729,22 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 
 // ReplaceItineraryForOwnerOrEditor is like ReplaceItinerary but also allows
 // accepted editor-role collaborators to replace the itinerary (#263).
+//
+// Authz is enforced in two places as defence-in-depth:
+//  1. An explicit CanEditTrip pre-check before the transaction begins — the
+//     internal CreateItineraryItem query does not itself verify ownership,
+//     so a caller whose delete step was a no-op (viewer/non-collaborator)
+//     would otherwise silently INSERT new items into someone else's trip
+//     (#343). The pre-check rejects such callers with ErrNotOwnerOrEditor
+//     before any write happens.
+//  2. The DeleteItineraryItemsByTripForOwnerOrEditor query still filters in
+//     SQL, so any future caller that skips the helper and calls the query
+//     directly remains safe against the delete side of the hazard.
 func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
+	if !s.CanEditTrip(ctx, userID, tripID) {
+		return ErrNotOwnerOrEditor
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -720,7 +752,7 @@ func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, 
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.queries.WithTx(tx)
 
-	if err := qtx.DeleteItineraryItemsByTripForOwnerOrEditor(ctx, dbgen.DeleteItineraryItemsByTripForOwnerOrEditorParams{
+	if _, err := qtx.DeleteItineraryItemsByTripForOwnerOrEditor(ctx, dbgen.DeleteItineraryItemsByTripForOwnerOrEditorParams{
 		TripID: tripID,
 		UserID: userID,
 	}); err != nil {
