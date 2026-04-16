@@ -14,9 +14,15 @@ const (
 
 	// Pro is the paid tier (per-trip unlock). Pro users get unlimited
 	// expert handoffs, PDF/calendar export, and extended message limits.
-	// Booking recommendations currently use the same affiliate partners as
-	// the free tier; tier-weighted ranking and a widened candidate pool are
-	// planned but not yet implemented.
+	// Booking recommendations prefer commission-free sources: the
+	// recommend_booking tool picks an independent source (Google Flights,
+	// Google Maps, Wikivoyage, Google search) over an affiliate partner
+	// whenever one is available. Today every category exposes at least one
+	// independent candidate, so Pro users see IndependentDisclosure on
+	// every recommendation. The affiliate package's SelectForPreference
+	// also handles the defensive case where a category has no independent
+	// candidate by falling back to the affiliate partner with an honest
+	// "partner link" disclosure.
 	Pro UserTier = "pro"
 
 	// Explorer is a subscription tier with expanded limits.

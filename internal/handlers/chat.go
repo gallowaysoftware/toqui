@@ -404,9 +404,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		expertTool = newExpertTeaserGate(suggestExpertTool, h.queries, gateTripID, userID)
 	}
 
-	// Recommend booking tool is available in all modes. All tiers receive
-	// affiliate-linked results with an FTC disclosure today; tier-weighted
-	// ranking for Pro is planned follow-on work.
+	// Recommend booking tool is available in all modes. Free-tier callers
+	// receive affiliate-linked results (FTCDisclosure). Pro-tier callers
+	// receive non-affiliate sources (IndependentDisclosure) — every
+	// category currently exposes at least one independent candidate, but
+	// SelectForPreference also handles the defensive case where it doesn't
+	// (falls back to an affiliate partner with ProDisclosure).
 	var recommendBookingTool tools.Tool
 	if h.linkBuilder != nil {
 		rbt := NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
@@ -415,7 +418,19 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			mu.Unlock()
 		})
 		if destinationCountry != "" || tripStartDateISO != "" || req.Msg.TripId != "" {
-			rbt = rbt.WithTripContext(destinationCountry, tripStartDateISO, tripEndDateISO, req.Msg.TripId)
+			// Convert ISO country code (e.g. "JP") to a human country name
+			// (e.g. "Japan") before handing it to the tool. The tool treats
+			// this as a city/place name in URL construction — passing the
+			// raw 2-letter code produces user-visible nonsense like
+			// "Hotels in JP on Google Maps" or wikivoyage.org/wiki/JP.
+			// GetLocationProfile covers all 43 supported countries; if the
+			// code is unrecognised we fall back to the raw code rather than
+			// silently dropping the destination context.
+			tripDestName := destinationCountry
+			if profile := persona.GetLocationProfile(destinationCountry); profile != nil {
+				tripDestName = profile.Name
+			}
+			rbt = rbt.WithTripContext(tripDestName, tripStartDateISO, tripEndDateISO, req.Msg.TripId)
 		}
 		if h.analytics != nil {
 			rbt = rbt.WithAnalytics(h.analytics, userID.String())
@@ -1211,13 +1226,23 @@ The user's existing trips:
 // bookingInstructionsForTier returns the system prompt snippet that tells the
 // AI how to handle booking recommendations.
 //
-// Historically this branched on tier: Pro users got a "recommend the best
-// options regardless of affiliate partnerships" prompt that also dropped the
-// disclosure-inclusion requirement. That was incorrect — the recommend_booking
-// tool returns affiliate-linked URLs for every tier today, so every tier needs
-// the disclosure in the user-visible response for FTC compliance. The branch
-// has been removed until tier-weighted ranking is actually implemented.
-func bookingInstructionsForTier(_ tier.UserTier) string {
+// Free-tier callers receive an affiliate-first system prompt: every booking
+// link carries a Toqui partner ID, so the AI must include the FTC disclosure
+// in every reply.
+//
+// Pro-tier callers get a slightly different framing because the
+// recommend_booking tool now prefers non-affiliate sources (Google Flights,
+// Google Maps, Wikivoyage) over affiliate partners — see SelectForPreference
+// in the affiliate package. The AI is told that Pro recommendations prefer
+// independent sources and to include whichever disclosure string the tool
+// returns (independent or partner) verbatim. The "include the disclosure
+// from the tool result" rule applies in both cases — it's the safe path
+// whether the tool returned IndependentDisclosure or one of the affiliate
+// disclosures. The Pro framing is intentionally a behaviour claim ("prefers
+// independent sources") rather than a quality claim ("ranks by fit"): the
+// tool does not score sources for fit, it picks the first non-affiliate
+// candidate from a hand-curated list.
+func bookingInstructionsForTier(t tier.UserTier) string {
 	triggerPhrases := `
 When the user asks about ANY of the following, you MUST call the recommend_booking tool:
 - "book a flight", "find flights", "search for flights"
@@ -1227,6 +1252,10 @@ When the user asks about ANY of the following, you MUST call the recommend_booki
 - "car rental", "rent a car"
 - Any question about purchasing, reserving, or booking travel services
 Do NOT respond with text-only suggestions when the user is asking to BOOK something. Use the tool.`
+
+	if t.IsPro() {
+		return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For Pro users the tool prefers independent sources (Google Flights, Google Maps, Wikivoyage) over affiliate partners — Toqui earns no commission on most Pro recommendations. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the exact disclosure text from the tool result verbatim in your response to the user — the disclosure differs depending on whether the chosen source is independent or affiliate, and copying it as-is is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
+	}
 
 	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
 }

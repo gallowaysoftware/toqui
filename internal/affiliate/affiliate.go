@@ -18,6 +18,13 @@ const (
 	PartnerDiscoverCars Partner = "discovercars"
 	PartnerSafetyWing   Partner = "safetywing"
 	PartnerGeneric      Partner = "generic"
+
+	// Non-affiliate "independent" sources used when a user prefers a
+	// commission-free recommendation (e.g. Pro tier). These do not pay Toqui
+	// a commission and do not carry any tracking ID.
+	PartnerGoogle      Partner = "google"
+	PartnerWikivoyage  Partner = "wikivoyage"
+	PartnerOfficialGov Partner = "official_gov"
 )
 
 // Recommendation is a booking recommendation with an affiliate link.
@@ -35,19 +42,23 @@ type Recommendation struct {
 // FTCDisclosure is the standard disclosure text included with every affiliate recommendation.
 const FTCDisclosure = "This is a partner link. Toqui may earn a commission at no extra cost to you."
 
-// ProDisclosure is the disclosure text shown to Pro-tier users for booking
-// recommendations.
-//
-// Honest framing: today, Pro-tier URLs are still affiliate URLs. The tier
-// differentiator is that the AI is system-prompted to prioritize fit over
-// commission when choosing what to recommend — not that the link itself is
-// commission-free. Do not claim "no affiliate links" while the URL carries
-// an affiliate ID; that is an FTC-disclosure compliance risk.
-//
-// When the widened-candidate-pool + tier-weighted ranking work lands (the
-// Option A redesign), this string should be revisited to reflect the new
-// reality (e.g., "Ranked by fit; affiliate partners flagged inline").
+// ProDisclosure is the disclosure text shown to Pro-tier users when the
+// recommendation is delivered via an affiliate link. Today every category
+// in sources.go exposes at least one independent candidate, so Pro
+// recommendations almost always carry IndependentDisclosure instead. This
+// constant exists for the defensive path in SelectForPreference: if a
+// future change leaves a category with only affiliate sources, Pro users
+// see this softer label and the partner-link nature is still disclosed
+// honestly (and accurately — not as "ranked by fit", which the tool does
+// not do).
 const ProDisclosure = "Recommended for your trip. This is a partner link \u2014 Toqui may earn a commission at no extra cost to you."
+
+// IndependentDisclosure is the disclosure text shown when the
+// recommendation is delivered via a non-affiliate (independent) source —
+// e.g. a Google Flights search URL or a Wikivoyage page. Toqui earns no
+// commission on these clicks. Pro-tier users see this in place of
+// ProDisclosure whenever the selected source is non-affiliate.
+const IndependentDisclosure = "Independent source \u2014 Toqui earns no commission on this link."
 
 // LinkBuilder generates affiliate URLs for each supported partner.
 type LinkBuilder struct {

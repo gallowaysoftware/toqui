@@ -3,11 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
@@ -476,31 +476,46 @@ func TestRecommendBookingTool_FreeTier_DefinitionDescription(t *testing.T) {
 	if !strings.Contains(def.Description, "affiliate") {
 		t.Errorf("free tier description should mention affiliate links, got %q", def.Description)
 	}
-	if strings.Contains(def.Description, "best available sources") {
-		t.Errorf("free tier description should not mention best available sources, got %q", def.Description)
+	// Free-tier callers always get the affiliate candidate; the description
+	// must not claim "ranked by fit" or "commission-free" because there is
+	// no non-affiliate alternative in the free pool.
+	if strings.Contains(def.Description, "ranked by fit") {
+		t.Errorf("free tier description should not claim ranked-by-fit framing, got %q", def.Description)
+	}
+	if strings.Contains(def.Description, "commission-free") {
+		t.Errorf("free tier description should not claim 'commission-free' (free always uses affiliate), got %q", def.Description)
 	}
 }
 
 func TestRecommendBookingTool_ProTier_DefinitionDescription(t *testing.T) {
-	// Pro and Free share the same tool description today. The Execute path
-	// returns affiliate URLs for every tier, so the description must not
-	// claim Pro results come from a non-affiliate source. When tier-weighted
-	// ranking and a widened candidate pool land, this test should be updated
-	// to assert the new Pro-specific framing.
+	// Pro tier now diverges from free: the tool prefers non-affiliate
+	// sources and the description tells the AI so. The disclosure-inclusion
+	// requirement is still present so the AI never strips it.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{})
 	freeTool := NewRecommendBookingTool(lb, tier.Free, nil)
 	proTool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
-	if freeTool.Definition().Description != proTool.Definition().Description {
-		t.Errorf("pro tier description should match free tier until tier-weighted ranking ships; got free=%q pro=%q",
-			freeTool.Definition().Description, proTool.Definition().Description)
-	}
-	if !strings.Contains(proTool.Definition().Description, "affiliate") {
-		t.Errorf("pro tier description must still mention affiliate (today every tier returns affiliate URLs), got %q",
+	if freeTool.Definition().Description == proTool.Definition().Description {
+		t.Errorf("pro tier description should diverge from free tier now that tier-weighted ranking ships; got identical=%q",
 			proTool.Definition().Description)
 	}
-	if strings.Contains(proTool.Definition().Description, "best available sources") {
-		t.Errorf("pro tier description must not claim best-available-source framing while URLs still carry affiliate IDs, got %q",
+	if !strings.Contains(proTool.Definition().Description, "commission-free") {
+		t.Errorf("pro tier description should describe behaviour as 'prefers commission-free sources', got %q",
+			proTool.Definition().Description)
+	}
+	if !strings.Contains(proTool.Definition().Description, "independent") {
+		t.Errorf("pro tier description should mention independent sources, got %q",
+			proTool.Definition().Description)
+	}
+	if !strings.Contains(proTool.Definition().Description, "disclosure") {
+		t.Errorf("pro tier description must still require disclosure inclusion, got %q",
+			proTool.Definition().Description)
+	}
+	// "ranked by fit" is a quality claim the tool does not deliver. PR #331
+	// stripped this exact framing because the code didn't back it up — do
+	// not let it creep back into the tool description.
+	if strings.Contains(proTool.Definition().Description, "ranked by fit") {
+		t.Errorf("pro tier description must not claim ranking-by-fit (the tool picks first non-affiliate, no scoring), got %q",
 			proTool.Definition().Description)
 	}
 }
@@ -531,6 +546,9 @@ func TestRecommendBookingTool_FreeTier_Disclosure(t *testing.T) {
 }
 
 func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
+	// Pro tier prefers non-affiliate sources for flights (Google Flights),
+	// so the disclosure should be IndependentDisclosure and the URL must
+	// not carry the Skyscanner affiliate ID.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -550,12 +568,22 @@ func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
 		t.Fatalf("expected valid JSON response: %v", err)
 	}
 
-	if rec.Disclosure != affiliate.ProDisclosure {
-		t.Errorf("pro tier should have pro disclosure, got %q", rec.Disclosure)
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier flight should have independent disclosure, got %q", rec.Disclosure)
+	}
+	if rec.Partner != affiliate.PartnerGoogle {
+		t.Errorf("pro tier flight should select Google partner, got %q", rec.Partner)
+	}
+	if strings.Contains(rec.URL, "skyscanner.com") {
+		t.Errorf("pro tier flight URL should not be Skyscanner, got %q", rec.URL)
+	}
+	if strings.Contains(rec.URL, "associateid=sky123") {
+		t.Errorf("pro tier flight URL must not carry affiliate ID, got %q", rec.URL)
 	}
 }
 
 func TestRecommendBookingTool_ProTier_HotelDisclosure(t *testing.T) {
+	// Pro tier prefers Google Maps hotel search over Booking.com.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{BookingComID: "book456"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -573,12 +601,20 @@ func TestRecommendBookingTool_ProTier_HotelDisclosure(t *testing.T) {
 		t.Fatalf("expected valid JSON response: %v", err)
 	}
 
-	if rec.Disclosure != affiliate.ProDisclosure {
-		t.Errorf("pro tier hotel should have pro disclosure, got %q", rec.Disclosure)
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier hotel should have independent disclosure, got %q", rec.Disclosure)
+	}
+	if rec.Partner != affiliate.PartnerGoogle {
+		t.Errorf("pro tier hotel should select Google partner, got %q", rec.Partner)
+	}
+	if strings.Contains(rec.URL, "booking.com") {
+		t.Errorf("pro tier hotel URL should not be Booking.com, got %q", rec.URL)
 	}
 }
 
 func TestRecommendBookingTool_ProTier_ActivityDisclosure(t *testing.T) {
+	// Pro tier activity request without a city → falls back to Google Maps
+	// (still independent, just not Wikivoyage).
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{GetYourGuideID: "gyg789"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -595,12 +631,16 @@ func TestRecommendBookingTool_ProTier_ActivityDisclosure(t *testing.T) {
 		t.Fatalf("expected valid JSON response: %v", err)
 	}
 
-	if rec.Disclosure != affiliate.ProDisclosure {
-		t.Errorf("pro tier activity should have pro disclosure, got %q", rec.Disclosure)
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier activity should have independent disclosure, got %q", rec.Disclosure)
+	}
+	if strings.Contains(rec.URL, "getyourguide.com") {
+		t.Errorf("pro tier activity URL should not be GetYourGuide, got %q", rec.URL)
 	}
 }
 
 func TestRecommendBookingTool_ProTier_CarRentalDisclosure(t *testing.T) {
+	// Pro tier prefers Google Maps "car rental near X" over DiscoverCars.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{DiscoverCarsID: "dc202"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -618,12 +658,25 @@ func TestRecommendBookingTool_ProTier_CarRentalDisclosure(t *testing.T) {
 		t.Fatalf("expected valid JSON response: %v", err)
 	}
 
-	if rec.Disclosure != affiliate.ProDisclosure {
-		t.Errorf("pro tier car rental should have pro disclosure, got %q", rec.Disclosure)
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier car rental should have independent disclosure, got %q", rec.Disclosure)
+	}
+	if strings.Contains(rec.URL, "discovercars.com") {
+		t.Errorf("pro tier car rental URL should not be DiscoverCars, got %q", rec.URL)
+	}
+	if strings.Contains(rec.URL, "a_aid=dc202") {
+		t.Errorf("pro tier car rental URL must not carry affiliate ID, got %q", rec.URL)
 	}
 }
 
 func TestRecommendBookingTool_ProTier_InsuranceDisclosure(t *testing.T) {
+	// Insurance has the weakest independent alternative (a plain Google
+	// search), but it IS still an independent URL — clicking it doesn't
+	// earn Toqui a commission. So Pro users get IndependentDisclosure here
+	// too. The ProDisclosure constant remains available for the defensive
+	// fallback path: if InsuranceSources is ever changed to omit the
+	// Google search, SelectForPreference falls back to the affiliate
+	// candidate and the soft Pro label kicks in.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SafetyWingID: "sw303"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -641,8 +694,72 @@ func TestRecommendBookingTool_ProTier_InsuranceDisclosure(t *testing.T) {
 		t.Fatalf("expected valid JSON response: %v", err)
 	}
 
-	if rec.Disclosure != affiliate.ProDisclosure {
-		t.Errorf("pro tier insurance should have pro disclosure, got %q", rec.Disclosure)
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier insurance should have independent disclosure (Google search fallback exists), got %q", rec.Disclosure)
+	}
+	if rec.Partner != affiliate.PartnerGoogle {
+		t.Errorf("pro tier insurance should select Google partner, got %q", rec.Partner)
+	}
+	if strings.Contains(rec.URL, "safetywing.com") {
+		t.Errorf("pro tier insurance URL should not be SafetyWing, got %q", rec.URL)
+	}
+	if strings.Contains(rec.URL, "referenceID=sw303") {
+		t.Errorf("pro tier insurance URL must not carry SafetyWing affiliate ID, got %q", rec.URL)
+	}
+}
+
+// TestRecommendBookingTool_ProTier_InsuranceFallback_NoGoogleSource
+// exercises the documented affiliate-fallback path by hand-constructing a
+// scenario where SelectForPreference can't find a non-affiliate source. We
+// verify it via the affiliate package's primitives directly because
+// InsuranceSources currently always emits a Google search candidate.
+func TestRecommendBookingTool_ProTier_InsuranceFallback_NoGoogleSource(t *testing.T) {
+	onlyAffiliate := []affiliate.Source{
+		{
+			ID:          "safetywing",
+			Partner:     affiliate.PartnerSafetyWing,
+			IsAffiliate: true,
+			URL:         "https://safetywing.com/nomad-insurance?referenceID=sw303",
+		},
+	}
+	selected := affiliate.SelectForPreference(true, onlyAffiliate)
+	if selected.ID != "safetywing" {
+		t.Fatalf("expected affiliate fallback when no independent option exists, got %+v", selected)
+	}
+	disc := affiliate.DisclosureFor(selected, true)
+	if disc != affiliate.ProDisclosure {
+		t.Errorf("affiliate fallback for Pro should use ProDisclosure, got %q", disc)
+	}
+}
+
+// TestRecommendBookingTool_ProTier_ActivityWithCity exercises the
+// Wikivoyage+Google Maps Pro path: the source builder includes Wikivoyage
+// when a city is set, and SelectForPreference takes the first non-affiliate
+// (Google Maps) per the affiliate-first ordering. We additionally confirm
+// the disclosure is independent.
+func TestRecommendBookingTool_ProTier_ActivityWithCity(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{GetYourGuideID: "gyg789"})
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+	tool = tool.WithTripContext("Prague", "", "", "")
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "activity",
+		"query": "walking tour"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Disclosure != affiliate.IndependentDisclosure {
+		t.Errorf("pro tier activity with city should have independent disclosure, got %q", rec.Disclosure)
+	}
+	if strings.Contains(rec.URL, "getyourguide.com") {
+		t.Errorf("pro tier activity URL should not be GetYourGuide, got %q", rec.URL)
 	}
 }
 
@@ -752,12 +869,31 @@ func TestRecommendBookingTool_NoTripID_NoSubID(t *testing.T) {
 
 // --- Analytics tracking tests ---
 
-func TestRecommendBookingTool_WithAnalytics_FreeTier_TracksEvent(t *testing.T) {
-	// Use a no-op analytics client (disabled) — just verify the wiring doesn't panic
-	client := analytics.NewClient("")
+// recordingTracker is a test stub satisfying the analyticsTracker interface.
+// It captures every Track() call so tests can assert exactly which events
+// fired and which properties were sent — important for affiliate_link_generated
+// because CLAUDE.md privacy rules forbid logging destination names.
+type recordingTracker struct {
+	events []recordedEvent
+}
+
+type recordedEvent struct {
+	userID     string
+	event      string
+	properties map[string]any
+}
+
+func (r *recordingTracker) Track(userID, event string, properties map[string]any) {
+	r.events = append(r.events, recordedEvent{userID: userID, event: event, properties: properties})
+}
+
+func TestRecommendBookingTool_WithAnalytics_FreeTier_TracksAffiliateLink(t *testing.T) {
+	// Free-tier flight → Skyscanner (affiliate) → event must fire with
+	// exactly the documented properties.
+	tracker := &recordingTracker{}
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
 	tool := NewRecommendBookingTool(lb, tier.Free, nil)
-	tool = tool.WithAnalytics(client, "user-123")
+	tool = tool.WithAnalytics(tracker, "user-123")
 	tool = tool.WithTripContext("France", "", "", "trip-123")
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{
@@ -769,15 +905,46 @@ func TestRecommendBookingTool_WithAnalytics_FreeTier_TracksEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
+	if len(tracker.events) != 1 {
+		t.Fatalf("expected exactly 1 analytics event for free-tier affiliate link, got %d: %+v", len(tracker.events), tracker.events)
+	}
+	ev := tracker.events[0]
+	if ev.event != "affiliate_link_generated" {
+		t.Errorf("expected event=affiliate_link_generated, got %q", ev.event)
+	}
+	if ev.userID != "user-123" {
+		t.Errorf("expected raw userID passed to tracker (hashing happens inside the client), got %q", ev.userID)
+	}
+	if got := ev.properties["partner"]; got != string(affiliate.PartnerSkyscanner) {
+		t.Errorf("expected partner=skyscanner, got %v", got)
+	}
+	if got := ev.properties["category"]; got != "flight" {
+		t.Errorf("expected category=flight, got %v", got)
+	}
+	if got := ev.properties["tier"]; got != string(tier.Free) {
+		t.Errorf("expected tier=free, got %v", got)
+	}
+	// Privacy regression guard: CLAUDE.md forbids logging destination names
+	// (or country codes — the field used to carry "France"). The set of keys
+	// must be exactly {partner, category, tier} so a future addition of
+	// destination/destination_country/region is caught immediately.
+	allowedKeys := map[string]bool{"partner": true, "category": true, "tier": true}
+	for k := range ev.properties {
+		if !allowedKeys[k] {
+			t.Errorf("unexpected analytics property %q (CLAUDE.md privacy rules forbid extra context, esp. destinations); got props=%v", k, ev.properties)
+		}
+	}
 }
 
-func TestRecommendBookingTool_WithAnalytics_ProTier_NoTracking(t *testing.T) {
-	// Pro-tier users should NOT have affiliate events tracked since they
-	// don't receive affiliate links
-	client := analytics.NewClient("")
+func TestRecommendBookingTool_WithAnalytics_ProTier_NoTrackingForIndependent(t *testing.T) {
+	// Pro-tier flight → Google Flights (independent) → no affiliate link is
+	// generated, so the event MUST NOT fire. This is the privacy-positive
+	// promise of the Pro tier — verifying with a real recorder, not a no-op.
+	tracker := &recordingTracker{}
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
-	tool = tool.WithAnalytics(client, "user-456")
+	tool = tool.WithAnalytics(tracker, "user-456")
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{
 		"category": "flight",
@@ -787,6 +954,82 @@ func TestRecommendBookingTool_WithAnalytics_ProTier_NoTracking(t *testing.T) {
 	}`))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tracker.events) != 0 {
+		t.Errorf("Pro-tier independent source must not generate analytics events, got %d events: %+v", len(tracker.events), tracker.events)
+	}
+}
+
+func TestRecommendBookingTool_WithAnalytics_ProTier_DoesNotLogDestinationForIndependent(t *testing.T) {
+	// Defensive: even when a Pro user has trip context with a destination,
+	// the event suppression and the no-destination-properties rule both
+	// hold. This is the test that would catch a regression if a future
+	// change started firing the event for independent sources OR added
+	// destination_country back to the props.
+	tracker := &recordingTracker{}
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{
+		SkyscannerID: "sky123", BookingComID: "book456", GetYourGuideID: "gyg789",
+		DiscoverCarsID: "dc202", SafetyWingID: "sw303",
+	})
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+	tool = tool.WithAnalytics(tracker, "user-pro")
+	tool = tool.WithTripContext("Japan", "2026-06-15", "2026-06-20", "trip-uuid-xyz")
+
+	for _, category := range []string{"flight", "hotel", "activity", "car_rental", "insurance"} {
+		args := fmt.Sprintf(`{"category": %q, "query": "test", "destination": "Tokyo"}`, category)
+		_, err := tool.Execute(context.Background(), json.RawMessage(args))
+		if err != nil {
+			t.Fatalf("unexpected error for category %q: %v", category, err)
+		}
+	}
+
+	// All five Pro categories prefer independent today, so zero events.
+	if len(tracker.events) != 0 {
+		t.Errorf("Pro tier across all categories must not generate any analytics events today (every category has an independent fallback), got %d events: %+v",
+			len(tracker.events), tracker.events)
+	}
+}
+
+func TestRecommendBookingTool_WithAnalytics_AffiliateFallback_TracksWithoutDestination(t *testing.T) {
+	// Hand-construct the defensive Pro-tier affiliate-fallback path so we
+	// can verify (a) the event DOES fire when the selected source carries
+	// an affiliate ID, and (b) the properties are still scrubbed of any
+	// destination context. The natural "Pro insurance" path does not hit
+	// this branch today (Google search is non-affiliate), so we exercise
+	// the handler logic by injecting a tracker and using a free-tier
+	// insurance call which DOES select SafetyWing.
+	tracker := &recordingTracker{}
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SafetyWingID: "sw303"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+	tool = tool.WithAnalytics(tracker, "user-789")
+	tool = tool.WithTripContext("Japan", "", "", "trip-789")
+
+	_, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "insurance",
+		"query": "travel insurance for Japan",
+		"destination": "Japan"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tracker.events) != 1 {
+		t.Fatalf("expected 1 event for affiliate insurance, got %d: %+v", len(tracker.events), tracker.events)
+	}
+	ev := tracker.events[0]
+	if ev.event != "affiliate_link_generated" {
+		t.Errorf("expected event=affiliate_link_generated, got %q", ev.event)
+	}
+	if got := ev.properties["partner"]; got != string(affiliate.PartnerSafetyWing) {
+		t.Errorf("expected partner=safetywing, got %v", got)
+	}
+	// Privacy regression guard: even with a destination set in trip context
+	// AND in the args, the event must not carry it.
+	for _, forbidden := range []string{"destination", "destination_country", "destination_city", "country", "region"} {
+		if _, present := ev.properties[forbidden]; present {
+			t.Errorf("analytics event must not include %q (CLAUDE.md privacy rules), got props=%v", forbidden, ev.properties)
+		}
 	}
 }
 

@@ -30,28 +30,51 @@ func TestBookingInstructionsForTier_Free(t *testing.T) {
 }
 
 func TestBookingInstructionsForTier_Pro(t *testing.T) {
-	// Pro and Free share the same booking instructions today. The tool
-	// returns affiliate-linked URLs for every tier, so Pro users still need
-	// the disclosure-inclusion requirement in the system prompt for FTC
-	// compliance. When tier-weighted ranking and a widened candidate pool
-	// land, this test should assert the new Pro-specific framing.
+	// Pro tier now diverges from free: the tool prefers non-affiliate
+	// sources and the system prompt tells the AI so. The disclosure rule
+	// stays — for insurance and other affiliate-fallback categories the
+	// disclosure is still mandatory, and for independent sources the AI
+	// must include the IndependentDisclosure verbatim.
 	proInstructions := bookingInstructionsForTier(tier.Pro)
 	freeInstructions := bookingInstructionsForTier(tier.Free)
 
-	if proInstructions != freeInstructions {
-		t.Errorf("pro tier instructions should match free tier until tier-weighted ranking ships")
+	if proInstructions == freeInstructions {
+		t.Errorf("pro tier instructions should diverge from free tier now that tier-weighted ranking ships")
 	}
 	if !strings.Contains(proInstructions, "recommend_booking") {
 		t.Errorf("pro tier instructions should mention the recommend_booking tool, got %q", proInstructions)
 	}
+	if !strings.Contains(proInstructions, "prefers independent sources") {
+		t.Errorf("pro tier instructions should describe behaviour as 'prefers independent sources', got %q", proInstructions)
+	}
+	// "ranks by fit" is a quality claim the tool does not deliver — it
+	// picks the first non-affiliate candidate from a hand-curated list, no
+	// scoring is involved. PR #331 stripped this exact phrasing because the
+	// code didn't back it up; do not let it creep back in.
+	if strings.Contains(proInstructions, "ranks") || strings.Contains(proInstructions, "ranked by fit") {
+		t.Errorf("pro tier instructions must not claim ranking-by-fit (the tool does not score sources), got %q", proInstructions)
+	}
 	if !strings.Contains(proInstructions, "disclosure") {
-		t.Errorf("pro tier instructions must mention disclosure requirement (every tier gets affiliate URLs today), got %q", proInstructions)
+		t.Errorf("pro tier instructions must still mention disclosure requirement, got %q", proInstructions)
 	}
 	if !strings.Contains(proInstructions, "legal requirement") {
 		t.Errorf("pro tier instructions must mention legal requirement for disclosure, got %q", proInstructions)
 	}
 	if strings.Contains(proInstructions, "regardless of affiliate") {
-		t.Errorf("pro tier instructions must not claim ignore-affiliate framing while URLs still carry affiliate IDs, got %q", proInstructions)
+		t.Errorf("pro tier instructions must not use the old 'regardless of affiliate' framing, got %q", proInstructions)
+	}
+}
+
+// TestBookingInstructionsForTier_Explorer_Voyager_PreferIndependent verifies
+// that the higher subscription tiers also get the Pro-style framing — they
+// inherit IsPro() == true, so the system prompt should match Pro's.
+func TestBookingInstructionsForTier_Explorer_Voyager_PreferIndependent(t *testing.T) {
+	proInstructions := bookingInstructionsForTier(tier.Pro)
+	for _, ut := range []tier.UserTier{tier.Explorer, tier.Voyager} {
+		got := bookingInstructionsForTier(ut)
+		if got != proInstructions {
+			t.Errorf("%s tier instructions should match Pro (both prefer independent sources), got divergent text", ut)
+		}
 	}
 }
 
@@ -72,10 +95,15 @@ func TestBuildTripContext_ProTier(t *testing.T) {
 	if !strings.Contains(ctx, "BOOKING RECOMMENDATIONS") {
 		t.Error("trip context should include booking recommendations section")
 	}
-	// Until tier-weighted ranking ships, Pro and Free share the same booking
-	// instructions — including the disclosure-inclusion requirement.
+	// Pro context describes the actual behaviour: prefers independent sources.
+	if !strings.Contains(ctx, "prefers independent sources") {
+		t.Error("pro tier trip context should describe behaviour as 'prefers independent sources'")
+	}
+	if strings.Contains(ctx, "ranks") || strings.Contains(ctx, "ranked by fit") {
+		t.Error("pro tier trip context must not claim ranking-by-fit (the tool does not score sources)")
+	}
 	if !strings.Contains(ctx, "disclosure") {
-		t.Error("pro tier trip context should still mention disclosure requirement (affiliate URLs today)")
+		t.Error("pro tier trip context should still mention disclosure requirement (affiliate fallback exists)")
 	}
 }
 
