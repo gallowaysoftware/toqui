@@ -178,6 +178,66 @@ func TestMiddleware_RecordsNon200Status(t *testing.T) {
 	}
 }
 
+// nonFlusherRecorder is an http.ResponseWriter implementation that does NOT
+// implement http.Flusher. Used to verify statusWriter.Flush() safely no-ops
+// when the underlying writer can't flush (plain HTTP, for example).
+type nonFlusherRecorder struct {
+	header http.Header
+	body   []byte
+	status int
+}
+
+func (r *nonFlusherRecorder) Header() http.Header {
+	if r.header == nil {
+		r.header = make(http.Header)
+	}
+	return r.header
+}
+
+func (r *nonFlusherRecorder) Write(b []byte) (int, error) {
+	r.body = append(r.body, b...)
+	return len(b), nil
+}
+
+func (r *nonFlusherRecorder) WriteHeader(status int) { r.status = status }
+
+func TestStatusWriter_FlushPassthrough(t *testing.T) {
+	// Regression test for a P0 observed in agentic test runs 21 and 22:
+	// ConnectRPC's server-streaming transport (used by ChatService/SendMessage)
+	// type-asserts the response writer to http.Flusher before sending any
+	// frames. If statusWriter doesn't implement Flusher, every streaming RPC
+	// dies immediately with "*telemetry.statusWriter does not implement
+	// http.Flusher".
+	//
+	// httptest.ResponseRecorder implements http.Flusher (sets Flushed=true),
+	// so this test asserts the passthrough actually reaches the underlying
+	// writer rather than silently being lost.
+	rec := httptest.NewRecorder()
+	sw := &statusWriter{ResponseWriter: rec, status: http.StatusOK}
+
+	// Must type-assert cleanly — this is the assertion ConnectRPC does.
+	flusher, ok := any(sw).(http.Flusher)
+	if !ok {
+		t.Fatal("statusWriter must implement http.Flusher")
+	}
+	flusher.Flush()
+
+	if !rec.Flushed {
+		t.Error("Flush() did not reach underlying ResponseWriter")
+	}
+}
+
+func TestStatusWriter_FlushNoOpWhenUnderlyingNotFlusher(t *testing.T) {
+	// Defensive case: when the underlying ResponseWriter does not implement
+	// http.Flusher, statusWriter.Flush() should no-op rather than panic. This
+	// preserves the previous (non-streaming) behaviour for unary RPCs and
+	// plain HTTP paths running through a non-Flusher writer.
+	sw := &statusWriter{ResponseWriter: &nonFlusherRecorder{}, status: http.StatusOK}
+
+	// Should not panic.
+	sw.Flush()
+}
+
 func TestMiddleware_NilMetrics(t *testing.T) {
 	// When metrics is nil, the middleware should pass through without panicking.
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

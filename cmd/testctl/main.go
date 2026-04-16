@@ -85,7 +85,7 @@ func createUser(ctx context.Context, queries *dbgen.Queries, cfg *config.Config,
 	fs := flag.NewFlagSet("create-user", flag.ExitOnError)
 	name := fs.String("name", "Test User", "user display name")
 	email := fs.String("email", "", "user email (required)")
-	ttl := fs.Duration("ttl", 8*time.Hour, "token time-to-live (default 8h)")
+	ttl := fs.Duration("ttl", 8*time.Hour, "token time-to-live")
 	if err := fs.Parse(args); err != nil {
 		log.Fatal(err)
 	}
@@ -110,11 +110,18 @@ func createUser(ctx context.Context, queries *dbgen.Queries, cfg *config.Config,
 		log.Fatalf("set age verification: %v", err)
 	}
 
-	// Generate token with configurable TTL (default 4h for agentic tests)
+	// Generate token with configurable TTL (default 8h for agentic tests).
+	// Must match the auth validator's required claims — internal/auth/auth.go
+	// rejects tokens missing iss="toqui" or aud="toqui-api". When those
+	// constants drifted in the auth package without a matching update here,
+	// every agentic-test run aborted at step 1 with "unauthenticated". Keep
+	// this list in sync with Service.GenerateAccessToken.
 	claims := jwt.MapClaims{
 		"sub": user.ID.String(),
 		"exp": time.Now().Add(*ttl).Unix(),
 		"iat": time.Now().Unix(),
+		"iss": "toqui",
+		"aud": "toqui-api",
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tok.SignedString([]byte(cfg.JWTSecret))
