@@ -28,10 +28,19 @@ func TestFlightSources_OrderingAffiliateFirst(t *testing.T) {
 	}
 }
 
-func TestFlightSources_NoAffiliateID_StillReturnsSkyscanner(t *testing.T) {
-	// Without a configured affiliate ID, the Skyscanner source still appears
-	// (it's a usable URL) but IsAffiliate must be false — there's no commission
-	// to disclose.
+func TestFlightSources_NoAffiliateID_StillAffiliatePartner(t *testing.T) {
+	// Without a configured Skyscanner associateid, the Skyscanner source
+	// still appears (the URL is usable) and MUST still be marked
+	// IsAffiliate=true. The field is a static property of the partner
+	// domain — skyscanner.com is a commercial flight aggregator regardless
+	// of whether our tracking ID is plumbed in for this environment.
+	//
+	// Regression pin for the PR #332 follow-up: the old code conflated
+	// "has tracking ID" with "is an affiliate partner". That made Pro-tier
+	// selection pick un-ID'd skyscanner/booking/getyourguide URLs as the
+	// "first independent source" and paired them with the IndependentDisclosure
+	// copy — an affirmative misleading claim. For the "is our tracking ID
+	// wired up?" concept, use LinkBuilder.HasPartner instead.
 	b := NewLinkBuilder(LinkBuilderConfig{})
 	got := b.FlightSources("JFK", "PRG", "2026-06-15", "")
 
@@ -41,9 +50,10 @@ func TestFlightSources_NoAffiliateID_StillReturnsSkyscanner(t *testing.T) {
 	if got[0].Partner != PartnerSkyscanner {
 		t.Errorf("expected first source = Skyscanner, got %q", got[0].Partner)
 	}
-	if got[0].IsAffiliate {
-		t.Error("Skyscanner source must be IsAffiliate=false when no ID is configured")
+	if !got[0].IsAffiliate {
+		t.Error("Skyscanner source must be IsAffiliate=true regardless of whether the tracking ID is configured — it's a static partner-domain property")
 	}
+	// The URL must still not carry the tracking ID when it's not configured.
 	if strings.Contains(got[0].URL, "associateid") {
 		t.Errorf("URL should not contain associateid when no ID is configured: %s", got[0].URL)
 	}
@@ -225,5 +235,188 @@ func TestInsuranceSources_HasIndependentFallback(t *testing.T) {
 	}
 	if !strings.Contains(got[1].URL, "travel+insurance+for+Japan") {
 		t.Errorf("Google insurance URL should include 'travel insurance for <dest>': %s", got[1].URL)
+	}
+}
+
+// --- PR #332 follow-up regression coverage ---
+
+// TestSources_IsAffiliateIsStaticPerPartner pins the contract that every
+// source builder reports IsAffiliate based purely on the Partner identity,
+// never on whether the tracking ID is plumbed through for this environment.
+//
+// This is the unit-level mirror of the R-11 / R-20 agentic-test findings:
+// both personas (Pro tier, local env, partner IDs unset) caught the tool
+// returning affiliate URLs labelled with IndependentDisclosure. Root cause
+// was `IsAffiliate: b.xxxID != ""` in every builder. If anyone ever
+// reintroduces that pattern, this test fails at compile-speed before any
+// user is misled.
+func TestSources_IsAffiliateIsStaticPerPartner(t *testing.T) {
+	// Empty LinkBuilderConfig — mimics a local dev env, or a staging env
+	// where a partner's ID env var accidentally went unset. The previous
+	// code silently flipped IsAffiliate to false here, with user-visible
+	// consequences.
+	b := NewLinkBuilder(LinkBuilderConfig{})
+
+	cases := []struct {
+		name    string
+		sources []Source
+	}{
+		{"FlightSources", b.FlightSources("JFK", "PRG", "2026-06-15", "")},
+		{"HotelSources", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "")},
+		{"ActivitySources", b.ActivitySources("walking tour", "Prague", "")},
+		{"CarRentalSources", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10")},
+		{"InsuranceSources", b.InsuranceSources("Japan")},
+	}
+
+	// Partners that are always commission-earning commercial domains.
+	// If you add a new affiliate partner, add it here and verify the
+	// builder marks it IsAffiliate=true unconditionally.
+	affiliatePartners := map[Partner]bool{
+		PartnerSkyscanner:   true,
+		PartnerBookingCom:   true,
+		PartnerGetYourGuide: true,
+		PartnerViator:       true,
+		PartnerDiscoverCars: true,
+		PartnerSafetyWing:   true,
+	}
+	// Partners that are genuinely independent (commission-free).
+	independentPartners := map[Partner]bool{
+		PartnerGoogle:      true,
+		PartnerWikivoyage:  true,
+		PartnerOfficialGov: true,
+	}
+
+	for _, tc := range cases {
+		for _, s := range tc.sources {
+			switch {
+			case affiliatePartners[s.Partner]:
+				if !s.IsAffiliate {
+					t.Errorf("%s: partner %q is a commission-earning domain but IsAffiliate=false (the exact bug R-11 and R-20 caught)", tc.name, s.Partner)
+				}
+			case independentPartners[s.Partner]:
+				if s.IsAffiliate {
+					t.Errorf("%s: partner %q is an independent source but IsAffiliate=true (would cause us to under-disclose to Pro users)", tc.name, s.Partner)
+				}
+			default:
+				t.Errorf("%s: source %q has unclassified partner %q — add it to affiliatePartners or independentPartners above", tc.name, s.ID, s.Partner)
+			}
+		}
+	}
+}
+
+// TestProTierSelection_EmptyConfig_GetsIndependentSource is the integration
+// test that would have caught the R-11 / R-20 regression pre-merge. It
+// wires the full chain — source builder, SelectForPreference(true),
+// DisclosureFor — against a LinkBuilder with no affiliate IDs configured,
+// which is the exact scenario the agentic-test harness runs in.
+//
+// For a Pro user (preferNonAffiliate=true), the selected source must be
+// an independent partner (Google or Wikivoyage), the URL must not point
+// at a commercial aggregator domain, and the disclosure must be
+// IndependentDisclosure. If this test fails, Pro users are being told
+// "Toqui earns no commission" on links that go straight to booking.com,
+// getyourguide.com, or skyscanner.com — a consumer-protection hazard.
+func TestProTierSelection_EmptyConfig_GetsIndependentSource(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{}) // no affiliate IDs — local dev scenario
+
+	cases := []struct {
+		name           string
+		sources        []Source
+		wantPartner    Partner
+		forbiddenHosts []string
+	}{
+		{
+			name:           "flight",
+			sources:        b.FlightSources("JFK", "PRG", "2026-06-15", ""),
+			wantPartner:    PartnerGoogle,
+			forbiddenHosts: []string{"skyscanner.com"},
+		},
+		{
+			name:           "hotel (city-only)",
+			sources:        b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", ""),
+			wantPartner:    PartnerGoogle,
+			forbiddenHosts: []string{"booking.com"},
+		},
+		{
+			name:           "hotel (property name)",
+			sources:        b.HotelSources("Park Hyatt Tokyo", "Tokyo", "", "", ""),
+			wantPartner:    PartnerGoogle,
+			forbiddenHosts: []string{"booking.com"},
+		},
+		{
+			name:           "activity",
+			sources:        b.ActivitySources("walking tour", "Prague", ""),
+			wantPartner:    PartnerGoogle, // Google Maps is preferred over Wikivoyage (earlier in slice)
+			forbiddenHosts: []string{"getyourguide.com", "viator.com"},
+		},
+		{
+			name:           "car rental",
+			sources:        b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10"),
+			wantPartner:    PartnerGoogle,
+			forbiddenHosts: []string{"discovercars.com"},
+		},
+		{
+			name:           "insurance",
+			sources:        b.InsuranceSources("Japan"),
+			wantPartner:    PartnerGoogle,
+			forbiddenHosts: []string{"safetywing.com"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			selected := SelectForPreference(true, tc.sources)
+			if selected.Partner != tc.wantPartner {
+				t.Errorf("Pro selection should be %q, got %q (URL: %s)", tc.wantPartner, selected.Partner, selected.URL)
+			}
+			if selected.IsAffiliate {
+				t.Errorf("Pro selection must be IsAffiliate=false, got %+v", selected)
+			}
+			for _, host := range tc.forbiddenHosts {
+				if strings.Contains(selected.URL, host) {
+					t.Errorf("Pro selection URL must not point at commercial aggregator %q: %s", host, selected.URL)
+				}
+			}
+			if disc := DisclosureFor(selected, true); disc != IndependentDisclosure {
+				t.Errorf("Pro selection must pair with IndependentDisclosure, got %q", disc)
+			}
+		})
+	}
+}
+
+// TestFreeTierSelection_EmptyConfig_StillHonorsFTC pins the dual of the
+// Pro-tier test: for a free-tier user, the selected source must be the
+// affiliate partner (even when un-ID'd — sources[0]) and carry
+// FTCDisclosure, never IndependentDisclosure. This stops a "fix" to
+// IsAffiliate from accidentally breaking free-tier commission attribution
+// or disclosure.
+func TestFreeTierSelection_EmptyConfig_StillHonorsFTC(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+
+	cases := []struct {
+		name        string
+		sources     []Source
+		wantPartner Partner
+	}{
+		{"flight", b.FlightSources("JFK", "PRG", "2026-06-15", ""), PartnerSkyscanner},
+		{"hotel", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", ""), PartnerBookingCom},
+		{"activity", b.ActivitySources("walking tour", "Prague", ""), PartnerGetYourGuide},
+		{"car rental", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10"), PartnerDiscoverCars},
+		{"insurance", b.InsuranceSources("Japan"), PartnerSafetyWing},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			selected := SelectForPreference(false, tc.sources)
+			if selected.Partner != tc.wantPartner {
+				t.Errorf("free selection should be %q, got %q", tc.wantPartner, selected.Partner)
+			}
+			if !selected.IsAffiliate {
+				t.Errorf("free selection must be IsAffiliate=true, got %+v", selected)
+			}
+			if disc := DisclosureFor(selected, false); disc != FTCDisclosure {
+				t.Errorf("free selection must pair with FTCDisclosure, got %q", disc)
+			}
+		})
 	}
 }

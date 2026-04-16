@@ -10,9 +10,13 @@ import (
 // generated URL with metadata the ranker and the caller need:
 //
 //   - Partner — which partner or independent source the URL points to.
-//   - IsAffiliate — true iff the URL actually carries a Toqui affiliate ID
-//     (i.e. we'll be paid a commission on conversion). A source from an
-//     affiliate Partner but with the ID unconfigured will be false.
+//   - IsAffiliate — true iff the URL points at a commission-earning partner
+//     domain (Skyscanner, Booking.com, GetYourGuide, DiscoverCars, SafetyWing).
+//     This is a STATIC property of the partner, independent of whether the
+//     tracking ID is plumbed through for this environment. An un-ID'd
+//     booking.com URL is still a commercial booking aggregator; labeling
+//     it "independent" would mislead the user. For the orthogonal
+//     question "is our tracking ID configured?", see LinkBuilder.HasPartner.
 //   - Title/Description — human-readable labels for the recommendation.
 //
 // Source is purely a value type. No I/O, no side effects. Sources are
@@ -21,7 +25,7 @@ import (
 type Source struct {
 	ID          string  // stable identifier, e.g. "skyscanner", "google_flights"
 	Partner     Partner // which Partner this source represents
-	IsAffiliate bool    // true iff URL carries a Toqui affiliate ID
+	IsAffiliate bool    // true iff this Partner is a commission-earning partner domain
 	URL         string
 	Title       string
 	Description string
@@ -39,9 +43,12 @@ func (b *LinkBuilder) FlightSources(origin, dest, date, tripIDHash string) []Sou
 
 	var out []Source
 
-	// Affiliate candidate: Skyscanner. Only IsAffiliate=true when the ID
-	// is actually configured, because an empty ID means we won't earn
-	// commission on the click and the URL is effectively independent.
+	// Affiliate candidate: Skyscanner. IsAffiliate is a static property
+	// of the partner — skyscanner.com is a commercial flight aggregator
+	// whether or not our associateid is plumbed in for this environment.
+	// Conflating the two previously caused Pro-tier recommendations to
+	// be labelled "Independent" on un-ID'd dev/staging envs (see PR #334
+	// / follow-up to PR #332).
 	skyURL := fmt.Sprintf("https://www.skyscanner.com/transport/flights/%s/%s/%s",
 		url.PathEscape(origin), url.PathEscape(dest), url.PathEscape(date))
 	if b.skyscannerID != "" {
@@ -53,7 +60,7 @@ func (b *LinkBuilder) FlightSources(origin, dest, date, tripIDHash string) []Sou
 	out = append(out, Source{
 		ID:          "skyscanner",
 		Partner:     PartnerSkyscanner,
-		IsAffiliate: b.skyscannerID != "",
+		IsAffiliate: true,
 		URL:         skyURL,
 		Title:       fmt.Sprintf("Compare flights: %s to %s", origin, dest),
 		Description: fmt.Sprintf("Skyscanner search from %s to %s", origin, dest),
@@ -115,7 +122,7 @@ func (b *LinkBuilder) HotelSources(propertyName, city, checkin, checkout, tripID
 	out = append(out, Source{
 		ID:          "booking_com",
 		Partner:     PartnerBookingCom,
-		IsAffiliate: b.bookingComID != "",
+		IsAffiliate: true, // booking.com is always a commercial aggregator
 		URL:         bkURL,
 		Title:       bkTitle,
 		Description: fmt.Sprintf("Booking.com results for %s", searchStr),
@@ -168,7 +175,7 @@ func (b *LinkBuilder) ActivitySources(query, city, tripIDHash string) []Source {
 	out = append(out, Source{
 		ID:          "getyourguide",
 		Partner:     PartnerGetYourGuide,
-		IsAffiliate: b.getYourGuideID != "",
+		IsAffiliate: true, // getyourguide.com is always a commercial aggregator
 		URL:         "https://www.getyourguide.com/s/?" + gygParams.Encode(),
 		Title:       fmt.Sprintf("Search activities on GetYourGuide: %s", query),
 		Description: fmt.Sprintf("GetYourGuide results for %s", query),
@@ -233,7 +240,7 @@ func (b *LinkBuilder) CarRentalSources(location, pickupDate, dropoffDate string)
 		Source{
 			ID:          "discovercars",
 			Partner:     PartnerDiscoverCars,
-			IsAffiliate: b.discoverCarsID != "",
+			IsAffiliate: true, // discovercars.com is always a commercial aggregator
 			URL:         "https://www.discovercars.com/?" + dcParams.Encode(),
 			Title:       fmt.Sprintf("Compare car rentals in %s on DiscoverCars", location),
 			Description: fmt.Sprintf("DiscoverCars search for %s", location),
@@ -271,7 +278,7 @@ func (b *LinkBuilder) InsuranceSources(destination string) []Source {
 	out = append(out, Source{
 		ID:          "safetywing",
 		Partner:     PartnerSafetyWing,
-		IsAffiliate: b.safetyWingID != "",
+		IsAffiliate: true, // safetywing.com is always a commercial partner
 		URL:         swURL,
 		Title:       fmt.Sprintf("Travel insurance for %s (SafetyWing)", destination),
 		Description: fmt.Sprintf("SafetyWing Nomad Insurance covers %s.", destination),
