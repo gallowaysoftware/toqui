@@ -100,9 +100,12 @@ func (s *Store) CreateSession(ctx context.Context, userID, tripID, mode string) 
 }
 
 // getSessionRaw loads a session document without applying any read-time
-// fallbacks. Used internally by MoveSessionToTrip, which re-writes the
-// struct to a new Firestore path — if it used the public GetSession, the
-// backfill would persist the synthesised CreatedAt to the destination doc.
+// fallbacks for CreatedAt. Used internally by MoveSessionToTrip, which
+// re-writes the struct to a new Firestore path — if it used the public
+// GetSession, the backfill would persist the synthesised CreatedAt to
+// the destination doc. ID is still populated from doc.Ref.ID (the
+// authoritative source) because MoveSessionToTrip's destination write
+// depends on session.ID being correct.
 func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
 	doc, err := s.sessionsCol(userID, tripID).Doc(sessionID).Get(ctx)
 	if err != nil {
@@ -112,6 +115,10 @@ func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID str
 	if err := doc.DataTo(&session); err != nil {
 		return nil, fmt.Errorf("decode session: %w", err)
 	}
+	// Firestore's doc path component is the authoritative ID; the "id"
+	// data field is a denormalisation. Defend against any write path that
+	// ever forgot to include it in the doc body (#335).
+	session.ID = doc.Ref.ID
 	return &session, nil
 }
 
@@ -179,6 +186,11 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 		if err := doc.DataTo(&session); err != nil {
 			return nil, fmt.Errorf("decode session: %w", err)
 		}
+		// The authoritative session ID is the doc path component, not the
+		// denormalised "id" data field. Populate from the ref so clients
+		// always receive the correct ID even if a write path ever forgot
+		// to include it in the doc body (Run 22 R-11 P2 / #335).
+		session.ID = doc.Ref.ID
 		backfillCreatedAt(&session)
 		sessions = append(sessions, &session)
 	}

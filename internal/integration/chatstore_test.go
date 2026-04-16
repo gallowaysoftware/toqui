@@ -5,6 +5,10 @@ package integration
 import (
 	"context"
 	"testing"
+	"time"
+
+	"cloud.google.com/go/firestore"
+	"github.com/google/uuid"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 )
@@ -119,4 +123,80 @@ func TestChatStoreTTL(t *testing.T) {
 
 	// Cleanup
 	store.DeleteAllForTrip(ctx, userID, tripID)
+}
+
+// TestChatStore_SessionIDFromDocRef pins the fix for #335 (Run 22 R-11 P2).
+// If a session doc exists in Firestore without the denormalised "id" data
+// field — whether from legacy data, a forgotten write path, or an external
+// writer — GetSession and ListSessions must still return the session with
+// the correct ID, populated from the doc's path component which is always
+// authoritative.
+//
+// The test bypasses the store's public write API and writes a bare doc
+// directly (no "id" field in the body) to simulate the hostile condition.
+func TestChatStore_SessionIDFromDocRef(t *testing.T) {
+	env := NewTestEnv(t)
+	ctx := context.Background()
+	store := chatstore.New(env.Firestore)
+
+	// UUID-suffixed IDs so parallel / back-to-back runs on a persistent
+	// emulator never collide — a time-based suffix loses to two test
+	// invocations in the same second.
+	suffix := uuid.NewString()
+	userID := "test-user-id-from-ref-" + suffix
+	tripID := "test-trip-id-from-ref-" + suffix
+	sessionID := "session-without-id-field-" + suffix
+
+	t.Cleanup(func() {
+		_ = store.DeleteAllForTrip(context.Background(), userID, tripID)
+	})
+
+	// Write a session doc directly with NO "id" field in the body. This
+	// mirrors the R-11 production scenario where the list endpoint returned
+	// sessionId:null despite the doc existing and being queryable by ID.
+	now := time.Now()
+	sessionRef := env.Firestore.
+		Collection("users").Doc(userID).
+		Collection("trips").Doc(tripID).
+		Collection("chatSessions").Doc(sessionID)
+	if _, err := sessionRef.Set(ctx, map[string]interface{}{
+		"tripId":        tripID,
+		"mode":          "companion",
+		"createdAt":     now,
+		"lastMessageAt": now,
+		"messageCount":  int64(20),
+		// Deliberately NO "id" key. The fix must still return the correct
+		// ID from doc.Ref.ID.
+	}, firestore.MergeAll); err != nil {
+		t.Fatalf("write bare session doc: %v", err)
+	}
+
+	t.Run("GetSession populates ID from doc ref", func(t *testing.T) {
+		got, err := store.GetSession(ctx, userID, tripID, sessionID)
+		if err != nil {
+			t.Fatalf("get session: %v", err)
+		}
+		if got.ID != sessionID {
+			t.Errorf("got.ID = %q, want %q (doc had no id field; ID must come from doc.Ref.ID)", got.ID, sessionID)
+		}
+		if got.MessageCount != 20 {
+			t.Errorf("got.MessageCount = %d, want 20 (sanity check that the rest of the doc decoded)", got.MessageCount)
+		}
+	})
+
+	t.Run("ListSessions populates ID from doc ref", func(t *testing.T) {
+		sessions, err := store.ListSessions(ctx, userID, tripID, 10)
+		if err != nil {
+			t.Fatalf("list sessions: %v", err)
+		}
+		if len(sessions) != 1 {
+			t.Fatalf("got %d sessions, want 1", len(sessions))
+		}
+		if sessions[0].ID != sessionID {
+			t.Errorf("sessions[0].ID = %q, want %q (this is the exact #335 regression)", sessions[0].ID, sessionID)
+		}
+		if sessions[0].MessageCount != 20 {
+			t.Errorf("sessions[0].MessageCount = %d, want 20", sessions[0].MessageCount)
+		}
+	})
 }
