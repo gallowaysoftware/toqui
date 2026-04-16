@@ -115,11 +115,27 @@ func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID str
 	if err := doc.DataTo(&session); err != nil {
 		return nil, fmt.Errorf("decode session: %w", err)
 	}
-	// Firestore's doc path component is the authoritative ID; the "id"
-	// data field is a denormalisation. Defend against any write path that
-	// ever forgot to include it in the doc body (#335).
+	// Firestore's doc path components are the authoritative identifiers;
+	// the "id" / "tripId" data fields are denormalisations. Defend against
+	// any write path that ever forgot to include them in the doc body
+	// (#335 for ID; extended to TripID as defence-in-depth — the session
+	// doc path is users/{uid}/trips/{tripId}/chatSessions/{sessionId}).
 	session.ID = doc.Ref.ID
+	session.TripID = sessionTripID(doc.Ref)
 	return &session, nil
+}
+
+// sessionTripID extracts the owning trip ID from a chatSessions doc ref.
+// The path is users/{uid}/trips/{tripId}/chatSessions/{sessionId}, so
+// ref.Parent walks up to the chatSessions collection and ref.Parent.Parent
+// to the {tripId} doc. Returns empty string if the ref is malformed (which
+// should never happen for a doc returned by sessionsCol), so callers can
+// fall back to the decoded data field without a nil panic.
+func sessionTripID(ref *firestore.DocumentRef) string {
+	if ref == nil || ref.Parent == nil || ref.Parent.Parent == nil {
+		return ""
+	}
+	return ref.Parent.Parent.ID
 }
 
 func (s *Store) GetSession(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
@@ -186,11 +202,13 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 		if err := doc.DataTo(&session); err != nil {
 			return nil, fmt.Errorf("decode session: %w", err)
 		}
-		// The authoritative session ID is the doc path component, not the
-		// denormalised "id" data field. Populate from the ref so clients
-		// always receive the correct ID even if a write path ever forgot
-		// to include it in the doc body (Run 22 R-11 P2 / #335).
+		// The authoritative session ID and trip ID are the doc path
+		// components, not the denormalised data fields. Populate from the
+		// ref so clients always receive the correct identifiers even if a
+		// write path ever forgot to include them in the doc body
+		// (Run 22 R-11 P2 / #335; TripID added as defence-in-depth).
 		session.ID = doc.Ref.ID
+		session.TripID = sessionTripID(doc.Ref)
 		backfillCreatedAt(&session)
 		sessions = append(sessions, &session)
 	}

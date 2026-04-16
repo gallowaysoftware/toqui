@@ -160,18 +160,19 @@ func TestChatStore_SessionIDFromDocRef(t *testing.T) {
 		Collection("trips").Doc(tripID).
 		Collection("chatSessions").Doc(sessionID)
 	if _, err := sessionRef.Set(ctx, map[string]interface{}{
-		"tripId":        tripID,
 		"mode":          "companion",
 		"createdAt":     now,
 		"lastMessageAt": now,
 		"messageCount":  int64(20),
-		// Deliberately NO "id" key. The fix must still return the correct
-		// ID from doc.Ref.ID.
+		// Deliberately NO "id" key AND NO "tripId" key. Both must be
+		// repopulated from the doc path (doc.Ref.ID for session ID,
+		// doc.Ref.Parent.Parent.ID for trip ID). This is the strictest
+		// hostile-condition the prod bug could have produced.
 	}, firestore.MergeAll); err != nil {
 		t.Fatalf("write bare session doc: %v", err)
 	}
 
-	t.Run("GetSession populates ID from doc ref", func(t *testing.T) {
+	t.Run("GetSession populates ID and TripID from doc ref", func(t *testing.T) {
 		got, err := store.GetSession(ctx, userID, tripID, sessionID)
 		if err != nil {
 			t.Fatalf("get session: %v", err)
@@ -179,12 +180,15 @@ func TestChatStore_SessionIDFromDocRef(t *testing.T) {
 		if got.ID != sessionID {
 			t.Errorf("got.ID = %q, want %q (doc had no id field; ID must come from doc.Ref.ID)", got.ID, sessionID)
 		}
+		if got.TripID != tripID {
+			t.Errorf("got.TripID = %q, want %q (doc had no tripId field; TripID must come from doc.Ref.Parent.Parent.ID)", got.TripID, tripID)
+		}
 		if got.MessageCount != 20 {
 			t.Errorf("got.MessageCount = %d, want 20 (sanity check that the rest of the doc decoded)", got.MessageCount)
 		}
 	})
 
-	t.Run("ListSessions populates ID from doc ref", func(t *testing.T) {
+	t.Run("ListSessions populates ID and TripID from doc ref", func(t *testing.T) {
 		sessions, err := store.ListSessions(ctx, userID, tripID, 10)
 		if err != nil {
 			t.Fatalf("list sessions: %v", err)
@@ -194,6 +198,9 @@ func TestChatStore_SessionIDFromDocRef(t *testing.T) {
 		}
 		if sessions[0].ID != sessionID {
 			t.Errorf("sessions[0].ID = %q, want %q (this is the exact #335 regression)", sessions[0].ID, sessionID)
+		}
+		if sessions[0].TripID != tripID {
+			t.Errorf("sessions[0].TripID = %q, want %q (TripID must come from doc.Ref.Parent.Parent.ID)", sessions[0].TripID, tripID)
 		}
 		if sessions[0].MessageCount != 20 {
 			t.Errorf("sessions[0].MessageCount = %d, want 20", sessions[0].MessageCount)
