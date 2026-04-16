@@ -182,14 +182,25 @@ jobs:
             --project=toqui-staging
 
       - name: Smoke test staging health endpoint
+        # Cloud Run ingress on staging is `internal-and-cloud-load-balancing`,
+        # so `gcloud run services describe ... --format='value(status.url)'`
+        # returns the *.run.app URL which is blocked at Google's edge for any
+        # public client (including this GHA runner) regardless of IAM. The
+        # LB-fronted hostname `staging-api.toqui.travel` is the real entry
+        # point — it's provisioned by the `load_balancer` module in
+        # toqui-terraform (environments/staging/main.tf) and is what actual
+        # users and agentic tests hit. Probe it directly. Fixes #336.
         run: |
-          STAGING_URL=$(gcloud run services describe toqui-backend \
-            --region=northamerica-northeast1 \
-            --project=toqui-staging \
-            --format='value(status.url)')
+          STAGING_URL=https://staging-api.toqui.travel
           echo "Checking staging health at ${STAGING_URL}/healthz"
           for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${STAGING_URL}/healthz" || true)
+            # -sS silences progress but still surfaces transport errors on stderr,
+            # so a hung LB or DNS hiccup shows up in the job log instead of an
+            # opaque "got HTTP ". --connect-timeout / --max-time bound each
+            # attempt so a stuck TCP handshake can't swallow the whole job.
+            STATUS=$(curl -sS -o /dev/null -w '%{http_code}' \
+              --connect-timeout 5 --max-time 10 \
+              "${STAGING_URL}/healthz" || true)
             if [ "$STATUS" = "200" ]; then
               echo "Staging health check passed (attempt $i)"
               exit 0
