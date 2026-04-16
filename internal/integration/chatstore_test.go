@@ -207,3 +207,83 @@ func TestChatStore_SessionIDFromDocRef(t *testing.T) {
 		}
 	})
 }
+
+// TestChatStore_MessageIDAndSessionIDFromDocRef pins #341 — the defence-in-
+// depth extension of #339/#340 to ChatMessage. The message doc path is
+// users/{uid}/trips/{tid}/chatSessions/{sid}/messages/{mid}, so doc.Ref.ID
+// authoritatively holds the message ID and doc.Ref.Parent.Parent.ID holds
+// the session ID. If any write path ever wrote a message doc without its
+// "id" or "sessionId" fields, the read path must still return a fully
+// identified message rather than `id: ""` / `sessionId: ""`.
+func TestChatStore_MessageIDAndSessionIDFromDocRef(t *testing.T) {
+	env := NewTestEnv(t)
+	ctx := context.Background()
+	store := chatstore.New(env.Firestore)
+
+	suffix := uuid.NewString()
+	userID := "test-user-msg-ref-" + suffix
+	tripID := "test-trip-msg-ref-" + suffix
+	sessionID := "test-session-msg-ref-" + suffix
+	messageID := "bare-message-" + suffix
+
+	t.Cleanup(func() {
+		_ = store.DeleteAllForTrip(context.Background(), userID, tripID)
+	})
+
+	// Seed the session doc via the normal path so listing works.
+	if _, err := store.CreateSession(ctx, userID, tripID, "planning"); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	// Write a message doc directly with NO "id" and NO "sessionId" field.
+	// This is the hostile scenario that #341 defends against.
+	now := time.Now()
+	messageRef := env.Firestore.
+		Collection("users").Doc(userID).
+		Collection("trips").Doc(tripID).
+		Collection("chatSessions").Doc(sessionID).
+		Collection("messages").Doc(messageID)
+	if _, err := messageRef.Set(ctx, map[string]interface{}{
+		"role":      "user",
+		"content":   "Hello from a doc without id or sessionId",
+		"createdAt": now,
+		// Deliberately NO "id" and NO "sessionId" keys.
+	}, firestore.MergeAll); err != nil {
+		t.Fatalf("write bare message doc: %v", err)
+	}
+
+	t.Run("GetMessages populates ID and SessionID from doc ref", func(t *testing.T) {
+		messages, err := store.GetMessages(ctx, userID, tripID, sessionID, 10)
+		if err != nil {
+			t.Fatalf("get messages: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("got %d messages, want 1", len(messages))
+		}
+		if messages[0].ID != messageID {
+			t.Errorf("messages[0].ID = %q, want %q (ID must come from doc.Ref.ID)", messages[0].ID, messageID)
+		}
+		if messages[0].SessionID != sessionID {
+			t.Errorf("messages[0].SessionID = %q, want %q (SessionID must come from doc.Ref.Parent.Parent.ID)", messages[0].SessionID, sessionID)
+		}
+		if messages[0].Content != "Hello from a doc without id or sessionId" {
+			t.Errorf("content roundtrip failed: got %q", messages[0].Content)
+		}
+	})
+
+	t.Run("GetOldestMessages populates ID and SessionID from doc ref", func(t *testing.T) {
+		messages, err := store.GetOldestMessages(ctx, userID, tripID, sessionID, 10)
+		if err != nil {
+			t.Fatalf("get oldest messages: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("got %d messages, want 1", len(messages))
+		}
+		if messages[0].ID != messageID {
+			t.Errorf("messages[0].ID = %q, want %q", messages[0].ID, messageID)
+		}
+		if messages[0].SessionID != sessionID {
+			t.Errorf("messages[0].SessionID = %q, want %q", messages[0].SessionID, sessionID)
+		}
+	})
+}

@@ -121,17 +121,18 @@ func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID str
 	// (#335 for ID; extended to TripID as defence-in-depth — the session
 	// doc path is users/{uid}/trips/{tripId}/chatSessions/{sessionId}).
 	session.ID = doc.Ref.ID
-	session.TripID = sessionTripID(doc.Ref)
+	session.TripID = parentDocID(doc.Ref)
 	return &session, nil
 }
 
-// sessionTripID extracts the owning trip ID from a chatSessions doc ref.
-// The path is users/{uid}/trips/{tripId}/chatSessions/{sessionId}, so
-// ref.Parent walks up to the chatSessions collection and ref.Parent.Parent
-// to the {tripId} doc. Returns empty string if the ref is malformed (which
-// should never happen for a doc returned by sessionsCol), so callers can
-// fall back to the decoded data field without a nil panic.
-func sessionTripID(ref *firestore.DocumentRef) string {
+// parentDocID returns the ID of the document that owns the given doc's
+// parent collection — i.e. walks up two levels from ref. For a
+// chatSessions doc (users/{uid}/trips/{tripId}/chatSessions/{sessionId})
+// that's the trip ID; for a messages doc
+// (.../chatSessions/{sessionId}/messages/{messageId}) that's the session
+// ID. Returns "" if the ref is malformed or points at a root collection,
+// so callers fall back to the decoded data field instead of panicking.
+func parentDocID(ref *firestore.DocumentRef) string {
 	if ref == nil || ref.Parent == nil || ref.Parent.Parent == nil {
 		return ""
 	}
@@ -208,7 +209,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit i
 		// write path ever forgot to include them in the doc body
 		// (Run 22 R-11 P2 / #335; TripID added as defence-in-depth).
 		session.ID = doc.Ref.ID
-		session.TripID = sessionTripID(doc.Ref)
+		session.TripID = parentDocID(doc.Ref)
 		backfillCreatedAt(&session)
 		sessions = append(sessions, &session)
 	}
@@ -290,6 +291,13 @@ func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID strin
 		if err := doc.DataTo(&msg); err != nil {
 			return nil, fmt.Errorf("decode message: %w", err)
 		}
+		// The doc path components are authoritative. Repopulate ID and
+		// SessionID from the ref so any write path that ever forgot to
+		// include the denormalised fields in the doc body still produces
+		// a correctly-identified message (#341, follows the pattern
+		// established in #339/#340 for sessions).
+		msg.ID = doc.Ref.ID
+		msg.SessionID = parentDocID(doc.Ref)
 		messages = append(messages, &msg)
 	}
 
@@ -336,6 +344,9 @@ func (s *Store) GetOldestMessages(ctx context.Context, userID, tripID, sessionID
 		if err := doc.DataTo(&msg); err != nil {
 			return nil, fmt.Errorf("decode message: %w", err)
 		}
+		// Path-authoritative ID/SessionID, same as GetMessages (#341).
+		msg.ID = doc.Ref.ID
+		msg.SessionID = parentDocID(doc.Ref)
 		messages = append(messages, &msg)
 	}
 	return messages, nil
