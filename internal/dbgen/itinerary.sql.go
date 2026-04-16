@@ -137,7 +137,7 @@ func (q *Queries) CreateItineraryItemFromBooking(ctx context.Context, arg Create
 	return i, err
 }
 
-const deleteItineraryItem = `-- name: DeleteItineraryItem :exec
+const deleteItineraryItem = `-- name: DeleteItineraryItem :execrows
 DELETE FROM itinerary_items
 WHERE itinerary_items.id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2)
@@ -148,9 +148,12 @@ type DeleteItineraryItemParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteItineraryItem(ctx context.Context, arg DeleteItineraryItemParams) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItem, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteItineraryItem(ctx context.Context, arg DeleteItineraryItemParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItineraryItem, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteItineraryItemByOwnerOrEditor = `-- name: DeleteItineraryItemByOwnerOrEditor :execrows
@@ -180,7 +183,7 @@ func (q *Queries) DeleteItineraryItemByOwnerOrEditor(ctx context.Context, arg De
 	return result.RowsAffected(), nil
 }
 
-const deleteItineraryItemsByTrip = `-- name: DeleteItineraryItemsByTrip :exec
+const deleteItineraryItemsByTrip = `-- name: DeleteItineraryItemsByTrip :execrows
 DELETE FROM itinerary_items
 WHERE trip_id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = $1 AND trips.user_id = $2)
@@ -191,9 +194,12 @@ type DeleteItineraryItemsByTripParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItineraryItemsByTripParams) error {
-	_, err := q.db.Exec(ctx, deleteItineraryItemsByTrip, arg.TripID, arg.UserID)
-	return err
+func (q *Queries) DeleteItineraryItemsByTrip(ctx context.Context, arg DeleteItineraryItemsByTripParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItineraryItemsByTrip, arg.TripID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteItineraryItemsByTripForOwnerOrEditor = `-- name: DeleteItineraryItemsByTripForOwnerOrEditor :execrows

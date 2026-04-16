@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -554,17 +555,30 @@ func (s *Service) CreateItineraryItemWithCost(ctx context.Context, tripID uuid.U
 // by the given user (via the trip's user_id) are deleted. Returns the list of
 // actually-deleted IDs so the caller can report accurately, and an error if
 // ALL deletions failed (partial success returns the successful IDs with nil).
+//
+// The underlying DeleteItineraryItem query filters on trip.user_id, so items
+// owned by a different user are a silent no-op at the SQL layer. The service
+// inspects RowsAffected and only appends to the "deleted" slice when a row
+// was actually removed — matching DB truth instead of pgx's nil-on-zero-row
+// Exec semantics (#345, same defence as #343 applied to the owner-only path).
 func (s *Service) DeleteItineraryItems(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) ([]uuid.UUID, error) {
 	var deleted []uuid.UUID
 	var lastErr error
 	for _, id := range itemIDs {
-		err := s.queries.DeleteItineraryItem(ctx, dbgen.DeleteItineraryItemParams{
+		rows, err := s.queries.DeleteItineraryItem(ctx, dbgen.DeleteItineraryItemParams{
 			ID:     id,
 			UserID: userID,
 		})
 		if err != nil {
 			slog.Error("delete itinerary item", "item_id", id, "error", err)
 			lastErr = err
+			continue
+		}
+		// Zero rows means the item doesn't exist or belongs to a
+		// different user. Either way, do not claim to have deleted it
+		// — handler and AI-tool paths use the return slice to build
+		// user-visible confirmations.
+		if rows == 0 {
 			continue
 		}
 		deleted = append(deleted, id)
@@ -675,6 +689,23 @@ type ReplaceItineraryItem struct {
 // itinerary content (Run 4 N-05 P1). Handlers flatten their proto
 // Itinerary into []ReplaceItineraryItem before calling.
 func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
+	// Authz pre-check: DeleteItineraryItemsByTrip filters on trip owner
+	// in SQL, but CreateItineraryItem does not — a non-owner whose delete
+	// step silently no-ops would still INSERT new items into someone
+	// else's trip (#345, same class as #343 Bug 2 applied to the
+	// owner-only path). The UpdateItinerary handler already gates via
+	// GetByIDOrCollaborator+CanEditTrip, but the service contract
+	// enforces its own precondition so any future direct caller is safe.
+	if _, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     tripID,
+		UserID: userID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotOwnerOrEditor
+		}
+		return fmt.Errorf("authz check: %w", err)
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -682,7 +713,7 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.queries.WithTx(tx)
 
-	if err := qtx.DeleteItineraryItemsByTrip(ctx, dbgen.DeleteItineraryItemsByTripParams{
+	if _, err := qtx.DeleteItineraryItemsByTrip(ctx, dbgen.DeleteItineraryItemsByTripParams{
 		TripID: tripID,
 		UserID: userID,
 	}); err != nil {

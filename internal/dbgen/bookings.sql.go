@@ -90,7 +90,7 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 	return i, err
 }
 
-const deleteBooking = `-- name: DeleteBooking :exec
+const deleteBooking = `-- name: DeleteBooking :execrows
 DELETE FROM bookings WHERE id = $1 AND user_id = $2
 `
 
@@ -99,9 +99,12 @@ type DeleteBookingParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteBooking(ctx context.Context, arg DeleteBookingParams) error {
-	_, err := q.db.Exec(ctx, deleteBooking, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteBooking(ctx context.Context, arg DeleteBookingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteBooking, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const findBookingByConfirmationCode = `-- name: FindBookingByConfirmationCode :one

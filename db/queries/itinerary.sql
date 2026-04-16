@@ -16,12 +16,12 @@ WHERE itinerary_items.id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $11)
 RETURNING *;
 
--- name: DeleteItineraryItem :exec
+-- name: DeleteItineraryItem :execrows
 DELETE FROM itinerary_items
 WHERE itinerary_items.id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = $2);
 
--- name: DeleteItineraryItemsByTrip :exec
+-- name: DeleteItineraryItemsByTrip :execrows
 DELETE FROM itinerary_items
 WHERE trip_id = $1
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = $1 AND trips.user_id = $2);

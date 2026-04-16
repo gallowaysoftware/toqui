@@ -235,8 +235,17 @@ func (h *BookingHandler) DeleteBooking(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if err := h.bookingSvc.Delete(ctx, userID, bookingID); err != nil {
+	deleted, err := h.bookingSvc.Delete(ctx, userID, bookingID)
+	if err != nil {
 		return nil, internalError(ctx, "booking operation", err)
+	}
+	if !deleted {
+		// Idempotent DELETE — the booking either did not exist or was owned by
+		// another user. Log at debug for audit but return success to the client.
+		slog.DebugContext(ctx, "DeleteBooking no-op",
+			"user_id", userID,
+			"booking_id", bookingID,
+		)
 	}
 
 	return connect.NewResponse(&toquiv1.DeleteBookingResponse{}), nil

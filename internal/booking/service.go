@@ -289,11 +289,20 @@ func (s *Service) GetByID(ctx context.Context, userID, bookingID uuid.UUID) (*db
 	return &booking, nil
 }
 
-func (s *Service) Delete(ctx context.Context, userID, bookingID uuid.UUID) error {
-	return s.queries.DeleteBooking(ctx, dbgen.DeleteBookingParams{
+// Delete removes a booking owned by userID. Returns (deleted, error) where
+// deleted is true when the row actually existed and belonged to userID.
+// When deleted is false and error is nil, the booking either did not exist
+// or belonged to a different user — callers should treat this as a no-op
+// (HTTP idempotent DELETE semantics) but may audit the miss.
+func (s *Service) Delete(ctx context.Context, userID, bookingID uuid.UUID) (bool, error) {
+	rows, err := s.queries.DeleteBooking(ctx, dbgen.DeleteBookingParams{
 		ID:     bookingID,
 		UserID: userID,
 	})
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
 }
 
 func (s *Service) LinkToTrip(ctx context.Context, userID, bookingID, tripID uuid.UUID) (*dbgen.Booking, error) {
