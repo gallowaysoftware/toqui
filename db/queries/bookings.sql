@@ -3,6 +3,41 @@ INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 RETURNING *;
 
+-- name: CreateBookingForOwnerOrEditor :one
+-- Authz-gated booking insert used by IngestBooking (#361 P1 fix).
+-- When trip_id is non-NULL, the WHERE clause re-checks that
+-- user_id = $1 can edit the target trip — either owns it or is an
+-- accepted editor-role collaborator. A malicious client passing
+-- another user's trip_id misses the predicate, INSERT returns zero
+-- rows, pgx returns ErrNoRows, the service maps that to
+-- trip.ErrNotOwnerOrEditor.
+--
+-- When trip_id is NULL (unattached booking) the OR branch lets the
+-- insert through unchanged — unattached bookings are self-scoped
+-- and no trip-level check applies.
+--
+-- AUTHZ PREDICATE: semantic duplicate of the four other
+-- *ForOwnerOrEditor queries across bookings.sql + itinerary.sql.
+-- Keep in lockstep (#353 drift warning).
+INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests, price_cents, currency, timezone)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+WHERE $2::uuid IS NULL
+   OR EXISTS (
+     SELECT 1 FROM trips t
+     WHERE t.id = $2::uuid
+       AND (
+         t.user_id = $1
+         OR EXISTS (
+           SELECT 1 FROM trip_collaborators tc
+           WHERE tc.trip_id = t.id
+             AND tc.user_id = $1
+             AND tc.accepted_at IS NOT NULL
+             AND tc.role = 'editor'
+         )
+       )
+   )
+RETURNING *;
+
 -- name: UpdateBooking :one
 UPDATE bookings SET
   title = COALESCE(NULLIF(sqlc.arg(title), ''), title),
@@ -40,6 +75,32 @@ LIMIT $2 OFFSET $3;
 UPDATE bookings SET trip_id = $2
 WHERE id = $1 AND user_id = $3
 RETURNING *;
+
+-- name: LinkBookingToTripForOwnerOrEditor :one
+-- Authz-gated re-link of a booking to a trip (#361 P1 fix).
+-- The plain LinkBookingToTrip above only gated on booking.user_id
+-- so a user could re-associate their own booking with a victim's
+-- trip. Here the UPDATE requires both booking ownership AND edit
+-- rights on the target trip. Predicate miss → pgx.ErrNoRows →
+-- trip.ErrNotOwnerOrEditor.
+UPDATE bookings b SET trip_id = $2
+WHERE b.id = $1
+  AND b.user_id = $3
+  AND EXISTS (
+    SELECT 1 FROM trips t
+    WHERE t.id = $2
+      AND (
+        t.user_id = $3
+        OR EXISTS (
+          SELECT 1 FROM trip_collaborators tc
+          WHERE tc.trip_id = t.id
+            AND tc.user_id = $3
+            AND tc.accepted_at IS NOT NULL
+            AND tc.role = 'editor'
+        )
+      )
+  )
+RETURNING b.*;
 
 -- name: FindBookingByConfirmationCode :one
 SELECT * FROM bookings

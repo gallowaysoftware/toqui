@@ -4,9 +4,11 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
@@ -223,6 +225,103 @@ func TestAuthzExecRowsOwnerPaths(t *testing.T) {
 		}
 		if deleted {
 			t.Error("expected deleted=false for ghost booking UUID")
+		}
+	})
+
+	t.Run("CreateBookingForOwnerOrEditor_AuthzGate", func(t *testing.T) {
+		// #361 P1 fix: the gated booking insert rejects callers who
+		// don't own or edit the target trip. Pins the truth table:
+		// owner lands, foreign user misses and pgx returns ErrNoRows.
+		ownerBooking, err := queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
+			UserID:    alice.ID,
+			TripID:    pgtype.UUID{Bytes: aliceTrip.ID, Valid: true},
+			Type:      "BOOKING_TYPE_HOTEL",
+			Title:     "Alice's Hotel",
+			RawSource: pgtype.Text{String: "legit", Valid: true},
+			Source:    "paste",
+		})
+		if err != nil {
+			t.Fatalf("owner booking insert: %v", err)
+		}
+		t.Cleanup(func() { _, _ = bookingSvc.Delete(ctx, alice.ID, ownerBooking.ID) })
+
+		// Mallory tries to insert a booking attached to Alice's trip.
+		_, err = queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
+			UserID:    mallory.ID,
+			TripID:    pgtype.UUID{Bytes: aliceTrip.ID, Valid: true},
+			Type:      "BOOKING_TYPE_HOTEL",
+			Title:     "Mallory Injection",
+			RawSource: pgtype.Text{String: "attack", Valid: true},
+			Source:    "paste",
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			t.Errorf("mallory insert against alice trip: expected pgx.ErrNoRows, got %v", err)
+		}
+
+		// Mallory can still create an UNATTACHED booking (no trip_id).
+		orphanBooking, err := queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
+			UserID:    mallory.ID,
+			TripID:    pgtype.UUID{Valid: false},
+			Type:      "BOOKING_TYPE_FLIGHT",
+			Title:     "Mallory's Unattached Flight",
+			RawSource: pgtype.Text{String: "legit", Valid: true},
+			Source:    "paste",
+		})
+		if err != nil {
+			t.Fatalf("mallory unattached booking insert: %v", err)
+		}
+		t.Cleanup(func() { _, _ = bookingSvc.Delete(ctx, mallory.ID, orphanBooking.ID) })
+	})
+
+	t.Run("LinkBookingToTripForOwnerOrEditor_AuthzGate", func(t *testing.T) {
+		// Mallory creates her own unattached booking, then tries to
+		// re-link it to Alice's trip. Must be rejected — the old
+		// LinkBookingToTrip gated only on booking.user_id which let
+		// cross-trip re-association slip through (#361 P1).
+		mb, err := queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
+			UserID:    mallory.ID,
+			TripID:    pgtype.UUID{Valid: false},
+			Type:      "BOOKING_TYPE_HOTEL",
+			Title:     "Mallory's Hotel",
+			RawSource: pgtype.Text{String: "legit", Valid: true},
+			Source:    "paste",
+		})
+		if err != nil {
+			t.Fatalf("create mallory orphan booking: %v", err)
+		}
+		t.Cleanup(func() { _, _ = bookingSvc.Delete(ctx, mallory.ID, mb.ID) })
+
+		_, err = bookingSvc.LinkToTrip(ctx, mallory.ID, mb.ID, aliceTrip.ID)
+		if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			t.Errorf("link booking to alice trip: expected trip.ErrNotOwnerOrEditor, got %v", err)
+		}
+
+		// Mallory CAN link her booking to her own trip.
+		malloryTrip, err := tripSvc.Create(ctx, mallory.ID, "Mallory's Trip", "", nil, nil)
+		if err != nil {
+			t.Fatalf("create mallory trip: %v", err)
+		}
+		if _, err := bookingSvc.LinkToTrip(ctx, mallory.ID, mb.ID, malloryTrip.ID); err != nil {
+			t.Errorf("mallory legit link: %v", err)
+		}
+	})
+
+	t.Run("CreateItineraryItemFromBookingForOwnerOrEditor_AuthzGate", func(t *testing.T) {
+		// Defence-in-depth: even if some future caller tries to
+		// auto-link a booking with a mismatched (caller, trip) pair,
+		// the SQL gate blocks the insert (#361).
+		bogusBookingID := uuid.New()
+		_, err := queries.CreateItineraryItemFromBookingForOwnerOrEditor(ctx, dbgen.CreateItineraryItemFromBookingForOwnerOrEditorParams{
+			TripID:     aliceTrip.ID,
+			DayNumber:  pgtype.Int4{Int32: 1, Valid: true},
+			OrderInDay: pgtype.Int4{Int32: 1, Valid: true},
+			Type:       pgtype.Text{String: "hotel", Valid: true},
+			Title:      pgtype.Text{String: "Mallory Auto-Link", Valid: true},
+			BookingID:  pgtype.UUID{Bytes: bogusBookingID, Valid: true},
+			UserID:     mallory.ID, // mismatched — mallory can't edit alice's trip
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			t.Errorf("mallory auto-link against alice trip: expected pgx.ErrNoRows, got %v", err)
 		}
 	})
 }

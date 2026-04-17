@@ -18,6 +18,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
+	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -43,14 +44,24 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 	}
 	b, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
 	if err != nil {
+		// Authz failure on the trip_id → 403 (#361). Anything else
+		// runs through the existing aiAwareError helper (Anthropic
+		// 529 handling etc.).
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to add bookings to this trip"))
+		}
 		return nil, aiAwareError(ctx, "booking ingest", err)
 	}
 
 	// Auto-link: create an itinerary item for the booking so it appears
 	// in the day-by-day view. This is best-effort — failure does not
-	// block the booking response.
+	// block the booking response. Pass the caller userID so the
+	// SQL-gated insert re-checks authz (defence-in-depth; the service
+	// already verified it during CreateBookingForOwnerOrEditor, but any
+	// future code path that reaches autoLinkBookingToItinerary with a
+	// mismatched pair should still be safe).
 	if h.queries != nil && b.TripID.Valid {
-		h.autoLinkBookingToItinerary(ctx, uuid.UUID(b.TripID.Bytes), b)
+		h.autoLinkBookingToItinerary(ctx, userID, uuid.UUID(b.TripID.Bytes), b)
 	}
 
 	return connect.NewResponse(&toquiv1.IngestBookingResponse{
@@ -216,7 +227,7 @@ func (h *BookingHandler) LinkBookingToTrip(ctx context.Context, req *connect.Req
 
 	b, err := h.bookingSvc.LinkToTrip(ctx, userID, bookingID, tripID)
 	if err != nil {
-		return nil, internalError(ctx, "booking operation", err)
+		return nil, mapTripErr(ctx, "booking link", err)
 	}
 
 	return connect.NewResponse(&toquiv1.LinkBookingToTripResponse{
@@ -598,8 +609,13 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 }
 
 // autoLinkBookingToItinerary creates an itinerary item linked to a booking
-// so it appears in the day-by-day view. Skips if a linked item already exists.
-func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, tripID uuid.UUID, b *dbgen.Booking) {
+// so it appears in the day-by-day view. Skips if a linked item already
+// exists. Uses the SQL-gated CreateItineraryItemFromBookingForOwnerOrEditor
+// query so a mismatched (callerID, tripID) pair can't plant items into a
+// foreign trip (#361 defence-in-depth — the service-layer
+// CreateBookingForOwnerOrEditor already verifies this, but we want the
+// insert to be safe regardless of how it's reached).
+func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerID, tripID uuid.UUID, b *dbgen.Booking) {
 	// Check if an itinerary item is already linked to this booking.
 	_, err := h.queries.GetItineraryItemByBooking(ctx, dbgen.GetItineraryItemByBookingParams{
 		BookingID: pgtype.UUID{Bytes: b.ID, Valid: true},
@@ -642,7 +658,7 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, tripID 
 		dayNumber = 1 // Will be placed on day 1; proper date→day mapping requires trip start_date
 	}
 
-	_, createErr := h.queries.CreateItineraryItemFromBooking(ctx, dbgen.CreateItineraryItemFromBookingParams{
+	_, createErr := h.queries.CreateItineraryItemFromBookingForOwnerOrEditor(ctx, dbgen.CreateItineraryItemFromBookingForOwnerOrEditorParams{
 		TripID:     tripID,
 		DayNumber:  pgtype.Int4{Int32: dayNumber, Valid: true},
 		OrderInDay: pgtype.Int4{Int32: 0, Valid: true}, // top of the day
@@ -656,6 +672,7 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, tripID 
 		StartTime: b.StartTime,
 		EndTime:   b.EndTime,
 		BookingID: pgtype.UUID{Bytes: b.ID, Valid: true},
+		UserID:    callerID,
 	})
 	if createErr != nil {
 		slog.Warn("auto-link booking to itinerary failed", "error", createErr, "booking_id", b.ID, "trip_id", tripID)

@@ -15,6 +15,7 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
 type Service struct {
@@ -87,7 +88,15 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		}
 	}
 
-	booking, err := s.queries.CreateBooking(ctx, dbgen.CreateBookingParams{
+	// Authz-gated insert: when a trip_id is supplied, the WHERE clause
+	// re-checks the caller can edit that trip. A predicate miss (i.e.
+	// the caller doesn't own the trip and isn't an accepted editor)
+	// returns zero rows → pgx.ErrNoRows → trip.ErrNotOwnerOrEditor.
+	// This closes the #361 P1 exploit where a client could plant a
+	// booking onto any victim trip UUID by passing it in IngestBooking.
+	// For unattached bookings (tripUUID.Valid == false) the gate is
+	// a no-op — unattached bookings are self-scoped.
+	booking, err := s.queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
 		UserID:            userID,
 		TripID:            tripUUID,
 		Type:              parsed.Type,
@@ -105,6 +114,9 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		Timezone:          pgtype.Text{String: parsed.Timezone, Valid: parsed.Timezone != ""},
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, trip.ErrNotOwnerOrEditor
+		}
 		return nil, fmt.Errorf("create booking: %w", err)
 	}
 
@@ -306,12 +318,21 @@ func (s *Service) Delete(ctx context.Context, userID, bookingID uuid.UUID) (bool
 }
 
 func (s *Service) LinkToTrip(ctx context.Context, userID, bookingID, tripID uuid.UUID) (*dbgen.Booking, error) {
-	booking, err := s.queries.LinkBookingToTrip(ctx, dbgen.LinkBookingToTripParams{
+	// Authz-gated re-link (#361 P1 fix). The old LinkBookingToTrip
+	// query verified booking ownership but not the target trip, so
+	// any user could re-associate their own booking with a victim's
+	// trip. The gated variant requires both booking ownership AND
+	// edit rights on the target trip. Predicate miss → ErrNoRows →
+	// trip.ErrNotOwnerOrEditor.
+	booking, err := s.queries.LinkBookingToTripForOwnerOrEditor(ctx, dbgen.LinkBookingToTripForOwnerOrEditorParams{
 		ID:     bookingID,
 		TripID: pgtype.UUID{Bytes: tripID, Valid: true},
 		UserID: userID,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, trip.ErrNotOwnerOrEditor
+		}
 		return nil, fmt.Errorf("link booking: %w", err)
 	}
 	return &booking, nil

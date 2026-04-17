@@ -59,6 +59,33 @@ INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, des
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
+-- name: CreateItineraryItemFromBookingForOwnerOrEditor :one
+-- Authz-gated auto-link insert used by
+-- BookingHandler.autoLinkBookingToItinerary (#361 P1 defence-in-depth).
+-- Even when CreateBookingForOwnerOrEditor has already verified the
+-- caller can edit the trip, this re-checks in SQL so any future
+-- invocation with a mismatched (caller, trip) pair cannot plant
+-- items into a foreign trip.
+--
+-- Parameters: $1=trip_id $2=day_number $3=order_in_day $4=type
+-- $5=title $6=description $7=start_time $8=end_time $9=booking_id
+-- $10=caller_user_id
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, start_time, end_time, booking_id)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+FROM trips t
+WHERE t.id = $1
+  AND (
+    t.user_id = $10
+    OR EXISTS (
+      SELECT 1 FROM trip_collaborators tc
+      WHERE tc.trip_id = t.id
+        AND tc.user_id = $10
+        AND tc.accepted_at IS NOT NULL
+        AND tc.role = 'editor'
+    )
+  )
+RETURNING *;
+
 -- name: GetItineraryItemByBooking :one
 SELECT * FROM itinerary_items
 WHERE booking_id = $1 AND trip_id = $2

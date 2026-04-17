@@ -90,6 +90,114 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 	return i, err
 }
 
+const createBookingForOwnerOrEditor = `-- name: CreateBookingForOwnerOrEditor :one
+INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests, price_cents, currency, timezone)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+WHERE $2::uuid IS NULL
+   OR EXISTS (
+     SELECT 1 FROM trips t
+     WHERE t.id = $2::uuid
+       AND (
+         t.user_id = $1
+         OR EXISTS (
+           SELECT 1 FROM trip_collaborators tc
+           WHERE tc.trip_id = t.id
+             AND tc.user_id = $1
+             AND tc.accepted_at IS NOT NULL
+             AND tc.role = 'editor'
+         )
+       )
+   )
+RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
+`
+
+type CreateBookingForOwnerOrEditorParams struct {
+	UserID            uuid.UUID          `json:"user_id"`
+	TripID            pgtype.UUID        `json:"trip_id"`
+	Type              string             `json:"type"`
+	ConfirmationCode  pgtype.Text        `json:"confirmation_code"`
+	Provider          pgtype.Text        `json:"provider"`
+	Title             string             `json:"title"`
+	StartTime         pgtype.Timestamptz `json:"start_time"`
+	EndTime           pgtype.Timestamptz `json:"end_time"`
+	Location          interface{}        `json:"location"`
+	Address           pgtype.Text        `json:"address"`
+	DetailsJson       []byte             `json:"details_json"`
+	RawSource         pgtype.Text        `json:"raw_source"`
+	Source            string             `json:"source"`
+	DepartureLocation pgtype.Text        `json:"departure_location"`
+	ArrivalLocation   pgtype.Text        `json:"arrival_location"`
+	NumGuests         pgtype.Int4        `json:"num_guests"`
+	PriceCents        pgtype.Int8        `json:"price_cents"`
+	Currency          pgtype.Text        `json:"currency"`
+	Timezone          pgtype.Text        `json:"timezone"`
+}
+
+// Authz-gated booking insert used by IngestBooking (#361 P1 fix).
+// When trip_id is non-NULL, the WHERE clause re-checks that
+// user_id = $1 can edit the target trip — either owns it or is an
+// accepted editor-role collaborator. A malicious client passing
+// another user's trip_id misses the predicate, INSERT returns zero
+// rows, pgx returns ErrNoRows, the service maps that to
+// trip.ErrNotOwnerOrEditor.
+//
+// When trip_id is NULL (unattached booking) the OR branch lets the
+// insert through unchanged — unattached bookings are self-scoped
+// and no trip-level check applies.
+//
+// AUTHZ PREDICATE: semantic duplicate of the four other
+// *ForOwnerOrEditor queries across bookings.sql + itinerary.sql.
+// Keep in lockstep (#353 drift warning).
+func (q *Queries) CreateBookingForOwnerOrEditor(ctx context.Context, arg CreateBookingForOwnerOrEditorParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, createBookingForOwnerOrEditor,
+		arg.UserID,
+		arg.TripID,
+		arg.Type,
+		arg.ConfirmationCode,
+		arg.Provider,
+		arg.Title,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Location,
+		arg.Address,
+		arg.DetailsJson,
+		arg.RawSource,
+		arg.Source,
+		arg.DepartureLocation,
+		arg.ArrivalLocation,
+		arg.NumGuests,
+		arg.PriceCents,
+		arg.Currency,
+		arg.Timezone,
+	)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteBooking = `-- name: DeleteBooking :execrows
 DELETE FROM bookings WHERE id = $1 AND user_id = $2
 `
@@ -247,6 +355,69 @@ type LinkBookingToTripParams struct {
 
 func (q *Queries) LinkBookingToTrip(ctx context.Context, arg LinkBookingToTripParams) (Booking, error) {
 	row := q.db.QueryRow(ctx, linkBookingToTrip, arg.ID, arg.TripID, arg.UserID)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const linkBookingToTripForOwnerOrEditor = `-- name: LinkBookingToTripForOwnerOrEditor :one
+UPDATE bookings b SET trip_id = $2
+WHERE b.id = $1
+  AND b.user_id = $3
+  AND EXISTS (
+    SELECT 1 FROM trips t
+    WHERE t.id = $2
+      AND (
+        t.user_id = $3
+        OR EXISTS (
+          SELECT 1 FROM trip_collaborators tc
+          WHERE tc.trip_id = t.id
+            AND tc.user_id = $3
+            AND tc.accepted_at IS NOT NULL
+            AND tc.role = 'editor'
+        )
+      )
+  )
+RETURNING b.id, b.trip_id, b.user_id, b.type, b.confirmation_code, b.provider, b.title, b.start_time, b.end_time, b.location, b.address, b.details_json, b.raw_source, b.source, b.created_at, b.departure_location, b.arrival_location, b.num_guests, b.price_cents, b.currency, b.timezone, b.updated_at
+`
+
+type LinkBookingToTripForOwnerOrEditorParams struct {
+	ID     uuid.UUID   `json:"id"`
+	TripID pgtype.UUID `json:"trip_id"`
+	UserID uuid.UUID   `json:"user_id"`
+}
+
+// Authz-gated re-link of a booking to a trip (#361 P1 fix).
+// The plain LinkBookingToTrip above only gated on booking.user_id
+// so a user could re-associate their own booking with a victim's
+// trip. Here the UPDATE requires both booking ownership AND edit
+// rights on the target trip. Predicate miss → pgx.ErrNoRows →
+// trip.ErrNotOwnerOrEditor.
+func (q *Queries) LinkBookingToTripForOwnerOrEditor(ctx context.Context, arg LinkBookingToTripForOwnerOrEditorParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, linkBookingToTripForOwnerOrEditor, arg.ID, arg.TripID, arg.UserID)
 	var i Booking
 	err := row.Scan(
 		&i.ID,

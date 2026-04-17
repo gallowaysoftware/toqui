@@ -219,6 +219,81 @@ func (q *Queries) CreateItineraryItemFromBooking(ctx context.Context, arg Create
 	return i, err
 }
 
+const createItineraryItemFromBookingForOwnerOrEditor = `-- name: CreateItineraryItemFromBookingForOwnerOrEditor :one
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, start_time, end_time, booking_id)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+FROM trips t
+WHERE t.id = $1
+  AND (
+    t.user_id = $10
+    OR EXISTS (
+      SELECT 1 FROM trip_collaborators tc
+      WHERE tc.trip_id = t.id
+        AND tc.user_id = $10
+        AND tc.accepted_at IS NOT NULL
+        AND tc.role = 'editor'
+    )
+  )
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
+`
+
+type CreateItineraryItemFromBookingForOwnerOrEditorParams struct {
+	TripID      uuid.UUID          `json:"trip_id"`
+	DayNumber   pgtype.Int4        `json:"day_number"`
+	OrderInDay  pgtype.Int4        `json:"order_in_day"`
+	Type        pgtype.Text        `json:"type"`
+	Title       pgtype.Text        `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StartTime   pgtype.Timestamptz `json:"start_time"`
+	EndTime     pgtype.Timestamptz `json:"end_time"`
+	BookingID   pgtype.UUID        `json:"booking_id"`
+	UserID      uuid.UUID          `json:"user_id"`
+}
+
+// Authz-gated auto-link insert used by
+// BookingHandler.autoLinkBookingToItinerary (#361 P1 defence-in-depth).
+// Even when CreateBookingForOwnerOrEditor has already verified the
+// caller can edit the trip, this re-checks in SQL so any future
+// invocation with a mismatched (caller, trip) pair cannot plant
+// items into a foreign trip.
+//
+// Parameters: $1=trip_id $2=day_number $3=order_in_day $4=type
+// $5=title $6=description $7=start_time $8=end_time $9=booking_id
+// $10=caller_user_id
+func (q *Queries) CreateItineraryItemFromBookingForOwnerOrEditor(ctx context.Context, arg CreateItineraryItemFromBookingForOwnerOrEditorParams) (ItineraryItem, error) {
+	row := q.db.QueryRow(ctx, createItineraryItemFromBookingForOwnerOrEditor,
+		arg.TripID,
+		arg.DayNumber,
+		arg.OrderInDay,
+		arg.Type,
+		arg.Title,
+		arg.Description,
+		arg.StartTime,
+		arg.EndTime,
+		arg.BookingID,
+		arg.UserID,
+	)
+	var i ItineraryItem
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.DayNumber,
+		&i.OrderInDay,
+		&i.Type,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
+		&i.BookingID,
+	)
+	return i, err
+}
+
 const deleteItineraryItem = `-- name: DeleteItineraryItem :execrows
 DELETE FROM itinerary_items
 WHERE itinerary_items.id = $1
