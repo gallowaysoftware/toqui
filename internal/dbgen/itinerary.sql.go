@@ -86,6 +86,88 @@ func (q *Queries) CreateItineraryItem(ctx context.Context, arg CreateItineraryIt
 	return i, err
 }
 
+const createItineraryItemForOwnerOrEditor = `-- name: CreateItineraryItemForOwnerOrEditor :one
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, estimated_cost_cents, cost_currency)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+FROM trips t
+WHERE t.id = $1
+  AND (
+    t.user_id = $13
+    OR EXISTS (
+      SELECT 1 FROM trip_collaborators tc
+      WHERE tc.trip_id = t.id
+        AND tc.user_id = $13
+        AND tc.accepted_at IS NOT NULL
+        AND tc.role = 'editor'
+    )
+  )
+RETURNING id, trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, created_at, estimated_cost_cents, cost_currency, booking_id
+`
+
+type CreateItineraryItemForOwnerOrEditorParams struct {
+	TripID             uuid.UUID          `json:"trip_id"`
+	DayNumber          pgtype.Int4        `json:"day_number"`
+	OrderInDay         pgtype.Int4        `json:"order_in_day"`
+	Type               pgtype.Text        `json:"type"`
+	Title              pgtype.Text        `json:"title"`
+	Description        pgtype.Text        `json:"description"`
+	Location           interface{}        `json:"location"`
+	StartTime          pgtype.Timestamptz `json:"start_time"`
+	EndTime            pgtype.Timestamptz `json:"end_time"`
+	Metadata           []byte             `json:"metadata"`
+	EstimatedCostCents pgtype.Int8        `json:"estimated_cost_cents"`
+	CostCurrency       pgtype.Text        `json:"cost_currency"`
+	UserID             uuid.UUID          `json:"user_id"`
+}
+
+// Authz-gated insert used by ReplaceItineraryForOwnerOrEditor (#346):
+// the WHERE clause re-checks ownership on every insert so a collaborator
+// who is demoted mid-transaction (after the outer CanEditTrip pre-check
+// but before the inserts land) cannot sneak new items into someone
+// else's trip. When the predicate fails the INSERT matches zero rows
+// and returns ErrNoRows; the service translates that to
+// trip.ErrNotOwnerOrEditor and rolls back the entire transaction.
+//
+// Parameters: $1=trip_id $2=day_number $3=order_in_day $4=type
+// $5=title $6=description $7=location $8=start_time $9=end_time
+// $10=metadata $11=estimated_cost_cents $12=cost_currency $13=user_id
+func (q *Queries) CreateItineraryItemForOwnerOrEditor(ctx context.Context, arg CreateItineraryItemForOwnerOrEditorParams) (ItineraryItem, error) {
+	row := q.db.QueryRow(ctx, createItineraryItemForOwnerOrEditor,
+		arg.TripID,
+		arg.DayNumber,
+		arg.OrderInDay,
+		arg.Type,
+		arg.Title,
+		arg.Description,
+		arg.Location,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Metadata,
+		arg.EstimatedCostCents,
+		arg.CostCurrency,
+		arg.UserID,
+	)
+	var i ItineraryItem
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.DayNumber,
+		&i.OrderInDay,
+		&i.Type,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
+		&i.BookingID,
+	)
+	return i, err
+}
+
 const createItineraryItemFromBooking = `-- name: CreateItineraryItemFromBooking :one
 INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, start_time, end_time, booking_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

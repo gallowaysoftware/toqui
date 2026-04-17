@@ -3,6 +3,34 @@ INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, des
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
+-- name: CreateItineraryItemForOwnerOrEditor :one
+-- Authz-gated insert used by ReplaceItineraryForOwnerOrEditor (#346):
+-- the WHERE clause re-checks ownership on every insert so a collaborator
+-- who is demoted mid-transaction (after the outer CanEditTrip pre-check
+-- but before the inserts land) cannot sneak new items into someone
+-- else's trip. When the predicate fails the INSERT matches zero rows
+-- and returns ErrNoRows; the service translates that to
+-- trip.ErrNotOwnerOrEditor and rolls back the entire transaction.
+--
+-- Parameters: $1=trip_id $2=day_number $3=order_in_day $4=type
+-- $5=title $6=description $7=location $8=start_time $9=end_time
+-- $10=metadata $11=estimated_cost_cents $12=cost_currency $13=user_id
+INSERT INTO itinerary_items (trip_id, day_number, order_in_day, type, title, description, location, start_time, end_time, metadata, estimated_cost_cents, cost_currency)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+FROM trips t
+WHERE t.id = $1
+  AND (
+    t.user_id = $13
+    OR EXISTS (
+      SELECT 1 FROM trip_collaborators tc
+      WHERE tc.trip_id = t.id
+        AND tc.user_id = $13
+        AND tc.accepted_at IS NOT NULL
+        AND tc.role = 'editor'
+    )
+  )
+RETURNING *;
+
 -- name: ListItineraryItemsByTrip :many
 SELECT * FROM itinerary_items
 WHERE trip_id = $1

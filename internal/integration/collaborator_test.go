@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -484,5 +485,112 @@ func TestCollaboratorEditing(t *testing.T) {
 		// Cleanup the leftover on otherTrip so later tests see a
 		// deterministic global state.
 		_, _ = tripSvc.DeleteItineraryItems(ctx, otherOwner.ID, []uuid.UUID{itemB.ID})
+	})
+
+	t.Run("CreateItineraryItemForOwnerOrEditor_AuthzGate", func(t *testing.T) {
+		// #346: the insert used by ReplaceItineraryForOwnerOrEditor
+		// filters authz in SQL so the TOCTOU window between the
+		// outer CanEditTrip pre-check and the per-insert write is
+		// closed. Pin the gate's truth table by calling the query
+		// directly — if any of these assertions break, the mid-tx
+		// race re-opens and a demoted collaborator could sneak
+		// items into someone else's trip.
+		params := func(uid uuid.UUID) dbgen.CreateItineraryItemForOwnerOrEditorParams {
+			return dbgen.CreateItineraryItemForOwnerOrEditorParams{
+				TripID:      tr.ID,
+				DayNumber:   pgtype.Int4{Int32: 9, Valid: true},
+				OrderInDay:  pgtype.Int4{Int32: 1, Valid: true},
+				Type:        pgtype.Text{String: "activity", Valid: true},
+				Title:       pgtype.Text{String: "authz-gate probe", Valid: true},
+				Description: pgtype.Text{String: "", Valid: true},
+				UserID:      uid,
+			}
+		}
+
+		// Owner insert lands.
+		row, err := queries.CreateItineraryItemForOwnerOrEditor(ctx, params(owner.ID))
+		if err != nil {
+			t.Fatalf("owner insert: %v", err)
+		}
+		t.Cleanup(func() { _, _ = tripSvc.DeleteItineraryItems(ctx, owner.ID, []uuid.UUID{row.ID}) })
+
+		// Editor insert lands.
+		row2, err := queries.CreateItineraryItemForOwnerOrEditor(ctx, params(editor.ID))
+		if err != nil {
+			t.Fatalf("editor insert: %v", err)
+		}
+		t.Cleanup(func() { _, _ = tripSvc.DeleteItineraryItems(ctx, owner.ID, []uuid.UUID{row2.ID}) })
+
+		// Viewer insert is blocked — the predicate misses and pgx
+		// returns ErrNoRows. This is the exact signal the service
+		// layer translates into ErrNotOwnerOrEditor, rolling back
+		// the entire transaction.
+		if _, err := queries.CreateItineraryItemForOwnerOrEditor(ctx, params(viewer.ID)); !errors.Is(err, pgx.ErrNoRows) {
+			t.Errorf("viewer insert: expected pgx.ErrNoRows, got %v", err)
+		}
+
+		// Outsider insert is blocked for the same reason.
+		if _, err := queries.CreateItineraryItemForOwnerOrEditor(ctx, params(outsider.ID)); !errors.Is(err, pgx.ErrNoRows) {
+			t.Errorf("outsider insert: expected pgx.ErrNoRows, got %v", err)
+		}
+	})
+
+	t.Run("ReplaceTranslatesGateMissToAuthzSentinel", func(t *testing.T) {
+		// End-to-end counterpart to the gate probe above: when the
+		// per-insert predicate misses mid-transaction (simulated
+		// here by demoting the editor from 'editor' to 'viewer'
+		// before the Replace call fires), the service must return
+		// ErrNotOwnerOrEditor — NOT a raw pgx.ErrNoRows, and NOT a
+		// partially-committed transaction.
+		//
+		// The outer CanEditTrip pre-check also fails for this
+		// demoted user, so in production the pre-check short-circuits
+		// before the insert. But the per-insert gate is what closes
+		// the narrow TOCTOU window where role changes land between
+		// the pre-check and the write. Both layers converge on the
+		// same sentinel.
+		if _, err := env.Pool.Exec(ctx,
+			`UPDATE trip_collaborators SET role = 'viewer' WHERE trip_id = $1 AND user_id = $2`,
+			tr.ID, editor.ID,
+		); err != nil {
+			t.Fatalf("demote editor: %v", err)
+		}
+		// Restore after the test so we don't leak state.
+		t.Cleanup(func() {
+			_, _ = env.Pool.Exec(ctx,
+				`UPDATE trip_collaborators SET role = 'editor' WHERE trip_id = $1 AND user_id = $2`,
+				tr.ID, editor.ID,
+			)
+		})
+
+		before, err := tripSvc.GetItinerary(ctx, tr.ID)
+		if err != nil {
+			t.Fatalf("get itinerary before demoted replace: %v", err)
+		}
+		beforeLen := len(before)
+
+		items := []trip.ReplaceItineraryItem{
+			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "Demoted Attempt"},
+		}
+		err = tripSvc.ReplaceItineraryForOwnerOrEditor(ctx, editor.ID, tr.ID, items)
+		if err == nil {
+			t.Fatal("demoted editor Replace should be rejected, got nil error")
+		}
+		if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			t.Errorf("expected trip.ErrNotOwnerOrEditor, got %v", err)
+		}
+
+		after, err := tripSvc.GetItinerary(ctx, tr.ID)
+		if err != nil {
+			t.Fatalf("get itinerary after demoted replace: %v", err)
+		}
+		if len(after) != beforeLen {
+			t.Errorf("itinerary changed length: before=%d after=%d — transaction did not roll back cleanly", beforeLen, len(after))
+		}
+		for _, it := range after {
+			if it.Title.Valid && it.Title.String == "Demoted Attempt" {
+				t.Error("demoted editor's item leaked into itinerary")
+			}
+		}
 	})
 }

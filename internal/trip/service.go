@@ -774,16 +774,21 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 // ReplaceItineraryForOwnerOrEditor is like ReplaceItinerary but also allows
 // accepted editor-role collaborators to replace the itinerary (#263).
 //
-// Authz is enforced in two places as defence-in-depth:
-//  1. An explicit CanEditTrip pre-check before the transaction begins — the
-//     internal CreateItineraryItem query does not itself verify ownership,
-//     so a caller whose delete step was a no-op (viewer/non-collaborator)
-//     would otherwise silently INSERT new items into someone else's trip
-//     (#343). The pre-check rejects such callers with ErrNotOwnerOrEditor
-//     before any write happens.
-//  2. The DeleteItineraryItemsByTripForOwnerOrEditor query still filters in
-//     SQL, so any future caller that skips the helper and calls the query
-//     directly remains safe against the delete side of the hazard.
+// Authz is enforced in three layers as defence-in-depth:
+//  1. An explicit CanEditTrip pre-check before the transaction begins —
+//     fails fast for obviously-unauthorised callers before allocating a
+//     transaction.
+//  2. The DeleteItineraryItemsByTripForOwnerOrEditor query filters in
+//     SQL, so a caller who slips past the pre-check deletes nothing.
+//  3. CreateItineraryItemForOwnerOrEditor filters in SQL on every insert
+//     (#346). This closes a TOCTOU window: a collaborator demoted from
+//     editor to viewer between the pre-check and the inserts would
+//     otherwise sneak new items into someone else's trip, because the
+//     delete step silently no-ops on the demoted snapshot while the old
+//     un-gated CreateItineraryItem had no authz of its own. When the
+//     WHERE predicate misses the INSERT matches zero rows and pgx
+//     returns ErrNoRows; we translate that to ErrNotOwnerOrEditor and
+//     roll back the whole transaction.
 func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
 	canEdit, err := s.CanEditTrip(ctx, userID, tripID)
 	if err != nil {
@@ -821,7 +826,7 @@ func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, 
 				metadata = b
 			}
 		}
-		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
+		if _, err := qtx.CreateItineraryItemForOwnerOrEditor(ctx, dbgen.CreateItineraryItemForOwnerOrEditorParams{
 			TripID:             tripID,
 			DayNumber:          int4FromInt(item.DayNumber),
 			OrderInDay:         int4FromInt(item.OrderInDay),
@@ -831,7 +836,16 @@ func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, 
 			Metadata:           metadata,
 			EstimatedCostCents: int8FromPtr(item.EstimatedCostCents),
 			CostCurrency:       textFromString(item.CostCurrency),
+			UserID:             userID,
 		}); err != nil {
+			// ErrNoRows means the WHERE predicate didn't match —
+			// the caller was demoted (or lost ownership) between
+			// the pre-check and this insert. Translate to the
+			// authz sentinel so the handler maps to
+			// PermissionDenied, and roll back the transaction.
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotOwnerOrEditor
+			}
 			return fmt.Errorf("insert item %q: %w", item.Title, err)
 		}
 	}
