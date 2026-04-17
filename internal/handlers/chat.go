@@ -249,8 +249,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				// Check if user is a collaborator editor (not the owner).
 				// This gates itinerary write tools for collaborators (#263).
+				// Fail closed on transient DB errors: a flapping Postgres
+				// should revoke write tools, not accidentally grant them
+				// — and never produce a surprise `PermissionDenied` in
+				// the reverse direction either (#348).
 				if t.UserID != userID {
-					isCollaboratorEditor = h.tripSvc.IsEditorCollaborator(ctx, userID, tripID)
+					isEditor, editorErr := h.tripSvc.IsEditorCollaborator(ctx, userID, tripID)
+					if editorErr != nil {
+						slog.ErrorContext(ctx, "check editor collaborator", "error", editorErr, "user_id", userID, "trip_id", tripID)
+						isEditor = false
+					}
+					isCollaboratorEditor = isEditor
 				}
 			}
 			if h.themeSvc != nil {
@@ -540,7 +549,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				// Editor-role collaborators can create and delete itinerary
 				// items. update_trip (title, description, status, destinations)
 				// is owner-only. Viewer collaborators get no write tools (#263).
-				isOwner := !isCollaboratorEditor && h.tripSvc.CanEditTrip(ctx, userID, tripID)
+				// Fail closed on transient DB errors — withhold owner-only
+				// tools rather than grant them under uncertainty (#348).
+				isOwner := false
+				if !isCollaboratorEditor {
+					canEdit, canEditErr := h.tripSvc.CanEditTrip(ctx, userID, tripID)
+					if canEditErr != nil {
+						slog.ErrorContext(ctx, "check can edit trip", "error", canEditErr, "user_id", userID, "trip_id", tripID)
+					}
+					isOwner = canEdit
+				}
 
 				var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
 					mu.Lock()

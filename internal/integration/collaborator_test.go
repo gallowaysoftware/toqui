@@ -111,7 +111,10 @@ func TestCollaboratorEditing(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got := tripSvc.CanEditTrip(ctx, tt.userID, tr.ID)
+				got, err := tripSvc.CanEditTrip(ctx, tt.userID, tr.ID)
+				if err != nil {
+					t.Fatalf("CanEditTrip(%s) unexpected error: %v", tt.name, err)
+				}
 				if got != tt.want {
 					t.Errorf("CanEditTrip(%s) = %v, want %v", tt.name, got, tt.want)
 				}
@@ -132,11 +135,67 @@ func TestCollaboratorEditing(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got := tripSvc.IsEditorCollaborator(ctx, tt.userID, tr.ID)
+				got, err := tripSvc.IsEditorCollaborator(ctx, tt.userID, tr.ID)
+				if err != nil {
+					t.Fatalf("IsEditorCollaborator(%s) unexpected error: %v", tt.name, err)
+				}
 				if got != tt.want {
 					t.Errorf("IsEditorCollaborator(%s) = %v, want %v", tt.name, got, tt.want)
 				}
 			})
+		}
+	})
+
+	t.Run("CanEditTrip_PropagatesDBErrors", func(t *testing.T) {
+		// #348: a transient DB failure during the authz pre-check must
+		// surface as an error, not silently decay to "false" (which
+		// would then render as PermissionDenied to the user instead of
+		// Unavailable/Internal). We simulate a transient failure by
+		// pre-cancelling the context — every pgx query immediately
+		// returns context.Canceled, which is NOT pgx.ErrNoRows.
+		cancelledCtx, cancel := context.WithCancel(ctx)
+		cancel()
+
+		gotCanEdit, err := tripSvc.CanEditTrip(cancelledCtx, owner.ID, tr.ID)
+		if err == nil {
+			t.Fatalf("CanEditTrip with cancelled ctx returned (canEdit=%v, err=nil); want non-nil error", gotCanEdit)
+		}
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			t.Errorf("CanEditTrip leaked ErrNotOwnerOrEditor for a DB failure; want a transport error: %v", err)
+		}
+		// Pin the error kind so a future change that starts treating
+		// context.Canceled as a clean "not an editor" (returning
+		// (false, nil)) can't silently turn this test into a no-op.
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("CanEditTrip expected wrapped context.Canceled, got %v", err)
+		}
+		if gotCanEdit {
+			t.Errorf("CanEditTrip returned canEdit=true on DB failure; want false")
+		}
+
+		gotIsEditor, err := tripSvc.IsEditorCollaborator(cancelledCtx, editor.ID, tr.ID)
+		if err == nil {
+			t.Fatalf("IsEditorCollaborator with cancelled ctx returned (isEditor=%v, err=nil); want non-nil error", gotIsEditor)
+		}
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("IsEditorCollaborator expected wrapped context.Canceled, got %v", err)
+		}
+		if gotIsEditor {
+			t.Errorf("IsEditorCollaborator returned isEditor=true on DB failure; want false")
+		}
+
+		// ReplaceItineraryForOwnerOrEditor must wrap the CanEditTrip
+		// error, not confuse it with ErrNotOwnerOrEditor — otherwise
+		// the handler would map it to PermissionDenied instead of
+		// surfacing an Internal/Unavailable.
+		err = tripSvc.ReplaceItineraryForOwnerOrEditor(cancelledCtx, owner.ID, tr.ID, []trip.ReplaceItineraryItem{
+			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "irrelevant"},
+		})
+		if err == nil {
+			t.Fatal("ReplaceItineraryForOwnerOrEditor with cancelled ctx returned nil error; want non-nil")
+		}
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			t.Errorf("ReplaceItineraryForOwnerOrEditor leaked ErrNotOwnerOrEditor for a DB failure; want a transport error: %v", err)
 		}
 	})
 
@@ -339,14 +398,14 @@ func TestCollaboratorEditing(t *testing.T) {
 	t.Run("ReplaceOnNonExistentTripReturnsPermissionDenied", func(t *testing.T) {
 		// W2 from the #343 adversarial review: pin the semantics
 		// of a Replace against a trip the caller cannot edit
-		// because the trip doesn't exist. CanEditTrip falls
-		// through IsAcceptedCollaboratorWithRole on a bogus ID,
-		// both return false, so we get ErrNotOwnerOrEditor rather
-		// than a more specific "not found" signal. The RPC handler
-		// masks this with a GetByIDOrCollaborator pre-check, but
-		// pinning the service behaviour here catches any future
-		// change that starts returning an error from CanEditTrip
-		// (which would slip past the current errors.Is check).
+		// because the trip doesn't exist. GetTripByID on a bogus
+		// UUID returns pgx.ErrNoRows, which CanEditTrip treats as
+		// "not the owner, try the editor path" (#348) — the editor
+		// lookup then also misses and CanEditTrip returns
+		// (false, nil). The net result is ErrNotOwnerOrEditor from
+		// the service, which is what callers expect. The RPC
+		// handler masks this with a GetByIDOrCollaborator pre-check
+		// so users see NotFound, not PermissionDenied.
 		bogusTripID := uuid.New()
 		items := []trip.ReplaceItineraryItem{
 			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "Ghost Trip"},

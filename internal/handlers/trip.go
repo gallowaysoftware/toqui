@@ -368,7 +368,11 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 		}
 		return nil, internalError(ctx, "get trip", err)
 	}
-	if !h.tripSvc.CanEditTrip(ctx, userID, tripID) {
+	canEdit, err := h.tripSvc.CanEditTrip(ctx, userID, tripID)
+	if err != nil {
+		return nil, internalError(ctx, "check edit access", err)
+	}
+	if !canEdit {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to modify itinerary"))
 	}
 
@@ -436,7 +440,11 @@ func (h *TripHandler) ReorderItineraryItem(ctx context.Context, req *connect.Req
 	}
 
 	// Access check: trip owner or editor collaborator.
-	if !h.tripSvc.CanEditTrip(ctx, userID, tripID) {
+	canEdit, err := h.tripSvc.CanEditTrip(ctx, userID, tripID)
+	if err != nil {
+		return nil, internalError(ctx, "check edit access", err)
+	}
+	if !canEdit {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to reorder itinerary"))
 	}
 

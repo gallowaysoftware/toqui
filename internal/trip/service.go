@@ -626,29 +626,42 @@ func (s *Service) DeleteItineraryItemsForOwnerOrEditor(ctx context.Context, user
 }
 
 // IsEditorCollaborator reports whether the given user is an accepted
-// collaborator with editor role on the specified trip.
-func (s *Service) IsEditorCollaborator(ctx context.Context, userID, tripID uuid.UUID) bool {
+// collaborator with editor role on the specified trip. Returns
+// (false, err) on any DB error so callers can distinguish "definitely
+// not an editor" from "couldn't answer the question" — an authz
+// pre-check that swallows transient DB errors converts what should be
+// a retryable 5xx into a deliberate-looking `PermissionDenied` (#348).
+func (s *Service) IsEditorCollaborator(ctx context.Context, userID, tripID uuid.UUID) (bool, error) {
 	ok, err := s.queries.IsAcceptedCollaboratorWithRole(ctx, dbgen.IsAcceptedCollaboratorWithRoleParams{
 		TripID: tripID,
 		UserID: pgtype.UUID{Bytes: userID, Valid: true},
 		Role:   "editor",
 	})
 	if err != nil {
-		return false
+		return false, fmt.Errorf("is editor collaborator: %w", err)
 	}
-	return ok
+	return ok, nil
 }
 
 // CanEditTrip reports whether the user is the trip owner or an accepted
 // editor-role collaborator. Used by handlers to gate write operations on
 // itineraries and chat (#263).
-func (s *Service) CanEditTrip(ctx context.Context, userID, tripID uuid.UUID) bool {
+//
+// Returns (false, err) only on transient DB failures. A clean "no, this
+// user cannot edit this trip" is (false, nil); ErrNoRows from the
+// ownership probe is treated as "not the owner, try the editor path"
+// not as a transient error (#348).
+func (s *Service) CanEditTrip(ctx context.Context, userID, tripID uuid.UUID) (bool, error) {
 	// Check owner first (fast path via GetByID).
-	if _, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+	_, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
 		ID:     tripID,
 		UserID: userID,
-	}); err == nil {
-		return true
+	})
+	if err == nil {
+		return true, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return false, fmt.Errorf("check trip ownership: %w", err)
 	}
 	return s.IsEditorCollaborator(ctx, userID, tripID)
 }
@@ -772,7 +785,11 @@ func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID
 //     SQL, so any future caller that skips the helper and calls the query
 //     directly remains safe against the delete side of the hazard.
 func (s *Service) ReplaceItineraryForOwnerOrEditor(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
-	if !s.CanEditTrip(ctx, userID, tripID) {
+	canEdit, err := s.CanEditTrip(ctx, userID, tripID)
+	if err != nil {
+		return fmt.Errorf("check edit access: %w", err)
+	}
+	if !canEdit {
 		return ErrNotOwnerOrEditor
 	}
 
