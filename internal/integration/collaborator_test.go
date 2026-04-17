@@ -639,4 +639,93 @@ func TestCollaboratorEditing(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("GetItineraryForOwnerOrEditor_AuthzGate", func(t *testing.T) {
+		// Seed one item so the helper has something to return on the
+		// success cases — otherwise a viewer getting back an empty
+		// slice (with nil error) would look identical to a properly
+		// denied call.
+		seeded, err := tripSvc.CreateItineraryItem(ctx, tr.ID, 11, 1, "activity", "Gated Read Probe", "")
+		if err != nil {
+			t.Fatalf("seed item: %v", err)
+		}
+		t.Cleanup(func() { _, _ = tripSvc.DeleteItineraryItems(ctx, owner.ID, []uuid.UUID{seeded.ID}) })
+
+		// Owner and editor both see the seeded item.
+		for _, uc := range []struct {
+			name   string
+			userID uuid.UUID
+		}{
+			{"owner reads", owner.ID},
+			{"editor reads", editor.ID},
+		} {
+			t.Run(uc.name, func(t *testing.T) {
+				got, err := tripSvc.GetItineraryForOwnerOrEditor(ctx, uc.userID, tr.ID)
+				if err != nil {
+					t.Fatalf("GetItineraryForOwnerOrEditor: %v", err)
+				}
+				found := false
+				for _, it := range got {
+					if it.ID == seeded.ID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("seeded item %s not returned", seeded.ID)
+				}
+			})
+		}
+
+		// Viewer is rejected — the point of the new helper. Handing
+		// the itinerary back to a viewer here is the gap #353's
+		// follow-up closes (read-only collaborators shouldn't get the
+		// dedup peek's output routed anywhere).
+		t.Run("viewer rejected", func(t *testing.T) {
+			_, err := tripSvc.GetItineraryForOwnerOrEditor(ctx, viewer.ID, tr.ID)
+			if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
+				t.Fatalf("expected ErrNotOwnerOrEditor for viewer, got %v", err)
+			}
+		})
+
+		// Outsider is rejected identically.
+		t.Run("outsider rejected", func(t *testing.T) {
+			_, err := tripSvc.GetItineraryForOwnerOrEditor(ctx, outsider.ID, tr.ID)
+			if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
+				t.Fatalf("expected ErrNotOwnerOrEditor for outsider, got %v", err)
+			}
+		})
+
+		// A non-existent trip is rejected the same way — GetTripByID
+		// misses, IsEditorCollaborator misses, CanEditTrip returns
+		// false, and the helper maps to ErrNotOwnerOrEditor. This
+		// mirrors ReplaceOnNonExistentTripReturnsPermissionDenied so
+		// the read/write paths can't drift apart in the future.
+		t.Run("non-existent trip rejected", func(t *testing.T) {
+			_, err := tripSvc.GetItineraryForOwnerOrEditor(ctx, editor.ID, uuid.New())
+			if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
+				t.Fatalf("expected ErrNotOwnerOrEditor for bogus trip, got %v", err)
+			}
+		})
+
+		// Parallel to CanEditTrip_PropagatesDBErrors: a transient DB
+		// failure in the authz gate must surface as a wrapped transport
+		// error, never ErrNotOwnerOrEditor. Otherwise a flapping
+		// Postgres would render as PermissionDenied to the user
+		// instead of Unavailable/Internal.
+		t.Run("propagates DB errors", func(t *testing.T) {
+			cancelledCtx, cancel := context.WithCancel(ctx)
+			cancel()
+			_, err := tripSvc.GetItineraryForOwnerOrEditor(cancelledCtx, owner.ID, tr.ID)
+			if err == nil {
+				t.Fatal("expected non-nil error on cancelled ctx")
+			}
+			if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+				t.Errorf("leaked ErrNotOwnerOrEditor for a DB failure: %v", err)
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("expected wrapped context.Canceled, got %v", err)
+			}
+		})
+	})
 }

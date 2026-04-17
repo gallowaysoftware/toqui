@@ -706,6 +706,28 @@ func (s *Service) GetItinerary(ctx context.Context, tripID uuid.UUID) ([]dbgen.I
 	return items, nil
 }
 
+// GetItineraryForOwnerOrEditor is the authz-gated read variant: it loads
+// itinerary items for a trip only after verifying the caller is the owner
+// or an editor-role collaborator. Viewers, outsiders, and callers on a
+// non-existent trip get ErrNotOwnerOrEditor. Transient DB failures in the
+// gate surface as wrapped errors, never ErrNotOwnerOrEditor.
+//
+// The bare GetItinerary stays untouched because handler-layer pre-checks
+// already gate every in-tree caller that routes items back to the user
+// (GetItinerary RPC, bundle, ical/pdf export, shared public view, chat
+// context). This variant exists so new callers — tools especially — have
+// a ready-made safe primitive instead of reinventing the pre-check.
+func (s *Service) GetItineraryForOwnerOrEditor(ctx context.Context, callerID, tripID uuid.UUID) ([]dbgen.ItineraryItem, error) {
+	canEdit, err := s.CanEditTrip(ctx, callerID, tripID)
+	if err != nil {
+		return nil, fmt.Errorf("check edit access: %w", err)
+	}
+	if !canEdit {
+		return nil, ErrNotOwnerOrEditor
+	}
+	return s.GetItinerary(ctx, tripID)
+}
+
 // ReplaceItineraryItem describes a single item in a bulk itinerary rewrite.
 // This is a minimal projection of the proto ItineraryItem that only carries
 // the fields we actually persist through the sqlc query path.

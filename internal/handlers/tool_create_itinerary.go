@@ -188,10 +188,19 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		})
 	}
 
-	// Load existing items for deduplication.
-	existing, err := t.tripSvc.GetItinerary(ctx, tripID)
+	// Load existing items for deduplication through the authz-gated
+	// helper so the dedup peek never leaks another user's itinerary
+	// metadata back to the AI (and from there into the response). Dedup
+	// is an optimisation, not a correctness feature — on any error
+	// (authz denied, transient DB) we fall through with existing=nil;
+	// the subsequent SQL-gated INSERT still blocks unauthorised writes.
+	existing, err := t.tripSvc.GetItineraryForOwnerOrEditor(ctx, t.callerID, tripID)
 	if err != nil {
-		slog.Warn("failed to load existing itinerary for dedup, proceeding without dedup", "trip_id", tripID, "error", err)
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			slog.Info("dedup peek skipped: caller is not owner/editor", "trip_id", tripID, "caller_id", t.callerID)
+		} else {
+			slog.Warn("failed to load existing itinerary for dedup, proceeding without dedup", "trip_id", tripID, "error", err)
+		}
 		existing = nil
 	}
 
