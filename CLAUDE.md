@@ -636,20 +636,27 @@ gcloud run services describe toqui-backend \
 
 **Raw gcloud (if CI is broken)**:
 
+Prod Cloud SQL is private-IP only (toqui-terraform PR #24), so every `gcloud run deploy` / `gcloud run jobs deploy` command MUST pass `--vpc-connector=toqui-connector --vpc-egress=private-ranges-only`. Dropping the flags creates a revision with no path to the DB and every query times out after 10s (this is exactly what caused the 2026-04-17 outage; CI was fixed in PR #359).
+
 ```bash
-IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-prod/toqui-backend/toqui-backend
+# Images are pushed to the shared Artifact Registry in toqui-infra, not the
+# runtime project — this is how Cloud Run pulls the same image across projects.
+IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
 
 # Build and push
 docker build --platform linux/amd64 -t $IMAGE:latest .
 docker push $IMAGE:latest
 
-# Run migrations FIRST
+# Run migrations FIRST (Job also needs VPC access — private-IP Cloud SQL)
 gcloud run jobs deploy toqui-migrate --image=$IMAGE:latest \
   --region=northamerica-northeast1 --project=toqui-prod \
+  --vpc-connector=toqui-connector --vpc-egress=private-ranges-only \
   --command=/migrate --args="-direction,up" --execute-now
 
-# Then deploy
-gcloud run deploy toqui-backend --image=$IMAGE:latest --region=northamerica-northeast1 --project=toqui-prod
+# Then deploy the service (must preserve VPC connector attachment)
+gcloud run deploy toqui-backend --image=$IMAGE:latest \
+  --region=northamerica-northeast1 --project=toqui-prod \
+  --vpc-connector=toqui-connector --vpc-egress=private-ranges-only
 ```
 
 ### Rolling Back
