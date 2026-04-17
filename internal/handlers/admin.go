@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -395,6 +396,27 @@ func (h *AdminHandler) HandleUnlockTrip(w http.ResponseWriter, r *http.Request) 
 	tripID, err := uuid.Parse(req.TripID)
 	if err != nil {
 		http.Error(w, "invalid trip_id", http.StatusBadRequest)
+		return
+	}
+
+	// Cross-validate: the (user_id, trip_id) pair must correspond to
+	// a real owned trip. Admin-gated so a compromised admin is the
+	// only threat, but a typo or stale ID would otherwise silently
+	// create a ghost trip_unlocks row referencing a trip the user
+	// doesn't own — later webhook reconciliation could confuse this
+	// with a legitimate purchase (#361 P3). GetTripByID's WHERE
+	// filters on user_id, so ErrNoRows here means the pair doesn't
+	// match.
+	if _, err := h.queries.GetTripByID(r.Context(), dbgen.GetTripByIDParams{
+		ID:     tripID,
+		UserID: userID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "trip not found for this user", http.StatusNotFound)
+			return
+		}
+		slog.Error("admin unlock trip: validate ownership failed", "error", err, "user_id", userID, "trip_id", tripID)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 

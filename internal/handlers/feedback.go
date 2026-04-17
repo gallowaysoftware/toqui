@@ -62,10 +62,28 @@ func (h *FeedbackHandler) HandleSubmitFeedback(w http.ResponseWriter, r *http.Re
 		contextBytes, _ = json.Marshal(req.Context)
 	}
 
+	// Validate trip_id: only accept it if the caller can actually see
+	// the trip (owner or accepted collaborator of any role). Without
+	// this check any user could attach feedback to someone else's
+	// trip; admin dashboards and /admin/feedback would then show the
+	// misdirected association (#361 P3). Silent drop on unverified
+	// IDs is fine — feedback without a trip_id is still a valid
+	// submission.
 	var tripID pgtype.UUID
 	if req.TripID != "" {
 		if parsed, err := uuid.Parse(req.TripID); err == nil {
-			tripID = pgtype.UUID{Bytes: parsed, Valid: true}
+			if _, accessErr := h.queries.GetTripByIDOrCollaborator(r.Context(), dbgen.GetTripByIDOrCollaboratorParams{
+				ID:     parsed,
+				UserID: userID,
+			}); accessErr == nil {
+				tripID = pgtype.UUID{Bytes: parsed, Valid: true}
+			} else {
+				slog.Info("feedback dropped unverified trip_id",
+					"user_id", userID,
+					"trip_id", parsed,
+					"reason", "not owner or collaborator",
+				)
+			}
 		}
 	}
 
