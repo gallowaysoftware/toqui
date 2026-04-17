@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -90,6 +91,15 @@ func (h *CheckoutHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Re
 
 	result, err := h.paymentSvc.InitializeCheckout(r.Context(), userID, tripID)
 	if err != nil {
+		// Trip-ownership failure → 403 before touching Stripe (#361 P1).
+		// Kept as a sentinel check so the ErrNotTripOwner branch can
+		// never be masked by any future string-based matching below.
+		if errors.Is(err, payment.ErrNotTripOwner) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{"error": "you don't own this trip"})
+			return
+		}
 		if strings.Contains(err.Error(), "already unlocked") {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)

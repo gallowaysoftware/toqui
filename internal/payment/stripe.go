@@ -2,16 +2,28 @@ package payment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v82"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
+
+// ErrNotTripOwner is returned when the caller tries to initiate Trip Pro
+// checkout for a trip they don't own. Trip Pro unlocks an OWNED trip —
+// collaborators (even editors) can't buy Pro on a trip they don't own
+// because the receipt and unlock row are keyed to the purchasing user.
+// Mapped to connect.CodePermissionDenied at the handler boundary. This
+// is a re-export of trip.ErrNotOwnerOrEditor for API consistency with
+// the other gated writes (#361 P1 #3 fix).
+var ErrNotTripOwner = trip.ErrNotOwnerOrEditor
 
 // Service handles Stripe payment operations for Trip Pro one-time purchases.
 type Service struct {
@@ -68,6 +80,26 @@ func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripI
 
 	if s.productID == "" {
 		return nil, fmt.Errorf("STRIPE_TRIP_PRO_PRODUCT_ID not configured")
+	}
+
+	// Verify the caller owns the trip before touching Stripe or the
+	// checkout-sessions table (#361 P1). Previously the handler went
+	// straight to IsTripUnlocked(userID, tripID) — which returns false
+	// for ANY (userID, trip_id) pair that doesn't have a matching
+	// trip_unlocks row, regardless of whether userID actually owns
+	// trip_id. Net: a malicious client could burn their own payment
+	// method creating Stripe sessions against a victim's trip_id.
+	// GetTripByID filters on user_id in SQL, so pgx.ErrNoRows here
+	// means "not the owner" and we return a clean sentinel that the
+	// handler can map to CodePermissionDenied.
+	if _, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     tripID,
+		UserID: userID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotTripOwner
+		}
+		return nil, fmt.Errorf("check trip ownership: %w", err)
 	}
 
 	// Check if trip is already unlocked
