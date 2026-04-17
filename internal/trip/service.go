@@ -551,6 +551,38 @@ func (s *Service) CreateItineraryItemWithCost(ctx context.Context, tripID uuid.U
 	return item, nil
 }
 
+// CreateItineraryItemForOwnerOrEditor is the authz-gated variant used by
+// code paths where the caller's right to edit the trip may change between
+// request time and the moment of write. Chat sessions last tens of
+// seconds to minutes; an editor-role collaborator revoked mid-stream
+// would otherwise still land inserts via the un-gated helpers (#353).
+//
+// The underlying CreateItineraryItemForOwnerOrEditor SQL re-checks
+// ownership on every INSERT. A predicate miss → pgx.ErrNoRows, which
+// we translate into ErrNotOwnerOrEditor so handlers (and chat tools)
+// can report "forbidden" with a clean sentinel rather than a raw
+// pgx error (#346 pattern, #353 coverage).
+func (s *Service) CreateItineraryItemForOwnerOrEditor(ctx context.Context, callerID, tripID uuid.UUID, dayNumber, orderInDay int, itemType, title, description string, costCents *int64, costCurrency string) (dbgen.ItineraryItem, error) {
+	item, err := s.queries.CreateItineraryItemForOwnerOrEditor(ctx, dbgen.CreateItineraryItemForOwnerOrEditorParams{
+		TripID:             tripID,
+		DayNumber:          int4FromInt(dayNumber),
+		OrderInDay:         int4FromInt(orderInDay),
+		Type:               textFromString(itemType),
+		Title:              textFromString(title),
+		Description:        textFromString(description),
+		EstimatedCostCents: int8FromPtr(costCents),
+		CostCurrency:       textFromString(costCurrency),
+		UserID:             callerID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dbgen.ItineraryItem{}, ErrNotOwnerOrEditor
+		}
+		return dbgen.ItineraryItem{}, fmt.Errorf("create itinerary item (owner/editor): %w", err)
+	}
+	return item, nil
+}
+
 // DeleteItineraryItems removes itinerary items by their IDs. Only items owned
 // by the given user (via the trip's user_id) are deleted. Returns the list of
 // actually-deleted IDs so the caller can report accurately, and an error if
@@ -696,83 +728,19 @@ type ReplaceItineraryItem struct {
 	CostCurrency       string
 }
 
-// ReplaceItinerary deletes all existing itinerary items for a trip and
-// inserts the provided set in one transaction. Used by the public
-// TripService/UpdateItinerary RPC so clients have a non-AI path to manage
-// itinerary content (Run 4 N-05 P1). Handlers flatten their proto
-// Itinerary into []ReplaceItineraryItem before calling.
-func (s *Service) ReplaceItinerary(ctx context.Context, userID, tripID uuid.UUID, items []ReplaceItineraryItem) error {
-	// Authz pre-check: DeleteItineraryItemsByTrip filters on trip owner
-	// in SQL, but CreateItineraryItem does not — a non-owner whose delete
-	// step silently no-ops would still INSERT new items into someone
-	// else's trip (#345, same class as #343 Bug 2 applied to the
-	// owner-only path). The UpdateItinerary handler already gates via
-	// GetByIDOrCollaborator+CanEditTrip, but the service contract
-	// enforces its own precondition so any future direct caller is safe.
-	if _, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
-		ID:     tripID,
-		UserID: userID,
-	}); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotOwnerOrEditor
-		}
-		return fmt.Errorf("authz check: %w", err)
-	}
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.queries.WithTx(tx)
-
-	if _, err := qtx.DeleteItineraryItemsByTrip(ctx, dbgen.DeleteItineraryItemsByTripParams{
-		TripID: tripID,
-		UserID: userID,
-	}); err != nil {
-		return fmt.Errorf("delete existing: %w", err)
-	}
-
-	for _, item := range items {
-		// Encode day-level summary/date in the item metadata JSONB so
-		// UpdateItinerary round-trips them without requiring a new table
-		// (Run 5 R-07/N-05 P2). itineraryToProto reads them back.
-		var metadata []byte
-		if item.DaySummary != "" || item.DayDate != "" {
-			md := make(map[string]string, 2)
-			if item.DaySummary != "" {
-				md["day_summary"] = item.DaySummary
-			}
-			if item.DayDate != "" {
-				md["day_date"] = item.DayDate
-			}
-			if b, err := json.Marshal(md); err == nil {
-				metadata = b
-			}
-		}
-		if _, err := qtx.CreateItineraryItem(ctx, dbgen.CreateItineraryItemParams{
-			TripID:             tripID,
-			DayNumber:          int4FromInt(item.DayNumber),
-			OrderInDay:         int4FromInt(item.OrderInDay),
-			Type:               textFromString(item.Type),
-			Title:              textFromString(item.Title),
-			Description:        textFromString(item.Description),
-			Metadata:           metadata,
-			EstimatedCostCents: int8FromPtr(item.EstimatedCostCents),
-			CostCurrency:       textFromString(item.CostCurrency),
-		}); err != nil {
-			return fmt.Errorf("insert item %q: %w", item.Title, err)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-	return nil
-}
-
-// ReplaceItineraryForOwnerOrEditor is like ReplaceItinerary but also allows
-// accepted editor-role collaborators to replace the itinerary (#263).
+// ReplaceItineraryForOwnerOrEditor deletes all existing itinerary items
+// for a trip and inserts the provided set in one transaction. Used by
+// the public TripService/UpdateItinerary RPC so clients have a non-AI
+// path to manage itinerary content (Run 4 N-05 P1). Handlers flatten
+// their proto Itinerary into []ReplaceItineraryItem before calling.
+//
+// Supersedes the older owner-only ReplaceItinerary which was deleted
+// in #353 — the owner path is a proper subset of the owner-or-editor
+// path, so a single entry point with layered SQL authz covers both
+// cases without the risk of Delete/Insert predicates drifting apart.
+//
+// Also allows accepted editor-role collaborators to replace the
+// itinerary (#263).
 //
 // Authz is enforced in three layers as defence-in-depth:
 //  1. An explicit CanEditTrip pre-check before the transaction begins —

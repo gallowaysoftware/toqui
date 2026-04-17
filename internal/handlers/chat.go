@@ -474,7 +474,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		// the same turn (or, failing that, the most recently selected trip),
 		// so an expert handed off after create_trip can immediately persist
 		// itinerary items in the same turn (#181).
-		deferredItineraryTool := NewCreateItineraryTool(h.tripSvc, uuid.Nil, func(items []dbgen.ItineraryItem) {
+		deferredItineraryTool := NewCreateItineraryTool(h.tripSvc, uuid.Nil, userID, func(items []dbgen.ItineraryItem) {
 			mu.Lock()
 			itineraryItems = append(itineraryItems, items...)
 			mu.Unlock()
@@ -887,7 +887,7 @@ func (h *ChatHandler) BuildPlanningAndCompanionTools(
 
 	var out []tools.Tool
 
-	var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, onItineraryCreated).
+	var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, userID, onItineraryCreated).
 		WithGeocoding(h.pool, h.placesAPIKey).
 		WithAnalytics(h.analytics, userID.String())
 

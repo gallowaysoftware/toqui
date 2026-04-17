@@ -199,7 +199,7 @@ func TestCurrencySymbol(t *testing.T) {
 }
 
 func TestCreateItineraryToolDefinition_IncludesCostFields(t *testing.T) {
-	tool := NewCreateItineraryTool(nil, [16]byte{}, nil)
+	tool := NewCreateItineraryTool(nil, [16]byte{}, [16]byte{}, nil)
 	def := tool.Definition()
 
 	params := string(def.Parameters)

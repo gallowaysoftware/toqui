@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateItineraryTool_Definition(t *testing.T) {
-	tool := NewCreateItineraryTool(nil, [16]byte{}, nil)
+	tool := NewCreateItineraryTool(nil, [16]byte{}, [16]byte{}, nil)
 	def := tool.Definition()
 
 	if def.Name != "create_itinerary_items" {
@@ -41,7 +41,7 @@ func TestCreateItineraryTool_Definition(t *testing.T) {
 }
 
 func TestCreateItineraryTool_Execute_EmptyItems(t *testing.T) {
-	tool := NewCreateItineraryTool(nil, [16]byte{}, nil)
+	tool := NewCreateItineraryTool(nil, [16]byte{}, [16]byte{}, nil)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`{"items": []}`))
 	if err == nil {
@@ -50,7 +50,7 @@ func TestCreateItineraryTool_Execute_EmptyItems(t *testing.T) {
 }
 
 func TestCreateItineraryTool_Execute_InvalidJSON(t *testing.T) {
-	tool := NewCreateItineraryTool(nil, [16]byte{}, nil)
+	tool := NewCreateItineraryTool(nil, [16]byte{}, [16]byte{}, nil)
 
 	_, err := tool.Execute(context.Background(), json.RawMessage(`not json`))
 	if err == nil {

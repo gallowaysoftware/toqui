@@ -4,7 +4,6 @@ package integration
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -154,65 +153,14 @@ func TestAuthzExecRowsOwnerPaths(t *testing.T) {
 		_, _ = tripSvc.DeleteItineraryItems(ctx, mallory.ID, []uuid.UUID{malloryItem.ID})
 	})
 
-	t.Run("ReplaceItineraryRejectsNonOwner", func(t *testing.T) {
-		// Put the trip in a known state first.
-		baseline := []trip.ReplaceItineraryItem{
-			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "Alice Baseline"},
-		}
-		if err := tripSvc.ReplaceItinerary(ctx, alice.ID, aliceTrip.ID, baseline); err != nil {
-			t.Fatalf("alice baseline replace: %v", err)
-		}
-
-		// Mallory tries to replace Alice's itinerary. Before #345 the
-		// DELETE step would silently no-op (SQL filters by owner) but
-		// CreateItineraryItem has no authz check — Mallory could
-		// APPEND items to Alice's trip. Now the service pre-checks
-		// ownership via GetTripByID and returns
-		// trip.ErrNotOwnerOrEditor before any write touches the DB.
-		mal := []trip.ReplaceItineraryItem{
-			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "Mallory Injection"},
-		}
-		err := tripSvc.ReplaceItinerary(ctx, mallory.ID, aliceTrip.ID, mal)
-		if err == nil {
-			t.Fatal("Mallory Replace should be rejected, got nil error")
-		}
-		if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
-			t.Errorf("expected trip.ErrNotOwnerOrEditor, got %v", err)
-		}
-
-		// Alice's baseline must be untouched — no delete, no insert.
-		got, err := tripSvc.GetItinerary(ctx, aliceTrip.ID)
-		if err != nil {
-			t.Fatalf("get itinerary: %v", err)
-		}
-		if len(got) != 1 {
-			t.Errorf("expected 1 item (untouched baseline), got %d", len(got))
-		}
-		for _, it := range got {
-			if it.Title.Valid && it.Title.String == "Mallory Injection" {
-				t.Error("Mallory's item leaked into Alice's itinerary")
-			}
-		}
-	})
-
-	t.Run("ReplaceItineraryRejectsGhostTrip", func(t *testing.T) {
-		// Replace against a trip that doesn't exist at all must
-		// return ErrNotOwnerOrEditor, not fall through to a
-		// transaction that silently no-ops. Mirrors the collaborator
-		// suite's ReplaceOnNonExistentTripReturnsPermissionDenied and
-		// pins the GetTripByID+pgx.ErrNoRows branch.
-		ghost := uuid.New()
-		items := []trip.ReplaceItineraryItem{
-			{DayNumber: 1, OrderInDay: 1, Type: "activity", Title: "Into the void"},
-		}
-		err := tripSvc.ReplaceItinerary(ctx, alice.ID, ghost, items)
-		if err == nil {
-			t.Fatal("Replace on non-existent trip should be rejected, got nil error")
-		}
-		if !errors.Is(err, trip.ErrNotOwnerOrEditor) {
-			t.Errorf("expected trip.ErrNotOwnerOrEditor, got %v", err)
-		}
-	})
+	// ReplaceItineraryRejectsNonOwner and ReplaceItineraryRejectsGhostTrip
+	// were removed in #353 when the owner-only Service.ReplaceItinerary
+	// was deleted. Equivalent coverage now lives in
+	// collaborator_test.go under:
+	//   - OutsiderCannotReplaceItinerary (non-owner, non-collaborator)
+	//   - ReplaceOnNonExistentTripReturnsPermissionDenied (ghost trip)
+	// Both exercise ReplaceItineraryForOwnerOrEditor which subsumes the
+	// deleted owner-only path.
 
 	t.Run("DeleteBookingReportsNoOpForForeignBooking", func(t *testing.T) {
 		// Alice creates a booking on her trip. Mallory tries to

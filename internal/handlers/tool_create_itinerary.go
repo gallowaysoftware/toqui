@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -32,11 +33,22 @@ type itineraryItemWithLocation struct {
 // that resolves to the trip created earlier in the same turn (#181). When
 // neither tripID nor a provider yields a UUID, Execute returns an error so
 // the AI can recover gracefully.
+//
+// callerID is the authenticated user whose authz is re-checked on every
+// INSERT via the SQL-gated CreateItineraryItemForOwnerOrEditor query
+// (#353). This closes a TOCTOU window: chat sessions last tens of
+// seconds to minutes, and a collaborator revoked mid-stream would
+// otherwise still land inserts past the handler pre-check. It also
+// hardens the selection-mode req.Msg.TripId fallback — if a caller
+// lies about a trip_id they don't own/edit, the gated insert misses
+// and the tool returns a clean "forbidden" error rather than silently
+// writing to someone else's trip.
 type CreateItineraryTool struct {
 	tripSvc         *trip.Service
 	tripID          uuid.UUID
 	tripIDProvider  func() (uuid.UUID, bool)
-	userID          string // for analytics only (hashed before sending)
+	callerID        uuid.UUID // authz subject for per-insert SQL gate (#353)
+	userID          string    // for analytics only (hashed before sending)
 	onCreated       func(items []dbgen.ItineraryItem)
 	pool            *pgxpool.Pool
 	placesAPIKey    string
@@ -58,8 +70,12 @@ type createItineraryItemArg struct {
 	CostCurrency       string `json:"cost_currency,omitempty"`
 }
 
-func NewCreateItineraryTool(tripSvc *trip.Service, tripID uuid.UUID, onCreated func(items []dbgen.ItineraryItem)) *CreateItineraryTool {
-	return &CreateItineraryTool{tripSvc: tripSvc, tripID: tripID, onCreated: onCreated}
+// NewCreateItineraryTool constructs the chat tool. callerID MUST be the
+// authenticated user ID from the request context — it's the authz
+// subject for the SQL-gated INSERT and cannot be spoofed by AI tool
+// args or untrusted request fields (#353).
+func NewCreateItineraryTool(tripSvc *trip.Service, tripID, callerID uuid.UUID, onCreated func(items []dbgen.ItineraryItem)) *CreateItineraryTool {
+	return &CreateItineraryTool{tripSvc: tripSvc, tripID: tripID, callerID: callerID, onCreated: onCreated}
 }
 
 // WithDeferredTripID returns a copy of the tool that resolves the target trip
@@ -191,8 +207,26 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 			skipped++
 			continue
 		}
-		dbItem, err := t.tripSvc.CreateItineraryItemWithCost(ctx, tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description, item.EstimatedCostCents, item.CostCurrency)
+		dbItem, err := t.tripSvc.CreateItineraryItemForOwnerOrEditor(ctx, t.callerID, tripID, item.DayNumber, item.OrderInDay, item.Type, item.Title, item.Description, item.EstimatedCostCents, item.CostCurrency)
 		if err != nil {
+			// Authz gate missed — caller lost edit rights since the
+			// handler pre-check (revocation mid-stream, or a spoofed
+			// trip_id in selection mode). Short-circuit the whole
+			// tool call so the AI reports the denial cleanly instead
+			// of pretending every item was a shape bug. No further
+			// inserts in this batch can succeed either, so bailing
+			// out early also avoids dozens of identical DB queries.
+			if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+				slog.Warn("create_itinerary_items authz denied",
+					"trip_id", tripID,
+					"caller_id", t.callerID,
+					"pending_items", len(params.Items)-len(created)-skipped,
+				)
+				return json.Marshal(map[string]any{
+					"error":   "forbidden",
+					"message": "You don't have edit access to this trip anymore. Tell the user their access was revoked or they need to select a trip they own. Do NOT retry.",
+				})
+			}
 			slog.Error("create itinerary item", "title", item.Title, "error", err)
 			failed = append(failed, item.Title)
 			continue
