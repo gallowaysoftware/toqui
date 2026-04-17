@@ -128,9 +128,41 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-  deploy-staging:
+  # Checks whether the staging Cloud Run service exists.
+  # Output drives whether deploy-staging runs and whether deploy-prod is auto or manual.
+  check-staging:
     needs: [lint, test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      up: ${{ steps.check.outputs.up }}
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Check if staging is up
+        id: check
+        run: |
+          if gcloud run services describe toqui-backend \
+            --region=northamerica-northeast1 \
+            --project=toqui-staging \
+            --format='value(name)' 2>/dev/null; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Staging is down"
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Deploys to staging only when staging is up. Skipped otherwise.
+  deploy-staging:
+    needs: [check-staging]
+    if: github.event_name != 'workflow_dispatch' && needs.check-staging.outputs.up == 'true'
     runs-on: ubuntu-latest
 
     env:
@@ -211,9 +243,24 @@ jobs:
           echo "Staging health check failed after 5 attempts"
           exit 1
 
+  # Deploys to prod.
+  # - Staging DOWN: auto on push to main (check-staging succeeded with up=false).
+  # - Staging UP:   manual only (workflow_dispatch). Staging must be tested first.
   deploy-prod:
-    needs: [lint, test, build]
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [lint, test, build, check-staging, deploy-staging]
+    if: |
+      always() &&
+      needs.lint.result == 'success' &&
+      needs.test.result == 'success' &&
+      needs.build.result == 'success' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.ref == 'refs/heads/main' &&
+          needs.check-staging.result == 'success' &&
+          needs.check-staging.outputs.up == 'false'
+        )
+      )
     runs-on: ubuntu-latest
     environment: production
 
