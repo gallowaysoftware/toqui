@@ -67,12 +67,46 @@ jobs:
           name: web-build
           path: dist/web
 
+  # Checks whether the staging Cloud Run service exists.
+  # Output drives whether deploy-staging runs and whether deploy-prod is auto or manual.
+  check-staging:
+    needs: [typecheck, test, build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      up: ${{ steps.check.outputs.up }}
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Check if staging is up
+        id: check
+        run: |
+          if gcloud run services describe toqui-frontend \
+            --region=northamerica-northeast1 \
+            --project=toqui-staging \
+            --format='value(name)' 2>/dev/null; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Staging is down"
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Deploys to staging only when staging is up. Skipped otherwise.
   deploy-staging:
     name: Deploy to Staging
-    needs: [typecheck, test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    needs: [check-staging]
+    if: github.event_name != 'workflow_dispatch' && needs.check-staging.outputs.up == 'true'
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v5
@@ -83,26 +117,29 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Build web (no secrets baked in — config.json is generated at runtime)
+
       - name: Build web for staging
         run: npx expo export --platform web --output-dir dist/web --clear
-      # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
+
+      # Docker build BEFORE configuring Docker auth
       - name: Build Docker image
-        run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
-      - id: auth
+        run: docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
       - name: Push Docker image
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
+
       - name: Deploy to Cloud Run
         # Use --update-env-vars (not --set-env-vars) so we don't wipe
         # Terraform-managed env vars (POSTHOG_KEY, SENTRY_DSN, etc.) on
@@ -111,7 +148,6 @@ jobs:
         # vars.GOOGLE_CLIENT_ID was unset, clearing the OAuth client ID
         # too — which broke Google sign-in on app.toqui.travel.
         run: |
-          IMAGE=northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
           gcloud run deploy toqui-frontend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
@@ -121,27 +157,63 @@ jobs:
             --remove-secrets=GOOGLE_CLIENT_ID \
             --update-env-vars="EXPO_PUBLIC_API_URL=https://staging-api.toqui.travel,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}"
 
+  # Deploys to prod.
+  # - Staging DOWN: auto on push to main (check-staging succeeded with up=false).
+  # - Staging UP:   manual only (workflow_dispatch). Staging must be tested first.
   deploy-prod:
     name: Deploy to Production
-    needs: [typecheck, test, build]
-    if: github.event_name == 'workflow_dispatch'
+    needs: [typecheck, test, build, check-staging, deploy-staging]
+    if: |
+      always() &&
+      needs.typecheck.result == 'success' &&
+      needs.test.result == 'success' &&
+      needs.build.result == 'success' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.ref == 'refs/heads/main' &&
+          needs.check-staging.result == 'success' &&
+          needs.check-staging.outputs.up == 'false'
+        )
+      )
     runs-on: ubuntu-latest
     environment: production
     env:
       IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
-      - id: auth
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web for production
+        run: npx expo export --platform web --output-dir dist/web --clear
+
+      # Docker build BEFORE GCP auth (auth@v2 can interfere with Docker Hub pulls)
+      - name: Build Docker image
+        run: docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_PROD_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v3
-      - name: Verify staging image exists
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Push Docker image
         run: |
-          gcloud artifacts docker images describe $IMAGE:${{ github.sha }} \
-            --project=toqui-infra || \
-            (echo "ERROR: Image $IMAGE:${{ github.sha }} not found. Run staging deploy first." && exit 1)
-      - name: Deploy to Cloud Run (promote staging image)
+          gcloud auth configure-docker northamerica-northeast1-docker.pkg.dev --quiet
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Deploy to Cloud Run
         # Use --update-env-vars (not --set-env-vars) so we don't wipe
         # Terraform-managed env vars (POSTHOG_KEY, SENTRY_DSN, etc.) on
         # every deploy. See staging deploy comment above.
