@@ -147,6 +147,52 @@ func TestCollaboratorEditing(t *testing.T) {
 		}
 	})
 
+	t.Run("OwnerOnlyToolGate_UsesUserIDComparison", func(t *testing.T) {
+		// The chat handler gates owner-only tools (update_trip: title,
+		// description, status, destinations — #263) by comparing the
+		// authenticated userID against the trip row's UserID, NOT by
+		// calling CanEditTrip — which would return true for editor
+		// collaborators too and silently grant them update_trip.
+		//
+		// This test pins the invariant the handler relies on: for the
+		// same trip+user, `trip.UserID == userID` discriminates owner
+		// from editor, while `CanEditTrip` does not.
+		tests := []struct {
+			name        string
+			userID      uuid.UUID
+			wantIsOwner bool
+			wantCanEdit bool
+		}{
+			{"owner is owner and can edit", owner.ID, true, true},
+			{"editor is not owner but can edit", editor.ID, false, true},
+			{"viewer is not owner and cannot edit", viewer.ID, false, false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				loaded, err := tripSvc.GetByIDOrCollaborator(ctx, tt.userID, tr.ID)
+				if err != nil {
+					t.Fatalf("GetByIDOrCollaborator(%s): %v", tt.name, err)
+				}
+				gotIsOwner := loaded.UserID == tt.userID
+				if gotIsOwner != tt.wantIsOwner {
+					t.Errorf("isOwner via userID comparison = %v, want %v", gotIsOwner, tt.wantIsOwner)
+				}
+				gotCanEdit, err := tripSvc.CanEditTrip(ctx, tt.userID, tr.ID)
+				if err != nil {
+					t.Fatalf("CanEditTrip(%s): %v", tt.name, err)
+				}
+				if gotCanEdit != tt.wantCanEdit {
+					t.Errorf("CanEditTrip = %v, want %v", gotCanEdit, tt.wantCanEdit)
+				}
+				// The regression this test guards against: editors get
+				// CanEditTrip=true but must get isOwner=false.
+				if tt.userID == editor.ID && gotIsOwner {
+					t.Errorf("editor must not be classified as owner; CanEditTrip cannot be used for owner-only gating")
+				}
+			})
+		}
+	})
+
 	t.Run("CanEditTrip_PropagatesDBErrors", func(t *testing.T) {
 		// #348: a transient DB failure during the authz pre-check must
 		// surface as an error, not silently decay to "false" (which
