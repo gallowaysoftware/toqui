@@ -287,6 +287,12 @@ jobs:
           docker push $IMAGE:latest
 
       - name: Run migrations (before deploy to avoid schema mismatch)
+        # Same private-IP / VPC constraint as the service deploy below:
+        # Cloud SQL is private-IP only, so the migrate Job must attach
+        # the VPC connector or /migrate will time out on every run
+        # (which is what caused the 2026-04-17 outage — the Job ran
+        # without VPC access, the sidecar couldn't reach 10.131.33.2,
+        # and schema changes couldn't ship).
         run: |
           DB_URL=$(gcloud secrets versions access latest \
             --secret=prod-database-url \
@@ -298,14 +304,27 @@ jobs:
             --service-account=toqui-run-toqui-backend@toqui-prod.iam.gserviceaccount.com \
             --set-cloudsql-instances=toqui-prod:northamerica-northeast1:toqui-db \
             --set-env-vars="DATABASE_URL=${DB_URL}" \
+            --vpc-connector=toqui-connector \
+            --vpc-egress=private-ranges-only \
             --command="/migrate" \
             --args="-direction,up" \
             --execute-now \
             --wait
 
       - name: Deploy to Cloud Run
+        # Prod Cloud SQL has enable_public_ip=false and is reachable only
+        # over the private VPC path (toqui-connector). We must pass
+        # --vpc-connector + --vpc-egress on every deploy — gcloud run
+        # deploy re-derives revision-scoped fields from the command line
+        # and drops them otherwise, which is what caused the outage on
+        # 2026-04-17: a deploy ran without these flags, the new revision
+        # lost VPC access, and all DB queries began timing out against
+        # the Cloud SQL private IP (10.131.33.2). See toqui-terraform
+        # modules/networking/main.tf for the connector definition.
         run: |
           gcloud run deploy toqui-backend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
-            --project=toqui-prod
+            --project=toqui-prod \
+            --vpc-connector=toqui-connector \
+            --vpc-egress=private-ranges-only
