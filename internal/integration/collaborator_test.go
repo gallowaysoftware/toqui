@@ -728,4 +728,39 @@ func TestCollaboratorEditing(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("EditorCanReorderItineraryItem", func(t *testing.T) {
+		// #361 P2: the handler's CanEditTrip pre-check lets editors
+		// through, but the old MoveItineraryItem SQL filtered only on
+		// trips.user_id, so editors' reorders silently hit ErrNoRows
+		// and got rewritten as CodeNotFound by the handler. Pin the
+		// new ForOwnerOrEditor variant: an editor can move an item
+		// on a trip they don't own.
+		item, err := tripSvc.CreateItineraryItem(ctx, tr.ID, 1, 5, "activity", "Reorder Probe", "")
+		if err != nil {
+			t.Fatalf("create probe item: %v", err)
+		}
+		t.Cleanup(func() { _, _ = tripSvc.DeleteItineraryItems(ctx, owner.ID, []uuid.UUID{item.ID}) })
+
+		moved, err := tripSvc.MoveItineraryItem(ctx, editor.ID, tr.ID, item.ID, 3, 1)
+		if err != nil {
+			t.Fatalf("editor reorder: %v", err)
+		}
+		if !moved.DayNumber.Valid || moved.DayNumber.Int32 != 3 {
+			t.Errorf("expected DayNumber=3 after editor move, got %+v", moved.DayNumber)
+		}
+		if !moved.OrderInDay.Valid || moved.OrderInDay.Int32 != 1 {
+			t.Errorf("expected OrderInDay=1, got %+v", moved.OrderInDay)
+		}
+
+		// Viewer reorder is still rejected.
+		if _, err := tripSvc.MoveItineraryItem(ctx, viewer.ID, tr.ID, item.ID, 4, 1); err == nil {
+			t.Errorf("viewer reorder should be rejected, got nil error")
+		}
+
+		// Outsider reorder is still rejected.
+		if _, err := tripSvc.MoveItineraryItem(ctx, outsider.ID, tr.ID, item.ID, 4, 1); err == nil {
+			t.Errorf("outsider reorder should be rejected, got nil error")
+		}
+	})
 }

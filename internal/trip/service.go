@@ -299,11 +299,17 @@ func (s *Service) ListTemplates(ctx context.Context, limit, offset int32) ([]dbg
 }
 
 // MoveItineraryItem moves a single itinerary item to a new day/position.
+// Authz: trip owner OR accepted editor-role collaborator (#263, #361 P2).
+// Before #361 this used the owner-only MoveItineraryItem query, so editors
+// hit pgx.ErrNoRows and the handler surfaced CodeNotFound despite the
+// handler-layer CanEditTrip pre-check saying yes. Now uses the gated
+// MoveItineraryItemForOwnerOrEditor which mirrors the delete-side
+// DeleteItineraryItemByOwnerOrEditor predicate.
 func (s *Service) MoveItineraryItem(ctx context.Context, userID, tripID, itemID uuid.UUID, targetDay, targetPos int) (*dbgen.ItineraryItem, error) {
 	if targetPos <= 0 {
 		targetPos = 1
 	}
-	item, err := s.queries.MoveItineraryItem(ctx, dbgen.MoveItineraryItemParams{
+	item, err := s.queries.MoveItineraryItemForOwnerOrEditor(ctx, dbgen.MoveItineraryItemForOwnerOrEditorParams{
 		DayNumber:  pgtype.Int4{Int32: int32(targetDay), Valid: true},
 		OrderInDay: pgtype.Int4{Int32: int32(targetPos), Valid: true},
 		ID:         itemID,

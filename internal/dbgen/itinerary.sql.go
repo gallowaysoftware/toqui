@@ -539,6 +539,67 @@ func (q *Queries) MoveItineraryItem(ctx context.Context, arg MoveItineraryItemPa
 	return i, err
 }
 
+const moveItineraryItemForOwnerOrEditor = `-- name: MoveItineraryItemForOwnerOrEditor :one
+UPDATE itinerary_items ii
+SET day_number = $1, order_in_day = $2
+WHERE ii.id = $3
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = ii.trip_id AND (
+      t.user_id = $4
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id
+          AND tc.user_id = $4
+          AND tc.accepted_at IS NOT NULL
+          AND tc.role = 'editor'
+      )
+    )
+  )
+RETURNING ii.id, ii.trip_id, ii.day_number, ii.order_in_day, ii.type, ii.title, ii.description, ii.location, ii.start_time, ii.end_time, ii.metadata, ii.created_at, ii.estimated_cost_cents, ii.cost_currency, ii.booking_id
+`
+
+type MoveItineraryItemForOwnerOrEditorParams struct {
+	DayNumber  pgtype.Int4 `json:"day_number"`
+	OrderInDay pgtype.Int4 `json:"order_in_day"`
+	ID         uuid.UUID   `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+}
+
+// Authz-gated reorder used by ReorderItineraryItem RPC (#361 P2 fix).
+// The handler pre-checks via CanEditTrip which returns true for
+// editor-role collaborators too, but the old MoveItineraryItem SQL
+// filtered only on trips.user_id = $caller — so editors hit zero
+// rows and the handler surfaced a confusing CodeNotFound. This
+// query matches the #263 owner-or-accepted-editor pattern used by
+// DeleteItineraryItemByOwnerOrEditor so editors can reorder.
+func (q *Queries) MoveItineraryItemForOwnerOrEditor(ctx context.Context, arg MoveItineraryItemForOwnerOrEditorParams) (ItineraryItem, error) {
+	row := q.db.QueryRow(ctx, moveItineraryItemForOwnerOrEditor,
+		arg.DayNumber,
+		arg.OrderInDay,
+		arg.ID,
+		arg.UserID,
+	)
+	var i ItineraryItem
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.DayNumber,
+		&i.OrderInDay,
+		&i.Type,
+		&i.Title,
+		&i.Description,
+		&i.Location,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.EstimatedCostCents,
+		&i.CostCurrency,
+		&i.BookingID,
+	)
+	return i, err
+}
+
 const searchItineraryItems = `-- name: SearchItineraryItems :many
 SELECT ii.id, ii.trip_id, ii.day_number, ii.order_in_day, ii.type, ii.title, ii.description, ii.location, ii.start_time, ii.end_time, ii.metadata, ii.created_at, ii.estimated_cost_cents, ii.cost_currency, ii.booking_id FROM itinerary_items ii
 JOIN trips t ON t.id = ii.trip_id

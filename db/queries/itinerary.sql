@@ -98,6 +98,31 @@ WHERE itinerary_items.id = sqlc.arg(id)
   AND trip_id IN (SELECT trips.id FROM trips WHERE trips.id = itinerary_items.trip_id AND trips.user_id = sqlc.arg(user_id))
 RETURNING *;
 
+-- name: MoveItineraryItemForOwnerOrEditor :one
+-- Authz-gated reorder used by ReorderItineraryItem RPC (#361 P2 fix).
+-- The handler pre-checks via CanEditTrip which returns true for
+-- editor-role collaborators too, but the old MoveItineraryItem SQL
+-- filtered only on trips.user_id = $caller — so editors hit zero
+-- rows and the handler surfaced a confusing CodeNotFound. This
+-- query matches the #263 owner-or-accepted-editor pattern used by
+-- DeleteItineraryItemByOwnerOrEditor so editors can reorder.
+UPDATE itinerary_items ii
+SET day_number = sqlc.arg(day_number), order_in_day = sqlc.arg(order_in_day)
+WHERE ii.id = sqlc.arg(id)
+  AND ii.trip_id IN (
+    SELECT t.id FROM trips t WHERE t.id = ii.trip_id AND (
+      t.user_id = sqlc.arg(user_id)
+      OR EXISTS (
+        SELECT 1 FROM trip_collaborators tc
+        WHERE tc.trip_id = t.id
+          AND tc.user_id = sqlc.arg(user_id)
+          AND tc.accepted_at IS NOT NULL
+          AND tc.role = 'editor'
+      )
+    )
+  )
+RETURNING ii.*;
+
 -- name: GetItineraryItemByID :one
 SELECT * FROM itinerary_items
 WHERE itinerary_items.id = $1
