@@ -211,7 +211,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var tripCurrency string
 	var trialExpired bool         // true if trial existed but has expired (conversion nudge)
 	var isCollaboratorEditor bool // true if user is an editor collaborator (not owner)
-	var isTripOwner bool          // true only if userID matches the trip's owner column
+	var tripOwnerID uuid.UUID     // populated from the loaded trip row; feeds ownership gate in BuildPlanningAndCompanionTools
 	if !isSelection {
 		if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
 			if t, err := h.tripSvc.GetByIDOrCollaborator(ctx, userID, tripID); err == nil {
@@ -248,17 +248,16 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				if t.TrialStartedAt.Valid && t.TrialEndsAt.Valid && !t.TrialEndsAt.Time.After(time.Now()) {
 					trialExpired = true
 				}
-				// Classify the user against the loaded trip row:
-				//   - owner: userID matches t.UserID (gates owner-only tools
-				//     like update_trip for title/description/destinations #263)
-				//   - editor collaborator: in the collaborators table with
-				//     role=editor (gates itinerary write tools #263)
-				// These are mutually exclusive by construction. Fail closed
-				// on transient DB errors so a flapping Postgres revokes
-				// write tools rather than accidentally granting them (#348).
-				if t.UserID == userID {
-					isTripOwner = true
-				} else {
+				// Pass the trip's owner ID through to the tool builder,
+				// which derives owner-vs-editor gating from a direct
+				// comparison against userID. Editor-collaborator status
+				// is resolved here and also passed through. These are
+				// mutually exclusive by construction. Fail closed on
+				// transient DB errors so a flapping Postgres revokes
+				// write tools rather than accidentally granting them
+				// (#348).
+				tripOwnerID = t.UserID
+				if t.UserID != userID {
 					isEditor, editorErr := h.tripSvc.IsEditorCollaborator(ctx, userID, tripID)
 					if editorErr != nil {
 						slog.ErrorContext(ctx, "check editor collaborator", "error", editorErr, "user_id", userID, "trip_id", tripID)
@@ -539,76 +538,35 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
 		}
 
-		// Inject itinerary creation + deletion tools.
-		//
-		// Planning mode: real tools that persist/delete items. Only
-		// registered when tripID parses.
-		//
-		// Companion mode: same real tools but wrapped in CompanionGate
-		// which blocks calls unless the user explicitly asks to modify
-		// the itinerary. This prevents the Run 5/Run 8 over-eagerness
-		// regression where Gemini interprets "recommend a lunch spot"
-		// as "add a lunch spot to the itinerary".
+		// Inject itinerary creation/deletion tools and the owner-only
+		// update_trip tool. See BuildPlanningAndCompanionTools for the
+		// ownership-vs-editor gating rules (#263).
 		if mode == "planning" || mode == "companion" {
 			if tripID, err := uuid.Parse(req.Msg.TripId); err == nil {
-				// Editor-role collaborators can create and delete itinerary
-				// items. update_trip (title, description, status, destinations)
-				// is owner-only. Viewer collaborators get no write tools (#263).
-				// Owner/editor classification was resolved from the loaded
-				// trip row above; reuse it here rather than calling
-				// CanEditTrip, which returns true for editors too and would
-				// silently grant editors the owner-only update_trip tool.
-				isOwner := isTripOwner
-
-				var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, func(items []dbgen.ItineraryItem) {
+				onItineraryCreated := func(items []dbgen.ItineraryItem) {
 					mu.Lock()
 					itineraryItems = append(itineraryItems, items...)
 					mu.Unlock()
-				}).WithGeocoding(h.pool, h.placesAPIKey).
-					WithAnalytics(h.analytics, userID.String())
-
-				deleteToolBase := NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
-					slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
-				})
-				if isCollaboratorEditor {
-					deleteToolBase = deleteToolBase.WithCollaboratorEdit()
 				}
-				var deleteTool tools.Tool = deleteToolBase
-
-				var reorderTool tools.Tool = NewReorderItineraryTool(h.queries, tripID, userID)
-
-				// In companion mode, wrap tools with an intent gate that
-				// only allows calls when the user explicitly requests
-				// itinerary changes ("add this to my plan", "remove the
-				// museum visit"). Info queries pass through ungated.
-				if mode == "companion" && h.aiProvider != nil {
-					userMsg := req.Msg.Content
-					getUserMsg := func() string { return userMsg }
-					createTool = NewCompanionGate(createTool, h.aiProvider, getUserMsg)
-					deleteTool = NewCompanionGate(deleteTool, h.aiProvider, getUserMsg)
-					reorderTool = NewCompanionGate(reorderTool, h.aiProvider, getUserMsg)
-				}
-
-				// Inject itinerary tools for owners and editor collaborators.
-				if isOwner || isCollaboratorEditor {
-					params.ExtraTools = append(params.ExtraTools, createTool, deleteTool, reorderTool)
-				}
-
-				// update_trip is owner-only — collaborators cannot change
-				// trip title, description, status, or destinations.
-				if isOwner {
-					updateTripTool := NewUpdateTripTool(h.tripSvc, tripID, userID, func(id, title, description string, countries []string) {
-						mu.Lock()
-						updatedTrips = append(updatedTrips, tripUpdatedInfo{
-							ID:          id,
-							Title:       title,
-							Description: description,
-							Countries:   countries,
-						})
-						mu.Unlock()
+				onTripUpdated := func(id, title, description string, countries []string) {
+					mu.Lock()
+					updatedTrips = append(updatedTrips, tripUpdatedInfo{
+						ID:          id,
+						Title:       title,
+						Description: description,
+						Countries:   countries,
 					})
-					params.ExtraTools = append(params.ExtraTools, updateTripTool)
+					mu.Unlock()
 				}
+				params.ExtraTools = append(
+					params.ExtraTools,
+					h.BuildPlanningAndCompanionTools(
+						tripID, tripOwnerID, userID,
+						isCollaboratorEditor,
+						mode, req.Msg.Content,
+						onItineraryCreated, onTripUpdated,
+					)...,
+				)
 			}
 		}
 
@@ -882,6 +840,83 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	}
 
 	return nil
+}
+
+// BuildPlanningAndCompanionTools returns the write tools available in
+// planning and companion mode: create/delete/reorder itinerary items and
+// the owner-only update_trip tool.
+//
+// Gating rules (#263):
+//   - Owners get create, delete, reorder, AND update_trip.
+//   - Editor collaborators (isEditor=true) get create, delete, reorder.
+//     update_trip is owner-only — editors cannot change title, description,
+//     status, or destinations.
+//   - Viewers and outsiders (isEditor=false, non-owner) get nothing.
+//
+// Ownership is derived HERE, not trusted from a caller-supplied flag:
+// isOwner := tripOwnerID == userID. Callers MUST pass the trip row's
+// UserID as tripOwnerID so this comparison is authoritative. An earlier
+// version of this code accepted a caller-computed isOwner bool; #263
+// showed that any caller which conflated "can edit" (owner OR editor)
+// with "is owner" silently granted editors update_trip, so the decision
+// is now centralised here. Owner status wins over editor status — if a
+// caller ever passes isEditor=true for a row the user also owns, we
+// clear it defensively to avoid routing the delete tool through the
+// editor-authz path (which is a no-op for owners but is not the intended
+// execution path).
+//
+// In companion mode, the write tools are wrapped in CompanionGate so they
+// only fire when the user explicitly asks to modify the itinerary (Run
+// 5/Run 8 over-eagerness regression). userMessage is the user's latest
+// message, fed to the gate's intent classifier. The gate is skipped when
+// h.aiProvider is nil (tests, misconfiguration).
+func (h *ChatHandler) BuildPlanningAndCompanionTools(
+	tripID uuid.UUID,
+	tripOwnerID uuid.UUID,
+	userID uuid.UUID,
+	isEditor bool,
+	mode string,
+	userMessage string,
+	onItineraryCreated func(items []dbgen.ItineraryItem),
+	onTripUpdated func(tripID, title, description string, countries []string),
+) []tools.Tool {
+	isOwner := tripOwnerID == userID
+	if isOwner {
+		isEditor = false
+	}
+
+	var out []tools.Tool
+
+	var createTool tools.Tool = NewCreateItineraryTool(h.tripSvc, tripID, onItineraryCreated).
+		WithGeocoding(h.pool, h.placesAPIKey).
+		WithAnalytics(h.analytics, userID.String())
+
+	deleteToolBase := NewDeleteItineraryTool(h.tripSvc, tripID, userID, func(deletedIDs []string) {
+		slog.Info("itinerary items deleted via chat", "count", len(deletedIDs), "trip_id", tripID)
+	})
+	if isEditor {
+		deleteToolBase = deleteToolBase.WithCollaboratorEdit()
+	}
+	var deleteTool tools.Tool = deleteToolBase
+
+	var reorderTool tools.Tool = NewReorderItineraryTool(h.queries, tripID, userID)
+
+	if mode == "companion" && h.aiProvider != nil {
+		getUserMsg := func() string { return userMessage }
+		createTool = NewCompanionGate(createTool, h.aiProvider, getUserMsg)
+		deleteTool = NewCompanionGate(deleteTool, h.aiProvider, getUserMsg)
+		reorderTool = NewCompanionGate(reorderTool, h.aiProvider, getUserMsg)
+	}
+
+	if isOwner || isEditor {
+		out = append(out, createTool, deleteTool, reorderTool)
+	}
+
+	if isOwner {
+		out = append(out, NewUpdateTripTool(h.tripSvc, tripID, userID, onTripUpdated))
+	}
+
+	return out
 }
 
 type tripCreatedInfo struct {
