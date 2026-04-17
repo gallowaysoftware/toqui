@@ -244,10 +244,7 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 
 	t, err := h.tripSvc.Update(ctx, userID, tripID, req.Msg.Title, req.Msg.Description, status, startDate, endDate, budgetCents, req.Msg.Currency, req.Msg.Notes, req.Msg.CoverImageUrl, req.Msg.Timezone)
 	if err != nil {
-		if errors.Is(err, trip.ErrInvalidStatusTransition) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-		}
-		return nil, internalError(ctx, "trip operation", err)
+		return nil, mapTripErr(ctx, "trip operation", err)
 	}
 
 	// When trip is completed, stamp TTL on chat data (90-day retention)
@@ -408,11 +405,9 @@ func (h *TripHandler) UpdateItinerary(ctx context.Context, req *connect.Request[
 		// Defence-in-depth: the handler already gates via CanEditTrip
 		// above, but the service enforces its own authz precondition
 		// so direct service callers (e.g. tools wired up by future
-		// code) can't sneak in unauthorised writes (#343).
-		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
-			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to modify itinerary"))
-		}
-		return nil, internalError(ctx, "replace itinerary", err)
+		// code) can't sneak in unauthorised writes (#343). mapTripErr
+		// translates ErrNotOwnerOrEditor → PermissionDenied (#347).
+		return nil, mapTripErr(ctx, "replace itinerary", err)
 	}
 
 	items, err := h.tripSvc.GetItinerary(ctx, tripID)
