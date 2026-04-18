@@ -17,7 +17,14 @@ const (
 	PartnerViator       Partner = "viator"
 	PartnerDiscoverCars Partner = "discovercars"
 	PartnerSafetyWing   Partner = "safetywing"
-	PartnerGeneric      Partner = "generic"
+	// Expedia Group brands, all tracked under a single Partnerize
+	// publisher ID (issued by the Expedia Group Affiliate Program).
+	// Commission accrues to the same ID across brands; the partner
+	// identifier here just records which storefront the URL points
+	// at for attribution + logging.
+	PartnerExpedia Partner = "expedia"
+	PartnerVRBO    Partner = "vrbo"
+	PartnerGeneric Partner = "generic"
 
 	// Non-affiliate "independent" sources used when a user prefers a
 	// commission-free recommendation (e.g. Pro tier). These do not pay Toqui
@@ -62,35 +69,68 @@ const IndependentDisclosure = "Independent source \u2014 Toqui earns no commissi
 
 // LinkBuilder generates affiliate URLs for each supported partner.
 type LinkBuilder struct {
-	skyscannerID   string
-	bookingComID   string
-	getYourGuideID string
-	viatorID       string
-	discoverCarsID string
-	safetyWingID   string
+	skyscannerID       string
+	bookingComID       string
+	getYourGuideID     string
+	viatorID           string
+	discoverCarsID     string
+	safetyWingID       string
+	expediaPublisherID string // Partnerize camref — covers Expedia + VRBO + Hotels.com
 }
 
 // LinkBuilderConfig holds affiliate partner IDs for constructing a LinkBuilder.
 type LinkBuilderConfig struct {
-	SkyscannerID   string
-	BookingComID   string
-	GetYourGuideID string
-	ViatorID       string
-	DiscoverCarsID string
-	SafetyWingID   string
+	SkyscannerID       string
+	BookingComID       string
+	GetYourGuideID     string
+	ViatorID           string
+	DiscoverCarsID     string
+	SafetyWingID       string
+	ExpediaPublisherID string
 }
 
 // NewLinkBuilder creates a LinkBuilder with the given partner IDs.
 // Empty IDs disable that partner's affiliate tracking (plain URLs are returned instead).
 func NewLinkBuilder(cfg LinkBuilderConfig) *LinkBuilder {
 	return &LinkBuilder{
-		skyscannerID:   cfg.SkyscannerID,
-		bookingComID:   cfg.BookingComID,
-		getYourGuideID: cfg.GetYourGuideID,
-		viatorID:       cfg.ViatorID,
-		discoverCarsID: cfg.DiscoverCarsID,
-		safetyWingID:   cfg.SafetyWingID,
+		skyscannerID:       cfg.SkyscannerID,
+		bookingComID:       cfg.BookingComID,
+		getYourGuideID:     cfg.GetYourGuideID,
+		viatorID:           cfg.ViatorID,
+		discoverCarsID:     cfg.DiscoverCarsID,
+		safetyWingID:       cfg.SafetyWingID,
+		expediaPublisherID: cfg.ExpediaPublisherID,
 	}
+}
+
+// partnerizeURL wraps a destination URL in a Partnerize click-tracking
+// link for the given camref (Expedia Group publisher ID). When camref
+// is empty the destination is returned unchanged so the user still gets
+// a working link (just without affiliate tracking) in dev / unconfigured
+// environments.
+//
+// Format per Partnerize docs:
+//
+//	https://prf.hn/click/camref:<camref>/[pubref:<subid>/]destination:<url-encoded-destination>
+//
+// The destination MUST be percent-encoded using QueryEscape (not
+// PathEscape) — PathEscape leaves `:`, `&`, and `=` untouched, which
+// would let the destination's own query string collide with the outer
+// URL structure and confuse Partnerize's parser.
+//
+// pubref is an optional sub-ID we use for trip-level conversion
+// attribution (same role as utm_content on the other partners).
+func partnerizeURL(camref, destination, subID string) string {
+	if camref == "" {
+		return destination
+	}
+	encoded := url.QueryEscape(destination)
+	if subID != "" {
+		return fmt.Sprintf("https://prf.hn/click/camref:%s/pubref:%s/destination:%s",
+			url.QueryEscape(camref), url.QueryEscape(subID), encoded)
+	}
+	return fmt.Sprintf("https://prf.hn/click/camref:%s/destination:%s",
+		url.QueryEscape(camref), encoded)
 }
 
 // FlightSearchURL returns a Skyscanner flight search URL with affiliate tracking.
@@ -193,6 +233,63 @@ func (b *LinkBuilder) TravelInsuranceURL(destination string) string {
 	return base
 }
 
+// VacationRentalURL returns a VRBO search URL wrapped in the Partnerize
+// click tracker when the Expedia publisher ID is configured. VRBO
+// covers the home/villa/cabin segment that Booking.com doesn't do well
+// — the AI chat tool calls this when the user asks for a house, cabin,
+// or longer-stay rental. tripIDHash is passed as the Partnerize pubref
+// for conversion attribution.
+func (b *LinkBuilder) VacationRentalURL(city, checkin, checkout string, tripIDHash ...string) string {
+	params := url.Values{}
+	if city != "" {
+		params.Set("q", city)
+	}
+	if checkin != "" {
+		params.Set("d1", checkin)
+	}
+	if checkout != "" {
+		params.Set("d2", checkout)
+	}
+	destination := "https://www.vrbo.com/search"
+	if len(params) > 0 {
+		destination += "?" + params.Encode()
+	}
+	var subID string
+	if len(tripIDHash) > 0 {
+		subID = tripIDHash[0]
+	}
+	return partnerizeURL(b.expediaPublisherID, destination, subID)
+}
+
+// ExpediaHotelURL returns an Expedia hotel search URL wrapped in the
+// Partnerize click tracker. This is an alternative to the Booking.com
+// HotelSearchURL when the user has a preference for Expedia's
+// inventory, package deals, or loyalty program. When both are
+// configured the ranker (sources.go) chooses based on user-tier
+// preferences; today Booking.com remains the default hotel partner
+// because it has deeper EU inventory.
+func (b *LinkBuilder) ExpediaHotelURL(city, checkin, checkout string, tripIDHash ...string) string {
+	params := url.Values{}
+	if city != "" {
+		params.Set("destination", city)
+	}
+	if checkin != "" {
+		params.Set("startDate", checkin)
+	}
+	if checkout != "" {
+		params.Set("endDate", checkout)
+	}
+	destination := "https://www.expedia.com/Hotel-Search"
+	if len(params) > 0 {
+		destination += "?" + params.Encode()
+	}
+	var subID string
+	if len(tripIDHash) > 0 {
+		subID = tripIDHash[0]
+	}
+	return partnerizeURL(b.expediaPublisherID, destination, subID)
+}
+
 // HasPartner returns true if the given partner has a configured affiliate ID.
 func (b *LinkBuilder) HasPartner(p Partner) bool {
 	switch p {
@@ -208,6 +305,8 @@ func (b *LinkBuilder) HasPartner(p Partner) bool {
 		return b.discoverCarsID != ""
 	case PartnerSafetyWing:
 		return b.safetyWingID != ""
+	case PartnerExpedia, PartnerVRBO:
+		return b.expediaPublisherID != ""
 	default:
 		return false
 	}
@@ -232,6 +331,8 @@ func PartnerForCategory(category string) Partner {
 		return PartnerSkyscanner
 	case "hotel":
 		return PartnerBookingCom
+	case "vacation_rental":
+		return PartnerVRBO
 	case "activity":
 		return PartnerGetYourGuide
 	case "car_rental":

@@ -87,6 +87,11 @@ type Config struct {
 	ViatorPartnerID         string
 	DiscoverCarsAffiliateID string
 	SafetyWingReferenceID   string
+	// Expedia Group Affiliate Program (EGAP) publisher ID, issued by
+	// Partnerize. A single ID covers Expedia Hotels, VRBO, and Hotels.com
+	// — links for each brand are built by wrapping the destination URL
+	// in https://prf.hn/click/camref:<id>/destination:<encoded-url>.
+	ExpediaPublisherID string
 
 	// Capacity + usage limits
 	MaxFreeUsers      int
@@ -181,6 +186,7 @@ func Load() (*Config, error) {
 		GetYourGuidePartnerID:          os.Getenv("GETYOURGUIDE_PARTNER_ID"),
 		ViatorPartnerID:                os.Getenv("VIATOR_PARTNER_ID"),
 		DiscoverCarsAffiliateID:        os.Getenv("DISCOVERCARS_AFFILIATE_ID"),
+		ExpediaPublisherID:             os.Getenv("EXPEDIA_PUBLISHER_ID"),
 		SafetyWingReferenceID:          os.Getenv("SAFETYWING_REFERENCE_ID"),
 		MaxFreeUsers:                   getEnvInt("MAX_FREE_USERS", 500),
 		DailyMessageLimit:              getEnvInt("DAILY_MESSAGE_LIMIT", 30),

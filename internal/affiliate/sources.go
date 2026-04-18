@@ -300,3 +300,64 @@ func (b *LinkBuilder) InsuranceSources(destination string) []Source {
 
 	return out
 }
+
+// VacationRentalSources returns the candidate sources for a vacation
+// rental search (houses, cabins, villas — the segment Booking.com is
+// weak in). Ordered: VRBO (affiliate via Partnerize), then a Google
+// search (independent). Airbnb is deliberately omitted until we have a
+// separate Impact.com partnership; the current Partnerize publisher ID
+// covers Expedia-group brands only.
+func (b *LinkBuilder) VacationRentalSources(city, checkin, checkout, tripIDHash string) []Source {
+	city = strings.TrimSpace(city)
+	checkin = strings.TrimSpace(checkin)
+	checkout = strings.TrimSpace(checkout)
+
+	var out []Source
+
+	// Title formats degrade gracefully when city is empty — upstream
+	// in the chat tool we fall back to "your destination", but source
+	// builders are also called directly in tests and future callers,
+	// so guard here against the "Vacation rentals in  (VRBO)"
+	// double-space before committing to a Title/Description string.
+	vrboTitle := "Vacation rentals (VRBO)"
+	vrboDesc := "VRBO search for homes, cabins, and villas."
+	if city != "" {
+		vrboTitle = fmt.Sprintf("Vacation rentals in %s (VRBO)", city)
+		vrboDesc = fmt.Sprintf("VRBO search for homes, cabins, and villas in %s.", city)
+	}
+
+	// Affiliate: VRBO via Partnerize. IsAffiliate is a static property
+	// of the partner — vrbo.com is a commercial aggregator whether or
+	// not our Partnerize camref is plumbed through for this env.
+	out = append(out, Source{
+		ID:          "vrbo",
+		Partner:     PartnerVRBO,
+		IsAffiliate: true,
+		URL:         b.VacationRentalURL(city, checkin, checkout, tripIDHash),
+		Title:       vrboTitle,
+		Description: vrboDesc,
+	})
+
+	// Independent: Google search.
+	q := "vacation rental"
+	if city != "" {
+		q = fmt.Sprintf("vacation rental %s", city)
+	}
+	if checkin != "" && checkout != "" {
+		q += fmt.Sprintf(" %s to %s", checkin, checkout)
+	}
+	googleTitle := "Compare vacation rentals on Google"
+	if city != "" {
+		googleTitle = fmt.Sprintf("Compare vacation rentals in %s on Google", city)
+	}
+	out = append(out, Source{
+		ID:          "google_vacation_rental",
+		Partner:     PartnerGoogle,
+		IsAffiliate: false,
+		URL:         "https://www.google.com/search?q=" + url.QueryEscape(q),
+		Title:       googleTitle,
+		Description: "Independent Google search — Toqui earns no commission.",
+	})
+
+	return out
+}

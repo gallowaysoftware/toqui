@@ -124,8 +124,8 @@ func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
 			"properties": {
 				"category": {
 					"type": "string",
-					"enum": ["flight", "hotel", "activity", "car_rental", "insurance"],
-					"description": "Type of booking to recommend"
+					"enum": ["flight", "hotel", "vacation_rental", "activity", "car_rental", "insurance"],
+					"description": "Type of booking to recommend. Use 'hotel' for hotels (Booking.com — best global coverage) and 'vacation_rental' for houses/cabins/villas/longer stays (VRBO — vacation-home inventory Booking.com lacks). Pick based on the user's intent: 'we want a house for a week' → vacation_rental; 'find me a hotel in Rome' → hotel."
 				},
 				"query": {
 					"type": "string",
@@ -272,6 +272,21 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 			fallbackTitle = fmt.Sprintf("Search hotels in %s", city)
 			fallbackDescription = fmt.Sprintf("Browse and compare hotel options in %s", city)
 		}
+		if params.DateFrom != "" && params.DateTo != "" {
+			fallbackDescription += fmt.Sprintf(" from %s to %s", params.DateFrom, params.DateTo)
+		}
+
+	case "vacation_rental":
+		city := params.Destination
+		if city == "" {
+			city = t.tripDestination
+		}
+		if city == "" {
+			city = "your destination"
+		}
+		sources = t.linkBuilder.VacationRentalSources(city, params.DateFrom, params.DateTo, tripHash)
+		fallbackTitle = fmt.Sprintf("Vacation rentals in %s", city)
+		fallbackDescription = fmt.Sprintf("Browse houses, cabins, and villas in %s", city)
 		if params.DateFrom != "" && params.DateTo != "" {
 			fallbackDescription += fmt.Sprintf(" from %s to %s", params.DateFrom, params.DateTo)
 		}

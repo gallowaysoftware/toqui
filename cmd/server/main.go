@@ -216,12 +216,13 @@ func main() {
 	// Affiliate link builder — generates partner URLs for booking recommendations.
 	// Empty IDs disable affiliate tracking (plain URLs still work).
 	linkBuilder := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{
-		SkyscannerID:   cfg.SkyscannerAffiliateID,
-		BookingComID:   cfg.BookingComAffiliateID,
-		GetYourGuideID: cfg.GetYourGuidePartnerID,
-		ViatorID:       cfg.ViatorPartnerID,
-		DiscoverCarsID: cfg.DiscoverCarsAffiliateID,
-		SafetyWingID:   cfg.SafetyWingReferenceID,
+		SkyscannerID:       cfg.SkyscannerAffiliateID,
+		BookingComID:       cfg.BookingComAffiliateID,
+		GetYourGuideID:     cfg.GetYourGuidePartnerID,
+		ViatorID:           cfg.ViatorPartnerID,
+		DiscoverCarsID:     cfg.DiscoverCarsAffiliateID,
+		SafetyWingID:       cfg.SafetyWingReferenceID,
+		ExpediaPublisherID: cfg.ExpediaPublisherID,
 	})
 
 	if aiProvider == nil {

@@ -3,18 +3,20 @@ package affiliate
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"net/url"
 	"strings"
 	"testing"
 )
 
 func TestNewLinkBuilder(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{
-		SkyscannerID:   "sky123",
-		BookingComID:   "book456",
-		GetYourGuideID: "gyg789",
-		ViatorID:       "vtr101",
-		DiscoverCarsID: "dc202",
-		SafetyWingID:   "sw303",
+		SkyscannerID:       "sky123",
+		BookingComID:       "book456",
+		GetYourGuideID:     "gyg789",
+		ViatorID:           "vtr101",
+		DiscoverCarsID:     "dc202",
+		SafetyWingID:       "sw303",
+		ExpediaPublisherID: "exp404",
 	})
 	if b.skyscannerID != "sky123" {
 		t.Errorf("expected skyscannerID %q, got %q", "sky123", b.skyscannerID)
@@ -33,6 +35,9 @@ func TestNewLinkBuilder(t *testing.T) {
 	}
 	if b.safetyWingID != "sw303" {
 		t.Errorf("expected safetyWingID %q, got %q", "sw303", b.safetyWingID)
+	}
+	if b.expediaPublisherID != "exp404" {
+		t.Errorf("expected expediaPublisherID %q, got %q", "exp404", b.expediaPublisherID)
 	}
 }
 
@@ -466,5 +471,140 @@ func TestViatorActivityURL_SubIDOmittedWithoutPartnerID(t *testing.T) {
 
 	if strings.Contains(u, "cmp=") {
 		t.Errorf("should not contain cmp when partner ID is empty: %s", u)
+	}
+}
+
+func TestVacationRentalURL_WithPublisherID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	u := b.VacationRentalURL("Kyoto", "2026-06-10", "2026-06-17", "trip123")
+
+	// Wrapped in Partnerize
+	if !strings.HasPrefix(u, "https://prf.hn/click/camref:1011l428984/") {
+		t.Errorf("expected Partnerize prefix with camref, got: %s", u)
+	}
+	// pubref (subID) is present
+	if !strings.Contains(u, "/pubref:trip123/") {
+		t.Errorf("expected /pubref:trip123/ segment, got: %s", u)
+	}
+	// Destination URL is percent-encoded inside the outer link
+	if !strings.Contains(u, "destination:https%3A%2F%2Fwww.vrbo.com%2Fsearch") {
+		t.Errorf("expected encoded VRBO destination, got: %s", u)
+	}
+	// The encoded destination preserves the search params
+	if !strings.Contains(u, "q%3DKyoto") {
+		t.Errorf("expected encoded q=Kyoto in destination, got: %s", u)
+	}
+	if !strings.Contains(u, "d1%3D2026-06-10") {
+		t.Errorf("expected encoded d1=checkin in destination, got: %s", u)
+	}
+}
+
+func TestVacationRentalURL_WithoutPublisherID_FallsThrough(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	u := b.VacationRentalURL("Kyoto", "2026-06-10", "2026-06-17", "trip123")
+
+	// No publisher ID → return the raw VRBO URL unwrapped.
+	if !strings.HasPrefix(u, "https://www.vrbo.com/search") {
+		t.Errorf("expected unwrapped VRBO URL, got: %s", u)
+	}
+	if strings.Contains(u, "prf.hn") {
+		t.Errorf("should not wrap in prf.hn when publisher ID is empty: %s", u)
+	}
+}
+
+func TestVacationRentalURL_OmitsPubrefWhenNoSubID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	u := b.VacationRentalURL("Kyoto", "", "", "")
+
+	if strings.Contains(u, "/pubref:") {
+		t.Errorf("should not include /pubref: segment when tripIDHash is empty: %s", u)
+	}
+}
+
+func TestVacationRentalURL_NonASCIICity(t *testing.T) {
+	// Non-ASCII city names (Japanese, Arabic, Cyrillic) must survive
+	// the double-encoding round-trip: VRBO's q param gets URL-encoded
+	// into its own query string, then the whole destination URL gets
+	// QueryEscape'd again when wrapped by Partnerize. If either layer
+	// corrupts the bytes (e.g. PathEscape leaving %E6 intact but
+	// eating the %), the Partnerize tracker hands VRBO a broken
+	// search and the user lands on an empty page.
+	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	u := b.VacationRentalURL("東京", "2026-08-01", "2026-08-07", "trip-ja")
+
+	// The Tokyo bytes (東京) percent-encode to %E6%9D%B1%E4%BA%AC. After
+	// the outer QueryEscape those %-signs become %25, so we expect the
+	// double-encoded sequence in the final URL.
+	if !strings.Contains(u, "%25E6%259D%25B1%25E4%25BA%25AC") {
+		t.Errorf("expected double-encoded Tokyo bytes, got: %s", u)
+	}
+	// Verify round-trip: decode twice and we should recover the
+	// destination URL with the Japanese chars in the q param.
+	decoded1, err := url.QueryUnescape(strings.TrimPrefix(u, "https://prf.hn/click/camref:1011l428984/pubref:trip-ja/destination:"))
+	if err != nil {
+		t.Fatalf("outer QueryUnescape: %v", err)
+	}
+	if !strings.Contains(decoded1, "q=%E6%9D%B1%E4%BA%AC") {
+		t.Errorf("outer decode should reveal VRBO URL with encoded Tokyo, got: %s", decoded1)
+	}
+	parsed, err := url.Parse(decoded1)
+	if err != nil {
+		t.Fatalf("parse destination: %v", err)
+	}
+	if got := parsed.Query().Get("q"); got != "東京" {
+		t.Errorf("round-tripped q param: want %q, got %q", "東京", got)
+	}
+}
+
+func TestVacationRentalSources_EmptyCityProducesCleanTitle(t *testing.T) {
+	// Earlier revision produced "Vacation rentals in  (VRBO)" — two
+	// spaces — when city was empty. Adversarial review W5. Titles
+	// should degrade to a city-less form without a double-space.
+	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	sources := b.VacationRentalSources("", "", "", "")
+	for _, s := range sources {
+		if strings.Contains(s.Title, "  ") {
+			t.Errorf("source title contains double-space for empty city: %q (id=%s)", s.Title, s.ID)
+		}
+	}
+}
+
+func TestExpediaHotelURL_WithPublisherID(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	u := b.ExpediaHotelURL("Lisbon", "2026-09-01", "2026-09-05", "trip-abc")
+
+	if !strings.HasPrefix(u, "https://prf.hn/click/camref:1011l428984/") {
+		t.Errorf("expected Partnerize prefix, got: %s", u)
+	}
+	if !strings.Contains(u, "destination:https%3A%2F%2Fwww.expedia.com%2FHotel-Search") {
+		t.Errorf("expected encoded Expedia destination, got: %s", u)
+	}
+	if !strings.Contains(u, "destination%3DLisbon") {
+		t.Errorf("expected encoded destination=Lisbon, got: %s", u)
+	}
+}
+
+func TestHasPartner_ExpediaGroup(t *testing.T) {
+	withID := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
+	if !withID.HasPartner(PartnerExpedia) {
+		t.Error("expected HasPartner(Expedia) to be true when ID configured")
+	}
+	if !withID.HasPartner(PartnerVRBO) {
+		t.Error("expected HasPartner(VRBO) to be true when ID configured — both share one camref")
+	}
+
+	without := NewLinkBuilder(LinkBuilderConfig{})
+	if without.HasPartner(PartnerExpedia) || without.HasPartner(PartnerVRBO) {
+		t.Error("expected HasPartner(Expedia/VRBO) to be false when no ID configured")
+	}
+}
+
+func TestPartnerForCategory_VacationRental(t *testing.T) {
+	if got := PartnerForCategory("vacation_rental"); got != PartnerVRBO {
+		t.Errorf("PartnerForCategory(vacation_rental) = %v, want %v", got, PartnerVRBO)
+	}
+	// Sanity: the hotel category is unchanged by this PR.
+	if got := PartnerForCategory("hotel"); got != PartnerBookingCom {
+		t.Errorf("PartnerForCategory(hotel) = %v, want %v (unchanged)", got, PartnerBookingCom)
 	}
 }
