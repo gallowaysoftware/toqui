@@ -104,13 +104,23 @@ func authenticateRESTRequest(r *http.Request, authSvc *auth.Service) (uuid.UUID,
 }
 
 // clientIPFromHeaders extracts the client IP from HTTP headers.
-// Used for ConnectRPC requests where we only have access to the header map.
+// Used for ConnectRPC requests where we only have access to the header map
+// (e.g. keying the per-IP auth lockout on RefreshToken).
+//
+// Cloud Run APPENDS the real client IP to the end of any client-supplied
+// X-Forwarded-For header, so the rightmost entry is the only untrusted-hop-free
+// value. Reading the leftmost entry lets an attacker spoof
+// `X-Forwarded-For: 1.2.3.4` and bypass the 5-strike auth lockout keyed off
+// this function. This mirrors the fix in ratelimit.ExtractClientIP (#369 P1 #1,
+// PR #370) for the ConnectRPC header-only call path.
 func clientIPFromHeaders(h http.Header) string {
 	if xff := h.Get("X-Forwarded-For"); xff != "" {
-		if ip, _, ok := strings.Cut(xff, ","); ok {
-			return strings.TrimSpace(ip)
+		parts := strings.Split(xff, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			if ip := strings.TrimSpace(parts[i]); ip != "" {
+				return ip
+			}
 		}
-		return strings.TrimSpace(xff)
 	}
 	if xri := h.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)

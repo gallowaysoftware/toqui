@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -130,6 +131,71 @@ func TestMapTripErr(t *testing.T) {
 				if msg := got.Message(); msg != "an internal error occurred" {
 					t.Errorf("internal error message leaked underlying detail: %q", msg)
 				}
+			}
+		})
+	}
+}
+
+// TestClientIPFromHeaders pins the anti-spoof contract for the ConnectRPC
+// header-only IP extractor. This helper keys the 5-strike auth lockout on
+// RefreshToken (internal/handlers/auth.go) — if it reads the leftmost
+// X-Forwarded-For entry, an attacker can forge that header per-request and
+// bypass the lockout entirely. Same class of bug as #369 P1 #1 / PR #370; this
+// is the duplicate call path on the ConnectRPC side.
+func TestClientIPFromHeaders(t *testing.T) {
+	cases := []struct {
+		name    string
+		headers map[string]string
+		want    string
+	}{
+		{
+			// Attacker scenario from the finding: client forges
+			// "X-Forwarded-For: 1.2.3.4"; Cloud Run appends the real IP.
+			// Must pick the appended (rightmost) entry.
+			name:    "X-Forwarded-For attacker-supplied header does not spoof real IP",
+			headers: map[string]string{"X-Forwarded-For": "1.2.3.4, 203.0.113.7"},
+			want:    "203.0.113.7",
+		},
+		{
+			name:    "X-Forwarded-For single IP returns it",
+			headers: map[string]string{"X-Forwarded-For": "1.2.3.4"},
+			want:    "1.2.3.4",
+		},
+		{
+			name:    "X-Forwarded-For multiple IPs takes rightmost",
+			headers: map[string]string{"X-Forwarded-For": "1.2.3.4, 10.0.0.1, 10.0.0.2"},
+			want:    "10.0.0.2",
+		},
+		{
+			name:    "X-Forwarded-For trailing empty entry is skipped",
+			headers: map[string]string{"X-Forwarded-For": "1.2.3.4, 10.0.0.1, "},
+			want:    "10.0.0.1",
+		},
+		{
+			name:    "X-Forwarded-For with spaces trims rightmost",
+			headers: map[string]string{"X-Forwarded-For": " 1.2.3.4 , 10.0.0.1 "},
+			want:    "10.0.0.1",
+		},
+		{
+			name:    "X-Real-IP fallback when X-Forwarded-For absent",
+			headers: map[string]string{"X-Real-IP": "5.6.7.8"},
+			want:    "5.6.7.8",
+		},
+		{
+			name:    "no headers returns unknown",
+			headers: map[string]string{},
+			want:    "unknown",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := http.Header{}
+			for k, v := range tc.headers {
+				h.Set(k, v)
+			}
+			if got := clientIPFromHeaders(h); got != tc.want {
+				t.Errorf("clientIPFromHeaders(%v) = %q, want %q", tc.headers, got, tc.want)
 			}
 		})
 	}
