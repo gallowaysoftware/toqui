@@ -673,10 +673,11 @@ func TestRecommendBookingTool_ProTier_InsuranceDisclosure(t *testing.T) {
 	// Insurance has the weakest independent alternative (a plain Google
 	// search), but it IS still an independent URL — clicking it doesn't
 	// earn Toqui a commission. So Pro users get IndependentDisclosure here
-	// too. The ProDisclosure constant remains available for the defensive
-	// fallback path: if InsuranceSources is ever changed to omit the
-	// Google search, SelectForPreference falls back to the affiliate
-	// candidate and the soft Pro label kicks in.
+	// too. If InsuranceSources ever drops the Google fallback, the
+	// affiliate candidate is selected and DisclosureFor now produces
+	// FTCDisclosure (#190 LB-4) — the same partner-link label free-tier
+	// users see, because the URL is commission-earning regardless of
+	// tier.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SafetyWingID: "sw303"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -727,8 +728,8 @@ func TestRecommendBookingTool_ProTier_InsuranceFallback_NoGoogleSource(t *testin
 		t.Fatalf("expected affiliate fallback when no independent option exists, got %+v", selected)
 	}
 	disc := affiliate.DisclosureFor(selected, true)
-	if disc != affiliate.ProDisclosure {
-		t.Errorf("affiliate fallback for Pro should use ProDisclosure, got %q", disc)
+	if disc != affiliate.FTCDisclosure {
+		t.Errorf("affiliate fallback for Pro must use FTCDisclosure — the URL is commission-earning regardless of tier (#190 LB-4); got %q", disc)
 	}
 }
 

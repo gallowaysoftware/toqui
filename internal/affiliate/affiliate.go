@@ -46,25 +46,25 @@ type Recommendation struct {
 	Disclosure  string  `json:"disclosure"`
 }
 
-// FTCDisclosure is the standard disclosure text included with every affiliate recommendation.
+// FTCDisclosure is the standard disclosure text used on every affiliate
+// URL, regardless of user tier (#190 LB-4). Satisfies 16 CFR Part 255.
 const FTCDisclosure = "This is a partner link. Toqui may earn a commission at no extra cost to you."
 
-// ProDisclosure is the disclosure text shown to Pro-tier users when the
-// recommendation is delivered via an affiliate link. Today every category
-// in sources.go exposes at least one independent candidate, so Pro
-// recommendations almost always carry IndependentDisclosure instead. This
-// constant exists for the defensive path in SelectForPreference: if a
-// future change leaves a category with only affiliate sources, Pro users
-// see this softer label and the partner-link nature is still disclosed
-// honestly (and accurately — not as "ranked by fit", which the tool does
-// not do).
-const ProDisclosure = "Recommended for your trip. This is a partner link \u2014 Toqui may earn a commission at no extra cost to you."
+// ProDisclosure is deprecated. It previously softened the partner-link
+// label for Pro-tier users on affiliate URLs ("Recommended for your
+// trip. This is a partner link…"). Deriving disclosure text from user
+// tier rather than Source.IsAffiliate was the root cause of #190 LB-4:
+// Pro users saw under-disclosed commercial URLs. The constant is kept
+// as a compile-time tombstone so any outside code that still imports it
+// continues to build; DisclosureFor no longer returns it under any
+// circumstance. Remove once all downstream call sites have migrated.
+//
+// Deprecated: use FTCDisclosure for every affiliate URL.
+const ProDisclosure = FTCDisclosure
 
-// IndependentDisclosure is the disclosure text shown when the
-// recommendation is delivered via a non-affiliate (independent) source —
-// e.g. a Google Flights search URL or a Wikivoyage page. Toqui earns no
-// commission on these clicks. Pro-tier users see this in place of
-// ProDisclosure whenever the selected source is non-affiliate.
+// IndependentDisclosure is the label for a non-affiliate (independent)
+// source — Google Flights, Google Maps, Wikivoyage, plain web search.
+// Toqui earns no commission on these clicks, and the label says so.
 const IndependentDisclosure = "Independent source \u2014 Toqui earns no commission on this link."
 
 // LinkBuilder generates affiliate URLs for each supported partner.

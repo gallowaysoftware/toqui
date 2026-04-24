@@ -24,13 +24,12 @@ import (
 //     recommendation is genuinely commission-free. Every category in
 //     sources.go currently exposes at least one non-affiliate candidate,
 //     so today every Pro recommendation carries IndependentDisclosure
-//     ("Toqui earns no commission on this link"). The selection logic in
-//     SelectForPreference also handles the defensive case where a
-//     category has no independent candidate (e.g. if a future change to
-//     InsuranceSources removes the Google search fallback): the tool
-//     would then return the affiliate source with ProDisclosure
-//     ("Recommended for your trip. This is a partner link…") so the
-//     partner-link nature is still disclosed honestly.
+//     ("Toqui earns no commission on this link"). If a future category
+//     loses its independent option, SelectForPreference falls back to
+//     the affiliate candidate — and in that case the disclosure is
+//     FTCDisclosure, the SAME label free-tier users see on affiliate
+//     URLs. Softening it for Pro was the #190 LB-4 under-disclosure
+//     bug; DisclosureFor now keys purely off Source.IsAffiliate.
 //
 // The candidate pools and selection live in the affiliate package
 // (sources.go, ranking.go) so the handler is just glue: pick category,

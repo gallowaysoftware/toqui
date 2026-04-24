@@ -15,8 +15,9 @@ package affiliate
 //     branch always finds a match in production. The fallback below is
 //     defensive insurance for future categories (or removed Google
 //     options): if no non-affiliate source is available, it returns
-//     sources[0] and the caller pairs it with ProDisclosure (the soft
-//     "Recommended for your trip — partner link" label).
+//     sources[0] and the caller pairs it with FTCDisclosure — the same
+//     partner-link label free-tier users see on the same URL (#190
+//     LB-4).
 //   - Otherwise, returns sources[0]. The source builders order slices
 //     affiliate-first, so this preserves the original free-tier
 //     behaviour: the affiliate candidate is always selected when one
@@ -44,25 +45,29 @@ func SelectForPreference(preferNonAffiliate bool, sources []Source) Source {
 }
 
 // DisclosureFor returns the disclosure text that should be displayed with
-// the selected Source. The rules encode the honest-labelling policy:
+// the selected Source. The rule is deliberately simple and keyed ONLY off
+// the source's IsAffiliate flag — NEVER the user tier:
 //
 //   - Non-affiliate source → IndependentDisclosure. Toqui earns no
 //     commission; the user sees that explicitly.
-//   - Affiliate source + Pro-tier caller → ProDisclosure. Softer framing
-//     for Pro users ("Recommended for your trip") but the partner-link
-//     nature is still disclosed.
-//   - Affiliate source + free-tier caller → FTCDisclosure. The standard
-//     "This is a partner link" label that satisfies 16 CFR Part 255.
+//   - Affiliate source → FTCDisclosure. The partner-link label that
+//     satisfies 16 CFR Part 255, irrespective of whether the caller is
+//     free or Pro.
 //
-// Callers pass `preferNonAffiliate` (i.e. tier.IsPro()) so this function
-// can pick between ProDisclosure and FTCDisclosure for affiliate sources
-// without needing to know about the tier package.
-func DisclosureFor(selected Source, preferNonAffiliate bool) string {
+// The Pro-tier rule (`preferNonAffiliate`) already influenced WHICH
+// source got selected via SelectForPreference. Once we've selected, the
+// disclosure must match the URL, not the tier. A Pro user who gets
+// bumped to the affiliate fallback (because the category has no
+// independent option) is looking at a commission-earning URL and must
+// be labelled accordingly — the previous ProDisclosure softened the
+// label in a way that could under-disclose the commercial relationship.
+//
+// Finding: #190 LB-4. preferNonAffiliate is intentionally unused here
+// so the bug can't come back via a future "well, just for Pro…" tweak.
+// Kept in the signature for call-site stability.
+func DisclosureFor(selected Source, _ bool) string {
 	if !selected.IsAffiliate {
 		return IndependentDisclosure
-	}
-	if preferNonAffiliate {
-		return ProDisclosure
 	}
 	return FTCDisclosure
 }

@@ -417,12 +417,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		expertTool = newExpertTeaserGate(suggestExpertTool, h.queries, gateTripID, userID)
 	}
 
-	// Recommend booking tool is available in all modes. Free-tier callers
-	// receive affiliate-linked results (FTCDisclosure). Pro-tier callers
-	// receive non-affiliate sources (IndependentDisclosure) — every
-	// category currently exposes at least one independent candidate, but
-	// SelectForPreference also handles the defensive case where it doesn't
-	// (falls back to an affiliate partner with ProDisclosure).
+	// Recommend booking tool is available in all modes. Pro-tier callers
+	// preferentially get non-affiliate sources (IndependentDisclosure) —
+	// every category currently exposes at least one independent
+	// candidate. If the affiliate fallback does fire (future category
+	// with no independent option), the label is FTCDisclosure, same as
+	// free-tier — the URL is commission-earning regardless of who
+	// clicks it (#190 LB-4).
 	var recommendBookingTool tools.Tool
 	if h.linkBuilder != nil {
 		rbt := NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {

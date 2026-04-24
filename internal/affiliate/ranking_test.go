@@ -85,10 +85,17 @@ func TestDisclosureFor_Independent(t *testing.T) {
 	}
 }
 
-func TestDisclosureFor_AffiliatePro(t *testing.T) {
+// THE #190 LB-4 regression test. Pro-tier caller, affiliate source
+// (either because the category only had an affiliate candidate, or
+// a future bug routed a Pro user to one): the disclosure MUST be
+// FTCDisclosure, not ProDisclosure and definitely not the softened
+// "no commission" IndependentDisclosure text. Deriving the label from
+// user tier instead of Source.IsAffiliate was the root cause of the
+// r11/R-20 agentic reports.
+func TestDisclosureFor_AffiliatePro_ReturnsFTC(t *testing.T) {
 	got := DisclosureFor(Source{IsAffiliate: true}, true)
-	if got != ProDisclosure {
-		t.Errorf("affiliate source + preferNonAffiliate=true (Pro fallback) should get ProDisclosure, got %q", got)
+	if got != FTCDisclosure {
+		t.Errorf("affiliate source + Pro-tier caller must get FTCDisclosure (not ProDisclosure, not IndependentDisclosure), got %q", got)
 	}
 }
 
@@ -129,9 +136,11 @@ func TestSelectAndDisclose_ProInsuranceAffiliateFallback(t *testing.T) {
 	// Defensive coverage: if a future change removes the Google search
 	// fallback from InsuranceSources (or any other category that loses its
 	// independent option), SelectForPreference must fall back to the
-	// affiliate candidate and DisclosureFor must produce ProDisclosure
-	// (the softer label that still discloses the partner-link nature).
-	// Hand-construct the scenario rather than coupling to InsuranceSources.
+	// affiliate candidate and DisclosureFor must produce FTCDisclosure —
+	// the SAME label free-tier users see on affiliate URLs. Softening it
+	// for Pro was the #190 LB-4 bug: a Pro user looking at a
+	// commission-earning URL deserves the same straightforward partner-
+	// link disclosure as everyone else.
 	onlyAffiliate := []Source{
 		{
 			ID:          "safetywing",
@@ -144,8 +153,8 @@ func TestSelectAndDisclose_ProInsuranceAffiliateFallback(t *testing.T) {
 	if !selected.IsAffiliate {
 		t.Fatalf("expected affiliate fallback when no independent option exists, got %+v", selected)
 	}
-	if disc := DisclosureFor(selected, true); disc != ProDisclosure {
-		t.Errorf("affiliate fallback for Pro should use ProDisclosure, got %q", disc)
+	if disc := DisclosureFor(selected, true); disc != FTCDisclosure {
+		t.Errorf("affiliate fallback for Pro must use FTCDisclosure (not ProDisclosure), got %q", disc)
 	}
 }
 
