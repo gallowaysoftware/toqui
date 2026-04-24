@@ -461,7 +461,12 @@
       },
       "destinationPlaceholder": "Where's your next trip?",
       "startPlanning": "Start Planning",
-      "browseIdeas": "View My Trips"
+      "browseIdeas": "View My Trips",
+      "termsNoticePrefix": "By continuing, you agree to our ",
+      "termsLink": "Terms of Service",
+      "termsNoticeSeparator": " and ",
+      "privacyLink": "Privacy Policy",
+      "termsNoticeSuffix": "."
     }
   },
   "subscription": {

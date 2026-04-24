@@ -18,6 +18,13 @@ vi.mock("@/lib/hooks/useTrips", () => ({
   }),
 }));
 
+// Mock expo-web-browser (in-app browser for Terms / Privacy links)
+const mockOpenBrowserAsync = vi.fn();
+vi.mock("expo-web-browser", () => ({
+  openBrowserAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
+  maybeCompleteAuthSession: vi.fn(),
+}));
+
 // Mock react-native with web platform
 vi.mock("react-native", async () => {
   const actual = await vi.importActual<typeof import("react-native")>("react-native");
@@ -107,6 +114,7 @@ beforeEach(() => {
   mockReplace.mockClear();
   mockPush.mockClear();
   mockMutateAsync.mockClear();
+  mockOpenBrowserAsync.mockClear();
 });
 
 afterEach(() => {
@@ -149,7 +157,27 @@ describe("OnboardingScreen", () => {
     expect(screen.getByTestId("onboarding-browse-ideas")).toBeInTheDocument();
   });
 
-  it("Start Planning is disabled when no destination is entered", async () => {
+  it("renders the implicit-accept terms notice with inline links", async () => {
+    await act(async () => {
+      renderOnboarding();
+    });
+
+    expect(screen.getByTestId("onboarding-terms-notice")).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-terms-link")).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-privacy-link")).toBeInTheDocument();
+    expect(screen.getByText("Terms of Service")).toBeInTheDocument();
+    expect(screen.getByText("Privacy Policy")).toBeInTheDocument();
+  });
+
+  it("does NOT render a separate terms-acceptance checkbox", async () => {
+    await act(async () => {
+      renderOnboarding();
+    });
+
+    expect(screen.queryByTestId("onboarding-terms-checkbox")).not.toBeInTheDocument();
+  });
+
+  it("Start Planning is disabled when no destination is entered (no checkbox required)", async () => {
     await act(async () => {
       renderOnboarding();
     });
@@ -158,7 +186,7 @@ describe("OnboardingScreen", () => {
     expect(startButton).toBeDisabled();
   });
 
-  it("Start Planning creates trip and navigates to chat", async () => {
+  it("Start Planning creates trip and navigates to chat (implicit terms acceptance)", async () => {
     mockMutateAsync.mockResolvedValueOnce({ id: "trip-123" });
 
     await act(async () => {
@@ -168,12 +196,6 @@ describe("OnboardingScreen", () => {
     const input = screen.getByTestId("onboarding-destination-input");
     await act(async () => {
       fireEvent.change(input, { target: { value: "Tokyo" } });
-    });
-
-    // Accept terms before clicking Start Planning
-    const termsCheckbox = screen.getByTestId("onboarding-terms-checkbox");
-    await act(async () => {
-      fireEvent.click(termsCheckbox);
     });
 
     const startButton = screen.getByTestId("onboarding-start-planning");
@@ -188,15 +210,9 @@ describe("OnboardingScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith("/trips/trip-123/chat");
   });
 
-  it("Browse trip ideas sets completion flag and navigates to home", async () => {
+  it("Browse trip ideas sets completion flag and navigates to home (implicit terms acceptance)", async () => {
     await act(async () => {
       renderOnboarding();
-    });
-
-    // Accept terms before clicking Browse trip ideas
-    const termsCheckbox = screen.getByTestId("onboarding-terms-checkbox");
-    await act(async () => {
-      fireEvent.click(termsCheckbox);
     });
 
     const browseButton = screen.getByTestId("onboarding-browse-ideas");
@@ -206,5 +222,31 @@ describe("OnboardingScreen", () => {
 
     expect(sessionStorage.getItem("toqui_onboarding_complete")).toBe("true");
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
+  });
+
+  it("Terms link opens the in-app browser (not Safari via Linking)", async () => {
+    await act(async () => {
+      renderOnboarding();
+    });
+
+    const termsLink = screen.getByTestId("onboarding-terms-link");
+    await act(async () => {
+      fireEvent.click(termsLink);
+    });
+
+    expect(mockOpenBrowserAsync).toHaveBeenCalledWith("https://toqui.travel/terms");
+  });
+
+  it("Privacy link opens the in-app browser (not Safari via Linking)", async () => {
+    await act(async () => {
+      renderOnboarding();
+    });
+
+    const privacyLink = screen.getByTestId("onboarding-privacy-link");
+    await act(async () => {
+      fireEvent.click(privacyLink);
+    });
+
+    expect(mockOpenBrowserAsync).toHaveBeenCalledWith("https://toqui.travel/privacy");
   });
 });
