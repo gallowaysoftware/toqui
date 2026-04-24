@@ -217,12 +217,12 @@ API test collections live in `tests/bruno/`. These are Bruno HTTP client collect
 
 GitHub Actions on push to `main` and all PRs (GitHub-hosted runners):
 
-- **toqui-backend**: lint, test (with coverage), build run in parallel → `deploy-staging` auto-runs on push-to-main; `deploy-prod` only runs on manual `workflow_dispatch` (see below)
+- **toqui-backend**: lint, test (with coverage), build run in parallel. Push-to-main deploy gating depends on staging health (see `check-staging` job below): **staging UP** → `deploy-staging` runs, `deploy-prod` skipped (manual via `workflow_dispatch`); **staging DOWN** → `deploy-staging` skipped, `deploy-prod` auto-runs so the latest commit always has a running environment.
 - **toqui**: lint+typecheck, test, build run in parallel → **deploy to prod** (main only, Cloud Run)
 - **toqui-site**: build (Cloudflare Pages auto-deploys from main)
 - **toqui-admin**: build (Cloudflare Pages auto-deploys from main)
 
-**Prod deploy is MANUAL.** The backend `deploy-prod` job is gated on `github.event_name == 'workflow_dispatch'`, so merging to `main` does NOT auto-deploy to prod — it only redeploys staging. To ship a main commit to prod, trigger the workflow manually:
+**Prod deploy is MANUAL while staging is up.** The backend `deploy-prod` job runs on `workflow_dispatch`, OR on push-to-main when `check-staging` reports staging is down. In the common case (staging running), merging to `main` only redeploys staging. If staging has been torn down to save cost, the same merge auto-deploys to prod instead — treat merges as prod-bound when you know staging is off. To ship a main commit to prod while staging is up, trigger the workflow manually:
 
 ```bash
 gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main
