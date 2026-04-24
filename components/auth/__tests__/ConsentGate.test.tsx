@@ -169,9 +169,9 @@ describe("ConsentGate", () => {
     );
   });
 
-  it("clicking 'I agree' POSTs BOTH consent types and acknowledges on success", async () => {
+  it("clicking 'I agree' POSTs the batch consent body and acknowledges on success", async () => {
     mockConsentRequired = true;
-    mockAuthFetch.mockResolvedValue({ ok: true, status: 200 });
+    mockAuthFetch.mockResolvedValue({ ok: true, status: 201 });
 
     await act(async () => {
       renderGate();
@@ -182,23 +182,30 @@ describe("ConsentGate", () => {
       fireEvent.click(agree);
     });
 
-    // Both consent types recorded, in either order (Promise.all).
+    // One batch call to POST /auth/consent with both consents set.
     await waitFor(() => {
-      expect(mockAuthFetch).toHaveBeenCalledTimes(2);
+      expect(mockAuthFetch).toHaveBeenCalledTimes(1);
     });
 
-    const bodies = mockAuthFetch.mock.calls.map((c) => {
-      const opts = c[2] as { body: string };
-      return JSON.parse(opts.body);
-    });
-    const types = bodies.map((b) => b.consent_type).sort();
-    expect(types).toEqual(["privacy_policy", "terms"]);
+    const [url, token, opts] = mockAuthFetch.mock.calls[0] as [
+      string,
+      string,
+      { method: string; body: string },
+    ];
+    expect(url).toBe("http://api.test/auth/consent");
+    expect(token).toBe("test-token");
+    expect(opts.method).toBe("POST");
 
-    // URL + token plumbing correct
-    for (const call of mockAuthFetch.mock.calls) {
-      expect(call[0]).toBe("http://api.test/auth/consent");
-      expect(call[1]).toBe("test-token");
-    }
+    // Body must match the `batchConsentRequest` shape defined in
+    // toqui-backend/internal/handlers/consent.go. If this assertion
+    // breaks, the backend's JSON decoder silently ignores extra fields
+    // and the flag flip will look like it succeeded while the DB
+    // rejects both consents — we MUST pin this shape.
+    const body = JSON.parse(opts.body);
+    expect(body).toEqual({
+      terms_accepted: true,
+      privacy_accepted: true,
+    });
 
     // Analytics fired and signal cleared
     expect(mockTrack).toHaveBeenCalledWith("consent_recorded");
@@ -207,10 +214,7 @@ describe("ConsentGate", () => {
 
   it("leaves the gate up and shows an error when backend rejects the consent", async () => {
     mockConsentRequired = true;
-    // One fails — simulate backend 500 on the privacy record
-    mockAuthFetch
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: false, status: 500 });
+    mockAuthFetch.mockResolvedValue({ ok: false, status: 500 });
 
     // Silence the expected console.error
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -326,13 +330,12 @@ describe("ConsentGate", () => {
 
     const agree = screen.getByTestId("consent-gate-agree");
 
-    // First click kicks off the submit.
+    // First click kicks off the submit — one batch POST.
     await act(async () => {
       fireEvent.click(agree);
     });
 
-    // Two authFetch calls in flight (terms + privacy via Promise.all).
-    expect(mockAuthFetch).toHaveBeenCalledTimes(2);
+    expect(mockAuthFetch).toHaveBeenCalledTimes(1);
 
     // Component now shows the spinner (ActivityIndicator) rather than
     // the "I agree" label — assert on that invariant so we know the
@@ -340,14 +343,12 @@ describe("ConsentGate", () => {
     expect(screen.queryByText("I agree")).not.toBeInTheDocument();
 
     // A second click after the submit starts should be a no-op because
-    // the Pressable is rendered with `disabled={submitting}`. We don't
-    // bother asserting the click count beyond the initial two — the
-    // `disabled` prop + the guard in `handleAgree` are the belt-and-
-    // suspenders we care about.
+    // the Pressable is rendered with `disabled={submitting}` AND
+    // `handleAgree` early-returns when `submitting` is true.
     await act(async () => {
       fireEvent.click(agree);
     });
-    expect(mockAuthFetch).toHaveBeenCalledTimes(2);
+    expect(mockAuthFetch).toHaveBeenCalledTimes(1);
 
     // Unblock the in-flight submit.
     await act(async () => {

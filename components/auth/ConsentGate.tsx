@@ -27,13 +27,21 @@ import { getConfig } from "@/lib/config";
 // cannot dismiss it — the only exits are "I agree" (records consent
 // server-side, then acknowledges the signal) or logout.
 //
-// Contract with backend (PR #374, merged b94db9d in toqui-backend):
-//   POST /auth/consent accepts `{ consent_type: string }` and requires
-//   both `terms` and `privacy_policy` to be recorded. We submit them
-//   sequentially in a single Promise.all so one network hiccup doesn't
-//   leave a half-accepted state. If either call fails, the user sees the
-//   error and can retry; we do not locally flip the flag until the
-//   backend confirms.
+// Contract with backend (see `internal/handlers/consent.go` →
+// `HandleBatchConsent`). POST /auth/consent is the BATCH endpoint; its
+// body shape is deliberately different from the per-type REST handler
+// at /api/privacy/consents:
+//
+//   POST /auth/consent  →  { terms_accepted: bool, privacy_accepted: bool,
+//                             marketing_opt_in?: bool }
+//
+// The handler requires terms_accepted AND privacy_accepted to be true
+// and records both consent types atomically server-side (one handler
+// invocation, one audit trail entry per consent). This matches the
+// onboarding flow's implicit-accept model — the user clicks "I agree"
+// once and we capture both legally-required consents in one call.
+// marketing_opt_in is optional; we don't collect it in this modal
+// because analytics consent has its own settings-screen flow.
 //
 // Copy re-uses the onboarding implicit-accept language from PR #192 so
 // the wording users see mid-session matches what they originally saw at
@@ -73,22 +81,17 @@ export function ConsentGate({ children }: ConsentGateProps) {
     setError(null);
     try {
       const apiUrl = getConfig().apiUrl;
-      // Fail closed: the backend requires BOTH consent types to pass the
-      // HasRequiredConsents check. Record them in parallel.
-      const [termsRes, privacyRes] = await Promise.all([
-        authFetch(`${apiUrl}/auth/consent`, accessToken, {
-          method: "POST",
-          body: JSON.stringify({ consent_type: "terms" }),
+      // Single batch call — POST /auth/consent records both required
+      // consents server-side in one handler invocation.
+      const res = await authFetch(`${apiUrl}/auth/consent`, accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          terms_accepted: true,
+          privacy_accepted: true,
         }),
-        authFetch(`${apiUrl}/auth/consent`, accessToken, {
-          method: "POST",
-          body: JSON.stringify({ consent_type: "privacy_policy" }),
-        }),
-      ]);
-      if (!termsRes.ok || !privacyRes.ok) {
-        throw new Error(
-          `Consent record failed: terms=${termsRes.status} privacy=${privacyRes.status}`,
-        );
+      });
+      if (!res.ok) {
+        throw new Error(`Consent record failed: status=${res.status}`);
       }
       track("consent_recorded");
       acknowledgeConsent();
