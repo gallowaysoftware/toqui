@@ -614,7 +614,7 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 
 Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Resend (email), Stripe (payments). Images pulled from `toqui-infra` Artifact Registry.
 
-**Company**: Galloway Software Inc., Prince Edward Island, Canada.
+**Company**: Galloway Software Solutions Inc., Prince Edward Island, Canada.
 
 ### Deploying to Prod
 
