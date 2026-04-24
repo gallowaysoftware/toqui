@@ -190,25 +190,25 @@ jobs:
           docker push $IMAGE:latest
 
       - name: Run migrations (before deploy to avoid schema mismatch)
+        # See deploy-prod's matching step for rationale — `jobs update
+        # --image` preserves every Terraform-declared field (service
+        # account, Cloud SQL attachment, env vars, command/args) and
+        # only rolls the image tag. Keeping the staging path symmetric
+        # with prod so the same outage class doesn't reintroduce itself
+        # if staging ever diverges from prod's deploy posture.
         run: |
-          DB_URL=$(gcloud secrets versions access latest \
-            --secret=staging-database-url \
-            --project=toqui-staging)
-          gcloud run jobs deploy toqui-migrate \
+          gcloud run jobs update toqui-migrate \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
+            --project=toqui-staging
+          gcloud run jobs execute toqui-migrate \
+            --region=northamerica-northeast1 \
             --project=toqui-staging \
-            --service-account=toqui-run-toqui-backend@toqui-staging.iam.gserviceaccount.com \
-            --set-cloudsql-instances=toqui-staging:northamerica-northeast1:toqui-staging-db \
-            --set-env-vars="DATABASE_URL=${DB_URL}" \
-            --command="/migrate" \
-            --args="-direction,up" \
-            --execute-now \
             --wait
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy toqui-backend \
+          gcloud run services update toqui-backend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
             --project=toqui-staging
@@ -287,44 +287,54 @@ jobs:
           docker push $IMAGE:latest
 
       - name: Run migrations (before deploy to avoid schema mismatch)
-        # Same private-IP / VPC constraint as the service deploy below:
-        # Cloud SQL is private-IP only, so the migrate Job must attach
-        # the VPC connector or /migrate will time out on every run
-        # (which is what caused the 2026-04-17 outage — the Job ran
-        # without VPC access, the sidecar couldn't reach 10.131.33.2,
-        # and schema changes couldn't ship).
+        # `gcloud run jobs update --image` rolls ONLY the container image
+        # on the existing Job, preserving every other revision-scoped
+        # field (service account, Cloud SQL attachment, VPC connector,
+        # env vars, command/args) that Terraform sets in
+        # `toqui-terraform/modules/cloudrun`.
+        #
+        # The previous `gcloud run jobs deploy` call re-specified each of
+        # those fields on the command line because any field left off
+        # would have been reset to gcloud defaults — that's how the
+        # 2026-04-17 outage landed (the old deploy silently dropped
+        # --vpc-connector and every DB query timed out against the
+        # private IP at 10.131.33.2). Switching to `update --image`
+        # makes Terraform the single source of truth for the Job spec
+        # and eliminates the whole class of "deploy wiped a field"
+        # incidents.
         run: |
-          DB_URL=$(gcloud secrets versions access latest \
-            --secret=prod-database-url \
-            --project=toqui-prod)
-          gcloud run jobs deploy toqui-migrate \
+          gcloud run jobs update toqui-migrate \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
+            --project=toqui-prod
+          gcloud run jobs execute toqui-migrate \
+            --region=northamerica-northeast1 \
             --project=toqui-prod \
-            --service-account=toqui-run-toqui-backend@toqui-prod.iam.gserviceaccount.com \
-            --set-cloudsql-instances=toqui-prod:northamerica-northeast1:toqui-db \
-            --set-env-vars="DATABASE_URL=${DB_URL}" \
-            --vpc-connector=toqui-connector \
-            --vpc-egress=private-ranges-only \
-            --command="/migrate" \
-            --args="-direction,up" \
-            --execute-now \
             --wait
 
       - name: Deploy to Cloud Run
-        # Prod Cloud SQL has enable_public_ip=false and is reachable only
-        # over the private VPC path (toqui-connector). We must pass
-        # --vpc-connector + --vpc-egress on every deploy — gcloud run
-        # deploy re-derives revision-scoped fields from the command line
-        # and drops them otherwise, which is what caused the outage on
-        # 2026-04-17: a deploy ran without these flags, the new revision
-        # lost VPC access, and all DB queries began timing out against
-        # the Cloud SQL private IP (10.131.33.2). See toqui-terraform
-        # modules/networking/main.tf for the connector definition.
+        # `gcloud run services update --image` rolls ONLY the container
+        # image on the existing service, leaving every other field (VPC
+        # connector, Cloud SQL attachment, memory, CPU, concurrency,
+        # min/max instances, service account, ingress, env vars)
+        # exactly as Terraform declared it in
+        # `toqui-terraform/modules/cloudrun/main.tf` +
+        # `environments/prod/main.tf`.
+        #
+        # The previous `gcloud run deploy` form was the outage
+        # primitive: any field not re-specified on the command line
+        # would be reset to gcloud defaults on the next revision,
+        # which is how --vpc-connector got silently dropped on
+        # 2026-04-17 and every DB query started timing out against
+        # the Cloud SQL private IP. PR #359 patched --vpc-connector
+        # and --vpc-egress back in, but memory, CPU, concurrency,
+        # min/max-instances, service-account etc. were still
+        # undeclared — the same outage class waiting for a different
+        # drift to land. This change makes Terraform the single
+        # source of truth for the Cloud Run spec; CI only rolls the
+        # image tag.
         run: |
-          gcloud run deploy toqui-backend \
+          gcloud run services update toqui-backend \
             --image=$IMAGE:${{ github.sha }} \
             --region=northamerica-northeast1 \
-            --project=toqui-prod \
-            --vpc-connector=toqui-connector \
-            --vpc-egress=private-ranges-only
+            --project=toqui-prod
