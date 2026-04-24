@@ -74,6 +74,23 @@ vi.mock("@/lib/authFetch", () => ({
   authFetch: (...args: unknown[]) => mockAuthFetch(...args),
 }));
 
+// React Query → capture invalidateQueries calls. The real QueryClient
+// isn't needed here because ConsentGate just grabs the client via
+// useQueryClient() and calls invalidateQueries() on it.
+const mockInvalidateQueries = vi.fn();
+vi.mock("@tanstack/react-query", async () => {
+  const actual =
+    await vi.importActual<typeof import("@tanstack/react-query")>(
+      "@tanstack/react-query",
+    );
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+    }),
+  };
+});
+
 // ---------------------------------------------------------------------------
 // Component import (must come AFTER the mocks above)
 // ---------------------------------------------------------------------------
@@ -106,6 +123,7 @@ beforeEach(() => {
   mockTrack.mockReset();
   mockAcknowledge.mockReset();
   mockAuthFetch.mockReset();
+  mockInvalidateQueries.mockReset();
 });
 
 afterEach(() => {
@@ -210,6 +228,64 @@ describe("ConsentGate", () => {
     // Analytics fired and signal cleared
     expect(mockTrack).toHaveBeenCalledWith("consent_recorded");
     expect(mockAcknowledge).toHaveBeenCalledTimes(1);
+    // React Query caches invalidated so errored queries (the ones that
+    // triggered `consent_required` in the first place) auto-refetch.
+    expect(mockInvalidateQueries).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates React Query caches BEFORE acknowledging the consent signal", async () => {
+    // Ordering matters: if we ack first, the modal closes and any
+    // screen listening for `consentRequired=false` may remount its
+    // queries in a stale state. Invalidate first, THEN ack.
+    mockConsentRequired = true;
+    mockAuthFetch.mockResolvedValue({ ok: true, status: 201 });
+
+    // Record the call order across the two mocks.
+    const callOrder: string[] = [];
+    mockInvalidateQueries.mockImplementation(() => {
+      callOrder.push("invalidate");
+    });
+    mockAcknowledge.mockImplementation(() => {
+      callOrder.push("acknowledge");
+    });
+
+    await act(async () => {
+      renderGate();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("consent-gate-agree"));
+    });
+
+    await waitFor(() => {
+      expect(mockAcknowledge).toHaveBeenCalledTimes(1);
+    });
+    expect(callOrder).toEqual(["invalidate", "acknowledge"]);
+  });
+
+  it("does NOT invalidate React Query caches when the backend rejects consent", async () => {
+    // If the POST fails, the user is still gated — invalidating would
+    // force a re-fetch storm against a still-gated session.
+    mockConsentRequired = true;
+    mockAuthFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => {
+      renderGate();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("consent-gate-agree"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("consent-gate-error")).toBeInTheDocument();
+    });
+
+    expect(mockInvalidateQueries).not.toHaveBeenCalled();
+
+    errSpy.mockRestore();
   });
 
   it("leaves the gate up and shows an error when backend rejects the consent", async () => {
