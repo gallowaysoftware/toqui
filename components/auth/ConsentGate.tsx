@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useAnalytics } from "@/lib/analytics";
 import { useConsentSignal } from "@/lib/transport";
@@ -63,6 +64,7 @@ export function ConsentGate({ children }: ConsentGateProps) {
   const { accessToken, logout } = useAuth();
   const { track } = useAnalytics();
   const { consentRequired, acknowledgeConsent } = useConsentSignal();
+  const queryClient = useQueryClient();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,15 @@ export function ConsentGate({ children }: ConsentGateProps) {
         throw new Error(`Consent record failed: status=${res.status}`);
       }
       track("consent_recorded");
+      // Invalidate every React Query cache so any query that errored
+      // with `FailedPrecondition("consent_required")` before the user
+      // agreed gets re-fetched automatically. Without this, the
+      // transport interceptor still lets new queries through, but the
+      // errored caches sit stale until the user manually navigates.
+      // Fire-and-forget: invalidateQueries returns a Promise that
+      // resolves once refetches complete, but the modal should close
+      // immediately regardless.
+      void queryClient.invalidateQueries();
       acknowledgeConsent();
     } catch (e) {
       setError(t("consentGate.error"));
@@ -103,7 +114,7 @@ export function ConsentGate({ children }: ConsentGateProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [accessToken, submitting, track, acknowledgeConsent, t]);
+  }, [accessToken, submitting, track, acknowledgeConsent, t, queryClient]);
 
   const handleLogout = useCallback(async () => {
     try {
