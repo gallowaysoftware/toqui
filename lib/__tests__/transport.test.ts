@@ -52,7 +52,13 @@ vi.mock("expo-secure-store", () => ({
 
 // Import modules under test AFTER mocks
 import { AuthProvider, useAuth } from "../auth";
-import { TransportProvider, useTransport } from "../transport";
+import {
+  TransportProvider,
+  useTransport,
+  useConsentSignal,
+  isConsentRequiredError,
+  CONSENT_REQUIRED_SENTINEL,
+} from "../transport";
 const { ConnectError, Code } = REAL_CONNECT;
 
 // ---------------------------------------------------------------------------
@@ -280,6 +286,151 @@ describe("Transport interceptor", () => {
   });
 
   // ── Ref-based interceptor picks up token changes without transport recreation ──
+
+  // ── Consent-required signal (toqui-backend PR #374) ──────────────────
+
+  it("isConsentRequiredError matches FailedPrecondition with consent_required sentinel", () => {
+    const hit = new ConnectError(
+      CONSENT_REQUIRED_SENTINEL,
+      Code.FailedPrecondition,
+    );
+    expect(isConsentRequiredError(hit)).toBe(true);
+  });
+
+  it("isConsentRequiredError rejects FailedPrecondition WITHOUT the sentinel", () => {
+    const miss = new ConnectError(
+      "age_verification_required",
+      Code.FailedPrecondition,
+    );
+    expect(isConsentRequiredError(miss)).toBe(false);
+  });
+
+  it("isConsentRequiredError rejects Unauthenticated even if message matches", () => {
+    // Paranoia: the SENTINEL must ONLY trigger on FailedPrecondition. An
+    // Unauthenticated error with a coincidental message string should NOT
+    // flip the consent flag — it would trap the user in the consent modal
+    // while the real issue is an expired token.
+    const miss = new ConnectError(
+      CONSENT_REQUIRED_SENTINEL,
+      Code.Unauthenticated,
+    );
+    expect(isConsentRequiredError(miss)).toBe(false);
+  });
+
+  it("isConsentRequiredError rejects non-ConnectError values", () => {
+    expect(isConsentRequiredError(new TypeError("fetch failed"))).toBe(false);
+    expect(isConsentRequiredError(null)).toBe(false);
+    expect(isConsentRequiredError("consent_required")).toBe(false);
+  });
+
+  it("flips consentRequired context flag on FailedPrecondition(consent_required) and re-throws", async () => {
+    // Wrap a hook that consumes both transport AND the consent signal so
+    // we can observe the state transition.
+    function useBoth() {
+      return {
+        transport: useTransport(),
+        signal: useConsentSignal(),
+      };
+    }
+
+    const { result } = renderHook(useBoth, {
+      wrapper: makeWrapper(),
+    });
+
+    expect(result.current.signal.consentRequired).toBe(false);
+
+    const interceptor = getInterceptor();
+    const mockNext = vi.fn().mockRejectedValue(
+      new ConnectError(CONSENT_REQUIRED_SENTINEL, Code.FailedPrecondition),
+    );
+
+    const req = makeRequest();
+    const handler = interceptor(mockNext);
+    // The error must still propagate — consuming hooks rely on their
+    // normal error paths. The gate is just drawn ON TOP.
+    await expect(handler(req)).rejects.toThrow(ConnectError);
+
+    // Interceptor should NOT retry on consent errors (that's a refresh
+    // flow, which only runs for Unauthenticated).
+    expect(mockNext).toHaveBeenCalledTimes(1);
+
+    // The flag should be flipped. Because setState is async within the
+    // interceptor, wait for React to flush.
+    const { act } = await import("@testing-library/react");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.signal.consentRequired).toBe(true);
+  });
+
+  it("acknowledgeConsent clears the signal back to false", async () => {
+    function useBoth() {
+      return {
+        transport: useTransport(),
+        signal: useConsentSignal(),
+      };
+    }
+
+    const { result } = renderHook(useBoth, {
+      wrapper: makeWrapper(),
+    });
+
+    const interceptor = getInterceptor();
+    const mockNext = vi.fn().mockRejectedValue(
+      new ConnectError(CONSENT_REQUIRED_SENTINEL, Code.FailedPrecondition),
+    );
+
+    const handler = interceptor(mockNext);
+    await expect(handler(makeRequest())).rejects.toThrow(ConnectError);
+
+    const { act } = await import("@testing-library/react");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.signal.consentRequired).toBe(true);
+
+    await act(async () => {
+      result.current.signal.acknowledgeConsent();
+    });
+    expect(result.current.signal.consentRequired).toBe(false);
+  });
+
+  it("FailedPrecondition WITHOUT consent_required sentinel does NOT flip the flag", async () => {
+    function useBoth() {
+      return {
+        transport: useTransport(),
+        signal: useConsentSignal(),
+      };
+    }
+
+    const { result } = renderHook(useBoth, {
+      wrapper: makeWrapper(),
+    });
+
+    const interceptor = getInterceptor();
+    // e.g. age-verification-required would also be FailedPrecondition.
+    // It must NOT trip the consent gate.
+    const mockNext = vi.fn().mockRejectedValue(
+      new ConnectError("age_verification_required", Code.FailedPrecondition),
+    );
+
+    const handler = interceptor(mockNext);
+    await expect(handler(makeRequest())).rejects.toThrow(ConnectError);
+
+    const { act } = await import("@testing-library/react");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.signal.consentRequired).toBe(false);
+  });
+
+  it("useConsentSignal throws outside TransportProvider", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => renderHook(() => useConsentSignal())).toThrow(
+      "useConsentSignal must be used within a TransportProvider",
+    );
+    spy.mockRestore();
+  });
 
   it("interceptor reads from ref so it picks up token changes without new transport", async () => {
     const { result } = renderHook(() => useAuth(), {
