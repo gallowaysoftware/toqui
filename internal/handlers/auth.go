@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
@@ -501,6 +502,11 @@ func userToProto(u *dbgen.User, subscriptionTier string) *toquiv1.User {
 	}
 	if u.AvatarUrl.Valid {
 		user.AvatarUrl = u.AvatarUrl.String
+	}
+	// Expose age verification timestamp so the frontend can skip the AgeGate
+	// modal for returning users who verified on a prior device/session.
+	if u.AgeVerifiedAt.Valid {
+		user.AgeVerifiedAt = timestamppb.New(u.AgeVerifiedAt.Time)
 	}
 	return user
 }

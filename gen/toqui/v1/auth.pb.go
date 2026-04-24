@@ -455,8 +455,12 @@ type User struct {
 	AvatarUrl        string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	SubscriptionTier string                 `protobuf:"bytes,6,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// When the user completed age verification (POST /auth/verify-age).
+	// Unset for users who have not yet verified. Used by the frontend
+	// to skip the AgeGate modal for returning users.
+	AgeVerifiedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=age_verified_at,json=ageVerifiedAt,proto3" json:"age_verified_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -529,6 +533,13 @@ func (x *User) GetSubscriptionTier() string {
 		return x.SubscriptionTier
 	}
 	return ""
+}
+
+func (x *User) GetAgeVerifiedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AgeVerifiedAt
+	}
+	return nil
 }
 
 // Account deletion — GDPR Article 17 (Right to Erasure)
@@ -747,7 +758,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x17\n" +
 	"\x15GetCurrentUserRequest\"<\n" +
 	"\x16GetCurrentUserResponse\x12\"\n" +
-	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\xc7\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x8b\x02\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -756,7 +767,8 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x129\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12+\n" +
-	"\x11subscription_tier\x18\x06 \x01(\tR\x10subscriptionTier\"9\n" +
+	"\x11subscription_tier\x18\x06 \x01(\tR\x10subscriptionTier\x12B\n" +
+	"\x0fage_verified_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\rageVerifiedAt\"9\n" +
 	"\x14DeleteAccountRequest\x12!\n" +
 	"\aconfirm\x18\x01 \x01(\bB\a\xbaH\x04j\x02\b\x01R\aconfirm\"P\n" +
 	"\x15DeleteAccountResponse\x12\x1d\n" +
@@ -812,23 +824,24 @@ var file_toqui_v1_auth_proto_depIdxs = []int32{
 	8,  // 2: toqui.v1.RefreshTokenResponse.user:type_name -> toqui.v1.User
 	8,  // 3: toqui.v1.GetCurrentUserResponse.user:type_name -> toqui.v1.User
 	13, // 4: toqui.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 5: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
-	2,  // 6: toqui.v1.AuthService.FacebookLogin:input_type -> toqui.v1.FacebookLoginRequest
-	4,  // 7: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
-	6,  // 8: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
-	9,  // 9: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
-	11, // 10: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
-	1,  // 11: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
-	3,  // 12: toqui.v1.AuthService.FacebookLogin:output_type -> toqui.v1.FacebookLoginResponse
-	5,  // 13: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
-	7,  // 14: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
-	10, // 15: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
-	12, // 16: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	13, // 5: toqui.v1.User.age_verified_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
+	2,  // 7: toqui.v1.AuthService.FacebookLogin:input_type -> toqui.v1.FacebookLoginRequest
+	4,  // 8: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
+	6,  // 9: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
+	9,  // 10: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
+	11, // 11: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
+	1,  // 12: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
+	3,  // 13: toqui.v1.AuthService.FacebookLogin:output_type -> toqui.v1.FacebookLoginResponse
+	5,  // 14: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
+	7,  // 15: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
+	10, // 16: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
+	12, // 17: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_auth_proto_init() }
