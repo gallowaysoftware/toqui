@@ -1,6 +1,6 @@
 # Product Hunt Launch Assets
 
-Target launch: Mid-May 2026 (Thursday)
+Target launch: Tuesday, April 28, 2026
 
 ---
 
