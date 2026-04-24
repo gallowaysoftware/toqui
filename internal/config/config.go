@@ -139,6 +139,14 @@ type Config struct {
 
 	// Staging overrides
 	StagingProAll bool // When true, all trips are treated as unlocked (staging only)
+
+	// Consent enforcement (#369 P1 #3). When true, the ConsentInterceptor
+	// refuses non-exempt RPCs for users without recorded 'terms' +
+	// 'privacy_policy' consents. Defaults to false so rollout can be
+	// staged: deploy the code, verify the frontend handles the
+	// FailedPrecondition("consent_required") sentinel in staging, then
+	// flip to true in prod.
+	ConsentEnforcementEnabled bool
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -201,6 +209,7 @@ func Load() (*Config, error) {
 		AdminEmails:                    parseCSVEnv("ADMIN_EMAILS"),
 		ReferralMaxRewards:             getEnvInt("REFERRAL_MAX_REWARDS", 10),
 		StagingProAll:                  getEnvBool("STAGING_PRO_ALL", false),
+		ConsentEnforcementEnabled:      getEnvBool("CONSENT_ENFORCEMENT_ENABLED", false),
 		ResendAPIKey:                   os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                      getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		StripeSecretKey:                os.Getenv("STRIPE_SECRET_KEY"),

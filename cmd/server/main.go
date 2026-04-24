@@ -313,12 +313,35 @@ func main() {
 		return queries.IsAgeVerified(ctx, userID)
 	})
 
-	interceptors := connect.WithInterceptors(
+	// Consent gate: refuses non-exempt RPCs until the user has recorded
+	// both `terms` and `privacy_policy` consents (see db/queries/consents.sql
+	// `HasRequiredConsents`). The login response already carries a
+	// `consent_pending` hint for the frontend; this interceptor enforces
+	// it server-side so a client that skips the consent modal can't just
+	// keep calling API methods. Finding: #369 P1 #3.
+	//
+	// Enforcement is gated behind CONSENT_ENFORCEMENT_ENABLED so the
+	// code can ship dark, be verified against the frontend in staging,
+	// then flipped on in prod. Merging the interceptor without the
+	// frontend handler would brick every existing user who hadn't
+	// recorded consent.
+	consentCheckFn := auth.ConsentCheckFunc(func(ctx context.Context, userID uuid.UUID) (bool, error) {
+		return queries.HasRequiredConsents(ctx, userID)
+	})
+
+	interceptorList := []connect.Interceptor{
 		validate.NewInterceptor(),
 		auth.NewAuthInterceptor(authSvc),
 		auth.NewAgeInterceptor(ageCheckFn),
-		rateLimiter,
-	)
+	}
+	if cfg.ConsentEnforcementEnabled {
+		slog.Info("consent enforcement interceptor enabled")
+		interceptorList = append(interceptorList, auth.NewConsentInterceptor(consentCheckFn))
+	} else {
+		slog.Warn("consent enforcement interceptor is DISABLED — set CONSENT_ENFORCEMENT_ENABLED=true to enforce")
+	}
+	interceptorList = append(interceptorList, rateLimiter)
+	interceptors := connect.WithInterceptors(interceptorList...)
 
 	// Register handlers
 	mux := http.NewServeMux()
