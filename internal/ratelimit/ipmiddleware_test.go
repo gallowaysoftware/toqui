@@ -16,16 +16,29 @@ func TestExtractClientIP(t *testing.T) {
 		expected string
 	}{
 		{
+			// Single entry: nothing to pick between — return it.
 			name:     "X-Forwarded-For single IP",
 			headers:  map[string]string{"X-Forwarded-For": "1.2.3.4"},
 			remote:   "127.0.0.1:12345",
 			expected: "1.2.3.4",
 		},
 		{
-			name:     "X-Forwarded-For multiple IPs takes first",
+			// Cloud Run appends the real client IP to the end. A malicious
+			// client sending "X-Forwarded-For: 1.2.3.4" produces a header
+			// like "1.2.3.4, <real-ip>"; we must take the rightmost entry.
+			name:     "X-Forwarded-For multiple IPs takes rightmost (anti-spoof)",
 			headers:  map[string]string{"X-Forwarded-For": "1.2.3.4, 10.0.0.1, 10.0.0.2"},
 			remote:   "127.0.0.1:12345",
-			expected: "1.2.3.4",
+			expected: "10.0.0.2",
+		},
+		{
+			// Regression: explicit attacker scenario. Client forges
+			// "X-Forwarded-For: 1.2.3.4" to pivot the rate-limit key; Cloud Run
+			// appends the real IP, and we must pick the appended one.
+			name:     "X-Forwarded-For attacker-supplied header does not spoof real IP",
+			headers:  map[string]string{"X-Forwarded-For": "1.2.3.4, 203.0.113.7"},
+			remote:   "127.0.0.1:12345",
+			expected: "203.0.113.7",
 		},
 		{
 			name:     "X-Real-IP fallback",
@@ -52,10 +65,18 @@ func TestExtractClientIP(t *testing.T) {
 			expected: "9.8.7.6",
 		},
 		{
-			name:     "X-Forwarded-For with spaces",
-			headers:  map[string]string{"X-Forwarded-For": " 1.2.3.4 , 10.0.0.1"},
+			name:     "X-Forwarded-For with spaces trims both ends of rightmost",
+			headers:  map[string]string{"X-Forwarded-For": " 1.2.3.4 , 10.0.0.1 "},
 			remote:   "127.0.0.1:12345",
-			expected: "1.2.3.4",
+			expected: "10.0.0.1",
+		},
+		{
+			// Trailing empty entry (e.g. "a, b, ") — skip empty, pick the
+			// rightmost non-empty value.
+			name:     "X-Forwarded-For trailing empty entry is skipped",
+			headers:  map[string]string{"X-Forwarded-For": "1.2.3.4, 10.0.0.1, "},
+			remote:   "127.0.0.1:12345",
+			expected: "10.0.0.1",
 		},
 	}
 

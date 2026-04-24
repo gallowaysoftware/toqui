@@ -109,15 +109,27 @@ func (l *IPRateLimiter) getOrCreate(ip string) *ipEntry {
 }
 
 // ExtractClientIP returns the client's real IP address.
-// Cloud Run and load balancers set X-Forwarded-For; we take the first
-// (leftmost) entry, which is the original client IP.
+//
+// Cloud Run (and GCP's HTTPS Load Balancer in front of it) APPENDS the real
+// client IP to the end of any client-supplied X-Forwarded-For header. The
+// rightmost entry is therefore the only untrusted-hop-free value we can
+// rely on. Reading the leftmost entry lets an attacker spoof
+// `X-Forwarded-For: 1.2.3.4` and bypass the per-IP rate limit and the
+// 5-strike auth lockout on /auth/exchange + RefreshToken.
+//
+// See toqui-backend#369 for the finding.
 func ExtractClientIP(r *http.Request) string {
-	// X-Forwarded-For: client, proxy1, proxy2
+	// X-Forwarded-For: client, proxy1, proxy2, <cloud-run-appended-real-ip>
+	// We want the LAST entry (rightmost) — that's the one the infrastructure
+	// wrote, not the one the client supplied.
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.SplitN(xff, ",", 2)
-		ip := strings.TrimSpace(parts[0])
-		if ip != "" {
-			return ip
+		parts := strings.Split(xff, ",")
+		// Walk from the right, taking the first non-empty value.
+		for i := len(parts) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(parts[i])
+			if ip != "" {
+				return ip
+			}
 		}
 	}
 
