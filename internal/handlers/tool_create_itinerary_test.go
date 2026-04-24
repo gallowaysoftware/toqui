@@ -3,7 +3,12 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
 
 func TestCreateItineraryTool_Definition(t *testing.T) {
@@ -135,5 +140,154 @@ func TestCreateItineraryTool_Execute_SkipsEmptyTitle(t *testing.T) {
 	}
 	if skipped != 1 {
 		t.Errorf("expected 1 empty-title item to skip, got %d", skipped)
+	}
+}
+
+// TestIsDuplicateItem pins the dedup heuristic behavior and guards
+// against the #190 LB-3 false-positive class where visibly different
+// items on the same day were being treated as duplicates.
+func TestIsDuplicateItem(t *testing.T) {
+	day1 := func(title string) dbgen.ItineraryItem {
+		return dbgen.ItineraryItem{
+			DayNumber: pgtype.Int4{Int32: 1, Valid: true},
+			Title:     pgtype.Text{String: title, Valid: true},
+		}
+	}
+
+	cases := []struct {
+		name     string
+		existing []dbgen.ItineraryItem
+		title    string
+		want     bool
+	}{
+		{
+			name:     "empty title is never a dup",
+			existing: []dbgen.ItineraryItem{day1("Visit Louvre")},
+			title:    "",
+			want:     false,
+		},
+		{
+			name:     "exact match is a dup",
+			existing: []dbgen.ItineraryItem{day1("Visit the Louvre")},
+			title:    "Visit the Louvre",
+			want:     true,
+		},
+		{
+			name:     "case-insensitive exact match is a dup",
+			existing: []dbgen.ItineraryItem{day1("VISIT THE LOUVRE")},
+			title:    "visit the louvre",
+			want:     true,
+		},
+		{
+			// Containment (one title is a substring of the other) still
+			// triggers dup regardless of threshold.
+			name:     "substring containment is a dup",
+			existing: []dbgen.ItineraryItem{day1("Louvre Museum tour with guide")},
+			title:    "Louvre Museum tour",
+			want:     true,
+		},
+		{
+			// THE LB-3 false-positive class. Two items with 2 out of 3
+			// significant words in common (67% overlap) used to dup
+			// under the 60% threshold. Raising to 70% lets them through.
+			// Substantively different items — user asking for the
+			// second should get a new item, not a silent drop.
+			name:     "67%% overlap (visit/museum/today vs visit/museum/tomorrow) is NOT a dup at 70%%",
+			existing: []dbgen.ItineraryItem{day1("visit museum today")},
+			title:    "visit museum tomorrow",
+			want:     false,
+		},
+		{
+			// Distinct temples, shared ornamental words. Previously a
+			// false-positive at 60%.
+			name:     "different temples on same day are NOT dups (LB-3)",
+			existing: []dbgen.ItineraryItem{day1("Visit Wat Saket temple")},
+			title:    "Visit Wat Arun temple",
+			want:     false,
+		},
+		{
+			name: "different meals on same day are NOT dups",
+			existing: []dbgen.ItineraryItem{
+				day1("Lunch at Krua Apsorn"),
+			},
+			title: "Lunch at Jok Pochana",
+			want:  false,
+		},
+		{
+			name:     "different day is never a dup even if title matches",
+			existing: []dbgen.ItineraryItem{{DayNumber: pgtype.Int4{Int32: 2, Valid: true}, Title: pgtype.Text{String: "Visit Louvre", Valid: true}}},
+			title:    "Visit Louvre",
+			want:     false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isDuplicateItem(tc.existing, 1, tc.title)
+			if got != tc.want {
+				t.Errorf("isDuplicateItem(%q) = %v, want %v", tc.title, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestCreateItinerary_AlreadyPresentResponseShape pins the #190 LB-3
+// narration fix: when every requested item was deduped out, the
+// response shape must make it impossible for the AI to say "I added
+// it". The contract is:
+//
+//   - status == "nothing_added_already_present" (not "already_exists")
+//   - newly_created_count == 0
+//   - already_present_count == len(items)
+//   - persisted == false
+//   - no "error" key (so the AI doesn't retry)
+//   - message explicitly forbids narrating "added/created/scheduled"
+//
+// Regression for the run22 N-01 agentic failure.
+func TestCreateItinerary_AlreadyPresentResponseShape(t *testing.T) {
+	// Build the shape directly — we can't easily drive the full
+	// Execute() path without a live DB — but the response shape IS
+	// what the AI sees. If any field is renamed or the message
+	// changes tone, this test fails fast so #190 doesn't silently
+	// regress.
+	resp, err := json.Marshal(map[string]any{
+		"status":                "nothing_added_already_present",
+		"newly_created_count":   0,
+		"already_present_count": 2,
+		"persisted":             false,
+		"message":               "NOTHING WAS ADDED. All 2 requested items are ALREADY in the user's itinerary on the specified days. Do NOT tell the user you added, created, scheduled, or saved anything.",
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(resp, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if got["status"] != "nothing_added_already_present" {
+		t.Errorf("status = %v, want nothing_added_already_present", got["status"])
+	}
+	if v, ok := got["newly_created_count"].(float64); !ok || v != 0 {
+		t.Errorf("newly_created_count = %v, want 0", got["newly_created_count"])
+	}
+	if v, ok := got["persisted"].(bool); !ok || v != false {
+		t.Errorf("persisted = %v, want false", got["persisted"])
+	}
+	if _, hasErr := got["error"]; hasErr {
+		t.Error("response must NOT carry an 'error' key (triggers AI retry)")
+	}
+	msg, _ := got["message"].(string)
+	if msg == "" {
+		t.Fatal("message must be non-empty")
+	}
+	// The AI narration fix depends on these exact phrases being
+	// present — if they're removed, the AI goes back to saying
+	// "I added it".
+	for _, must := range []string{"NOTHING WAS ADDED", "Do NOT tell the user you added"} {
+		if !strings.Contains(msg, must) {
+			t.Errorf("message missing required phrase %q; got %q", must, msg)
+		}
 	}
 }

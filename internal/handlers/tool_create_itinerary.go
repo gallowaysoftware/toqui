@@ -252,28 +252,41 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		// blindly retrying with the same payload (#183, Run 4 R-20).
 		//
 		// For the all-duplicates case we specifically return a SUCCESS-shaped
-		// response (no "error" key, created_count: 0) because the AI interprets
-		// any JSON with an "error" field as a failure and retries — which
-		// produced the Run 4 retry-loop regression. Telling the AI "these
-		// items are already present" is a success outcome, not an error.
+		// response (no "error" key) because the AI interprets any JSON with
+		// an "error" field as a failure and retries — which produced the
+		// Run 4 retry-loop regression. Telling the AI "these items are
+		// already present" is a success outcome, not an error.
+		//
+		// Field-naming matters for the narration bug (#190 LB-3, run22
+		// N-01): the AI previously saw `created_count: 0` + a polite
+		// message and still wrote "I've added it to your itinerary" in the
+		// user-facing reply. The new shape spells out BOTH counts with
+		// names the model can't misread — `newly_created_count` and
+		// `already_present_count` — and the status + message are worded
+		// to disallow any "added" narration.
 		switch {
 		case skipped > 0 && len(failed) == 0:
 			return json.Marshal(map[string]any{
-				"status":        "already_exists",
-				"created_count": 0,
-				"skipped_count": skipped,
-				"message":       fmt.Sprintf("All %d requested items are already in the user's itinerary on the specified days. No new items were needed — just confirm to the user that these items are already scheduled. Do NOT call this tool again with the same items.", skipped),
+				"status":                "nothing_added_already_present",
+				"newly_created_count":   0,
+				"already_present_count": skipped,
+				"persisted":             false,
+				"message":               fmt.Sprintf("NOTHING WAS ADDED. All %d requested items are ALREADY in the user's itinerary on the specified days. Do NOT tell the user you added, created, scheduled, or saved anything. Instead, tell them the items are already on their plan. Do NOT call this tool again with the same items.", skipped),
 			})
 		case len(failed) > 0:
 			return json.Marshal(map[string]any{
-				"error":        "all_failed",
-				"message":      "Every item failed to persist. Check that day_number is a positive integer and that title is non-empty, then call the tool again with corrected items.",
-				"failed_items": failed,
+				"error":               "all_failed",
+				"newly_created_count": 0,
+				"persisted":           false,
+				"message":             "Every item failed to persist. NOTHING WAS ADDED. Check that day_number is a positive integer and that title is non-empty, then call the tool again with corrected items. Do NOT tell the user you added anything.",
+				"failed_items":        failed,
 			})
 		default:
 			return json.Marshal(map[string]any{
-				"error":   "no_valid_items",
-				"message": "No valid items were provided. Each item needs a non-empty title and a positive day_number. Retry with at least one item.",
+				"error":               "no_valid_items",
+				"newly_created_count": 0,
+				"persisted":           false,
+				"message":             "No valid items were provided. NOTHING WAS ADDED. Each item needs a non-empty title and a positive day_number. Retry with at least one item. Do NOT tell the user you added anything.",
 			})
 		}
 	}
@@ -338,13 +351,22 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 		msg = strings.Join(parts, " ")
 	}
 
+	// `newly_created_count` is the authoritative "did we actually persist
+	// anything?" counter for the AI. Naming it the same across the
+	// success and already-present paths lets the AI key off a single
+	// field when narrating. Keep `created_count` as an alias for
+	// backward-compat with any older prompt snippets / telemetry until
+	// all call sites migrate.
 	result := map[string]any{
-		"created_count": len(created),
-		"items":         summary,
-		"message":       msg,
+		"newly_created_count": len(created),
+		"created_count":       len(created), // legacy alias — remove once prompts migrate
+		"persisted":           true,
+		"items":               summary,
+		"message":             msg,
 	}
 	if skipped > 0 {
-		result["skipped_duplicates"] = skipped
+		result["already_present_count"] = skipped
+		result["skipped_duplicates"] = skipped // legacy alias
 	}
 	if len(failed) > 0 {
 		result["failed_count"] = len(failed)
@@ -358,12 +380,24 @@ func normalizeTitle(s string) string {
 	return strings.ToLower(strings.Join(strings.Fields(s), " "))
 }
 
+// dedupOverlapThreshold is the fraction of significant words that must
+// overlap between two titles on the same day for the new item to be
+// treated as a duplicate. Raised from 0.6 → 0.7 to reduce false
+// positives like "Visit Wat Saket" vs "Visit Wat Arun" (both share
+// "visit" and "temple"-style words, ≥60% overlap, but refer to
+// different places). 70% still catches the containment cases #322 /
+// Run 16 originally fixed: "Day Trip: Montserrat" is a substring of
+// "Day Trip to Montserrat Monastery" and trips the containment
+// short-circuit before overlap even matters. See #190 LB-3.
+const dedupOverlapThreshold = 0.7
+
 // isDuplicateItem checks whether a new item on the given day has a title
 // similar enough to an existing item to be considered a duplicate.
-// Uses containment + word overlap: if 60%+ of the significant words in
-// either title appear in the other, it's a duplicate. This catches
-// near-matches like "Day Trip: Montserrat" vs "Day Trip to Montserrat
-// Monastery" that pure containment misses (Run 16 R-05/R-06/R-20 P2).
+// Uses containment + word overlap. The threshold is deliberately high
+// (see dedupOverlapThreshold) because a false-positive here is much
+// worse than a false-negative: a false-positive returns
+// `nothing_added_already_present` when the user DID want a new item,
+// which was the #190 LB-3 narration bug.
 func isDuplicateItem(existing []dbgen.ItineraryItem, dayNumber int, title string) bool {
 	norm := normalizeTitle(title)
 	if norm == "" {
@@ -382,9 +416,10 @@ func isDuplicateItem(existing []dbgen.ItineraryItem, dayNumber int, title string
 		if existNorm == norm || strings.Contains(existNorm, norm) || strings.Contains(norm, existNorm) {
 			return true
 		}
-		// Word overlap: if 60%+ of significant words overlap, it's a dup
+		// Word overlap on significant words.
 		existWords := significantWords(existNorm)
-		if wordOverlapRatio(newWords, existWords) >= 0.6 || wordOverlapRatio(existWords, newWords) >= 0.6 {
+		if wordOverlapRatio(newWords, existWords) >= dedupOverlapThreshold ||
+			wordOverlapRatio(existWords, newWords) >= dedupOverlapThreshold {
 			return true
 		}
 	}
