@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/booking.proto.
  */
 export const file_toqui_v1_booking: GenFile = /*@__PURE__*/
-  fileDesc("ChZ0b3F1aS92MS9ib29raW5nLnByb3RvEgh0b3F1aS52MSLuBgoHQm9va2luZxIKCgJpZBgBIAEoCRIPCgd0cmlwX2lkGAIgASgJEiMKBHR5cGUYAyABKA4yFS50b3F1aS52MS5Cb29raW5nVHlwZRIZChFjb25maXJtYXRpb25fY29kZRgEIAEoCRIQCghwcm92aWRlchgFIAEoCRINCgV0aXRsZRgGIAEoCRIuCgpzdGFydF90aW1lGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIgoIbG9jYXRpb24YCSABKAsyEC50b3F1aS52MS5MYXRMbmcSDwoHYWRkcmVzcxgKIAEoCRIYCgxkZXRhaWxzX2pzb24YCyABKAlCAhgBEhIKCnJhd19zb3VyY2UYDCABKAkSJwoGc291cmNlGA0gASgOMhcudG9xdWkudjEuQm9va2luZ1NvdXJjZRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkZXBhcnR1cmVfbG9jYXRpb24YDyABKAkSGAoQYXJyaXZhbF9sb2NhdGlvbhgQIAEoCRISCgpudW1fZ3Vlc3RzGBEgASgFEjEKDmZsaWdodF9kZXRhaWxzGBQgASgLMhcudG9xdWkudjEuRmxpZ2h0RGV0YWlsc0gAEi8KDWhvdGVsX2RldGFpbHMYFSABKAsyFi50b3F1aS52MS5Ib3RlbERldGFpbHNIABI4ChJjYXJfcmVudGFsX2RldGFpbHMYFiABKAsyGi50b3F1aS52MS5DYXJSZW50YWxEZXRhaWxzSAASLwoNdHJhaW5fZGV0YWlscxgXIAEoCzIWLnRvcXVpLnYxLlRyYWluRGV0YWlsc0gAEi0KDHRvdXJfZGV0YWlscxgYIAEoCzIVLnRvcXVpLnYxLlRvdXJEZXRhaWxzSAASNQoQYWN0aXZpdHlfZGV0YWlscxgZIAEoCzIZLnRvcXVpLnYxLkFjdGl2aXR5RGV0YWlsc0gAEjkKEnJlc3RhdXJhbnRfZGV0YWlscxgaIAEoCzIbLnRvcXVpLnYxLlJlc3RhdXJhbnREZXRhaWxzSABCEQoPYm9va2luZ19kZXRhaWxzItgBCg1GbGlnaHREZXRhaWxzEg8KB2FpcmxpbmUYASABKAkSFQoNZmxpZ2h0X251bWJlchgCIAEoCRIZChFkZXBhcnR1cmVfYWlycG9ydBgDIAEoCRIXCg9hcnJpdmFsX2FpcnBvcnQYBCABKAkSGgoSZGVwYXJ0dXJlX3Rlcm1pbmFsGAUgASgJEhgKEGFycml2YWxfdGVybWluYWwYBiABKAkSDAoEc2VhdBgHIAEoCRITCgtjYWJpbl9jbGFzcxgIIAEoCRISCgpwYXNzZW5nZXJzGAkgAygJIpgBCgxIb3RlbERldGFpbHMSEgoKaG90ZWxfbmFtZRgBIAEoCRIVCg1jaGVja19pbl9kYXRlGAIgASgJEhYKDmNoZWNrX291dF9kYXRlGAMgASgJEhEKCXJvb21fdHlwZRgEIAEoCRISCgpudW1fZ3Vlc3RzGAUgASgFEg8KB2FkZHJlc3MYBiABKAkSDQoFcGhvbmUYByABKAkiqAEKEENhclJlbnRhbERldGFpbHMSDwoHY29tcGFueRgBIAEoCRIXCg9waWNrdXBfbG9jYXRpb24YAiABKAkSGAoQZHJvcG9mZl9sb2NhdGlvbhgDIAEoCRITCgtwaWNrdXBfdGltZRgEIAEoCRIUCgxkcm9wb2ZmX3RpbWUYBSABKAkSEAoIY2FyX3R5cGUYBiABKAkSEwoLZHJpdmVyX25hbWUYByABKAkimwEKDFRyYWluRGV0YWlscxIQCghvcGVyYXRvchgBIAEoCRIUCgx0cmFpbl9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX3N0YXRpb24YAyABKAkSFwoPYXJyaXZhbF9zdGF0aW9uGAQgASgJEgwKBHNlYXQYBSABKAkSEgoKY2FyX251bWJlchgGIAEoCRINCgVjbGFzcxgHIAEoCSJLCghUb3VyU3RvcBIMCgRuYW1lGAEgASgJEhAKCGxvY2F0aW9uGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg0KBW5vdGVzGAQgASgJIosBCgtUb3VyRGV0YWlscxIVCg10b3VyX29wZXJhdG9yGAEgASgJEhEKCXRvdXJfbmFtZRgCIAEoCRIYChBudW1fcGFydGljaXBhbnRzGAMgASgFEhUKDW1lZXRpbmdfcG9pbnQYBCABKAkSIQoFc3RvcHMYBSADKAsyEi50b3F1aS52MS5Ub3VyU3RvcCJvCg9BY3Rpdml0eURldGFpbHMSEAoIb3BlcmF0b3IYASABKAkSFQoNYWN0aXZpdHlfbmFtZRgCIAEoCRIQCghsb2NhdGlvbhgDIAEoCRISCgpudW1fZ3Vlc3RzGAQgASgFEg0KBW5vdGVzGAUgASgJImAKEVJlc3RhdXJhbnREZXRhaWxzEhcKD3Jlc3RhdXJhbnRfbmFtZRgBIAEoCRIPCgdjdWlzaW5lGAIgASgJEhIKCnBhcnR5X3NpemUYAyABKAUSDQoFbm90ZXMYBCABKAkiawoUSW5nZXN0Qm9va2luZ1JlcXVlc3QSDwoHdHJpcF9pZBgBIAEoCRIjCgR0eXBlGAIgASgOMhUudG9xdWkudjEuQm9va2luZ1R5cGUSHQoIcmF3X3RleHQYAyABKAlCC7pICHIGEAEY0IYDIjsKFUluZ2VzdEJvb2tpbmdSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyI0ChJJbmdlc3RFbWFpbFJlcXVlc3QSHgoJcmF3X2VtYWlsGAEgASgJQgu6SAhyBhABGKDCHiI6ChNJbmdlc3RFbWFpbFJlc3BvbnNlEiMKCGJvb2tpbmdzGAEgAygLMhEudG9xdWkudjEuQm9va2luZyJhChNMaXN0Qm9va2luZ3NSZXF1ZXN0EhkKB3RyaXBfaWQYASABKAlCCLpIBXIDsAEBEi8KCnBhZ2luYXRpb24YAiABKAsyGy50b3F1aS52MS5QYWdpbmF0aW9uUmVxdWVzdCJtChRMaXN0Qm9va2luZ3NSZXNwb25zZRIjCghib29raW5ncxgBIAMoCzIRLnRvcXVpLnYxLkJvb2tpbmcSMAoKcGFnaW5hdGlvbhgCIAEoCzIcLnRvcXVpLnYxLlBhZ2luYXRpb25SZXNwb25zZSIpChFHZXRCb29raW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiOAoSR2V0Qm9va2luZ1Jlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIlMKGExpbmtCb29raW5nVG9UcmlwUmVxdWVzdBIcCgpib29raW5nX2lkGAEgASgJQgi6SAVyA7ABARIZCgd0cmlwX2lkGAIgASgJQgi6SAVyA7ABASI/ChlMaW5rQm9va2luZ1RvVHJpcFJlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIiwKFERlbGV0ZUJvb2tpbmdSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIXChVEZWxldGVCb29raW5nUmVzcG9uc2UiWAoaRXh0cmFjdEJvb2tpbmdGaWVsZFJlcXVlc3QSHAoKYm9va2luZ19pZBgBIAEoCUIIukgFcgOwAQESHAoIcXVlc3Rpb24YAiABKAlCCrpIB3IFEAEY6AciuwEKG0V4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZRIOCgZhbnN3ZXIYASABKAkSVAoQZXh0cmFjdGVkX2ZpZWxkcxgCIAMoCzI6LnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXNwb25zZS5FeHRyYWN0ZWRGaWVsZHNFbnRyeRo2ChRFeHRyYWN0ZWRGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBKvgBCgtCb29raW5nVHlwZRIcChhCT09LSU5HX1RZUEVfVU5TUEVDSUZJRUQQABIXChNCT09LSU5HX1RZUEVfRkxJR0hUEAESFgoSQk9PS0lOR19UWVBFX0hPVEVMEAISGwoXQk9PS0lOR19UWVBFX0NBUl9SRU5UQUwQAxIWChJCT09LSU5HX1RZUEVfVFJBSU4QBBIZChVCT09LSU5HX1RZUEVfQUNUSVZJVFkQBRIbChdCT09LSU5HX1RZUEVfUkVTVEFVUkFOVBAGEhYKEkJPT0tJTkdfVFlQRV9PVEhFUhAHEhUKEUJPT0tJTkdfVFlQRV9UT1VSEAgqfgoNQm9va2luZ1NvdXJjZRIeChpCT09LSU5HX1NPVVJDRV9VTlNQRUNJRklFRBAAEhgKFEJPT0tJTkdfU09VUkNFX0VNQUlMEAESGQoVQk9PS0lOR19TT1VSQ0VfTUFOVUFMEAISGAoUQk9PS0lOR19TT1VSQ0VfUEFTVEUQAzLaBAoOQm9va2luZ1NlcnZpY2USUAoNSW5nZXN0Qm9va2luZxIeLnRvcXVpLnYxLkluZ2VzdEJvb2tpbmdSZXF1ZXN0Gh8udG9xdWkudjEuSW5nZXN0Qm9va2luZ1Jlc3BvbnNlEkoKC0luZ2VzdEVtYWlsEhwudG9xdWkudjEuSW5nZXN0RW1haWxSZXF1ZXN0Gh0udG9xdWkudjEuSW5nZXN0RW1haWxSZXNwb25zZRJNCgxMaXN0Qm9va2luZ3MSHS50b3F1aS52MS5MaXN0Qm9va2luZ3NSZXF1ZXN0Gh4udG9xdWkudjEuTGlzdEJvb2tpbmdzUmVzcG9uc2USRwoKR2V0Qm9va2luZxIbLnRvcXVpLnYxLkdldEJvb2tpbmdSZXF1ZXN0GhwudG9xdWkudjEuR2V0Qm9va2luZ1Jlc3BvbnNlElwKEUxpbmtCb29raW5nVG9UcmlwEiIudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXF1ZXN0GiMudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXNwb25zZRJQCg1EZWxldGVCb29raW5nEh4udG9xdWkudjEuRGVsZXRlQm9va2luZ1JlcXVlc3QaHy50b3F1aS52MS5EZWxldGVCb29raW5nUmVzcG9uc2USYgoTRXh0cmFjdEJvb2tpbmdGaWVsZBIkLnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXF1ZXN0GiUudG9xdWkudjEuRXh0cmFjdEJvb2tpbmdGaWVsZFJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
+  fileDesc("ChZ0b3F1aS92MS9ib29raW5nLnByb3RvEgh0b3F1aS52MSLvCAoHQm9va2luZxIKCgJpZBgBIAEoCRIPCgd0cmlwX2lkGAIgASgJEiMKBHR5cGUYAyABKA4yFS50b3F1aS52MS5Cb29raW5nVHlwZRIZChFjb25maXJtYXRpb25fY29kZRgEIAEoCRIQCghwcm92aWRlchgFIAEoCRINCgV0aXRsZRgGIAEoCRIuCgpzdGFydF90aW1lGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIgoIbG9jYXRpb24YCSABKAsyEC50b3F1aS52MS5MYXRMbmcSDwoHYWRkcmVzcxgKIAEoCRIYCgxkZXRhaWxzX2pzb24YCyABKAlCAhgBEhIKCnJhd19zb3VyY2UYDCABKAkSJwoGc291cmNlGA0gASgOMhcudG9xdWkudjEuQm9va2luZ1NvdXJjZRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkZXBhcnR1cmVfbG9jYXRpb24YDyABKAkSGAoQYXJyaXZhbF9sb2NhdGlvbhgQIAEoCRISCgpudW1fZ3Vlc3RzGBEgASgFEhMKC3ByaWNlX2NlbnRzGBIgASgDEhAKCGN1cnJlbmN5GBMgASgJEhAKCHRpbWV6b25lGBsgASgJEjEKDmZsaWdodF9kZXRhaWxzGBQgASgLMhcudG9xdWkudjEuRmxpZ2h0RGV0YWlsc0gAEi8KDWhvdGVsX2RldGFpbHMYFSABKAsyFi50b3F1aS52MS5Ib3RlbERldGFpbHNIABI4ChJjYXJfcmVudGFsX2RldGFpbHMYFiABKAsyGi50b3F1aS52MS5DYXJSZW50YWxEZXRhaWxzSAASLwoNdHJhaW5fZGV0YWlscxgXIAEoCzIWLnRvcXVpLnYxLlRyYWluRGV0YWlsc0gAEi0KDHRvdXJfZGV0YWlscxgYIAEoCzIVLnRvcXVpLnYxLlRvdXJEZXRhaWxzSAASNQoQYWN0aXZpdHlfZGV0YWlscxgZIAEoCzIZLnRvcXVpLnYxLkFjdGl2aXR5RGV0YWlsc0gAEjkKEnJlc3RhdXJhbnRfZGV0YWlscxgaIAEoCzIbLnRvcXVpLnYxLlJlc3RhdXJhbnREZXRhaWxzSAASLwoNZmVycnlfZGV0YWlscxgcIAEoCzIWLnRvcXVpLnYxLkZlcnJ5RGV0YWlsc0gAEisKC2J1c19kZXRhaWxzGB0gASgLMhQudG9xdWkudjEuQnVzRGV0YWlsc0gAEjEKDmNydWlzZV9kZXRhaWxzGB4gASgLMhcudG9xdWkudjEuQ3J1aXNlRGV0YWlsc0gAEjUKEHRyYW5zZmVyX2RldGFpbHMYHyABKAsyGS50b3F1aS52MS5UcmFuc2ZlckRldGFpbHNIAEIRCg9ib29raW5nX2RldGFpbHMipAEKCUZsaWdodExlZxIVCg1mbGlnaHRfbnVtYmVyGAEgASgJEg8KB2FpcmxpbmUYAiABKAkSGQoRZGVwYXJ0dXJlX2FpcnBvcnQYAyABKAkSFwoPYXJyaXZhbF9haXJwb3J0GAQgASgJEhYKDmRlcGFydHVyZV90aW1lGAUgASgJEhQKDGFycml2YWxfdGltZRgGIAEoCRINCgVjYWJpbhgHIAEoCSL7AQoNRmxpZ2h0RGV0YWlscxIPCgdhaXJsaW5lGAEgASgJEhUKDWZsaWdodF9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX2FpcnBvcnQYAyABKAkSFwoPYXJyaXZhbF9haXJwb3J0GAQgASgJEhoKEmRlcGFydHVyZV90ZXJtaW5hbBgFIAEoCRIYChBhcnJpdmFsX3Rlcm1pbmFsGAYgASgJEgwKBHNlYXQYByABKAkSEwoLY2FiaW5fY2xhc3MYCCABKAkSEgoKcGFzc2VuZ2VycxgJIAMoCRIhCgRsZWdzGAogAygLMhMudG9xdWkudjEuRmxpZ2h0TGVnIpgBCgxIb3RlbERldGFpbHMSEgoKaG90ZWxfbmFtZRgBIAEoCRIVCg1jaGVja19pbl9kYXRlGAIgASgJEhYKDmNoZWNrX291dF9kYXRlGAMgASgJEhEKCXJvb21fdHlwZRgEIAEoCRISCgpudW1fZ3Vlc3RzGAUgASgFEg8KB2FkZHJlc3MYBiABKAkSDQoFcGhvbmUYByABKAkiqAEKEENhclJlbnRhbERldGFpbHMSDwoHY29tcGFueRgBIAEoCRIXCg9waWNrdXBfbG9jYXRpb24YAiABKAkSGAoQZHJvcG9mZl9sb2NhdGlvbhgDIAEoCRITCgtwaWNrdXBfdGltZRgEIAEoCRIUCgxkcm9wb2ZmX3RpbWUYBSABKAkSEAoIY2FyX3R5cGUYBiABKAkSEwoLZHJpdmVyX25hbWUYByABKAkimwEKDFRyYWluRGV0YWlscxIQCghvcGVyYXRvchgBIAEoCRIUCgx0cmFpbl9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX3N0YXRpb24YAyABKAkSFwoPYXJyaXZhbF9zdGF0aW9uGAQgASgJEgwKBHNlYXQYBSABKAkSEgoKY2FyX251bWJlchgGIAEoCRINCgVjbGFzcxgHIAEoCSJLCghUb3VyU3RvcBIMCgRuYW1lGAEgASgJEhAKCGxvY2F0aW9uGAIgASgJEhAKCGR1cmF0aW9uGAMgASgJEg0KBW5vdGVzGAQgASgJIuIBCgtUb3VyRGV0YWlscxIVCg10b3VyX29wZXJhdG9yGAEgASgJEhEKCXRvdXJfbmFtZRgCIAEoCRIYChBudW1fcGFydGljaXBhbnRzGAMgASgFEhUKDW1lZXRpbmdfcG9pbnQYBCABKAkSIQoFc3RvcHMYBSADKAsyEi50b3F1aS52MS5Ub3VyU3RvcBIMCgRkYXRlGAYgASgJEhIKCnN0YXJ0X3RpbWUYByABKAkSEAoIZHVyYXRpb24YCCABKAkSEgoKZ3VpZGVfbmFtZRgJIAEoCRINCgVwcmljZRgKIAEoCSLGAQoPQWN0aXZpdHlEZXRhaWxzEhAKCG9wZXJhdG9yGAEgASgJEhUKDWFjdGl2aXR5X25hbWUYAiABKAkSEAoIbG9jYXRpb24YAyABKAkSEgoKbnVtX2d1ZXN0cxgEIAEoBRINCgVub3RlcxgFIAEoCRIMCgRkYXRlGAYgASgJEhIKCnN0YXJ0X3RpbWUYByABKAkSEAoIZHVyYXRpb24YCCABKAkSEgoKZ3VpZGVfbmFtZRgJIAEoCRINCgVwcmljZRgKIAEoCSJgChFSZXN0YXVyYW50RGV0YWlscxIXCg9yZXN0YXVyYW50X25hbWUYASABKAkSDwoHY3Vpc2luZRgCIAEoCRISCgpwYXJ0eV9zaXplGAMgASgFEg0KBW5vdGVzGAQgASgJIuUBCgxGZXJyeURldGFpbHMSEAoIb3BlcmF0b3IYASABKAkSEwoLdmVzc2VsX25hbWUYAiABKAkSFgoOZGVwYXJ0dXJlX3BvcnQYAyABKAkSFAoMYXJyaXZhbF9wb3J0GAQgASgJEhYKDmRlcGFydHVyZV90aW1lGAUgASgJEhQKDGFycml2YWxfdGltZRgGIAEoCRISCgpjYWJpbl90eXBlGAcgASgJEgwKBGRlY2sYCCABKAkSFgoObnVtX3Bhc3NlbmdlcnMYCSABKAUSGAoQdmVoaWNsZV9pbmNsdWRlZBgKIAEoCCLFAQoKQnVzRGV0YWlscxIQCghvcGVyYXRvchgBIAEoCRIUCgxyb3V0ZV9udW1iZXIYAiABKAkSGQoRZGVwYXJ0dXJlX3N0YXRpb24YAyABKAkSFwoPYXJyaXZhbF9zdGF0aW9uGAQgASgJEhYKDmRlcGFydHVyZV90aW1lGAUgASgJEhQKDGFycml2YWxfdGltZRgGIAEoCRIMCgRzZWF0GAcgASgJEg0KBWNsYXNzGAggASgJEhAKCHBsYXRmb3JtGAkgASgJIswBCg1DcnVpc2VEZXRhaWxzEhMKC2NydWlzZV9saW5lGAEgASgJEhEKCXNoaXBfbmFtZRgCIAEoCRIWCg5kZXBhcnR1cmVfcG9ydBgDIAEoCRIUCgxhcnJpdmFsX3BvcnQYBCABKAkSFAoMY2FiaW5fbnVtYmVyGAUgASgJEhIKCmNhYmluX3R5cGUYBiABKAkSDAoEZGVjaxgHIAEoCRIWCg5udW1fcGFzc2VuZ2VycxgIIAEoBRIVCg1wb3J0c19vZl9jYWxsGAkgAygJIsUBCg9UcmFuc2ZlckRldGFpbHMSEAoIb3BlcmF0b3IYASABKAkSFAoMdmVoaWNsZV90eXBlGAIgASgJEhcKD3BpY2t1cF9sb2NhdGlvbhgDIAEoCRIYChBkcm9wb2ZmX2xvY2F0aW9uGAQgASgJEhMKC3BpY2t1cF90aW1lGAUgASgJEhYKDm51bV9wYXNzZW5nZXJzGAYgASgFEhMKC2RyaXZlcl9uYW1lGAcgASgJEhUKDWZsaWdodF9udW1iZXIYCCABKAkiawoUSW5nZXN0Qm9va2luZ1JlcXVlc3QSDwoHdHJpcF9pZBgBIAEoCRIjCgR0eXBlGAIgASgOMhUudG9xdWkudjEuQm9va2luZ1R5cGUSHQoIcmF3X3RleHQYAyABKAlCC7pICHIGEAEY0IYDIjsKFUluZ2VzdEJvb2tpbmdSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyI0ChJJbmdlc3RFbWFpbFJlcXVlc3QSHgoJcmF3X2VtYWlsGAEgASgJQgu6SAhyBhABGKDCHiI6ChNJbmdlc3RFbWFpbFJlc3BvbnNlEiMKCGJvb2tpbmdzGAEgAygLMhEudG9xdWkudjEuQm9va2luZyL/AgoUVXBkYXRlQm9va2luZ1JlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEg0KBXRpdGxlGAIgASgJEiMKBHR5cGUYAyABKA4yFS50b3F1aS52MS5Cb29raW5nVHlwZRIZChFjb25maXJtYXRpb25fY29kZRgEIAEoCRIQCghwcm92aWRlchgFIAEoCRIuCgpzdGFydF90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHYWRkcmVzcxgIIAEoCRIaChJkZXBhcnR1cmVfbG9jYXRpb24YCSABKAkSGAoQYXJyaXZhbF9sb2NhdGlvbhgKIAEoCRISCgpudW1fZ3Vlc3RzGAsgASgFEhMKC3ByaWNlX2NlbnRzGAwgASgDEhAKCGN1cnJlbmN5GA0gASgJEhAKCHRpbWV6b25lGA4gASgJIjsKFVVwZGF0ZUJvb2tpbmdSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyJhChNMaXN0Qm9va2luZ3NSZXF1ZXN0EhkKB3RyaXBfaWQYASABKAlCCLpIBXIDsAEBEi8KCnBhZ2luYXRpb24YAiABKAsyGy50b3F1aS52MS5QYWdpbmF0aW9uUmVxdWVzdCJtChRMaXN0Qm9va2luZ3NSZXNwb25zZRIjCghib29raW5ncxgBIAMoCzIRLnRvcXVpLnYxLkJvb2tpbmcSMAoKcGFnaW5hdGlvbhgCIAEoCzIcLnRvcXVpLnYxLlBhZ2luYXRpb25SZXNwb25zZSIpChFHZXRCb29raW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiOAoSR2V0Qm9va2luZ1Jlc3BvbnNlEiIKB2Jvb2tpbmcYASABKAsyES50b3F1aS52MS5Cb29raW5nIjYKGUdldFRyaXBDb3N0U3VtbWFyeVJlcXVlc3QSGQoHdHJpcF9pZBgBIAEoCUIIukgFcgOwAQEiXAoaR2V0VHJpcENvc3RTdW1tYXJ5UmVzcG9uc2USJwoGdG90YWxzGAEgAygLMhcudG9xdWkudjEuQ3VycmVuY3lUb3RhbBIVCg1ib29raW5nX2NvdW50GAIgASgFIk0KDUN1cnJlbmN5VG90YWwSEAoIY3VycmVuY3kYASABKAkSEwoLdG90YWxfY2VudHMYAiABKAMSFQoNYm9va2luZ19jb3VudBgDIAEoBSJTChhMaW5rQm9va2luZ1RvVHJpcFJlcXVlc3QSHAoKYm9va2luZ19pZBgBIAEoCUIIukgFcgOwAQESGQoHdHJpcF9pZBgCIAEoCUIIukgFcgOwAQEiPwoZTGlua0Jvb2tpbmdUb1RyaXBSZXNwb25zZRIiCgdib29raW5nGAEgASgLMhEudG9xdWkudjEuQm9va2luZyIsChREZWxldGVCb29raW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiFwoVRGVsZXRlQm9va2luZ1Jlc3BvbnNlIlgKGkV4dHJhY3RCb29raW5nRmllbGRSZXF1ZXN0EhwKCmJvb2tpbmdfaWQYASABKAlCCLpIBXIDsAEBEhwKCHF1ZXN0aW9uGAIgASgJQgq6SAdyBRABGOgHIrsBChtFeHRyYWN0Qm9va2luZ0ZpZWxkUmVzcG9uc2USDgoGYW5zd2VyGAEgASgJElQKEGV4dHJhY3RlZF9maWVsZHMYAiADKAsyOi50b3F1aS52MS5FeHRyYWN0Qm9va2luZ0ZpZWxkUmVzcG9uc2UuRXh0cmFjdGVkRmllbGRzRW50cnkaNgoURXh0cmFjdGVkRmllbGRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASr8AgoLQm9va2luZ1R5cGUSHAoYQk9PS0lOR19UWVBFX1VOU1BFQ0lGSUVEEAASFwoTQk9PS0lOR19UWVBFX0ZMSUdIVBABEhYKEkJPT0tJTkdfVFlQRV9IT1RFTBACEhsKF0JPT0tJTkdfVFlQRV9DQVJfUkVOVEFMEAMSFgoSQk9PS0lOR19UWVBFX1RSQUlOEAQSGQoVQk9PS0lOR19UWVBFX0FDVElWSVRZEAUSGwoXQk9PS0lOR19UWVBFX1JFU1RBVVJBTlQQBhIWChJCT09LSU5HX1RZUEVfT1RIRVIQBxIVChFCT09LSU5HX1RZUEVfVE9VUhAIEhYKEkJPT0tJTkdfVFlQRV9GRVJSWRAJEhQKEEJPT0tJTkdfVFlQRV9CVVMQChIXChNCT09LSU5HX1RZUEVfQ1JVSVNFEAsSGQoVQk9PS0lOR19UWVBFX1RSQU5TRkVSEAwSIAocQk9PS0lOR19UWVBFX1ZBQ0FUSU9OX1JFTlRBTBANKn4KDUJvb2tpbmdTb3VyY2USHgoaQk9PS0lOR19TT1VSQ0VfVU5TUEVDSUZJRUQQABIYChRCT09LSU5HX1NPVVJDRV9FTUFJTBABEhkKFUJPT0tJTkdfU09VUkNFX01BTlVBTBACEhgKFEJPT0tJTkdfU09VUkNFX1BBU1RFEAMyjQYKDkJvb2tpbmdTZXJ2aWNlElAKDUluZ2VzdEJvb2tpbmcSHi50b3F1aS52MS5Jbmdlc3RCb29raW5nUmVxdWVzdBofLnRvcXVpLnYxLkluZ2VzdEJvb2tpbmdSZXNwb25zZRJKCgtJbmdlc3RFbWFpbBIcLnRvcXVpLnYxLkluZ2VzdEVtYWlsUmVxdWVzdBodLnRvcXVpLnYxLkluZ2VzdEVtYWlsUmVzcG9uc2USUAoNVXBkYXRlQm9va2luZxIeLnRvcXVpLnYxLlVwZGF0ZUJvb2tpbmdSZXF1ZXN0Gh8udG9xdWkudjEuVXBkYXRlQm9va2luZ1Jlc3BvbnNlEk0KDExpc3RCb29raW5ncxIdLnRvcXVpLnYxLkxpc3RCb29raW5nc1JlcXVlc3QaHi50b3F1aS52MS5MaXN0Qm9va2luZ3NSZXNwb25zZRJHCgpHZXRCb29raW5nEhsudG9xdWkudjEuR2V0Qm9va2luZ1JlcXVlc3QaHC50b3F1aS52MS5HZXRCb29raW5nUmVzcG9uc2USXwoSR2V0VHJpcENvc3RTdW1tYXJ5EiMudG9xdWkudjEuR2V0VHJpcENvc3RTdW1tYXJ5UmVxdWVzdBokLnRvcXVpLnYxLkdldFRyaXBDb3N0U3VtbWFyeVJlc3BvbnNlElwKEUxpbmtCb29raW5nVG9UcmlwEiIudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXF1ZXN0GiMudG9xdWkudjEuTGlua0Jvb2tpbmdUb1RyaXBSZXNwb25zZRJQCg1EZWxldGVCb29raW5nEh4udG9xdWkudjEuRGVsZXRlQm9va2luZ1JlcXVlc3QaHy50b3F1aS52MS5EZWxldGVCb29raW5nUmVzcG9uc2USYgoTRXh0cmFjdEJvb2tpbmdGaWVsZBIkLnRvcXVpLnYxLkV4dHJhY3RCb29raW5nRmllbGRSZXF1ZXN0GiUudG9xdWkudjEuRXh0cmFjdEJvb2tpbmdGaWVsZFJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
 
 /**
  * @generated from message toqui.v1.Booking
@@ -108,6 +108,27 @@ export type Booking = Message<"toqui.v1.Booking"> & {
   numGuests: number;
 
   /**
+   * Price tracking: amount in smallest currency unit (cents/pence).
+   *
+   * @generated from field: int64 price_cents = 18;
+   */
+  priceCents: bigint;
+
+  /**
+   * ISO 4217 currency code (e.g. "USD", "EUR", "CAD").
+   *
+   * @generated from field: string currency = 19;
+   */
+  currency: string;
+
+  /**
+   * IANA timezone identifier for local display (e.g. "America/New_York").
+   *
+   * @generated from field: string timezone = 27;
+   */
+  timezone: string;
+
+  /**
    * @generated from oneof toqui.v1.Booking.booking_details
    */
   bookingDetails: {
@@ -152,6 +173,30 @@ export type Booking = Message<"toqui.v1.Booking"> & {
      */
     value: RestaurantDetails;
     case: "restaurantDetails";
+  } | {
+    /**
+     * @generated from field: toqui.v1.FerryDetails ferry_details = 28;
+     */
+    value: FerryDetails;
+    case: "ferryDetails";
+  } | {
+    /**
+     * @generated from field: toqui.v1.BusDetails bus_details = 29;
+     */
+    value: BusDetails;
+    case: "busDetails";
+  } | {
+    /**
+     * @generated from field: toqui.v1.CruiseDetails cruise_details = 30;
+     */
+    value: CruiseDetails;
+    case: "cruiseDetails";
+  } | {
+    /**
+     * @generated from field: toqui.v1.TransferDetails transfer_details = 31;
+     */
+    value: TransferDetails;
+    case: "transferDetails";
   } | { case: undefined; value?: undefined };
 };
 
@@ -161,6 +206,53 @@ export type Booking = Message<"toqui.v1.Booking"> & {
  */
 export const BookingSchema: GenMessage<Booking> = /*@__PURE__*/
   messageDesc(file_toqui_v1_booking, 0);
+
+/**
+ * @generated from message toqui.v1.FlightLeg
+ */
+export type FlightLeg = Message<"toqui.v1.FlightLeg"> & {
+  /**
+   * @generated from field: string flight_number = 1;
+   */
+  flightNumber: string;
+
+  /**
+   * @generated from field: string airline = 2;
+   */
+  airline: string;
+
+  /**
+   * @generated from field: string departure_airport = 3;
+   */
+  departureAirport: string;
+
+  /**
+   * @generated from field: string arrival_airport = 4;
+   */
+  arrivalAirport: string;
+
+  /**
+   * @generated from field: string departure_time = 5;
+   */
+  departureTime: string;
+
+  /**
+   * @generated from field: string arrival_time = 6;
+   */
+  arrivalTime: string;
+
+  /**
+   * @generated from field: string cabin = 7;
+   */
+  cabin: string;
+};
+
+/**
+ * Describes the message toqui.v1.FlightLeg.
+ * Use `create(FlightLegSchema)` to create a new message.
+ */
+export const FlightLegSchema: GenMessage<FlightLeg> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 1);
 
 /**
  * @generated from message toqui.v1.FlightDetails
@@ -210,6 +302,14 @@ export type FlightDetails = Message<"toqui.v1.FlightDetails"> & {
    * @generated from field: repeated string passengers = 9;
    */
   passengers: string[];
+
+  /**
+   * Multi-leg support: individual segments for connecting/round-trip flights.
+   * Top-level fields always reflect the first outbound leg.
+   *
+   * @generated from field: repeated toqui.v1.FlightLeg legs = 10;
+   */
+  legs: FlightLeg[];
 };
 
 /**
@@ -217,7 +317,7 @@ export type FlightDetails = Message<"toqui.v1.FlightDetails"> & {
  * Use `create(FlightDetailsSchema)` to create a new message.
  */
 export const FlightDetailsSchema: GenMessage<FlightDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 1);
+  messageDesc(file_toqui_v1_booking, 2);
 
 /**
  * @generated from message toqui.v1.HotelDetails
@@ -264,7 +364,7 @@ export type HotelDetails = Message<"toqui.v1.HotelDetails"> & {
  * Use `create(HotelDetailsSchema)` to create a new message.
  */
 export const HotelDetailsSchema: GenMessage<HotelDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 2);
+  messageDesc(file_toqui_v1_booking, 3);
 
 /**
  * @generated from message toqui.v1.CarRentalDetails
@@ -311,7 +411,7 @@ export type CarRentalDetails = Message<"toqui.v1.CarRentalDetails"> & {
  * Use `create(CarRentalDetailsSchema)` to create a new message.
  */
 export const CarRentalDetailsSchema: GenMessage<CarRentalDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 3);
+  messageDesc(file_toqui_v1_booking, 4);
 
 /**
  * @generated from message toqui.v1.TrainDetails
@@ -358,7 +458,7 @@ export type TrainDetails = Message<"toqui.v1.TrainDetails"> & {
  * Use `create(TrainDetailsSchema)` to create a new message.
  */
 export const TrainDetailsSchema: GenMessage<TrainDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 4);
+  messageDesc(file_toqui_v1_booking, 5);
 
 /**
  * @generated from message toqui.v1.TourStop
@@ -390,7 +490,7 @@ export type TourStop = Message<"toqui.v1.TourStop"> & {
  * Use `create(TourStopSchema)` to create a new message.
  */
 export const TourStopSchema: GenMessage<TourStop> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 5);
+  messageDesc(file_toqui_v1_booking, 6);
 
 /**
  * @generated from message toqui.v1.TourDetails
@@ -420,6 +520,45 @@ export type TourDetails = Message<"toqui.v1.TourDetails"> & {
    * @generated from field: repeated toqui.v1.TourStop stops = 5;
    */
   stops: TourStop[];
+
+  /**
+   * Added in PR #198 (Run 5 R-06/R-11 fix). The Go struct already carried
+   * these fields and the AI parser writes them into details_json, but the
+   * proto schema didn't expose them. Run 6 R-11 flagged the gap. Adding
+   * them as new field numbers preserves wire compatibility with existing
+   * booking documents.
+   *
+   * ISO YYYY-MM-DD
+   *
+   * @generated from field: string date = 6;
+   */
+  date: string;
+
+  /**
+   * local HH:MM or HH:MM-HH:MM window
+   *
+   * @generated from field: string start_time = 7;
+   */
+  startTime: string;
+
+  /**
+   * human-readable duration, e.g. "3h 30m"
+   *
+   * @generated from field: string duration = 8;
+   */
+  duration: string;
+
+  /**
+   * @generated from field: string guide_name = 9;
+   */
+  guideName: string;
+
+  /**
+   * currency-prefixed string, e.g. "USD 85.00"
+   *
+   * @generated from field: string price = 10;
+   */
+  price: string;
 };
 
 /**
@@ -427,7 +566,7 @@ export type TourDetails = Message<"toqui.v1.TourDetails"> & {
  * Use `create(TourDetailsSchema)` to create a new message.
  */
 export const TourDetailsSchema: GenMessage<TourDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 6);
+  messageDesc(file_toqui_v1_booking, 7);
 
 /**
  * @generated from message toqui.v1.ActivityDetails
@@ -457,6 +596,33 @@ export type ActivityDetails = Message<"toqui.v1.ActivityDetails"> & {
    * @generated from field: string notes = 5;
    */
   notes: string;
+
+  /**
+   * Same Run 6 R-11 follow-up: expose the parser's existing fields.
+   *
+   * @generated from field: string date = 6;
+   */
+  date: string;
+
+  /**
+   * @generated from field: string start_time = 7;
+   */
+  startTime: string;
+
+  /**
+   * @generated from field: string duration = 8;
+   */
+  duration: string;
+
+  /**
+   * @generated from field: string guide_name = 9;
+   */
+  guideName: string;
+
+  /**
+   * @generated from field: string price = 10;
+   */
+  price: string;
 };
 
 /**
@@ -464,7 +630,7 @@ export type ActivityDetails = Message<"toqui.v1.ActivityDetails"> & {
  * Use `create(ActivityDetailsSchema)` to create a new message.
  */
 export const ActivityDetailsSchema: GenMessage<ActivityDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 7);
+  messageDesc(file_toqui_v1_booking, 8);
 
 /**
  * @generated from message toqui.v1.RestaurantDetails
@@ -496,7 +662,235 @@ export type RestaurantDetails = Message<"toqui.v1.RestaurantDetails"> & {
  * Use `create(RestaurantDetailsSchema)` to create a new message.
  */
 export const RestaurantDetailsSchema: GenMessage<RestaurantDetails> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 8);
+  messageDesc(file_toqui_v1_booking, 9);
+
+/**
+ * @generated from message toqui.v1.FerryDetails
+ */
+export type FerryDetails = Message<"toqui.v1.FerryDetails"> & {
+  /**
+   * @generated from field: string operator = 1;
+   */
+  operator: string;
+
+  /**
+   * @generated from field: string vessel_name = 2;
+   */
+  vesselName: string;
+
+  /**
+   * @generated from field: string departure_port = 3;
+   */
+  departurePort: string;
+
+  /**
+   * @generated from field: string arrival_port = 4;
+   */
+  arrivalPort: string;
+
+  /**
+   * @generated from field: string departure_time = 5;
+   */
+  departureTime: string;
+
+  /**
+   * @generated from field: string arrival_time = 6;
+   */
+  arrivalTime: string;
+
+  /**
+   * @generated from field: string cabin_type = 7;
+   */
+  cabinType: string;
+
+  /**
+   * @generated from field: string deck = 8;
+   */
+  deck: string;
+
+  /**
+   * @generated from field: int32 num_passengers = 9;
+   */
+  numPassengers: number;
+
+  /**
+   * @generated from field: bool vehicle_included = 10;
+   */
+  vehicleIncluded: boolean;
+};
+
+/**
+ * Describes the message toqui.v1.FerryDetails.
+ * Use `create(FerryDetailsSchema)` to create a new message.
+ */
+export const FerryDetailsSchema: GenMessage<FerryDetails> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 10);
+
+/**
+ * @generated from message toqui.v1.BusDetails
+ */
+export type BusDetails = Message<"toqui.v1.BusDetails"> & {
+  /**
+   * @generated from field: string operator = 1;
+   */
+  operator: string;
+
+  /**
+   * @generated from field: string route_number = 2;
+   */
+  routeNumber: string;
+
+  /**
+   * @generated from field: string departure_station = 3;
+   */
+  departureStation: string;
+
+  /**
+   * @generated from field: string arrival_station = 4;
+   */
+  arrivalStation: string;
+
+  /**
+   * @generated from field: string departure_time = 5;
+   */
+  departureTime: string;
+
+  /**
+   * @generated from field: string arrival_time = 6;
+   */
+  arrivalTime: string;
+
+  /**
+   * @generated from field: string seat = 7;
+   */
+  seat: string;
+
+  /**
+   * @generated from field: string class = 8;
+   */
+  class: string;
+
+  /**
+   * @generated from field: string platform = 9;
+   */
+  platform: string;
+};
+
+/**
+ * Describes the message toqui.v1.BusDetails.
+ * Use `create(BusDetailsSchema)` to create a new message.
+ */
+export const BusDetailsSchema: GenMessage<BusDetails> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 11);
+
+/**
+ * @generated from message toqui.v1.CruiseDetails
+ */
+export type CruiseDetails = Message<"toqui.v1.CruiseDetails"> & {
+  /**
+   * @generated from field: string cruise_line = 1;
+   */
+  cruiseLine: string;
+
+  /**
+   * @generated from field: string ship_name = 2;
+   */
+  shipName: string;
+
+  /**
+   * @generated from field: string departure_port = 3;
+   */
+  departurePort: string;
+
+  /**
+   * @generated from field: string arrival_port = 4;
+   */
+  arrivalPort: string;
+
+  /**
+   * @generated from field: string cabin_number = 5;
+   */
+  cabinNumber: string;
+
+  /**
+   * @generated from field: string cabin_type = 6;
+   */
+  cabinType: string;
+
+  /**
+   * @generated from field: string deck = 7;
+   */
+  deck: string;
+
+  /**
+   * @generated from field: int32 num_passengers = 8;
+   */
+  numPassengers: number;
+
+  /**
+   * @generated from field: repeated string ports_of_call = 9;
+   */
+  portsOfCall: string[];
+};
+
+/**
+ * Describes the message toqui.v1.CruiseDetails.
+ * Use `create(CruiseDetailsSchema)` to create a new message.
+ */
+export const CruiseDetailsSchema: GenMessage<CruiseDetails> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 12);
+
+/**
+ * @generated from message toqui.v1.TransferDetails
+ */
+export type TransferDetails = Message<"toqui.v1.TransferDetails"> & {
+  /**
+   * @generated from field: string operator = 1;
+   */
+  operator: string;
+
+  /**
+   * @generated from field: string vehicle_type = 2;
+   */
+  vehicleType: string;
+
+  /**
+   * @generated from field: string pickup_location = 3;
+   */
+  pickupLocation: string;
+
+  /**
+   * @generated from field: string dropoff_location = 4;
+   */
+  dropoffLocation: string;
+
+  /**
+   * @generated from field: string pickup_time = 5;
+   */
+  pickupTime: string;
+
+  /**
+   * @generated from field: int32 num_passengers = 6;
+   */
+  numPassengers: number;
+
+  /**
+   * @generated from field: string driver_name = 7;
+   */
+  driverName: string;
+
+  /**
+   * @generated from field: string flight_number = 8;
+   */
+  flightNumber: string;
+};
+
+/**
+ * Describes the message toqui.v1.TransferDetails.
+ * Use `create(TransferDetailsSchema)` to create a new message.
+ */
+export const TransferDetailsSchema: GenMessage<TransferDetails> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 13);
 
 /**
  * @generated from message toqui.v1.IngestBookingRequest
@@ -523,7 +917,7 @@ export type IngestBookingRequest = Message<"toqui.v1.IngestBookingRequest"> & {
  * Use `create(IngestBookingRequestSchema)` to create a new message.
  */
 export const IngestBookingRequestSchema: GenMessage<IngestBookingRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 9);
+  messageDesc(file_toqui_v1_booking, 14);
 
 /**
  * @generated from message toqui.v1.IngestBookingResponse
@@ -540,7 +934,7 @@ export type IngestBookingResponse = Message<"toqui.v1.IngestBookingResponse"> & 
  * Use `create(IngestBookingResponseSchema)` to create a new message.
  */
 export const IngestBookingResponseSchema: GenMessage<IngestBookingResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 10);
+  messageDesc(file_toqui_v1_booking, 15);
 
 /**
  * @generated from message toqui.v1.IngestEmailRequest
@@ -557,7 +951,7 @@ export type IngestEmailRequest = Message<"toqui.v1.IngestEmailRequest"> & {
  * Use `create(IngestEmailRequestSchema)` to create a new message.
  */
 export const IngestEmailRequestSchema: GenMessage<IngestEmailRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 11);
+  messageDesc(file_toqui_v1_booking, 16);
 
 /**
  * @generated from message toqui.v1.IngestEmailResponse
@@ -574,7 +968,108 @@ export type IngestEmailResponse = Message<"toqui.v1.IngestEmailResponse"> & {
  * Use `create(IngestEmailResponseSchema)` to create a new message.
  */
 export const IngestEmailResponseSchema: GenMessage<IngestEmailResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 12);
+  messageDesc(file_toqui_v1_booking, 17);
+
+/**
+ * @generated from message toqui.v1.UpdateBookingRequest
+ */
+export type UpdateBookingRequest = Message<"toqui.v1.UpdateBookingRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Fields to update — only non-empty values are applied (COALESCE pattern).
+   *
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: toqui.v1.BookingType type = 3;
+   */
+  type: BookingType;
+
+  /**
+   * @generated from field: string confirmation_code = 4;
+   */
+  confirmationCode: string;
+
+  /**
+   * @generated from field: string provider = 5;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp start_time = 6;
+   */
+  startTime?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp end_time = 7;
+   */
+  endTime?: Timestamp;
+
+  /**
+   * @generated from field: string address = 8;
+   */
+  address: string;
+
+  /**
+   * @generated from field: string departure_location = 9;
+   */
+  departureLocation: string;
+
+  /**
+   * @generated from field: string arrival_location = 10;
+   */
+  arrivalLocation: string;
+
+  /**
+   * @generated from field: int32 num_guests = 11;
+   */
+  numGuests: number;
+
+  /**
+   * @generated from field: int64 price_cents = 12;
+   */
+  priceCents: bigint;
+
+  /**
+   * @generated from field: string currency = 13;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: string timezone = 14;
+   */
+  timezone: string;
+};
+
+/**
+ * Describes the message toqui.v1.UpdateBookingRequest.
+ * Use `create(UpdateBookingRequestSchema)` to create a new message.
+ */
+export const UpdateBookingRequestSchema: GenMessage<UpdateBookingRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 18);
+
+/**
+ * @generated from message toqui.v1.UpdateBookingResponse
+ */
+export type UpdateBookingResponse = Message<"toqui.v1.UpdateBookingResponse"> & {
+  /**
+   * @generated from field: toqui.v1.Booking booking = 1;
+   */
+  booking?: Booking;
+};
+
+/**
+ * Describes the message toqui.v1.UpdateBookingResponse.
+ * Use `create(UpdateBookingResponseSchema)` to create a new message.
+ */
+export const UpdateBookingResponseSchema: GenMessage<UpdateBookingResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 19);
 
 /**
  * @generated from message toqui.v1.ListBookingsRequest
@@ -596,7 +1091,7 @@ export type ListBookingsRequest = Message<"toqui.v1.ListBookingsRequest"> & {
  * Use `create(ListBookingsRequestSchema)` to create a new message.
  */
 export const ListBookingsRequestSchema: GenMessage<ListBookingsRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 13);
+  messageDesc(file_toqui_v1_booking, 20);
 
 /**
  * @generated from message toqui.v1.ListBookingsResponse
@@ -618,7 +1113,7 @@ export type ListBookingsResponse = Message<"toqui.v1.ListBookingsResponse"> & {
  * Use `create(ListBookingsResponseSchema)` to create a new message.
  */
 export const ListBookingsResponseSchema: GenMessage<ListBookingsResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 14);
+  messageDesc(file_toqui_v1_booking, 21);
 
 /**
  * @generated from message toqui.v1.GetBookingRequest
@@ -635,7 +1130,7 @@ export type GetBookingRequest = Message<"toqui.v1.GetBookingRequest"> & {
  * Use `create(GetBookingRequestSchema)` to create a new message.
  */
 export const GetBookingRequestSchema: GenMessage<GetBookingRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 15);
+  messageDesc(file_toqui_v1_booking, 22);
 
 /**
  * @generated from message toqui.v1.GetBookingResponse
@@ -652,7 +1147,75 @@ export type GetBookingResponse = Message<"toqui.v1.GetBookingResponse"> & {
  * Use `create(GetBookingResponseSchema)` to create a new message.
  */
 export const GetBookingResponseSchema: GenMessage<GetBookingResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 16);
+  messageDesc(file_toqui_v1_booking, 23);
+
+/**
+ * @generated from message toqui.v1.GetTripCostSummaryRequest
+ */
+export type GetTripCostSummaryRequest = Message<"toqui.v1.GetTripCostSummaryRequest"> & {
+  /**
+   * @generated from field: string trip_id = 1;
+   */
+  tripId: string;
+};
+
+/**
+ * Describes the message toqui.v1.GetTripCostSummaryRequest.
+ * Use `create(GetTripCostSummaryRequestSchema)` to create a new message.
+ */
+export const GetTripCostSummaryRequestSchema: GenMessage<GetTripCostSummaryRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 24);
+
+/**
+ * @generated from message toqui.v1.GetTripCostSummaryResponse
+ */
+export type GetTripCostSummaryResponse = Message<"toqui.v1.GetTripCostSummaryResponse"> & {
+  /**
+   * Total cost in cents, grouped by currency.
+   *
+   * @generated from field: repeated toqui.v1.CurrencyTotal totals = 1;
+   */
+  totals: CurrencyTotal[];
+
+  /**
+   * @generated from field: int32 booking_count = 2;
+   */
+  bookingCount: number;
+};
+
+/**
+ * Describes the message toqui.v1.GetTripCostSummaryResponse.
+ * Use `create(GetTripCostSummaryResponseSchema)` to create a new message.
+ */
+export const GetTripCostSummaryResponseSchema: GenMessage<GetTripCostSummaryResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 25);
+
+/**
+ * @generated from message toqui.v1.CurrencyTotal
+ */
+export type CurrencyTotal = Message<"toqui.v1.CurrencyTotal"> & {
+  /**
+   * @generated from field: string currency = 1;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: int64 total_cents = 2;
+   */
+  totalCents: bigint;
+
+  /**
+   * @generated from field: int32 booking_count = 3;
+   */
+  bookingCount: number;
+};
+
+/**
+ * Describes the message toqui.v1.CurrencyTotal.
+ * Use `create(CurrencyTotalSchema)` to create a new message.
+ */
+export const CurrencyTotalSchema: GenMessage<CurrencyTotal> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_booking, 26);
 
 /**
  * @generated from message toqui.v1.LinkBookingToTripRequest
@@ -674,7 +1237,7 @@ export type LinkBookingToTripRequest = Message<"toqui.v1.LinkBookingToTripReques
  * Use `create(LinkBookingToTripRequestSchema)` to create a new message.
  */
 export const LinkBookingToTripRequestSchema: GenMessage<LinkBookingToTripRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 17);
+  messageDesc(file_toqui_v1_booking, 27);
 
 /**
  * @generated from message toqui.v1.LinkBookingToTripResponse
@@ -691,7 +1254,7 @@ export type LinkBookingToTripResponse = Message<"toqui.v1.LinkBookingToTripRespo
  * Use `create(LinkBookingToTripResponseSchema)` to create a new message.
  */
 export const LinkBookingToTripResponseSchema: GenMessage<LinkBookingToTripResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 18);
+  messageDesc(file_toqui_v1_booking, 28);
 
 /**
  * @generated from message toqui.v1.DeleteBookingRequest
@@ -708,7 +1271,7 @@ export type DeleteBookingRequest = Message<"toqui.v1.DeleteBookingRequest"> & {
  * Use `create(DeleteBookingRequestSchema)` to create a new message.
  */
 export const DeleteBookingRequestSchema: GenMessage<DeleteBookingRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 19);
+  messageDesc(file_toqui_v1_booking, 29);
 
 /**
  * @generated from message toqui.v1.DeleteBookingResponse
@@ -721,7 +1284,7 @@ export type DeleteBookingResponse = Message<"toqui.v1.DeleteBookingResponse"> & 
  * Use `create(DeleteBookingResponseSchema)` to create a new message.
  */
 export const DeleteBookingResponseSchema: GenMessage<DeleteBookingResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 20);
+  messageDesc(file_toqui_v1_booking, 30);
 
 /**
  * @generated from message toqui.v1.ExtractBookingFieldRequest
@@ -743,7 +1306,7 @@ export type ExtractBookingFieldRequest = Message<"toqui.v1.ExtractBookingFieldRe
  * Use `create(ExtractBookingFieldRequestSchema)` to create a new message.
  */
 export const ExtractBookingFieldRequestSchema: GenMessage<ExtractBookingFieldRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 21);
+  messageDesc(file_toqui_v1_booking, 31);
 
 /**
  * @generated from message toqui.v1.ExtractBookingFieldResponse
@@ -765,7 +1328,7 @@ export type ExtractBookingFieldResponse = Message<"toqui.v1.ExtractBookingFieldR
  * Use `create(ExtractBookingFieldResponseSchema)` to create a new message.
  */
 export const ExtractBookingFieldResponseSchema: GenMessage<ExtractBookingFieldResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_booking, 22);
+  messageDesc(file_toqui_v1_booking, 32);
 
 /**
  * @generated from enum toqui.v1.BookingType
@@ -815,6 +1378,35 @@ export enum BookingType {
    * @generated from enum value: BOOKING_TYPE_TOUR = 8;
    */
   TOUR = 8,
+
+  /**
+   * @generated from enum value: BOOKING_TYPE_FERRY = 9;
+   */
+  FERRY = 9,
+
+  /**
+   * @generated from enum value: BOOKING_TYPE_BUS = 10;
+   */
+  BUS = 10,
+
+  /**
+   * @generated from enum value: BOOKING_TYPE_CRUISE = 11;
+   */
+  CRUISE = 11,
+
+  /**
+   * @generated from enum value: BOOKING_TYPE_TRANSFER = 12;
+   */
+  TRANSFER = 12,
+
+  /**
+   * Vacation rentals — houses, cabins, villas, apartments (VRBO, Airbnb-style
+   * bookings). Distinct from BOOKING_TYPE_HOTEL to preserve category accuracy
+   * for affiliate sourcing and itinerary display.
+   *
+   * @generated from enum value: BOOKING_TYPE_VACATION_RENTAL = 13;
+   */
+  VACATION_RENTAL = 13,
 }
 
 /**
@@ -875,6 +1467,14 @@ export const BookingService: GenService<{
     output: typeof IngestEmailResponseSchema;
   },
   /**
+   * @generated from rpc toqui.v1.BookingService.UpdateBooking
+   */
+  updateBooking: {
+    methodKind: "unary";
+    input: typeof UpdateBookingRequestSchema;
+    output: typeof UpdateBookingResponseSchema;
+  },
+  /**
    * @generated from rpc toqui.v1.BookingService.ListBookings
    */
   listBookings: {
@@ -889,6 +1489,14 @@ export const BookingService: GenService<{
     methodKind: "unary";
     input: typeof GetBookingRequestSchema;
     output: typeof GetBookingResponseSchema;
+  },
+  /**
+   * @generated from rpc toqui.v1.BookingService.GetTripCostSummary
+   */
+  getTripCostSummary: {
+    methodKind: "unary";
+    input: typeof GetTripCostSummaryRequestSchema;
+    output: typeof GetTripCostSummaryResponseSchema;
   },
   /**
    * @generated from rpc toqui.v1.BookingService.LinkBookingToTrip

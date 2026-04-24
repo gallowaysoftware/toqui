@@ -19,19 +19,22 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/chat.proto.
  */
 export const file_toqui_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS9jaGF0LnByb3RvEgh0b3F1aS52MSLgAQoSU2VuZE1lc3NhZ2VSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSDwoHdHJpcF9pZBgCIAEoCRIbCgdjb250ZW50GAMgASgJQgq6SAdyBRABGJBOEiAKBG1vZGUYBCABKA4yEi50b3F1aS52MS5DaGF0TW9kZRInCg11c2VyX2xvY2F0aW9uGAUgASgLMhAudG9xdWkudjEuTGF0TG5nEhIKCnBlcnNvbmFfaWQYBiABKAkSKQoLYXR0YWNobWVudHMYByADKAsyFC50b3F1aS52MS5BdHRhY2htZW50IlQKCkF0dGFjaG1lbnQSEAoIZmlsZW5hbWUYASABKAkSEgoKbWVkaWFfdHlwZRgCIAEoCRIMCgRkYXRhGAMgASgMEhIKCnNpemVfYnl0ZXMYBCABKAMi/AMKE1NlbmRNZXNzYWdlUmVzcG9uc2USKQoKdGV4dF9kZWx0YRgBIAEoCzITLnRvcXVpLnYxLlRleHREZWx0YUgAEicKCXRvb2xfY2FsbBgCIAEoCzISLnRvcXVpLnYxLlRvb2xDYWxsSAASKwoLdG9vbF9yZXN1bHQYAyABKAsyFC50b3F1aS52MS5Ub29sUmVzdWx0SAASNQoQaXRpbmVyYXJ5X3VwZGF0ZRgEIAEoCzIZLnRvcXVpLnYxLkl0aW5lcmFyeVVwZGF0ZUgAEjUKEG1lc3NhZ2VfY29tcGxldGUYBSABKAsyGS50b3F1aS52MS5NZXNzYWdlQ29tcGxldGVIABIzCg9zZXNzaW9uX2NyZWF0ZWQYBiABKAsyGC50b3F1aS52MS5TZXNzaW9uQ3JlYXRlZEgAEiUKBWVycm9yGAcgASgLMhQudG9xdWkudjEuRXJyb3JFdmVudEgAEjEKDnBlcnNvbmFfc3dpdGNoGAggASgLMhcudG9xdWkudjEuUGVyc29uYVN3aXRjaEgAEi0KDHRyaXBfY3JlYXRlZBgJIAEoCzIVLnRvcXVpLnYxLlRyaXBDcmVhdGVkSAASLwoNdHJpcF9zZWxlY3RlZBgKIAEoCzIWLnRvcXVpLnYxLlRyaXBTZWxlY3RlZEgAQgcKBWV2ZW50IisKC1RyaXBDcmVhdGVkEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIiwKDFRyaXBTZWxlY3RlZBIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCJ9Cg1QZXJzb25hU3dpdGNoEisKEHByZXZpb3VzX3BlcnNvbmEYASABKAsyES50b3F1aS52MS5QZXJzb25hEiYKC25ld19wZXJzb25hGAIgASgLMhEudG9xdWkudjEuUGVyc29uYRIXCg9oYW5kb2ZmX21lc3NhZ2UYAyABKAkiGQoJVGV4dERlbHRhEgwKBHRleHQYASABKAkiMQoIVG9vbENhbGwSEQoJdG9vbF9uYW1lGAEgASgJEhIKCmlucHV0X2pzb24YAiABKAkiNAoKVG9vbFJlc3VsdBIRCgl0b29sX25hbWUYASABKAkSEwoLcmVzdWx0X2pzb24YAiABKAkiSgoPSXRpbmVyYXJ5VXBkYXRlEg8KB3RyaXBfaWQYASABKAkSJgoJaXRpbmVyYXJ5GAIgASgLMhMudG9xdWkudjEuSXRpbmVyYXJ5Ik8KD01lc3NhZ2VDb21wbGV0ZRISCgptZXNzYWdlX2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSFAoMZnVsbF9jb250ZW50GAMgASgJIiQKDlNlc3Npb25DcmVhdGVkEhIKCnNlc3Npb25faWQYASABKAkiKwoKRXJyb3JFdmVudBIPCgdtZXNzYWdlGAEgASgJEgwKBGNvZGUYAiABKAkizAEKC0NoYXRTZXNzaW9uEgoKAmlkGAEgASgJEg8KB3RyaXBfaWQYAiABKAkSIAoEbW9kZRgDIAEoDjISLnRvcXVpLnYxLkNoYXRNb2RlEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKD2xhc3RfbWVzc2FnZV9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRYWN0aXZlX3BlcnNvbmFfaWQYBiABKAki5AEKC0NoYXRNZXNzYWdlEgoKAmlkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSDAoEcm9sZRgDIAEoCRIPCgdjb250ZW50GAQgASgJEjUKCG1ldGFkYXRhGAUgAygLMiMudG9xdWkudjEuQ2hhdE1lc3NhZ2UuTWV0YWRhdGFFbnRyeRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEidwoVR2V0Q2hhdEhpc3RvcnlSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSGQoHdHJpcF9pZBgCIAEoCUIIukgFcgOwAQESLwoKcGFnaW5hdGlvbhgDIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0InMKFkdldENoYXRIaXN0b3J5UmVzcG9uc2USJwoIbWVzc2FnZXMYASADKAsyFS50b3F1aS52MS5DaGF0TWVzc2FnZRIwCgpwYWdpbmF0aW9uGAIgASgLMhwudG9xdWkudjEuUGFnaW5hdGlvblJlc3BvbnNlImUKF0xpc3RDaGF0U2Vzc2lvbnNSZXF1ZXN0EhkKB3RyaXBfaWQYASABKAlCCLpIBXIDsAEBEi8KCnBhZ2luYXRpb24YAiABKAsyGy50b3F1aS52MS5QYWdpbmF0aW9uUmVxdWVzdCJ1ChhMaXN0Q2hhdFNlc3Npb25zUmVzcG9uc2USJwoIc2Vzc2lvbnMYASADKAsyFS50b3F1aS52MS5DaGF0U2Vzc2lvbhIwCgpwYWdpbmF0aW9uGAIgASgLMhwudG9xdWkudjEuUGFnaW5hdGlvblJlc3BvbnNlKm8KCENoYXRNb2RlEhkKFUNIQVRfTU9ERV9VTlNQRUNJRklFRBAAEhYKEkNIQVRfTU9ERV9QTEFOTklORxABEhcKE0NIQVRfTU9ERV9DT01QQU5JT04QAhIXChNDSEFUX01PREVfU0VMRUNUSU9OEAMyiwIKC0NoYXRTZXJ2aWNlEkwKC1NlbmRNZXNzYWdlEhwudG9xdWkudjEuU2VuZE1lc3NhZ2VSZXF1ZXN0Gh0udG9xdWkudjEuU2VuZE1lc3NhZ2VSZXNwb25zZTABElMKDkdldENoYXRIaXN0b3J5Eh8udG9xdWkudjEuR2V0Q2hhdEhpc3RvcnlSZXF1ZXN0GiAudG9xdWkudjEuR2V0Q2hhdEhpc3RvcnlSZXNwb25zZRJZChBMaXN0Q2hhdFNlc3Npb25zEiEudG9xdWkudjEuTGlzdENoYXRTZXNzaW9uc1JlcXVlc3QaIi50b3F1aS52MS5MaXN0Q2hhdFNlc3Npb25zUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common, file_toqui_v1_persona, file_toqui_v1_trip]);
+  fileDesc("ChN0b3F1aS92MS9jaGF0LnByb3RvEgh0b3F1aS52MSL6AQoSU2VuZE1lc3NhZ2VSZXF1ZXN0Eh8KCnNlc3Npb25faWQYASABKAlCC7pICNgBAXIDsAEBEhwKB3RyaXBfaWQYAiABKAlCC7pICNgBAXIDsAEBEhsKB2NvbnRlbnQYAyABKAlCCrpIB3IFEAEYkE4SIAoEbW9kZRgEIAEoDjISLnRvcXVpLnYxLkNoYXRNb2RlEicKDXVzZXJfbG9jYXRpb24YBSABKAsyEC50b3F1aS52MS5MYXRMbmcSEgoKcGVyc29uYV9pZBgGIAEoCRIpCgthdHRhY2htZW50cxgHIAMoCzIULnRvcXVpLnYxLkF0dGFjaG1lbnQiVAoKQXR0YWNobWVudBIQCghmaWxlbmFtZRgBIAEoCRISCgptZWRpYV90eXBlGAIgASgJEgwKBGRhdGEYAyABKAwSEgoKc2l6ZV9ieXRlcxgEIAEoAyKrBAoTU2VuZE1lc3NhZ2VSZXNwb25zZRIpCgp0ZXh0X2RlbHRhGAEgASgLMhMudG9xdWkudjEuVGV4dERlbHRhSAASJwoJdG9vbF9jYWxsGAIgASgLMhIudG9xdWkudjEuVG9vbENhbGxIABIrCgt0b29sX3Jlc3VsdBgDIAEoCzIULnRvcXVpLnYxLlRvb2xSZXN1bHRIABI1ChBpdGluZXJhcnlfdXBkYXRlGAQgASgLMhkudG9xdWkudjEuSXRpbmVyYXJ5VXBkYXRlSAASNQoQbWVzc2FnZV9jb21wbGV0ZRgFIAEoCzIZLnRvcXVpLnYxLk1lc3NhZ2VDb21wbGV0ZUgAEjMKD3Nlc3Npb25fY3JlYXRlZBgGIAEoCzIYLnRvcXVpLnYxLlNlc3Npb25DcmVhdGVkSAASJQoFZXJyb3IYByABKAsyFC50b3F1aS52MS5FcnJvckV2ZW50SAASMQoOcGVyc29uYV9zd2l0Y2gYCCABKAsyFy50b3F1aS52MS5QZXJzb25hU3dpdGNoSAASLQoMdHJpcF9jcmVhdGVkGAkgASgLMhUudG9xdWkudjEuVHJpcENyZWF0ZWRIABIvCg10cmlwX3NlbGVjdGVkGAogASgLMhYudG9xdWkudjEuVHJpcFNlbGVjdGVkSAASLQoMdHJpcF91cGRhdGVkGAsgASgLMhUudG9xdWkudjEuVHJpcFVwZGF0ZWRIAEIHCgVldmVudCIrCgtUcmlwQ3JlYXRlZBIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCIsCgxUcmlwU2VsZWN0ZWQSHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAiKwoLVHJpcFVwZGF0ZWQSHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAifQoNUGVyc29uYVN3aXRjaBIrChBwcmV2aW91c19wZXJzb25hGAEgASgLMhEudG9xdWkudjEuUGVyc29uYRImCgtuZXdfcGVyc29uYRgCIAEoCzIRLnRvcXVpLnYxLlBlcnNvbmESFwoPaGFuZG9mZl9tZXNzYWdlGAMgASgJIhkKCVRleHREZWx0YRIMCgR0ZXh0GAEgASgJIjEKCFRvb2xDYWxsEhEKCXRvb2xfbmFtZRgBIAEoCRISCgppbnB1dF9qc29uGAIgASgJIjQKClRvb2xSZXN1bHQSEQoJdG9vbF9uYW1lGAEgASgJEhMKC3Jlc3VsdF9qc29uGAIgASgJIkoKD0l0aW5lcmFyeVVwZGF0ZRIPCgd0cmlwX2lkGAEgASgJEiYKCWl0aW5lcmFyeRgCIAEoCzITLnRvcXVpLnYxLkl0aW5lcmFyeSJPCg9NZXNzYWdlQ29tcGxldGUSEgoKbWVzc2FnZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEhQKDGZ1bGxfY29udGVudBgDIAEoCSIkCg5TZXNzaW9uQ3JlYXRlZBISCgpzZXNzaW9uX2lkGAEgASgJIisKCkVycm9yRXZlbnQSDwoHbWVzc2FnZRgBIAEoCRIMCgRjb2RlGAIgASgJIuMBCgtDaGF0U2Vzc2lvbhIKCgJpZBgBIAEoCRIPCgd0cmlwX2lkGAIgASgJEiAKBG1vZGUYAyABKA4yEi50b3F1aS52MS5DaGF0TW9kZRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCg9sYXN0X21lc3NhZ2VfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhkKEWFjdGl2ZV9wZXJzb25hX2lkGAYgASgJEhUKDW1lc3NhZ2VfY291bnQYByABKAUi5AEKC0NoYXRNZXNzYWdlEgoKAmlkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSDAoEcm9sZRgDIAEoCRIPCgdjb250ZW50GAQgASgJEjUKCG1ldGFkYXRhGAUgAygLMiMudG9xdWkudjEuQ2hhdE1lc3NhZ2UuTWV0YWRhdGFFbnRyeRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEihAEKFUdldENoYXRIaXN0b3J5UmVxdWVzdBIfCgpzZXNzaW9uX2lkGAEgASgJQgu6SAjYAQFyA7ABARIZCgd0cmlwX2lkGAIgASgJQgi6SAVyA7ABARIvCgpwYWdpbmF0aW9uGAMgASgLMhsudG9xdWkudjEuUGFnaW5hdGlvblJlcXVlc3QicwoWR2V0Q2hhdEhpc3RvcnlSZXNwb25zZRInCghtZXNzYWdlcxgBIAMoCzIVLnRvcXVpLnYxLkNoYXRNZXNzYWdlEjAKCnBhZ2luYXRpb24YAiABKAsyHC50b3F1aS52MS5QYWdpbmF0aW9uUmVzcG9uc2UiZQoXTGlzdENoYXRTZXNzaW9uc1JlcXVlc3QSGQoHdHJpcF9pZBgBIAEoCUIIukgFcgOwAQESLwoKcGFnaW5hdGlvbhgCIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0InUKGExpc3RDaGF0U2Vzc2lvbnNSZXNwb25zZRInCghzZXNzaW9ucxgBIAMoCzIVLnRvcXVpLnYxLkNoYXRTZXNzaW9uEjAKCnBhZ2luYXRpb24YAiABKAsyHC50b3F1aS52MS5QYWdpbmF0aW9uUmVzcG9uc2UqbwoIQ2hhdE1vZGUSGQoVQ0hBVF9NT0RFX1VOU1BFQ0lGSUVEEAASFgoSQ0hBVF9NT0RFX1BMQU5OSU5HEAESFwoTQ0hBVF9NT0RFX0NPTVBBTklPThACEhcKE0NIQVRfTU9ERV9TRUxFQ1RJT04QAzKLAgoLQ2hhdFNlcnZpY2USTAoLU2VuZE1lc3NhZ2USHC50b3F1aS52MS5TZW5kTWVzc2FnZVJlcXVlc3QaHS50b3F1aS52MS5TZW5kTWVzc2FnZVJlc3BvbnNlMAESUwoOR2V0Q2hhdEhpc3RvcnkSHy50b3F1aS52MS5HZXRDaGF0SGlzdG9yeVJlcXVlc3QaIC50b3F1aS52MS5HZXRDaGF0SGlzdG9yeVJlc3BvbnNlElkKEExpc3RDaGF0U2Vzc2lvbnMSIS50b3F1aS52MS5MaXN0Q2hhdFNlc3Npb25zUmVxdWVzdBoiLnRvcXVpLnYxLkxpc3RDaGF0U2Vzc2lvbnNSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common, file_toqui_v1_persona, file_toqui_v1_trip]);
 
 /**
  * @generated from message toqui.v1.SendMessageRequest
  */
 export type SendMessageRequest = Message<"toqui.v1.SendMessageRequest"> & {
   /**
+   * Optional: empty starts a new session. When set, must be a valid UUID.
+   *
    * @generated from field: string session_id = 1;
    */
   sessionId: string;
 
   /**
-   * Optional: empty for selection mode (no trip selected)
+   * Optional: empty for selection mode (no trip selected). When set, must be
+   * a valid UUID.
    *
    * @generated from field: string trip_id = 2;
    */
@@ -175,6 +178,12 @@ export type SendMessageResponse = Message<"toqui.v1.SendMessageResponse"> & {
      */
     value: TripSelected;
     case: "tripSelected";
+  } | {
+    /**
+     * @generated from field: toqui.v1.TripUpdated trip_updated = 11;
+     */
+    value: TripUpdated;
+    case: "tripUpdated";
   } | { case: undefined; value?: undefined };
 };
 
@@ -224,6 +233,25 @@ export const TripSelectedSchema: GenMessage<TripSelected> = /*@__PURE__*/
   messageDesc(file_toqui_v1_chat, 4);
 
 /**
+ * Sent when the AI updates a trip's metadata (title, description, destinations)
+ *
+ * @generated from message toqui.v1.TripUpdated
+ */
+export type TripUpdated = Message<"toqui.v1.TripUpdated"> & {
+  /**
+   * @generated from field: toqui.v1.Trip trip = 1;
+   */
+  trip?: Trip;
+};
+
+/**
+ * Describes the message toqui.v1.TripUpdated.
+ * Use `create(TripUpdatedSchema)` to create a new message.
+ */
+export const TripUpdatedSchema: GenMessage<TripUpdated> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_chat, 5);
+
+/**
  * Sent when the active persona changes mid-conversation
  * (e.g., arriving at a destination triggers a local guide)
  *
@@ -253,7 +281,7 @@ export type PersonaSwitch = Message<"toqui.v1.PersonaSwitch"> & {
  * Use `create(PersonaSwitchSchema)` to create a new message.
  */
 export const PersonaSwitchSchema: GenMessage<PersonaSwitch> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 5);
+  messageDesc(file_toqui_v1_chat, 6);
 
 /**
  * @generated from message toqui.v1.TextDelta
@@ -270,7 +298,7 @@ export type TextDelta = Message<"toqui.v1.TextDelta"> & {
  * Use `create(TextDeltaSchema)` to create a new message.
  */
 export const TextDeltaSchema: GenMessage<TextDelta> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 6);
+  messageDesc(file_toqui_v1_chat, 7);
 
 /**
  * @generated from message toqui.v1.ToolCall
@@ -292,7 +320,7 @@ export type ToolCall = Message<"toqui.v1.ToolCall"> & {
  * Use `create(ToolCallSchema)` to create a new message.
  */
 export const ToolCallSchema: GenMessage<ToolCall> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 7);
+  messageDesc(file_toqui_v1_chat, 8);
 
 /**
  * @generated from message toqui.v1.ToolResult
@@ -314,7 +342,7 @@ export type ToolResult = Message<"toqui.v1.ToolResult"> & {
  * Use `create(ToolResultSchema)` to create a new message.
  */
 export const ToolResultSchema: GenMessage<ToolResult> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 8);
+  messageDesc(file_toqui_v1_chat, 9);
 
 /**
  * @generated from message toqui.v1.ItineraryUpdate
@@ -336,7 +364,7 @@ export type ItineraryUpdate = Message<"toqui.v1.ItineraryUpdate"> & {
  * Use `create(ItineraryUpdateSchema)` to create a new message.
  */
 export const ItineraryUpdateSchema: GenMessage<ItineraryUpdate> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 9);
+  messageDesc(file_toqui_v1_chat, 10);
 
 /**
  * @generated from message toqui.v1.MessageComplete
@@ -363,7 +391,7 @@ export type MessageComplete = Message<"toqui.v1.MessageComplete"> & {
  * Use `create(MessageCompleteSchema)` to create a new message.
  */
 export const MessageCompleteSchema: GenMessage<MessageComplete> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 10);
+  messageDesc(file_toqui_v1_chat, 11);
 
 /**
  * @generated from message toqui.v1.SessionCreated
@@ -380,7 +408,7 @@ export type SessionCreated = Message<"toqui.v1.SessionCreated"> & {
  * Use `create(SessionCreatedSchema)` to create a new message.
  */
 export const SessionCreatedSchema: GenMessage<SessionCreated> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 11);
+  messageDesc(file_toqui_v1_chat, 12);
 
 /**
  * @generated from message toqui.v1.ErrorEvent
@@ -402,7 +430,7 @@ export type ErrorEvent = Message<"toqui.v1.ErrorEvent"> & {
  * Use `create(ErrorEventSchema)` to create a new message.
  */
 export const ErrorEventSchema: GenMessage<ErrorEvent> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 12);
+  messageDesc(file_toqui_v1_chat, 13);
 
 /**
  * @generated from message toqui.v1.ChatSession
@@ -437,6 +465,11 @@ export type ChatSession = Message<"toqui.v1.ChatSession"> & {
    * @generated from field: string active_persona_id = 6;
    */
   activePersonaId: string;
+
+  /**
+   * @generated from field: int32 message_count = 7;
+   */
+  messageCount: number;
 };
 
 /**
@@ -444,7 +477,7 @@ export type ChatSession = Message<"toqui.v1.ChatSession"> & {
  * Use `create(ChatSessionSchema)` to create a new message.
  */
 export const ChatSessionSchema: GenMessage<ChatSession> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 13);
+  messageDesc(file_toqui_v1_chat, 14);
 
 /**
  * @generated from message toqui.v1.ChatMessage
@@ -486,14 +519,14 @@ export type ChatMessage = Message<"toqui.v1.ChatMessage"> & {
  * Use `create(ChatMessageSchema)` to create a new message.
  */
 export const ChatMessageSchema: GenMessage<ChatMessage> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 14);
+  messageDesc(file_toqui_v1_chat, 15);
 
 /**
  * @generated from message toqui.v1.GetChatHistoryRequest
  */
 export type GetChatHistoryRequest = Message<"toqui.v1.GetChatHistoryRequest"> & {
   /**
-   * Optional: empty means "get latest session"
+   * Optional: empty means "get latest session". When set, must be a valid UUID.
    *
    * @generated from field: string session_id = 1;
    */
@@ -515,7 +548,7 @@ export type GetChatHistoryRequest = Message<"toqui.v1.GetChatHistoryRequest"> & 
  * Use `create(GetChatHistoryRequestSchema)` to create a new message.
  */
 export const GetChatHistoryRequestSchema: GenMessage<GetChatHistoryRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 15);
+  messageDesc(file_toqui_v1_chat, 16);
 
 /**
  * @generated from message toqui.v1.GetChatHistoryResponse
@@ -537,7 +570,7 @@ export type GetChatHistoryResponse = Message<"toqui.v1.GetChatHistoryResponse"> 
  * Use `create(GetChatHistoryResponseSchema)` to create a new message.
  */
 export const GetChatHistoryResponseSchema: GenMessage<GetChatHistoryResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 16);
+  messageDesc(file_toqui_v1_chat, 17);
 
 /**
  * @generated from message toqui.v1.ListChatSessionsRequest
@@ -559,7 +592,7 @@ export type ListChatSessionsRequest = Message<"toqui.v1.ListChatSessionsRequest"
  * Use `create(ListChatSessionsRequestSchema)` to create a new message.
  */
 export const ListChatSessionsRequestSchema: GenMessage<ListChatSessionsRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 17);
+  messageDesc(file_toqui_v1_chat, 18);
 
 /**
  * @generated from message toqui.v1.ListChatSessionsResponse
@@ -581,7 +614,7 @@ export type ListChatSessionsResponse = Message<"toqui.v1.ListChatSessionsRespons
  * Use `create(ListChatSessionsResponseSchema)` to create a new message.
  */
 export const ListChatSessionsResponseSchema: GenMessage<ListChatSessionsResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_chat, 18);
+  messageDesc(file_toqui_v1_chat, 19);
 
 /**
  * @generated from enum toqui.v1.ChatMode

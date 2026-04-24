@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/trip.proto.
  */
 export const file_toqui_v1_trip: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS90cmlwLnByb3RvEgh0b3F1aS52MSK1AgoEVHJpcBIKCgJpZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEiQKBnN0YXR1cxgFIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSEgoKc3RhcnRfZGF0ZRgGIAEoCRIQCghlbmRfZGF0ZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZ0aGVtZXMYCiADKAkSGwoTZGVzdGluYXRpb25fY291bnRyeRgLIAEoCRITCgtpc191bmxvY2tlZBgMIAEoCCJCCglJdGluZXJhcnkSDwoHdHJpcF9pZBgBIAEoCRIkCgRkYXlzGAIgAygLMhYudG9xdWkudjEuSXRpbmVyYXJ5RGF5InUKDEl0aW5lcmFyeURheRIKCgJpZBgBIAEoCRISCgpkYXlfbnVtYmVyGAIgASgFEgwKBGRhdGUYAyABKAkSDwoHc3VtbWFyeRgEIAEoCRImCgVpdGVtcxgFIAMoCzIXLnRvcXVpLnYxLkl0aW5lcmFyeUl0ZW0izwIKDUl0aW5lcmFyeUl0ZW0SCgoCaWQYASABKAkSFAoMb3JkZXJfaW5fZGF5GAIgASgFEgwKBHR5cGUYAyABKAkSDQoFdGl0bGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSIgoIbG9jYXRpb24YBiABKAsyEC50b3F1aS52MS5MYXRMbmcSLgoKc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjcKCG1ldGFkYXRhGAkgAygLMiUudG9xdWkudjEuSXRpbmVyYXJ5SXRlbS5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJzChFDcmVhdGVUcmlwUmVxdWVzdBIZCgV0aXRsZRgBIAEoCUIKukgHcgUQARiABBIdCgtkZXNjcmlwdGlvbhgCIAEoCUIIukgFcgMYiCcSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCSIyChJDcmVhdGVUcmlwUmVzcG9uc2USHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAiJgoOR2V0VHJpcFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIi8KD0dldFRyaXBSZXNwb25zZRIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCJpChBMaXN0VHJpcHNSZXF1ZXN0EiQKBnN0YXR1cxgBIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSLwoKcGFnaW5hdGlvbhgCIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0ImQKEUxpc3RUcmlwc1Jlc3BvbnNlEh0KBXRyaXBzGAEgAygLMg4udG9xdWkudjEuVHJpcBIwCgpwYWdpbmF0aW9uGAIgASgLMhwudG9xdWkudjEuUGFnaW5hdGlvblJlc3BvbnNlIq0BChFVcGRhdGVUcmlwUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoFdGl0bGUYAiABKAlCCLpIBXIDGIAEEh0KC2Rlc2NyaXB0aW9uGAMgASgJQgi6SAVyAxiIJxIkCgZzdGF0dXMYBCABKA4yFC50b3F1aS52MS5UcmlwU3RhdHVzEhIKCnN0YXJ0X2RhdGUYBSABKAkSEAoIZW5kX2RhdGUYBiABKAkiMgoSVXBkYXRlVHJpcFJlc3BvbnNlEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIikKEURlbGV0ZVRyaXBSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIUChJEZWxldGVUcmlwUmVzcG9uc2UiMAoTR2V0SXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABASI+ChRHZXRJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkiYwoWVXBkYXRlSXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIuCglpdGluZXJhcnkYAiABKAsyEy50b3F1aS52MS5JdGluZXJhcnlCBrpIA8gBASJBChdVcGRhdGVJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkqdgoKVHJpcFN0YXR1cxIbChdUUklQX1NUQVRVU19VTlNQRUNJRklFRBAAEhgKFFRSSVBfU1RBVFVTX1BMQU5OSU5HEAESFgoSVFJJUF9TVEFUVVNfQUNUSVZFEAISGQoVVFJJUF9TVEFUVVNfQ09NUExFVEVEEAMylQQKC1RyaXBTZXJ2aWNlEkcKCkNyZWF0ZVRyaXASGy50b3F1aS52MS5DcmVhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLkNyZWF0ZVRyaXBSZXNwb25zZRI+CgdHZXRUcmlwEhgudG9xdWkudjEuR2V0VHJpcFJlcXVlc3QaGS50b3F1aS52MS5HZXRUcmlwUmVzcG9uc2USRAoJTGlzdFRyaXBzEhoudG9xdWkudjEuTGlzdFRyaXBzUmVxdWVzdBobLnRvcXVpLnYxLkxpc3RUcmlwc1Jlc3BvbnNlEkcKClVwZGF0ZVRyaXASGy50b3F1aS52MS5VcGRhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLlVwZGF0ZVRyaXBSZXNwb25zZRJHCgpEZWxldGVUcmlwEhsudG9xdWkudjEuRGVsZXRlVHJpcFJlcXVlc3QaHC50b3F1aS52MS5EZWxldGVUcmlwUmVzcG9uc2USTQoMR2V0SXRpbmVyYXJ5Eh0udG9xdWkudjEuR2V0SXRpbmVyYXJ5UmVxdWVzdBoeLnRvcXVpLnYxLkdldEl0aW5lcmFyeVJlc3BvbnNlElYKD1VwZGF0ZUl0aW5lcmFyeRIgLnRvcXVpLnYxLlVwZGF0ZUl0aW5lcmFyeVJlcXVlc3QaIS50b3F1aS52MS5VcGRhdGVJdGluZXJhcnlSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
+  fileDesc("ChN0b3F1aS92MS90cmlwLnByb3RvEgh0b3F1aS52MSLhAwoEVHJpcBIKCgJpZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEiQKBnN0YXR1cxgFIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSEgoKc3RhcnRfZGF0ZRgGIAEoCRIQCghlbmRfZGF0ZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZ0aGVtZXMYCiADKAkSGwoTZGVzdGluYXRpb25fY291bnRyeRgLIAEoCRITCgtpc191bmxvY2tlZBgMIAEoCBIdChVkZXN0aW5hdGlvbl9jb3VudHJpZXMYDSADKAkSGQoMYnVkZ2V0X2NlbnRzGA4gASgDSACIAQESEAoIY3VycmVuY3kYDyABKAkSDQoFbm90ZXMYECABKAkSFwoPY292ZXJfaW1hZ2VfdXJsGBEgASgJEhAKCHRpbWV6b25lGBIgASgJEhMKC2lzX3RlbXBsYXRlGBMgASgIQg8KDV9idWRnZXRfY2VudHMiQgoJSXRpbmVyYXJ5Eg8KB3RyaXBfaWQYASABKAkSJAoEZGF5cxgCIAMoCzIWLnRvcXVpLnYxLkl0aW5lcmFyeURheSJ1CgxJdGluZXJhcnlEYXkSCgoCaWQYASABKAkSEgoKZGF5X251bWJlchgCIAEoBRIMCgRkYXRlGAMgASgJEg8KB3N1bW1hcnkYBCABKAkSJgoFaXRlbXMYBSADKAsyFy50b3F1aS52MS5JdGluZXJhcnlJdGVtIqIDCg1JdGluZXJhcnlJdGVtEgoKAmlkGAEgASgJEhQKDG9yZGVyX2luX2RheRgCIAEoBRIMCgR0eXBlGAMgASgJEg0KBXRpdGxlGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEiIKCGxvY2F0aW9uGAYgASgLMhAudG9xdWkudjEuTGF0TG5nEi4KCnN0YXJ0X3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI3CghtZXRhZGF0YRgJIAMoCzIlLnRvcXVpLnYxLkl0aW5lcmFyeUl0ZW0uTWV0YWRhdGFFbnRyeRIhChRlc3RpbWF0ZWRfY29zdF9jZW50cxgKIAEoA0gAiAEBEhUKDWNvc3RfY3VycmVuY3kYCyABKAkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQhcKFV9lc3RpbWF0ZWRfY29zdF9jZW50cyLXAQoRQ3JlYXRlVHJpcFJlcXVlc3QSGQoFdGl0bGUYASABKAlCCrpIB3IFEAEYgAQSHQoLZGVzY3JpcHRpb24YAiABKAlCCLpIBXIDGIgnEhIKCnN0YXJ0X2RhdGUYAyABKAkSEAoIZW5kX2RhdGUYBCABKAkSJAoGc3RhdHVzGAUgASgOMhQudG9xdWkudjEuVHJpcFN0YXR1cxIZCgxidWRnZXRfY2VudHMYBiABKANIAIgBARIQCghjdXJyZW5jeRgHIAEoCUIPCg1fYnVkZ2V0X2NlbnRzIjIKEkNyZWF0ZVRyaXBSZXNwb25zZRIcCgR0cmlwGAEgASgLMg4udG9xdWkudjEuVHJpcCImCg5HZXRUcmlwUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiLwoPR2V0VHJpcFJlc3BvbnNlEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIoIBChBMaXN0VHJpcHNSZXF1ZXN0EiQKBnN0YXR1cxgBIAEoDjIULnRvcXVpLnYxLlRyaXBTdGF0dXMSLwoKcGFnaW5hdGlvbhgCIAEoCzIbLnRvcXVpLnYxLlBhZ2luYXRpb25SZXF1ZXN0EhcKBXF1ZXJ5GAMgASgJQgi6SAVyAxiABCJkChFMaXN0VHJpcHNSZXNwb25zZRIdCgV0cmlwcxgBIAMoCzIOLnRvcXVpLnYxLlRyaXASMAoKcGFnaW5hdGlvbhgCIAEoCzIcLnRvcXVpLnYxLlBhZ2luYXRpb25SZXNwb25zZSLCAgoRVXBkYXRlVHJpcFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhcKBXRpdGxlGAIgASgJQgi6SAVyAxiABBIdCgtkZXNjcmlwdGlvbhgDIAEoCUIIukgFcgMYiCcSJAoGc3RhdHVzGAQgASgOMhQudG9xdWkudjEuVHJpcFN0YXR1cxISCgpzdGFydF9kYXRlGAUgASgJEhAKCGVuZF9kYXRlGAYgASgJEhkKDGJ1ZGdldF9jZW50cxgHIAEoA0gAiAEBEhAKCGN1cnJlbmN5GAggASgJEhcKBW5vdGVzGAkgASgJQgi6SAVyAxiQThIhCg9jb3Zlcl9pbWFnZV91cmwYCiABKAlCCLpIBXIDGIAQEhkKCHRpbWV6b25lGAsgASgJQge6SARyAhhAQg8KDV9idWRnZXRfY2VudHMiMgoSVXBkYXRlVHJpcFJlc3BvbnNlEhwKBHRyaXAYASABKAsyDi50b3F1aS52MS5UcmlwIikKEURlbGV0ZVRyaXBSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASIUChJEZWxldGVUcmlwUmVzcG9uc2UiMAoTR2V0SXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABASI+ChRHZXRJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkiYwoWVXBkYXRlSXRpbmVyYXJ5UmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIuCglpdGluZXJhcnkYAiABKAsyEy50b3F1aS52MS5JdGluZXJhcnlCBrpIA8gBASJBChdVcGRhdGVJdGluZXJhcnlSZXNwb25zZRImCglpdGluZXJhcnkYASABKAsyEy50b3F1aS52MS5JdGluZXJhcnkiRgoQQ2xvbmVUcmlwUmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIXCgV0aXRsZRgCIAEoCUIIukgFcgMYgAQiMQoRQ2xvbmVUcmlwUmVzcG9uc2USHAoEdHJpcBgBIAEoCzIOLnRvcXVpLnYxLlRyaXAikgEKG1Jlb3JkZXJJdGluZXJhcnlJdGVtUmVxdWVzdBIZCgd0cmlwX2lkGAEgASgJQgi6SAVyA7ABARIZCgdpdGVtX2lkGAIgASgJQgi6SAVyA7ABARIbCgp0YXJnZXRfZGF5GAMgASgFQge6SAQaAigAEiAKD3RhcmdldF9wb3NpdGlvbhgEIAEoBUIHukgEGgIoACJFChxSZW9yZGVySXRpbmVyYXJ5SXRlbVJlc3BvbnNlEiUKBGl0ZW0YASABKAsyFy50b3F1aS52MS5JdGluZXJhcnlJdGVtIksKGExpc3RUcmlwVGVtcGxhdGVzUmVxdWVzdBIvCgpwYWdpbmF0aW9uGAEgASgLMhsudG9xdWkudjEuUGFnaW5hdGlvblJlcXVlc3QicAoZTGlzdFRyaXBUZW1wbGF0ZXNSZXNwb25zZRIhCgl0ZW1wbGF0ZXMYASADKAsyDi50b3F1aS52MS5UcmlwEjAKCnBhZ2luYXRpb24YAiABKAsyHC50b3F1aS52MS5QYWdpbmF0aW9uUmVzcG9uc2UqdgoKVHJpcFN0YXR1cxIbChdUUklQX1NUQVRVU19VTlNQRUNJRklFRBAAEhgKFFRSSVBfU1RBVFVTX1BMQU5OSU5HEAESFgoSVFJJUF9TVEFUVVNfQUNUSVZFEAISGQoVVFJJUF9TVEFUVVNfQ09NUExFVEVEEAMyoAYKC1RyaXBTZXJ2aWNlEkcKCkNyZWF0ZVRyaXASGy50b3F1aS52MS5DcmVhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLkNyZWF0ZVRyaXBSZXNwb25zZRI+CgdHZXRUcmlwEhgudG9xdWkudjEuR2V0VHJpcFJlcXVlc3QaGS50b3F1aS52MS5HZXRUcmlwUmVzcG9uc2USRAoJTGlzdFRyaXBzEhoudG9xdWkudjEuTGlzdFRyaXBzUmVxdWVzdBobLnRvcXVpLnYxLkxpc3RUcmlwc1Jlc3BvbnNlEkcKClVwZGF0ZVRyaXASGy50b3F1aS52MS5VcGRhdGVUcmlwUmVxdWVzdBocLnRvcXVpLnYxLlVwZGF0ZVRyaXBSZXNwb25zZRJHCgpEZWxldGVUcmlwEhsudG9xdWkudjEuRGVsZXRlVHJpcFJlcXVlc3QaHC50b3F1aS52MS5EZWxldGVUcmlwUmVzcG9uc2USTQoMR2V0SXRpbmVyYXJ5Eh0udG9xdWkudjEuR2V0SXRpbmVyYXJ5UmVxdWVzdBoeLnRvcXVpLnYxLkdldEl0aW5lcmFyeVJlc3BvbnNlElYKD1VwZGF0ZUl0aW5lcmFyeRIgLnRvcXVpLnYxLlVwZGF0ZUl0aW5lcmFyeVJlcXVlc3QaIS50b3F1aS52MS5VcGRhdGVJdGluZXJhcnlSZXNwb25zZRJECglDbG9uZVRyaXASGi50b3F1aS52MS5DbG9uZVRyaXBSZXF1ZXN0GhsudG9xdWkudjEuQ2xvbmVUcmlwUmVzcG9uc2USZQoUUmVvcmRlckl0aW5lcmFyeUl0ZW0SJS50b3F1aS52MS5SZW9yZGVySXRpbmVyYXJ5SXRlbVJlcXVlc3QaJi50b3F1aS52MS5SZW9yZGVySXRpbmVyYXJ5SXRlbVJlc3BvbnNlElwKEUxpc3RUcmlwVGVtcGxhdGVzEiIudG9xdWkudjEuTGlzdFRyaXBUZW1wbGF0ZXNSZXF1ZXN0GiMudG9xdWkudjEuTGlzdFRyaXBUZW1wbGF0ZXNSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_toqui_v1_common]);
 
 /**
  * @generated from message toqui.v1.Trip
@@ -74,7 +74,9 @@ export type Trip = Message<"toqui.v1.Trip"> & {
   themes: string[];
 
   /**
-   * Primary destination country (ISO 3166-1 alpha-2) for persona matching
+   * Primary destination country (ISO 3166-1 alpha-2) for persona matching.
+   * Retained for backward compatibility — for multi-country trips this is the
+   * first entry of destination_countries.
    *
    * @generated from field: string destination_country = 11;
    */
@@ -84,6 +86,57 @@ export type Trip = Message<"toqui.v1.Trip"> & {
    * @generated from field: bool is_unlocked = 12;
    */
   isUnlocked: boolean;
+
+  /**
+   * All destination countries for multi-country trips (e.g. ["GR", "TR"]).
+   * ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
+   *
+   * @generated from field: repeated string destination_countries = 13;
+   */
+  destinationCountries: string[];
+
+  /**
+   * Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+   *
+   * @generated from field: optional int64 budget_cents = 14;
+   */
+  budgetCents?: bigint;
+
+  /**
+   * ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+   *
+   * @generated from field: string currency = 15;
+   */
+  currency: string;
+
+  /**
+   * Free-text notes / user annotations. Optional.
+   *
+   * @generated from field: string notes = 16;
+   */
+  notes: string;
+
+  /**
+   * Cover image URL for trip cards. May be auto-assigned from destination or user-uploaded.
+   *
+   * @generated from field: string cover_image_url = 17;
+   */
+  coverImageUrl: string;
+
+  /**
+   * IANA timezone for the trip's primary destination (e.g. "Europe/Athens").
+   * Used by the frontend to display local times.
+   *
+   * @generated from field: string timezone = 18;
+   */
+  timezone: string;
+
+  /**
+   * Whether this trip is a pre-built template available for cloning.
+   *
+   * @generated from field: bool is_template = 19;
+   */
+  isTemplate: boolean;
 };
 
 /**
@@ -200,6 +253,20 @@ export type ItineraryItem = Message<"toqui.v1.ItineraryItem"> & {
    * @generated from field: map<string, string> metadata = 9;
    */
   metadata: { [key: string]: string };
+
+  /**
+   * Estimated cost in cents (e.g. 2500 = $25.00). Optional.
+   *
+   * @generated from field: optional int64 estimated_cost_cents = 10;
+   */
+  estimatedCostCents?: bigint;
+
+  /**
+   * ISO 4217 currency code for the cost (e.g. "USD", "EUR"). Optional.
+   *
+   * @generated from field: string cost_currency = 11;
+   */
+  costCurrency: string;
 };
 
 /**
@@ -232,6 +299,30 @@ export type CreateTripRequest = Message<"toqui.v1.CreateTripRequest"> & {
    * @generated from field: string end_date = 4;
    */
   endDate: string;
+
+  /**
+   * Optional initial status. Defaults to TRIP_STATUS_PLANNING when unset.
+   * Clients can set this to TRIP_STATUS_ACTIVE to skip the planning phase
+   * and enter companion mode directly (e.g. a traveller who is already on
+   * the ground when they create the trip).
+   *
+   * @generated from field: toqui.v1.TripStatus status = 5;
+   */
+  status: TripStatus;
+
+  /**
+   * Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+   *
+   * @generated from field: optional int64 budget_cents = 6;
+   */
+  budgetCents?: bigint;
+
+  /**
+   * ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+   *
+   * @generated from field: string currency = 7;
+   */
+  currency: string;
 };
 
 /**
@@ -305,6 +396,15 @@ export type ListTripsRequest = Message<"toqui.v1.ListTripsRequest"> & {
    * @generated from field: toqui.v1.PaginationRequest pagination = 2;
    */
   pagination?: PaginationRequest;
+
+  /**
+   * Optional full-text search query. When non-empty, results are filtered to
+   * trips matching the query against title, description, and destination
+   * country, and ranked by relevance instead of creation date.
+   *
+   * @generated from field: string query = 3;
+   */
+  query: string;
 };
 
 /**
@@ -369,6 +469,41 @@ export type UpdateTripRequest = Message<"toqui.v1.UpdateTripRequest"> & {
    * @generated from field: string end_date = 6;
    */
   endDate: string;
+
+  /**
+   * Trip budget in cents. Optional — omit or set to 0 to leave unchanged.
+   *
+   * @generated from field: optional int64 budget_cents = 7;
+   */
+  budgetCents?: bigint;
+
+  /**
+   * ISO 4217 currency code. Optional — omit or leave empty to keep current value.
+   *
+   * @generated from field: string currency = 8;
+   */
+  currency: string;
+
+  /**
+   * Free-text notes / user annotations. Optional — omit or leave empty to keep current value.
+   *
+   * @generated from field: string notes = 9;
+   */
+  notes: string;
+
+  /**
+   * Cover image URL. Optional — omit or leave empty to keep current value.
+   *
+   * @generated from field: string cover_image_url = 10;
+   */
+  coverImageUrl: string;
+
+  /**
+   * IANA timezone. Optional — omit or leave empty to keep current value.
+   *
+   * @generated from field: string timezone = 11;
+   */
+  timezone: string;
 };
 
 /**
@@ -469,6 +604,11 @@ export type UpdateItineraryRequest = Message<"toqui.v1.UpdateItineraryRequest"> 
   tripId: string;
 
   /**
+   * Full rewrite semantics: the provided itinerary REPLACES all existing
+   * items for the trip. An empty Itinerary.days clears the itinerary.
+   * Clients that want to add a single item should call SendMessage with
+   * create_itinerary_items instead — this RPC is for bulk management.
+   *
    * @generated from field: toqui.v1.Itinerary itinerary = 2;
    */
   itinerary?: Itinerary;
@@ -497,6 +637,139 @@ export type UpdateItineraryResponse = Message<"toqui.v1.UpdateItineraryResponse"
  */
 export const UpdateItineraryResponseSchema: GenMessage<UpdateItineraryResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_trip, 17);
+
+/**
+ * @generated from message toqui.v1.CloneTripRequest
+ */
+export type CloneTripRequest = Message<"toqui.v1.CloneTripRequest"> & {
+  /**
+   * @generated from field: string trip_id = 1;
+   */
+  tripId: string;
+
+  /**
+   * Optional new title for the cloned trip. Defaults to "Copy of <original>".
+   *
+   * @generated from field: string title = 2;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message toqui.v1.CloneTripRequest.
+ * Use `create(CloneTripRequestSchema)` to create a new message.
+ */
+export const CloneTripRequestSchema: GenMessage<CloneTripRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 18);
+
+/**
+ * @generated from message toqui.v1.CloneTripResponse
+ */
+export type CloneTripResponse = Message<"toqui.v1.CloneTripResponse"> & {
+  /**
+   * @generated from field: toqui.v1.Trip trip = 1;
+   */
+  trip?: Trip;
+};
+
+/**
+ * Describes the message toqui.v1.CloneTripResponse.
+ * Use `create(CloneTripResponseSchema)` to create a new message.
+ */
+export const CloneTripResponseSchema: GenMessage<CloneTripResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 19);
+
+/**
+ * @generated from message toqui.v1.ReorderItineraryItemRequest
+ */
+export type ReorderItineraryItemRequest = Message<"toqui.v1.ReorderItineraryItemRequest"> & {
+  /**
+   * @generated from field: string trip_id = 1;
+   */
+  tripId: string;
+
+  /**
+   * @generated from field: string item_id = 2;
+   */
+  itemId: string;
+
+  /**
+   * Target day number to move the item to.
+   *
+   * @generated from field: int32 target_day = 3;
+   */
+  targetDay: number;
+
+  /**
+   * Target position within the day (1-indexed). Defaults to 1 if unset.
+   *
+   * @generated from field: int32 target_position = 4;
+   */
+  targetPosition: number;
+};
+
+/**
+ * Describes the message toqui.v1.ReorderItineraryItemRequest.
+ * Use `create(ReorderItineraryItemRequestSchema)` to create a new message.
+ */
+export const ReorderItineraryItemRequestSchema: GenMessage<ReorderItineraryItemRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 20);
+
+/**
+ * @generated from message toqui.v1.ReorderItineraryItemResponse
+ */
+export type ReorderItineraryItemResponse = Message<"toqui.v1.ReorderItineraryItemResponse"> & {
+  /**
+   * @generated from field: toqui.v1.ItineraryItem item = 1;
+   */
+  item?: ItineraryItem;
+};
+
+/**
+ * Describes the message toqui.v1.ReorderItineraryItemResponse.
+ * Use `create(ReorderItineraryItemResponseSchema)` to create a new message.
+ */
+export const ReorderItineraryItemResponseSchema: GenMessage<ReorderItineraryItemResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 21);
+
+/**
+ * @generated from message toqui.v1.ListTripTemplatesRequest
+ */
+export type ListTripTemplatesRequest = Message<"toqui.v1.ListTripTemplatesRequest"> & {
+  /**
+   * @generated from field: toqui.v1.PaginationRequest pagination = 1;
+   */
+  pagination?: PaginationRequest;
+};
+
+/**
+ * Describes the message toqui.v1.ListTripTemplatesRequest.
+ * Use `create(ListTripTemplatesRequestSchema)` to create a new message.
+ */
+export const ListTripTemplatesRequestSchema: GenMessage<ListTripTemplatesRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 22);
+
+/**
+ * @generated from message toqui.v1.ListTripTemplatesResponse
+ */
+export type ListTripTemplatesResponse = Message<"toqui.v1.ListTripTemplatesResponse"> & {
+  /**
+   * @generated from field: repeated toqui.v1.Trip templates = 1;
+   */
+  templates: Trip[];
+
+  /**
+   * @generated from field: toqui.v1.PaginationResponse pagination = 2;
+   */
+  pagination?: PaginationResponse;
+};
+
+/**
+ * Describes the message toqui.v1.ListTripTemplatesResponse.
+ * Use `create(ListTripTemplatesResponseSchema)` to create a new message.
+ */
+export const ListTripTemplatesResponseSchema: GenMessage<ListTripTemplatesResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_trip, 23);
 
 /**
  * @generated from enum toqui.v1.TripStatus
@@ -588,6 +861,34 @@ export const TripService: GenService<{
     methodKind: "unary";
     input: typeof UpdateItineraryRequestSchema;
     output: typeof UpdateItineraryResponseSchema;
+  },
+  /**
+   * @generated from rpc toqui.v1.TripService.CloneTrip
+   */
+  cloneTrip: {
+    methodKind: "unary";
+    input: typeof CloneTripRequestSchema;
+    output: typeof CloneTripResponseSchema;
+  },
+  /**
+   * Targeted move of a single itinerary item to a new day/position.
+   *
+   * @generated from rpc toqui.v1.TripService.ReorderItineraryItem
+   */
+  reorderItineraryItem: {
+    methodKind: "unary";
+    input: typeof ReorderItineraryItemRequestSchema;
+    output: typeof ReorderItineraryItemResponseSchema;
+  },
+  /**
+   * List pre-built trip templates available for cloning.
+   *
+   * @generated from rpc toqui.v1.TripService.ListTripTemplates
+   */
+  listTripTemplates: {
+    methodKind: "unary";
+    input: typeof ListTripTemplatesRequestSchema;
+    output: typeof ListTripTemplatesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_toqui_v1_trip, 0);

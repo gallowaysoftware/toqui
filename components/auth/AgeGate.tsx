@@ -65,7 +65,7 @@ interface AgeGateProps {
 export function AgeGate({ children }: AgeGateProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { track } = useAnalytics();
   const [verified, setVerifiedState] = useState<boolean | null>(null);
   const [denied, setDenied] = useState(false);
@@ -74,9 +74,20 @@ export function AgeGate({ children }: AgeGateProps) {
   const [day, setDay] = useState("");
   const [error, setError] = useState("");
 
+  // Server-side age verification takes precedence: if the backend has a
+  // non-null age_verified_at for this user, skip the gate regardless of
+  // local storage. This covers returning users who verified on another
+  // device or cleared their browser data. The localStorage fallback still
+  // runs so anyone verified locally before this shipped stays un-gated.
+  const serverVerified = !!user?.ageVerifiedAt;
+
   useEffect(() => {
+    if (serverVerified) {
+      setVerifiedState(true);
+      return;
+    }
     isVerified().then(setVerifiedState);
-  }, []);
+  }, [serverVerified]);
 
   // Background resync: if the user verified age client-side before the backend
   // sync was added, re-send verification so the backend has a record.
