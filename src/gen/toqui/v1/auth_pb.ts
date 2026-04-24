@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/auth.proto.
  */
 export const file_toqui_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJhChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCSJgChNHb29nbGVMb2dpblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIjUKE1JlZnJlc2hUb2tlblJlcXVlc3QSHgoNcmVmcmVzaF90b2tlbhgBIAEoCUIHukgEcgIQASJhChRSZWZyZXNoVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIXChVHZXRDdXJyZW50VXNlclJlcXVlc3QiNgoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIcCgR1c2VyGAEgASgLMg4udG9xdWkudjEuVXNlciKOAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGQoRc3Vic2NyaXB0aW9uX3RpZXIYBiABKAkiMAoURGVsZXRlQWNjb3VudFJlcXVlc3QSGAoHY29uZmlybRgBIAEoCEIHukgEagIIASI8ChVEZWxldGVBY2NvdW50UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIhMKEUV4cG9ydERhdGFSZXF1ZXN0IjkKEkV4cG9ydERhdGFSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkymAMKC0F1dGhTZXJ2aWNlEkoKC0dvb2dsZUxvZ2luEhwudG9xdWkudjEuR29vZ2xlTG9naW5SZXF1ZXN0Gh0udG9xdWkudjEuR29vZ2xlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
+  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJhChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCSJ5ChNHb29nbGVMb2dpblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyEhcKD2NvbnNlbnRfcGVuZGluZxgEIAEoCCI1ChRGYWNlYm9va0xvZ2luUmVxdWVzdBIdCgxhY2Nlc3NfdG9rZW4YASABKAlCB7pIBHICEAEiewoVRmFjZWJvb2tMb2dpblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyEhcKD2NvbnNlbnRfcGVuZGluZxgEIAEoCCI1ChNSZWZyZXNoVG9rZW5SZXF1ZXN0Eh4KDXJlZnJlc2hfdG9rZW4YASABKAlCB7pIBHICEAEiYQoUUmVmcmVzaFRva2VuUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXIiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0IjYKFkdldEN1cnJlbnRVc2VyUmVzcG9uc2USHAoEdXNlchgBIAEoCzIOLnRvcXVpLnYxLlVzZXIiwwEKBFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDAoEbmFtZRgDIAEoCRISCgphdmF0YXJfdXJsGAQgASgJEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhkKEXN1YnNjcmlwdGlvbl90aWVyGAYgASgJEjMKD2FnZV92ZXJpZmllZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiMAoURGVsZXRlQWNjb3VudFJlcXVlc3QSGAoHY29uZmlybRgBIAEoCEIHukgEagIIASI8ChVEZWxldGVBY2NvdW50UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIhMKEUV4cG9ydERhdGFSZXF1ZXN0IjkKEkV4cG9ydERhdGFSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAky6gMKC0F1dGhTZXJ2aWNlEkoKC0dvb2dsZUxvZ2luEhwudG9xdWkudjEuR29vZ2xlTG9naW5SZXF1ZXN0Gh0udG9xdWkudjEuR29vZ2xlTG9naW5SZXNwb25zZRJQCg1GYWNlYm9va0xvZ2luEh4udG9xdWkudjEuRmFjZWJvb2tMb2dpblJlcXVlc3QaHy50b3F1aS52MS5GYWNlYm9va0xvZ2luUmVzcG9uc2USTQoMUmVmcmVzaFRva2VuEh0udG9xdWkudjEuUmVmcmVzaFRva2VuUmVxdWVzdBoeLnRvcXVpLnYxLlJlZnJlc2hUb2tlblJlc3BvbnNlElMKDkdldEN1cnJlbnRVc2VyEh8udG9xdWkudjEuR2V0Q3VycmVudFVzZXJSZXF1ZXN0GiAudG9xdWkudjEuR2V0Q3VycmVudFVzZXJSZXNwb25zZRJQCg1EZWxldGVBY2NvdW50Eh4udG9xdWkudjEuRGVsZXRlQWNjb3VudFJlcXVlc3QaHy50b3F1aS52MS5EZWxldGVBY2NvdW50UmVzcG9uc2USRwoKRXhwb3J0RGF0YRIbLnRvcXVpLnYxLkV4cG9ydERhdGFSZXF1ZXN0GhwudG9xdWkudjEuRXhwb3J0RGF0YVJlc3BvbnNlQkBaPmdpdGh1Yi5jb20vZ2FsbG93YXlzb2Z0d2FyZS90b3F1aS1iYWNrZW5kL2dlbi90b3F1aS92MTt0b3F1aXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message toqui.v1.GoogleLoginRequest
@@ -62,6 +62,13 @@ export type GoogleLoginResponse = Message<"toqui.v1.GoogleLoginResponse"> & {
    * @generated from field: toqui.v1.User user = 3;
    */
   user?: User;
+
+  /**
+   * True when the user has not yet accepted terms/privacy
+   *
+   * @generated from field: bool consent_pending = 4;
+   */
+  consentPending: boolean;
 };
 
 /**
@@ -70,6 +77,57 @@ export type GoogleLoginResponse = Message<"toqui.v1.GoogleLoginResponse"> & {
  */
 export const GoogleLoginResponseSchema: GenMessage<GoogleLoginResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 1);
+
+/**
+ * @generated from message toqui.v1.FacebookLoginRequest
+ */
+export type FacebookLoginRequest = Message<"toqui.v1.FacebookLoginRequest"> & {
+  /**
+   * @generated from field: string access_token = 1;
+   */
+  accessToken: string;
+};
+
+/**
+ * Describes the message toqui.v1.FacebookLoginRequest.
+ * Use `create(FacebookLoginRequestSchema)` to create a new message.
+ */
+export const FacebookLoginRequestSchema: GenMessage<FacebookLoginRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 2);
+
+/**
+ * @generated from message toqui.v1.FacebookLoginResponse
+ */
+export type FacebookLoginResponse = Message<"toqui.v1.FacebookLoginResponse"> & {
+  /**
+   * @generated from field: string access_token = 1;
+   */
+  accessToken: string;
+
+  /**
+   * @generated from field: string refresh_token = 2;
+   */
+  refreshToken: string;
+
+  /**
+   * @generated from field: toqui.v1.User user = 3;
+   */
+  user?: User;
+
+  /**
+   * True when the user has not yet accepted terms/privacy
+   *
+   * @generated from field: bool consent_pending = 4;
+   */
+  consentPending: boolean;
+};
+
+/**
+ * Describes the message toqui.v1.FacebookLoginResponse.
+ * Use `create(FacebookLoginResponseSchema)` to create a new message.
+ */
+export const FacebookLoginResponseSchema: GenMessage<FacebookLoginResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 3);
 
 /**
  * @generated from message toqui.v1.RefreshTokenRequest
@@ -86,7 +144,7 @@ export type RefreshTokenRequest = Message<"toqui.v1.RefreshTokenRequest"> & {
  * Use `create(RefreshTokenRequestSchema)` to create a new message.
  */
 export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 2);
+  messageDesc(file_toqui_v1_auth, 4);
 
 /**
  * @generated from message toqui.v1.RefreshTokenResponse
@@ -113,7 +171,7 @@ export type RefreshTokenResponse = Message<"toqui.v1.RefreshTokenResponse"> & {
  * Use `create(RefreshTokenResponseSchema)` to create a new message.
  */
 export const RefreshTokenResponseSchema: GenMessage<RefreshTokenResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 3);
+  messageDesc(file_toqui_v1_auth, 5);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserRequest
@@ -126,7 +184,7 @@ export type GetCurrentUserRequest = Message<"toqui.v1.GetCurrentUserRequest"> & 
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
 export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 4);
+  messageDesc(file_toqui_v1_auth, 6);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserResponse
@@ -143,7 +201,7 @@ export type GetCurrentUserResponse = Message<"toqui.v1.GetCurrentUserResponse"> 
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
 export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 5);
+  messageDesc(file_toqui_v1_auth, 7);
 
 /**
  * @generated from message toqui.v1.User
@@ -178,6 +236,15 @@ export type User = Message<"toqui.v1.User"> & {
    * @generated from field: string subscription_tier = 6;
    */
   subscriptionTier: string;
+
+  /**
+   * When the user completed age verification (POST /auth/verify-age).
+   * Unset for users who have not yet verified. Used by the frontend
+   * to skip the AgeGate modal for returning users.
+   *
+   * @generated from field: google.protobuf.Timestamp age_verified_at = 7;
+   */
+  ageVerifiedAt?: Timestamp;
 };
 
 /**
@@ -185,7 +252,7 @@ export type User = Message<"toqui.v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 6);
+  messageDesc(file_toqui_v1_auth, 8);
 
 /**
  * Account deletion — GDPR Article 17 (Right to Erasure)
@@ -206,7 +273,7 @@ export type DeleteAccountRequest = Message<"toqui.v1.DeleteAccountRequest"> & {
  * Use `create(DeleteAccountRequestSchema)` to create a new message.
  */
 export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 7);
+  messageDesc(file_toqui_v1_auth, 9);
 
 /**
  * @generated from message toqui.v1.DeleteAccountResponse
@@ -230,7 +297,7 @@ export type DeleteAccountResponse = Message<"toqui.v1.DeleteAccountResponse"> & 
  * Use `create(DeleteAccountResponseSchema)` to create a new message.
  */
 export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 8);
+  messageDesc(file_toqui_v1_auth, 10);
 
 /**
  * Data export — GDPR Article 20 (Right to Data Portability)
@@ -245,7 +312,7 @@ export type ExportDataRequest = Message<"toqui.v1.ExportDataRequest"> & {
  * Use `create(ExportDataRequestSchema)` to create a new message.
  */
 export const ExportDataRequestSchema: GenMessage<ExportDataRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 9);
+  messageDesc(file_toqui_v1_auth, 11);
 
 /**
  * @generated from message toqui.v1.ExportDataResponse
@@ -269,7 +336,7 @@ export type ExportDataResponse = Message<"toqui.v1.ExportDataResponse"> & {
  * Use `create(ExportDataResponseSchema)` to create a new message.
  */
 export const ExportDataResponseSchema: GenMessage<ExportDataResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 10);
+  messageDesc(file_toqui_v1_auth, 12);
 
 /**
  * @generated from service toqui.v1.AuthService
@@ -282,6 +349,14 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GoogleLoginRequestSchema;
     output: typeof GoogleLoginResponseSchema;
+  },
+  /**
+   * @generated from rpc toqui.v1.AuthService.FacebookLogin
+   */
+  facebookLogin: {
+    methodKind: "unary";
+    input: typeof FacebookLoginRequestSchema;
+    output: typeof FacebookLoginResponseSchema;
   },
   /**
    * @generated from rpc toqui.v1.AuthService.RefreshToken

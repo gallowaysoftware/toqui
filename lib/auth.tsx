@@ -9,6 +9,8 @@ import {
 import { Platform } from "react-native";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 import { getConfig } from "./config";
@@ -52,6 +54,11 @@ export interface AuthUser {
   email: string;
   name: string;
   tier: SubscriptionTier;
+  // ISO 8601 string (or null) — when the user completed age verification
+  // on the backend. Set by login/refresh from User.age_verified_at on the
+  // proto. Consumed by AgeGate to skip the modal for returning users who
+  // verified on another device/session.
+  ageVerifiedAt: string | null;
 }
 
 interface AuthState {
@@ -66,6 +73,24 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null);
+
+// Convert a google.protobuf.Timestamp (or any object with a toDate() method,
+// which is how our tests stub it) to an ISO-8601 string. Returns null for
+// unset / nullish inputs. Kept forgiving of shape so it works with both the
+// real @bufbuild/protobuf Timestamp and simple test doubles.
+function toIsoOrNull(
+  ts: Timestamp | { toDate: () => Date } | undefined | null,
+): string | null {
+  if (!ts) return null;
+  if (typeof (ts as { toDate?: unknown }).toDate === "function") {
+    return (ts as { toDate: () => Date }).toDate().toISOString();
+  }
+  try {
+    return timestampDate(ts as Timestamp).toISOString();
+  } catch {
+    return null;
+  }
+}
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
@@ -93,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(userJson);
           const tier = parsed.tier === "pro" ? "pro" : "free" as const;
-          setUser({ ...parsed, tier });
+          const ageVerifiedAt =
+            typeof parsed.ageVerifiedAt === "string" ? parsed.ageVerifiedAt : null;
+          setUser({ ...parsed, tier, ageVerifiedAt });
         } catch { /* ignore corrupt data */ }
       }
       setIsLoading(false);
@@ -121,7 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRefreshToken(res.refreshToken);
     if (res.user) {
       const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
-      const u: AuthUser = { id: res.user.id, email: res.user.email, name: res.user.name, tier };
+      const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
+      const u: AuthUser = {
+        id: res.user.id,
+        email: res.user.email,
+        name: res.user.name,
+        tier,
+        ageVerifiedAt,
+      };
       setUser(u);
       await tokenStorage.set("toqui_user", JSON.stringify(u));
     }
@@ -138,6 +172,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await client.refreshToken({ refreshToken: rt });
       setAccessToken(res.accessToken);
       setRefreshToken(res.refreshToken);
+      // Sync the user snapshot from the refresh response so server-side
+      // state (tier upgrades, age_verified_at) propagates without requiring
+      // the user to sign back in.
+      if (res.user) {
+        const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
+        const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
+        const u: AuthUser = {
+          id: res.user.id,
+          email: res.user.email,
+          name: res.user.name,
+          tier,
+          ageVerifiedAt,
+        };
+        setUser(u);
+        await tokenStorage.set("toqui_user", JSON.stringify(u));
+      }
       await tokenStorage.set("toqui_access_token", res.accessToken);
       await tokenStorage.set("toqui_refresh_token", res.refreshToken);
       return res.accessToken;

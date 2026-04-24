@@ -13,9 +13,14 @@ vi.mock("react-native", async () => {
   };
 });
 
-// Mock auth so AgeGate doesn't require AuthProvider in tests
+// Mock auth so AgeGate doesn't require AuthProvider in tests.
+// Tests can override the mock per-describe via `mockedUseAuth.mockReturnValue(...)`.
+const mockedUseAuth = vi.fn(() => ({ accessToken: null, user: null } as {
+  accessToken: string | null;
+  user: { ageVerifiedAt: string | null } | null;
+}));
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ accessToken: null }),
+  useAuth: () => mockedUseAuth(),
 }));
 
 // Mock react-i18next to use actual English translations
@@ -87,6 +92,7 @@ function dobForAge(age: number): { year: string; month: string; day: string } {
 
 beforeEach(() => {
   localStorage.clear();
+  mockedUseAuth.mockReturnValue({ accessToken: null, user: null });
 });
 
 afterEach(() => {
@@ -441,6 +447,69 @@ describe("AgeGate", () => {
     // Error should be gone, children should render
     expect(screen.queryByText("Please enter a valid date of birth.")).not.toBeInTheDocument();
     expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+  });
+
+  // ------ Server-side age_verified_at skips the gate ------
+
+  describe("backend age_verified_at (issue #371)", () => {
+    it("skips the gate when user.ageVerifiedAt is set, even with no localStorage", async () => {
+      mockedUseAuth.mockReturnValue({
+        accessToken: "token",
+        user: {
+          ageVerifiedAt: new Date("2026-04-20T12:00:00Z").toISOString(),
+        },
+      });
+
+      await act(async () => {
+        renderAgeGate();
+      });
+
+      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+      expect(screen.queryByText("Age Verification")).not.toBeInTheDocument();
+    });
+
+    it("still shows the gate when user.ageVerifiedAt is null", async () => {
+      mockedUseAuth.mockReturnValue({
+        accessToken: "token",
+        user: { ageVerifiedAt: null },
+      });
+
+      await act(async () => {
+        renderAgeGate();
+      });
+
+      expect(screen.getByText("Age Verification")).toBeInTheDocument();
+      expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+    });
+
+    it("falls back to localStorage when user.ageVerifiedAt is null but local flag set", async () => {
+      localStorage.setItem("toqui_age_verified", "true");
+      mockedUseAuth.mockReturnValue({
+        accessToken: "token",
+        user: { ageVerifiedAt: null },
+      });
+
+      await act(async () => {
+        renderAgeGate();
+      });
+
+      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    });
+
+    it("skips the gate when user.ageVerifiedAt is set and no accessToken (offline-first boot)", async () => {
+      mockedUseAuth.mockReturnValue({
+        accessToken: null,
+        user: {
+          ageVerifiedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+        },
+      });
+
+      await act(async () => {
+        renderAgeGate();
+      });
+
+      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    });
   });
 
   // ------ Very old people ------
