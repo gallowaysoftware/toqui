@@ -86,16 +86,16 @@ func (h *AdminHandler) authenticateAdmin(r *http.Request) (uuid.UUID, error) {
 		}); seedErr != nil {
 			slog.Error("failed to seed admin role from ADMIN_EMAILS", "error", seedErr, "user_id", userID)
 		} else {
-			slog.Info("admin role seeded from ADMIN_EMAILS config", "email", user.Email, "user_id", userID)
+			slog.Info("admin role seeded from ADMIN_EMAILS config", "email", maskEmail(user.Email), "user_id", userID)
 			audit.Log(audit.EventAdminSeedRole,
 				"user_id", userID.String(),
-				"email", user.Email,
+				"email", maskEmail(user.Email),
 			)
 		}
 		return userID, nil
 	}
 
-	slog.Warn("admin access denied", "email", user.Email, "user_id", userID)
+	slog.Warn("admin access denied", "email", maskEmail(user.Email), "user_id", userID)
 	return uuid.Nil, errForbidden
 }
 
@@ -348,14 +348,14 @@ func (h *AdminHandler) HandleGenerateInvite(w http.ResponseWriter, r *http.Reque
 		InviteCode: pgtype.Text{String: code, Valid: true},
 		Email:      req.Email,
 	}); err != nil {
-		slog.Error("admin set invite code failed", "error", err, "email", req.Email)
+		slog.Error("admin set invite code failed", "error", err, "email", maskEmail(req.Email))
 		http.Error(w, "failed to set invite code (is email on waitlist?)", http.StatusBadRequest)
 		return
 	}
 
 	audit.Log(audit.EventAdminInvite,
 		"admin_id", adminID.String(),
-		"email", req.Email,
+		"email", maskEmail(req.Email),
 		"invite_code", code,
 	)
 
@@ -500,7 +500,7 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 	})
 	if addErr != nil {
 		// Already on waitlist — that's fine, continue
-		slog.Debug("invite: email already on waitlist", "email", req.Email)
+		slog.Debug("invite: email already on waitlist", "email", maskEmail(req.Email))
 	}
 
 	// Auto-verify the entry (admin-invited users skip email verification)
@@ -511,7 +511,7 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 		InviteCode: pgtype.Text{String: code, Valid: true},
 		Email:      req.Email,
 	}); err != nil {
-		slog.Error("admin send invite: set code failed", "error", err, "email", req.Email)
+		slog.Error("admin send invite: set code failed", "error", err, "email", maskEmail(req.Email))
 		http.Error(w, "failed to set invite code", http.StatusInternalServerError)
 		return
 	}
@@ -520,7 +520,7 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 	emailSent := false
 	if h.emailSvc != nil {
 		if sendErr := h.emailSvc.SendInvite(req.Email, code, h.appURL); sendErr != nil {
-			slog.Error("admin send invite: email failed", "error", sendErr, "email", req.Email)
+			slog.Error("admin send invite: email failed", "error", sendErr, "email", maskEmail(req.Email))
 		} else {
 			emailSent = true
 		}
@@ -528,7 +528,7 @@ func (h *AdminHandler) HandleSendInvite(w http.ResponseWriter, r *http.Request) 
 
 	audit.Log(audit.EventAdminInvite,
 		"admin_id", adminID.String(),
-		"email", req.Email,
+		"email", maskEmail(req.Email),
 		"invite_code", code,
 		"email_sent", emailSent,
 	)
@@ -573,14 +573,14 @@ func (h *AdminHandler) HandleGrantPro(w http.ResponseWriter, r *http.Request) {
 		SubscriptionTier: req.Tier,
 		Email:            req.Email,
 	}); err != nil {
-		slog.Error("admin grant pro failed", "error", err, "email", req.Email)
+		slog.Error("admin grant pro failed", "error", err, "email", maskEmail(req.Email))
 		http.Error(w, "failed to update tier (is the user registered?)", http.StatusBadRequest)
 		return
 	}
 
 	audit.Log(audit.EventAdminGrantPro,
 		"admin_id", adminID.String(),
-		"email", req.Email,
+		"email", maskEmail(req.Email),
 		"tier", req.Tier,
 	)
 
@@ -650,14 +650,14 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.lifecycleSvc.DeleteUser(r.Context(), user.ID); err != nil {
-		slog.Error("admin delete user failed", "error", err, "email", req.Email)
+		slog.Error("admin delete user failed", "error", err, "email", maskEmail(req.Email))
 		http.Error(w, "failed to delete user", http.StatusInternalServerError)
 		return
 	}
 
 	audit.Log(audit.EventAdminDeleteUser,
 		"admin_id", adminID.String(),
-		"email", req.Email,
+		"email", maskEmail(req.Email),
 		"user_id", user.ID.String(),
 	)
 
@@ -899,7 +899,7 @@ func (h *AdminHandler) HandleSetAdmin(w http.ResponseWriter, r *http.Request) {
 		IsAdmin: req.IsAdmin,
 		UserID:  target.ID,
 	}); err != nil {
-		slog.Error("admin set-admin failed", "error", err, "email", req.Email)
+		slog.Error("admin set-admin failed", "error", err, "email", maskEmail(req.Email))
 		http.Error(w, "failed to update admin role", http.StatusInternalServerError)
 		return
 	}
@@ -907,7 +907,7 @@ func (h *AdminHandler) HandleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	audit.Log(audit.EventAdminSetRole,
 		"admin_id", adminID.String(),
 		"target_user_id", target.ID.String(),
-		"email", req.Email,
+		"email", maskEmail(req.Email),
 		"is_admin", req.IsAdmin,
 	)
 

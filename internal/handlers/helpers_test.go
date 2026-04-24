@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -15,6 +16,48 @@ import (
 // newTestAuthService creates an auth.Service for unit tests with a known secret.
 func newTestAuthService() *auth.Service {
 	return auth.NewService("test-client-id", "test-client-secret", "http://localhost/callback", "test-jwt-secret")
+}
+
+// TestMaskEmail pins the one scrubber everything else in the PII-logs
+// sweep (#369 P1 #9–#11) relies on. The contract is: the local-part
+// first character is preserved, everything else before the "@" becomes
+// "***", and the domain is kept intact. A missing "@" returns the input
+// unchanged — callers must ensure that bare strings without an "@" (like
+// internal user_ids) use a different log key.
+func TestMaskEmail(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"john.doe@example.com", "j***@example.com"},
+		{"a@b.co", "a***@b.co"},
+		{"kyle.galloway@cantina.ai", "k***@cantina.ai"},
+		// Empty local-part ("@example.com") is nonsensical; return as-is.
+		{"@example.com", "@example.com"},
+		// Missing "@": return unchanged — not a real email, but scrubber
+		// must not panic or synthesize.
+		{"not-an-email", "not-an-email"},
+		// Empty string passes through.
+		{"", ""},
+		// Two "@" signs: SplitN with 2 keeps the right side intact.
+		{"first@middle@last.com", "f***@middle@last.com"},
+	}
+
+	for _, tc := range cases {
+		got := maskEmail(tc.in)
+		if got != tc.want {
+			t.Errorf("maskEmail(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+		// Contract: if input had a local-part with len > 1, the tail of
+		// the local-part must NOT appear in the output. Pins the actual
+		// scrubbing behavior (vs. just a string-swap).
+		if at := strings.Index(tc.in, "@"); at > 1 {
+			tail := tc.in[1:at]
+			if strings.Contains(got, tail) {
+				t.Errorf("maskEmail(%q) leaked local-part tail %q in output %q", tc.in, tail, got)
+			}
+		}
+	}
 }
 
 func TestMapTripErr(t *testing.T) {

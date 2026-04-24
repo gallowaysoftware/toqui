@@ -91,9 +91,12 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	textBody := r.FormValue("text")
 	htmlBody := r.FormValue("html")
 
+	// Log metadata only. `from` is masked; `subject` and `trip_title` are
+	// excluded because booking confirmations routinely contain destination
+	// names (e.g. "Your flight to TEL AVIV confirmed") and CLAUDE.md bans
+	// travel content in logs. See toqui-backend#369 P1 #10.
 	slog.Info("email webhook received",
-		"from", senderEmail,
-		"subject", subject,
+		"from", maskEmail(senderEmail),
 		"text_len", len(textBody),
 		"html_len", len(htmlBody),
 	)
@@ -104,7 +107,7 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		body = stripHTMLTags(htmlBody)
 	}
 	if body == "" {
-		slog.Warn("email webhook received empty body", "from", senderEmail, "subject", subject)
+		slog.Warn("email webhook received empty body", "from", maskEmail(senderEmail))
 		// Return 200 so SendGrid does not retry.
 		w.WriteHeader(http.StatusOK)
 		return
@@ -152,12 +155,14 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Do NOT log booking title — it contains travel content (hotel name,
+	// destination, etc). Type + ids are sufficient for operational
+	// debugging. See toqui-backend#369 P1 #10.
 	slog.Info("email webhook booking created",
 		"booking_id", b.ID,
 		"user_id", user.ID,
 		"trip_id", tripID,
 		"type", b.Type,
-		"title", b.Title,
 	)
 
 	w.WriteHeader(http.StatusOK)
@@ -194,10 +199,10 @@ func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subjec
 			if (titleLower != "" && strings.Contains(subjectLower, titleLower)) ||
 				(destLower != "" && strings.Contains(subjectLower, destLower)) {
 				tripID := t.ID.String()
+				// `trip_title` and `subject` both leak travel content.
+				// Use trip_id + user_id; the match is traceable via DB.
 				slog.Info("email webhook matched trip by subject",
 					"trip_id", tripID,
-					"trip_title", t.Title,
-					"subject", subject,
 					"user_id", user.ID,
 				)
 				return tripID
@@ -211,7 +216,6 @@ func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subjec
 			tripID := t.ID.String()
 			slog.Info("email webhook matched planning trip (fallback)",
 				"trip_id", tripID,
-				"trip_title", t.Title,
 				"user_id", user.ID,
 			)
 			return tripID
@@ -222,7 +226,6 @@ func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subjec
 	tripID := allTrips[0].ID.String()
 	slog.Info("email webhook matched recent trip (fallback)",
 		"trip_id", tripID,
-		"trip_title", allTrips[0].Title,
 		"user_id", user.ID,
 	)
 	return tripID

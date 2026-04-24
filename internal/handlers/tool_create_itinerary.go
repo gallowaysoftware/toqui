@@ -212,7 +212,10 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 			continue
 		}
 		if isDuplicateItem(existing, item.DayNumber, item.Title) {
-			slog.Info("skipped duplicate itinerary item", "day", item.DayNumber, "title", item.Title)
+			// Do NOT log item title — it's travel content (e.g. "Visit
+			// Yad Vashem"). CLAUDE.md bans that from logs.
+			// See toqui-backend#369 P1 #11.
+			slog.Info("skipped duplicate itinerary item", "trip_id", tripID, "day", item.DayNumber)
 			skipped++
 			continue
 		}
@@ -236,7 +239,8 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 					"message": "You don't have edit access to this trip anymore. Tell the user their access was revoked or they need to select a trip they own. Do NOT retry.",
 				})
 			}
-			slog.Error("create itinerary item", "title", item.Title, "error", err)
+			// Do NOT include item title in the log.
+			slog.Error("create itinerary item", "trip_id", tripID, "day", item.DayNumber, "error", err)
 			failed = append(failed, item.Title)
 			continue
 		}
