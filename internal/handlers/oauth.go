@@ -29,6 +29,7 @@ import (
 
 type OAuthHandler struct {
 	authSvc        *auth.Service
+	pool           *pgxpool.Pool
 	queries        *dbgen.Queries
 	frontendURL    string
 	secureCookies  bool
@@ -49,6 +50,7 @@ type OAuthHandler struct {
 func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
+		pool:           pool,
 		queries:        dbgen.New(pool),
 		frontendURL:    frontendURL,
 		emailSvc:       emailSvc,
@@ -442,10 +444,26 @@ func (h *OAuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Token rotation: verify the token is tracked and not revoked.
+	// Token rotation inside a transaction with SELECT ... FOR UPDATE so two
+	// concurrent refreshes with the same JTI cannot both observe
+	// revoked=false and each issue a new token. The loser blocks on the
+	// row lock until the winner commits, then sees revoked=true and trips
+	// reuse detection. See toqui-backend#369 (P1 #2).
 	family := claims.Family
+	var refreshResult *auth.RefreshTokenResult
+	var user dbgen.User
+
 	if claims.JTI != "" {
-		stored, dbErr := h.queries.GetRefreshTokenByJTI(ctx, claims.JTI)
+		tx, txErr := h.pool.Begin(ctx)
+		if txErr != nil {
+			slog.Error("begin refresh tx", "error", txErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		qtx := h.queries.WithTx(tx)
+
+		stored, dbErr := qtx.GetRefreshTokenByJTIForUpdate(ctx, claims.JTI)
 		if dbErr != nil {
 			slog.Warn("refresh token JTI not found in database", "jti", claims.JTI)
 			auth.ClearAuthCookies(w, h.secureCookies)
@@ -453,57 +471,96 @@ func (h *OAuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if stored.Revoked {
-			// Token reuse detected — revoke entire family (breach).
+			// Token reuse detected — revoke entire family (breach). Commit
+			// so the family revoke persists even though we bail right after.
 			audit.Log(audit.EventTokenReuse,
 				"user_id", claims.UserID.String(),
 				"jti", claims.JTI,
 				"family", stored.Family.String(),
 				"ip", ip,
 			)
-			if revokeErr := h.queries.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
+			if revokeErr := qtx.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
 				slog.Error("revoke token family on reuse detection", "error", revokeErr, "family", stored.Family.String())
+			}
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				slog.Error("commit family revoke on reuse detection", "error", commitErr)
 			}
 			auth.ClearAuthCookies(w, h.secureCookies)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		// Revoke the current token (it's been used).
-		if revokeErr := h.queries.RevokeRefreshToken(ctx, claims.JTI); revokeErr != nil {
+		if revokeErr := qtx.RevokeRefreshToken(ctx, claims.JTI); revokeErr != nil {
 			slog.Error("revoke used refresh token", "error", revokeErr, "jti", claims.JTI)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
 		}
 		family = stored.Family
-	}
 
-	user, err := h.queries.GetUserByID(ctx, claims.UserID)
-	if err != nil {
-		slog.Error("get user for cookie refresh", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		var uErr error
+		user, uErr = qtx.GetUserByID(ctx, claims.UserID)
+		if uErr != nil {
+			slog.Error("get user for cookie refresh", "error", uErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		var rErr error
+		refreshResult, rErr = h.authSvc.GenerateRefreshToken(user.ID, family)
+		if rErr != nil {
+			slog.Error("generate refresh token for cookie refresh", "error", rErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		if _, dbErr := qtx.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+			UserID:    user.ID,
+			Jti:       refreshResult.JTI,
+			Family:    refreshResult.Family,
+			ExpiresAt: refreshResult.ExpiresAt,
+		}); dbErr != nil {
+			slog.Error("store refresh token for cookie refresh", "error", dbErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			slog.Error("commit cookie refresh tx", "error", commitErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Pre-rotation token (no JTI): legacy path, no row to lock.
+		var uErr error
+		user, uErr = h.queries.GetUserByID(ctx, claims.UserID)
+		if uErr != nil {
+			slog.Error("get user for cookie refresh", "error", uErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		var rErr error
+		refreshResult, rErr = h.authSvc.GenerateRefreshToken(user.ID, family)
+		if rErr != nil {
+			slog.Error("generate refresh token for cookie refresh", "error", rErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		if _, dbErr := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+			UserID:    user.ID,
+			Jti:       refreshResult.JTI,
+			Family:    refreshResult.Family,
+			ExpiresAt: refreshResult.ExpiresAt,
+		}); dbErr != nil {
+			slog.Error("store refresh token for cookie refresh", "error", dbErr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
 		slog.Error("generate access token for cookie refresh", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	// Issue new refresh token in the same family (rotation).
-	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, family)
-	if err != nil {
-		slog.Error("generate refresh token for cookie refresh", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	// Track the new token.
-	if _, dbErr := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
-		UserID:    user.ID,
-		Jti:       refreshResult.JTI,
-		Family:    refreshResult.Family,
-		ExpiresAt: refreshResult.ExpiresAt,
-	}); dbErr != nil {
-		slog.Error("store refresh token for cookie refresh", "error", dbErr)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

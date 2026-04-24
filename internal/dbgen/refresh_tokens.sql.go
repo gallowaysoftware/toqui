@@ -75,6 +75,31 @@ func (q *Queries) GetRefreshTokenByJTI(ctx context.Context, jti string) (Refresh
 	return i, err
 }
 
+const getRefreshTokenByJTIForUpdate = `-- name: GetRefreshTokenByJTIForUpdate :one
+SELECT id, user_id, jti, family, expires_at, revoked, created_at FROM refresh_tokens
+WHERE jti = $1
+FOR UPDATE
+`
+
+// Row-locks the refresh_tokens row for the duration of the enclosing
+// transaction so concurrent RefreshToken RPCs serialize on rotation.
+// Must be used inside a transaction; closes the TOCTOU window where two
+// parallel refreshes with the same JTI could both observe revoked=false.
+func (q *Queries) GetRefreshTokenByJTIForUpdate(ctx context.Context, jti string) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, getRefreshTokenByJTIForUpdate, jti)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Jti,
+		&i.Family,
+		&i.ExpiresAt,
+		&i.Revoked,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
 UPDATE refresh_tokens
 SET revoked = true

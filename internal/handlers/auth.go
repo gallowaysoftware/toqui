@@ -26,6 +26,7 @@ import (
 
 type AuthHandler struct {
 	authSvc        *auth.Service
+	pool           *pgxpool.Pool
 	queries        *dbgen.Queries
 	lifecycleSvc   *lifecycle.Service
 	allowedDomains []string
@@ -41,6 +42,7 @@ type AuthHandler struct {
 func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
 	return &AuthHandler{
 		authSvc:        authSvc,
+		pool:           pool,
 		queries:        dbgen.New(pool),
 		lifecycleSvc:   lifecycleSvc,
 		allowedDomains: allowedDomains,
@@ -224,11 +226,29 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 		h.authLimiter.ClearFailures(ip)
 	}
 
-	// Token rotation: verify the token is tracked and not revoked.
+	// Token rotation: verify the token is tracked and not revoked, then
+	// revoke it and issue a new one IN THE SAME TRANSACTION. Without the
+	// transaction + row lock, two concurrent refreshes with the same JTI
+	// could both observe revoked=false and both succeed (TOCTOU).
 	// Tokens without JTI (pre-rotation) are accepted but not rotated.
 	family := claims.Family
+	var refreshResult *auth.RefreshTokenResult
+	var user dbgen.User
+
 	if claims.JTI != "" {
-		stored, err := h.queries.GetRefreshTokenByJTI(ctx, claims.JTI)
+		tx, err := h.pool.Begin(ctx)
+		if err != nil {
+			return nil, internalError(ctx, "begin refresh tx", err)
+		}
+		// Rollback is a no-op once Commit succeeds, so it's safe to defer
+		// unconditionally.
+		defer func() { _ = tx.Rollback(ctx) }()
+		qtx := h.queries.WithTx(tx)
+
+		// SELECT ... FOR UPDATE: block any concurrent RefreshToken RPC
+		// carrying the same JTI until this transaction commits or rolls
+		// back. The loser will see revoked=true and trip reuse detection.
+		stored, err := qtx.GetRefreshTokenByJTIForUpdate(ctx, claims.JTI)
 		if err != nil {
 			// Token not in DB — could be pre-rotation or manually deleted.
 			slog.Warn("refresh token JTI not found in database", "jti", claims.JTI)
@@ -236,55 +256,85 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 		}
 		if stored.Revoked {
 			// Token reuse detected — revoke entire family (breach).
+			// Commit this transaction first so the family revoke actually
+			// lands even if we bail immediately afterward.
 			audit.Log(audit.EventTokenReuse,
 				"user_id", claims.UserID.String(),
 				"jti", claims.JTI,
 				"family", stored.Family.String(),
 				"ip", ip,
 			)
-			if revokeErr := h.queries.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
+			if revokeErr := qtx.RevokeRefreshTokenFamily(ctx, stored.Family); revokeErr != nil {
 				slog.Error("failed to revoke token family on reuse detection",
 					"error", revokeErr,
 					"family", stored.Family.String(),
 					"jti", claims.JTI,
 				)
 			}
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				slog.Error("failed to commit family revoke on reuse detection",
+					"error", commitErr,
+				)
+			}
 			return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
 		}
-		// Revoke the current token (it's been used).
-		if revokeErr := h.queries.RevokeRefreshToken(ctx, claims.JTI); revokeErr != nil {
-			slog.Error("failed to revoke consumed refresh token",
-				"error", revokeErr,
-				"jti", claims.JTI,
-			)
+		// Revoke the current token (it's been used) inside the same tx.
+		if err := qtx.RevokeRefreshToken(ctx, claims.JTI); err != nil {
+			return nil, internalError(ctx, "revoke refresh token", err)
 		}
 		family = stored.Family
-	}
 
-	user, err := h.queries.GetUserByID(ctx, claims.UserID)
-	if err != nil {
-		return nil, internalError(ctx, "get user for refresh", err)
+		user, err = qtx.GetUserByID(ctx, claims.UserID)
+		if err != nil {
+			return nil, internalError(ctx, "get user for refresh", err)
+		}
+
+		// Issue new refresh token in the same family (rotation).
+		refreshResult, err = h.authSvc.GenerateRefreshToken(user.ID, family)
+		if err != nil {
+			return nil, internalError(ctx, "generate refresh token", err)
+		}
+
+		// Track the new token inside the same tx so revoke-old +
+		// insert-new are atomic.
+		if _, err := qtx.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+			UserID:    user.ID,
+			Jti:       refreshResult.JTI,
+			Family:    refreshResult.Family,
+			ExpiresAt: refreshResult.ExpiresAt,
+		}); err != nil {
+			return nil, internalError(ctx, "store refresh token", err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return nil, internalError(ctx, "commit refresh tx", err)
+		}
+	} else {
+		// Pre-rotation token (no JTI): legacy path, no row to lock.
+		var err error
+		user, err = h.queries.GetUserByID(ctx, claims.UserID)
+		if err != nil {
+			return nil, internalError(ctx, "get user for refresh", err)
+		}
+
+		refreshResult, err = h.authSvc.GenerateRefreshToken(user.ID, family)
+		if err != nil {
+			return nil, internalError(ctx, "generate refresh token", err)
+		}
+
+		if _, err := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+			UserID:    user.ID,
+			Jti:       refreshResult.JTI,
+			Family:    refreshResult.Family,
+			ExpiresAt: refreshResult.ExpiresAt,
+		}); err != nil {
+			return nil, internalError(ctx, "store refresh token", err)
+		}
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
 		return nil, internalError(ctx, "generate access token", err)
-	}
-
-	// Issue new refresh token in the same family (rotation).
-	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, family)
-	if err != nil {
-		return nil, internalError(ctx, "generate refresh token", err)
-	}
-
-	// Track the new token.
-	if _, err := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
-		UserID:    user.ID,
-		Jti:       refreshResult.JTI,
-		Family:    refreshResult.Family,
-		ExpiresAt: refreshResult.ExpiresAt,
-	}); err != nil {
-		return nil, internalError(ctx, "store refresh token", err)
 	}
 
 	audit.Log(audit.EventTokenRefresh, "user_id", user.ID.String(), "ip", ip)

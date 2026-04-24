@@ -7,6 +7,15 @@ RETURNING *;
 SELECT * FROM refresh_tokens
 WHERE jti = $1;
 
+-- name: GetRefreshTokenByJTIForUpdate :one
+-- Row-locks the refresh_tokens row for the duration of the enclosing
+-- transaction so concurrent RefreshToken RPCs serialize on rotation.
+-- Must be used inside a transaction; closes the TOCTOU window where two
+-- parallel refreshes with the same JTI could both observe revoked=false.
+SELECT * FROM refresh_tokens
+WHERE jti = $1
+FOR UPDATE;
+
 -- name: RevokeRefreshToken :exec
 UPDATE refresh_tokens
 SET revoked = true
