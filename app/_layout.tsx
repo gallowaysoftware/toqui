@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
+import { ConsentGate } from "@/components/auth/ConsentGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig, getConfig } from "@/lib/config";
 import * as Sentry from "@sentry/react-native";
@@ -227,13 +228,15 @@ export default Sentry.wrap(function RootLayout() {
             <AnalyticsProvider>
               <TransportProvider>
                 <AgeGate>
-                  <AnalyticsErrorBoundary>
-                    <AnalyticsBootstrap />
-                    <View style={layoutStyles.root}>
-                      <OfflineBanner />
-                      <ThemedStack />
-                    </View>
-                  </AnalyticsErrorBoundary>
+                  <ConsentGate>
+                    <AnalyticsErrorBoundary>
+                      <AnalyticsBootstrap />
+                      <View style={layoutStyles.root}>
+                        <OfflineBanner />
+                        <ThemedStack />
+                      </View>
+                    </AnalyticsErrorBoundary>
+                  </ConsentGate>
                 </AgeGate>
               </TransportProvider>
             </AnalyticsProvider>

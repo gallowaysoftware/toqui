@@ -274,7 +274,7 @@ Unlocked trips get: unlimited messages, all 800+ expert personas, email forwardi
 Providers wrap the entire app in `app/_layout.tsx`:
 
 ```
-ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → {children}
+ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → ConsentGate → {children}
 ```
 
 - **ThemeProvider** — Light/dark/system theme management with persistence (`lib/theme.tsx`). Provides `ThemeColors` interface to all components.
@@ -282,8 +282,9 @@ ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → Anal
 - **QueryClientProvider** — TanStack Query client for server state caching and mutations
 - **AuthProvider** — JWT token management, SecureStore/localStorage persistence
 - **AnalyticsProvider** — PostHog initialization, user identification, feature flags (`lib/analytics.tsx`)
-- **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401
+- **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401. Also detects the backend `FailedPrecondition("consent_required")` sentinel and exposes it via `useConsentSignal()`.
 - **AgeGate** — Wraps the app to enforce age verification (18+). Users who haven't verified age are redirected to the age gate screen.
+- **ConsentGate** — Pops a blocking modal when the transport interceptor sees `FailedPrecondition("consent_required")` from the backend (see `toqui-backend` PR #374). Calls `POST /auth/consent` to record `terms` + `privacy_policy` and clears the signal on success.
 
 ## Hooks
 

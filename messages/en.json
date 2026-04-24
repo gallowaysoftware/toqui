@@ -422,6 +422,18 @@
     "year": "Year",
     "verifyAge": "Verify Age"
   },
+  "consentGate": {
+    "title": "One more thing",
+    "subtitle": "Before you keep planning, we need you to confirm you accept our terms.",
+    "termsNoticePrefix": "By continuing, you agree to our ",
+    "termsLink": "Terms of Service",
+    "termsNoticeSeparator": " and ",
+    "privacyLink": "Privacy Policy",
+    "termsNoticeSuffix": ".",
+    "agree": "I agree",
+    "logout": "Log out instead",
+    "error": "Couldn't record your consent. Please try again."
+  },
   "weather": {
     "title": "Weather forecast",
     "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary.",
