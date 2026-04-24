@@ -316,18 +316,19 @@ func aiAwareError(ctx context.Context, operation string, err error) *connect.Err
 }
 
 var bookingTypeMap = map[string]toquiv1.BookingType{
-	"flight":     toquiv1.BookingType_BOOKING_TYPE_FLIGHT,
-	"hotel":      toquiv1.BookingType_BOOKING_TYPE_HOTEL,
-	"car_rental": toquiv1.BookingType_BOOKING_TYPE_CAR_RENTAL,
-	"train":      toquiv1.BookingType_BOOKING_TYPE_TRAIN,
-	"activity":   toquiv1.BookingType_BOOKING_TYPE_ACTIVITY,
-	"restaurant": toquiv1.BookingType_BOOKING_TYPE_RESTAURANT,
-	"other":      toquiv1.BookingType_BOOKING_TYPE_OTHER,
-	"tour":       toquiv1.BookingType_BOOKING_TYPE_TOUR,
-	"ferry":      toquiv1.BookingType_BOOKING_TYPE_FERRY,
-	"bus":        toquiv1.BookingType_BOOKING_TYPE_BUS,
-	"cruise":     toquiv1.BookingType_BOOKING_TYPE_CRUISE,
-	"transfer":   toquiv1.BookingType_BOOKING_TYPE_TRANSFER,
+	"flight":          toquiv1.BookingType_BOOKING_TYPE_FLIGHT,
+	"hotel":           toquiv1.BookingType_BOOKING_TYPE_HOTEL,
+	"car_rental":      toquiv1.BookingType_BOOKING_TYPE_CAR_RENTAL,
+	"train":           toquiv1.BookingType_BOOKING_TYPE_TRAIN,
+	"activity":        toquiv1.BookingType_BOOKING_TYPE_ACTIVITY,
+	"restaurant":      toquiv1.BookingType_BOOKING_TYPE_RESTAURANT,
+	"other":           toquiv1.BookingType_BOOKING_TYPE_OTHER,
+	"tour":            toquiv1.BookingType_BOOKING_TYPE_TOUR,
+	"ferry":           toquiv1.BookingType_BOOKING_TYPE_FERRY,
+	"bus":             toquiv1.BookingType_BOOKING_TYPE_BUS,
+	"cruise":          toquiv1.BookingType_BOOKING_TYPE_CRUISE,
+	"transfer":        toquiv1.BookingType_BOOKING_TYPE_TRANSFER,
+	"vacation_rental": toquiv1.BookingType_BOOKING_TYPE_VACATION_RENTAL,
 }
 
 // bookingTypeToString maps proto BookingType enum to the DB string representation.
@@ -338,6 +339,41 @@ func bookingTypeToString(bt toquiv1.BookingType) string {
 		}
 	}
 	return ""
+}
+
+// itineraryItemTypeForBooking maps a booking's stored type string (DB form or
+// proto enum name) to the itinerary item type used when auto-linking a booking
+// into a trip's day-by-day plan. Unknown types fall back to "booking".
+//
+// The double-form switch (DB string + enum name) is defence-in-depth: the DB
+// stores the short form ("hotel") but tests and older paths occasionally pass
+// the enum name ("BOOKING_TYPE_HOTEL").
+func itineraryItemTypeForBooking(bookingType string) string {
+	switch bookingType {
+	case "BOOKING_TYPE_FLIGHT", "flight":
+		return "flight"
+	case "BOOKING_TYPE_HOTEL", "hotel":
+		return "hotel"
+	case "BOOKING_TYPE_VACATION_RENTAL", "vacation_rental":
+		return "vacation_rental"
+	case "BOOKING_TYPE_CAR_RENTAL", "car_rental":
+		return "car_rental"
+	case "BOOKING_TYPE_TOUR", "BOOKING_TYPE_ACTIVITY", "tour", "activity":
+		return "activity"
+	case "BOOKING_TYPE_RESTAURANT", "restaurant":
+		return "restaurant"
+	case "BOOKING_TYPE_TRAIN", "train":
+		return "train"
+	case "BOOKING_TYPE_FERRY", "ferry":
+		return "ferry"
+	case "BOOKING_TYPE_BUS", "bus":
+		return "bus"
+	case "BOOKING_TYPE_CRUISE", "cruise":
+		return "cruise"
+	case "BOOKING_TYPE_TRANSFER", "transfer":
+		return "transfer"
+	}
+	return "booking"
 }
 
 var bookingSourceMap = map[string]toquiv1.BookingSource{
@@ -435,7 +471,13 @@ func setBookingDetailsOneof(proto *toquiv1.Booking, bookingType string, raw json
 				},
 			}
 		}
-	case "hotel":
+	case "hotel", "vacation_rental":
+		// Vacation rentals reuse the HotelDetails oneof — the schema maps
+		// cleanly (hotel_name → listing title, room_type → unit type,
+		// check_in/check_out dates, address, phone). A dedicated
+		// VacationRentalDetails message can be added later if needed; for now
+		// this avoids a breaking split while distinguishing the two via the
+		// top-level BookingType enum.
 		var d booking.HotelDetails
 		if json.Unmarshal(raw, &d) == nil {
 			proto.BookingDetails = &toquiv1.Booking_HotelDetails{
@@ -627,29 +669,7 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerI
 	}
 
 	// Map booking type to itinerary item type.
-	itemType := "booking"
-	switch b.Type {
-	case "BOOKING_TYPE_FLIGHT", "flight":
-		itemType = "flight"
-	case "BOOKING_TYPE_HOTEL", "hotel":
-		itemType = "hotel"
-	case "BOOKING_TYPE_CAR_RENTAL", "car_rental":
-		itemType = "car_rental"
-	case "BOOKING_TYPE_TOUR", "BOOKING_TYPE_ACTIVITY", "tour", "activity":
-		itemType = "activity"
-	case "BOOKING_TYPE_RESTAURANT", "restaurant":
-		itemType = "restaurant"
-	case "BOOKING_TYPE_TRAIN", "train":
-		itemType = "train"
-	case "BOOKING_TYPE_FERRY", "ferry":
-		itemType = "ferry"
-	case "BOOKING_TYPE_BUS", "bus":
-		itemType = "bus"
-	case "BOOKING_TYPE_CRUISE", "cruise":
-		itemType = "cruise"
-	case "BOOKING_TYPE_TRANSFER", "transfer":
-		itemType = "transfer"
-	}
+	itemType := itineraryItemTypeForBooking(b.Type)
 
 	// Determine day number from start_time if available.
 	var dayNumber int32

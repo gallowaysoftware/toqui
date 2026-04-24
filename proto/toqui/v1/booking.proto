@@ -223,6 +223,10 @@ enum BookingType {
   BOOKING_TYPE_BUS = 10;
   BOOKING_TYPE_CRUISE = 11;
   BOOKING_TYPE_TRANSFER = 12;
+  // Vacation rentals — houses, cabins, villas, apartments (VRBO, Airbnb-style
+  // bookings). Distinct from BOOKING_TYPE_HOTEL to preserve category accuracy
+  // for affiliate sourcing and itinerary display.
+  BOOKING_TYPE_VACATION_RENTAL = 13;
 }
 
 enum BookingSource {

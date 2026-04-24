@@ -24,6 +24,9 @@ func TestNormalizeBookingType(t *testing.T) {
 		{"bus", "bus"},
 		{"cruise", "cruise"},
 		{"transfer", "transfer"},
+		{"vacation_rental", "vacation_rental"},
+		{"VACATION_RENTAL", "vacation_rental"},
+		{" vacation_rental ", "vacation_rental"},
 		// Case normalization
 		{"FERRY", "ferry"},
 		{"Bus", "bus"},

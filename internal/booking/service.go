@@ -132,7 +132,7 @@ func (s *Service) parseWithAI(ctx context.Context, rawText string, typeHint stri
 	req := &ai.ChatRequest{
 		SystemPrompt: `You are a booking confirmation parser. Extract structured booking information from the text provided.
 Return a JSON object with these fields:
-- type: one of "flight", "hotel", "car_rental", "train", "tour", "activity", "restaurant", "ferry", "bus", "cruise", "transfer", "other"
+- type: one of "flight", "hotel", "vacation_rental", "car_rental", "train", "tour", "activity", "restaurant", "ferry", "bus", "cruise", "transfer", "other". Use "hotel" for traditional hotels, hostels, B&Bs, inns, and resorts (commercial properties with a front desk). Use "vacation_rental" for whole-property rentals such as houses, cabins, villas, apartments, condos, cottages — typically from VRBO, Airbnb, or similar platforms where a guest rents an entire dwelling.
 - confirmation_code: the booking/confirmation number
 - provider: the company name (airline, hotel chain, ferry operator, bus company, etc.)
 - title: a brief description of the booking
@@ -151,6 +151,7 @@ flight: {"airline":"","flight_number":"","departure_airport":"","arrival_airport
   For multi-segment, connecting, or round-trip flights, populate the "legs" array with one entry per flight segment (outbound leg first, then connecting segments, then return leg). Always keep the top-level flight fields (airline, flight_number, departure_airport, arrival_airport, etc.) populated with the FIRST outbound leg's values for backward compatibility. For single non-stop one-way flights, omit the "legs" array.
 hotel: {"hotel_name":"","check_in_date":"","check_out_date":"","room_type":"","num_guests":0,"address":"","phone":""}
   For multi-property bookings (hostels, chains): use a "properties" array instead: {"properties":[{"hotel_name":"","address":"","check_in_date":"","check_out_date":"","room_type":"","nights":0,"rate_per_night":0}]}
+vacation_rental: reuse the hotel schema ({"hotel_name":"","check_in_date":"","check_out_date":"","room_type":"","num_guests":0,"address":"","phone":""}). Put the property name/listing title in "hotel_name" and the unit/room description in "room_type" (e.g. "Entire cabin", "2BR villa").
 car_rental: {"company":"","pickup_location":"","dropoff_location":"","pickup_time":"","dropoff_time":"","car_type":"","driver_name":""}
 train: {"operator":"","train_number":"","departure_station":"","arrival_station":"","seat":"","car_number":"","class":""}
 tour: {"tour_operator":"","tour_name":"","num_participants":0,"meeting_point":"","date":"YYYY-MM-DD","start_time":"HH:MM","duration":"","guide_name":"","price":"","stops":[{"name":"","location":"","duration":"","notes":""}]}
@@ -204,18 +205,19 @@ Only include fields that are present in the source text. Return ONLY valid JSON,
 
 // validBookingTypes is the set of booking types supported by the system.
 var validBookingTypes = map[string]bool{
-	"flight":     true,
-	"hotel":      true,
-	"car_rental": true,
-	"train":      true,
-	"tour":       true,
-	"activity":   true,
-	"restaurant": true,
-	"ferry":      true,
-	"bus":        true,
-	"cruise":     true,
-	"transfer":   true,
-	"other":      true,
+	"flight":          true,
+	"hotel":           true,
+	"vacation_rental": true,
+	"car_rental":      true,
+	"train":           true,
+	"tour":            true,
+	"activity":        true,
+	"restaurant":      true,
+	"ferry":           true,
+	"bus":             true,
+	"cruise":          true,
+	"transfer":        true,
+	"other":           true,
 }
 
 // normalizeBookingType validates the AI-generated booking type against known

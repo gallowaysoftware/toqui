@@ -39,6 +39,10 @@ const (
 	BookingType_BOOKING_TYPE_BUS         BookingType = 10
 	BookingType_BOOKING_TYPE_CRUISE      BookingType = 11
 	BookingType_BOOKING_TYPE_TRANSFER    BookingType = 12
+	// Vacation rentals — houses, cabins, villas, apartments (VRBO, Airbnb-style
+	// bookings). Distinct from BOOKING_TYPE_HOTEL to preserve category accuracy
+	// for affiliate sourcing and itinerary display.
+	BookingType_BOOKING_TYPE_VACATION_RENTAL BookingType = 13
 )
 
 // Enum value maps for BookingType.
@@ -57,21 +61,23 @@ var (
 		10: "BOOKING_TYPE_BUS",
 		11: "BOOKING_TYPE_CRUISE",
 		12: "BOOKING_TYPE_TRANSFER",
+		13: "BOOKING_TYPE_VACATION_RENTAL",
 	}
 	BookingType_value = map[string]int32{
-		"BOOKING_TYPE_UNSPECIFIED": 0,
-		"BOOKING_TYPE_FLIGHT":      1,
-		"BOOKING_TYPE_HOTEL":       2,
-		"BOOKING_TYPE_CAR_RENTAL":  3,
-		"BOOKING_TYPE_TRAIN":       4,
-		"BOOKING_TYPE_ACTIVITY":    5,
-		"BOOKING_TYPE_RESTAURANT":  6,
-		"BOOKING_TYPE_OTHER":       7,
-		"BOOKING_TYPE_TOUR":        8,
-		"BOOKING_TYPE_FERRY":       9,
-		"BOOKING_TYPE_BUS":         10,
-		"BOOKING_TYPE_CRUISE":      11,
-		"BOOKING_TYPE_TRANSFER":    12,
+		"BOOKING_TYPE_UNSPECIFIED":     0,
+		"BOOKING_TYPE_FLIGHT":          1,
+		"BOOKING_TYPE_HOTEL":           2,
+		"BOOKING_TYPE_CAR_RENTAL":      3,
+		"BOOKING_TYPE_TRAIN":           4,
+		"BOOKING_TYPE_ACTIVITY":        5,
+		"BOOKING_TYPE_RESTAURANT":      6,
+		"BOOKING_TYPE_OTHER":           7,
+		"BOOKING_TYPE_TOUR":            8,
+		"BOOKING_TYPE_FERRY":           9,
+		"BOOKING_TYPE_BUS":             10,
+		"BOOKING_TYPE_CRUISE":          11,
+		"BOOKING_TYPE_TRANSFER":        12,
+		"BOOKING_TYPE_VACATION_RENTAL": 13,
 	}
 )
 
@@ -3110,7 +3116,7 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x10extracted_fields\x18\x02 \x03(\v2:.toqui.v1.ExtractBookingFieldResponse.ExtractedFieldsEntryR\x0fextractedFields\x1aB\n" +
 	"\x14ExtractedFieldsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*\xda\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*\xfc\x02\n" +
 	"\vBookingType\x12\x1c\n" +
 	"\x18BOOKING_TYPE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13BOOKING_TYPE_FLIGHT\x10\x01\x12\x16\n" +
@@ -3125,7 +3131,8 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x10BOOKING_TYPE_BUS\x10\n" +
 	"\x12\x17\n" +
 	"\x13BOOKING_TYPE_CRUISE\x10\v\x12\x19\n" +
-	"\x15BOOKING_TYPE_TRANSFER\x10\f*~\n" +
+	"\x15BOOKING_TYPE_TRANSFER\x10\f\x12 \n" +
+	"\x1cBOOKING_TYPE_VACATION_RENTAL\x10\r*~\n" +
 	"\rBookingSource\x12\x1e\n" +
 	"\x1aBOOKING_SOURCE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14BOOKING_SOURCE_EMAIL\x10\x01\x12\x19\n" +

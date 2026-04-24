@@ -13,7 +13,7 @@ import (
 
 func TestBookingTypeMap_AllTypes(t *testing.T) {
 	expectedTypes := []string{
-		"flight", "hotel", "car_rental", "train", "activity",
+		"flight", "hotel", "vacation_rental", "car_rental", "train", "activity",
 		"restaurant", "other", "tour", "ferry", "bus", "cruise", "transfer",
 	}
 
@@ -31,6 +31,7 @@ func TestBookingTypeToString(t *testing.T) {
 	}{
 		{toquiv1.BookingType_BOOKING_TYPE_FLIGHT, "flight"},
 		{toquiv1.BookingType_BOOKING_TYPE_HOTEL, "hotel"},
+		{toquiv1.BookingType_BOOKING_TYPE_VACATION_RENTAL, "vacation_rental"},
 		{toquiv1.BookingType_BOOKING_TYPE_CAR_RENTAL, "car_rental"},
 		{toquiv1.BookingType_BOOKING_TYPE_TRAIN, "train"},
 		{toquiv1.BookingType_BOOKING_TYPE_ACTIVITY, "activity"},
@@ -196,6 +197,84 @@ func TestSetBookingDetailsOneof_Cruise(t *testing.T) {
 	}
 	if cd.NumPassengers != 4 {
 		t.Errorf("NumPassengers: got %d, want 4", cd.NumPassengers)
+	}
+}
+
+func TestSetBookingDetailsOneof_VacationRental(t *testing.T) {
+	// Vacation rentals reuse the HotelDetails oneof. The VRBO confirmation
+	// maps the listing name to hotel_name and the unit description to
+	// room_type.
+	raw := json.RawMessage(`{
+		"hotel_name": "Sunset Cove Cabin",
+		"check_in_date": "2026-07-10",
+		"check_out_date": "2026-07-17",
+		"room_type": "Entire 3BR cabin",
+		"num_guests": 5,
+		"address": "123 Lakeside Rd, Lake Tahoe, CA"
+	}`)
+
+	proto := &toquiv1.Booking{}
+	setBookingDetailsOneof(proto, "vacation_rental", raw)
+
+	hd := proto.GetHotelDetails()
+	if hd == nil {
+		t.Fatal("expected HotelDetails oneof for vacation_rental, got nil")
+	}
+	if hd.HotelName != "Sunset Cove Cabin" {
+		t.Errorf("HotelName: got %q, want %q", hd.HotelName, "Sunset Cove Cabin")
+	}
+	if hd.RoomType != "Entire 3BR cabin" {
+		t.Errorf("RoomType: got %q, want %q", hd.RoomType, "Entire 3BR cabin")
+	}
+	if hd.NumGuests != 5 {
+		t.Errorf("NumGuests: got %d, want 5", hd.NumGuests)
+	}
+}
+
+func TestItineraryItemTypeForBooking(t *testing.T) {
+	tests := []struct {
+		bookingType string
+		want        string
+	}{
+		// DB-form strings (the canonical case — booking rows store this form).
+		{"flight", "flight"},
+		{"hotel", "hotel"},
+		{"vacation_rental", "vacation_rental"},
+		{"car_rental", "car_rental"},
+		{"tour", "activity"},
+		{"activity", "activity"},
+		{"restaurant", "restaurant"},
+		{"train", "train"},
+		{"ferry", "ferry"},
+		{"bus", "bus"},
+		{"cruise", "cruise"},
+		{"transfer", "transfer"},
+		// Proto enum names (defence-in-depth).
+		{"BOOKING_TYPE_FLIGHT", "flight"},
+		{"BOOKING_TYPE_HOTEL", "hotel"},
+		{"BOOKING_TYPE_VACATION_RENTAL", "vacation_rental"},
+		{"BOOKING_TYPE_CAR_RENTAL", "car_rental"},
+		{"BOOKING_TYPE_TOUR", "activity"},
+		{"BOOKING_TYPE_ACTIVITY", "activity"},
+		{"BOOKING_TYPE_RESTAURANT", "restaurant"},
+		{"BOOKING_TYPE_TRAIN", "train"},
+		{"BOOKING_TYPE_FERRY", "ferry"},
+		{"BOOKING_TYPE_BUS", "bus"},
+		{"BOOKING_TYPE_CRUISE", "cruise"},
+		{"BOOKING_TYPE_TRANSFER", "transfer"},
+		// Unknowns fall back to generic "booking".
+		{"other", "booking"},
+		{"", "booking"},
+		{"made_up_type", "booking"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.bookingType, func(t *testing.T) {
+			got := itineraryItemTypeForBooking(tt.bookingType)
+			if got != tt.want {
+				t.Errorf("itineraryItemTypeForBooking(%q) = %q, want %q", tt.bookingType, got, tt.want)
+			}
+		})
 	}
 }
 
