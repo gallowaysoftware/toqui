@@ -233,13 +233,15 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 
 ## Auth Flow (Bearer Token)
 
-1. User authenticates via Google OAuth (`expo-auth-session`)
-2. App sends auth code to backend's `AuthService.GoogleLogin` RPC
-3. Backend returns `{ access_token, refresh_token, user }` in response body
-4. Tokens stored in `expo-secure-store` (native) or `localStorage` (web)
-5. `TransportProvider` interceptor attaches `Authorization: Bearer <token>` to every ConnectRPC request
-6. On 401, interceptor calls `AuthService.RefreshToken` RPC, stores new tokens, retries
-7. Logout clears stored tokens
+1. User authenticates via Google OAuth (`expo-auth-session`) or Facebook OAuth.
+2. App sends auth code to backend's `AuthService.GoogleLogin` / `FacebookLogin` RPC.
+3. Backend returns `{ access_token, refresh_token, user }` in response body.
+4. Tokens stored in `expo-secure-store` (native) or `localStorage` (web).
+5. `TransportProvider` interceptor attaches `Authorization: Bearer <token>` to every ConnectRPC request.
+6. On 401, interceptor calls `AuthService.RefreshToken` RPC, stores new tokens, retries.
+7. Logout clears stored tokens.
+
+**Apple Sign-In (planned, native only):** the backend exposes `AuthService.AppleLogin` (returns `Unimplemented` until Apple Developer enrollment completes). Frontend integration pending — will use `expo-apple-authentication` to obtain `authorization_code` + `id_token`, then POST both to the RPC. Apple is a third login provider alongside Google and Facebook; same token-bearer flow applies once it lands.
 
 **No cookies are used.** The backend's `cookieAuth` middleware is bypassed — the auth interceptor reads the Bearer header directly.
 
