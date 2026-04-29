@@ -8,7 +8,6 @@ import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
 const STORAGE_KEY = "toqui_age_verified";
-const SYNC_KEY = "toqui_age_synced";
 
 async function getStorageItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") {
@@ -89,33 +88,13 @@ export function AgeGate({ children }: AgeGateProps) {
     isVerified().then(setVerifiedState);
   }, [serverVerified]);
 
-  // Background resync: if the user verified age client-side before the backend
-  // sync was added, re-send verification so the backend has a record.
-  useEffect(() => {
-    if (!verified || !accessToken) return;
-
-    let cancelled = false;
-    (async () => {
-      const synced = await getStorageItem(SYNC_KEY);
-      if (synced === "true" || cancelled) return;
-
-      try {
-        await authFetch(`${getConfig().apiUrl}/auth/verify-age`, accessToken, {
-          method: "POST",
-          body: JSON.stringify({ date_of_birth: "2000-01-01" }),
-        });
-        if (!cancelled) {
-          await setStorageItem(SYNC_KEY, "true");
-        }
-      } catch {
-        // Will retry on next mount
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [verified, accessToken]);
+  // Background resync removed (privacy audit): the previous version posted
+  // a hard-coded date_of_birth: "2000-01-01" to /auth/verify-age for any
+  // user who had verified locally before backend sync existed. That's a
+  // self-inflicted GDPR Article 5(1)(d) accuracy violation — the audit log
+  // would record an age the user never claimed. Users in the locally-only
+  // verified state will simply re-verify on their next session, which is
+  // correct behaviour for an 18+ gate.
 
   const handleVerify = useCallback(async () => {
     setError("");

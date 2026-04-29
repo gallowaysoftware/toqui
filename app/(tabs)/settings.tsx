@@ -7,12 +7,10 @@ import { createClient } from "@connectrpc/connect";
 import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare, BarChart2, Crown } from "lucide-react-native";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import ReferralCard from "@/components/referral/ReferralCard";
-import { SubscriptionCard } from "@/components/subscription/SubscriptionCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
 import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
-import { useSubscription } from "@/lib/hooks/useSubscription";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 const COLOR_WARNING = "#f59e0b";
@@ -28,9 +26,9 @@ export default function SettingsScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const isPro = user?.tier === "pro";
   const { used, limit, resetsAt } = useUsage();
-  const { subscription } = useSubscription();
-  const subscriptionTier = subscription?.tier ?? "free";
-  const isSubscriber = subscriptionTier === "explorer" || subscriptionTier === "voyager";
+  // Subscription tiers (Explorer / Voyager) are off the menu for launch —
+  // free + Trip Pro one-time only. The hook + components stay in the
+  // codebase but unrendered; revisit at $1K MRR.
 
   const exportData = useMutation({
     mutationFn: async () => {
@@ -199,44 +197,17 @@ export default function SettingsScreen() {
         </View>
         <View style={styles.billingPlanRow}>
           <Text style={styles.billingLabel}>{t("settings.billing.currentPlan")}</Text>
-          <View style={[styles.planBadge, (isPro || isSubscriber) && styles.planBadgePro]}>
-            <Text style={[styles.planBadgeText, (isPro || isSubscriber) && styles.planBadgeTextPro]}>
-              {isSubscriber
-                ? t(`subscription.${subscriptionTier}.name`)
-                : isPro
-                  ? t("settings.billing.pro")
-                  : t("settings.billing.free")}
+          <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
+            <Text style={[styles.planBadgeText, isPro && styles.planBadgeTextPro]}>
+              {isPro ? t("settings.billing.pro") : t("settings.billing.free")}
             </Text>
           </View>
         </View>
-        {isSubscriber && subscription?.currentPeriodEnd ? (
-          <>
-            <Text style={styles.billingDescription}>
-              {subscription.billingPeriod === "annual"
-                ? t("subscription.annual")
-                : t("subscription.monthly")}{" "}
-              {t("settings.billing.plan").toLowerCase()}
-              {" \u2014 "}
-              {subscription.cancelAtPeriodEnd
-                ? t("subscription.endsOn").toLowerCase()
-                : t("subscription.renewsOn").toLowerCase()}{" "}
-              {subscription.currentPeriodEnd.toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </Text>
-          </>
-        ) : isPro ? (
+        {isPro ? (
           <Text style={styles.billingDescription}>{t("settings.billing.proDescription")}</Text>
         ) : (
           <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
         )}
-      </View>
-
-      {/* Subscription Plans */}
-      <View style={{ marginBottom: 16 }}>
-        <SubscriptionCard />
       </View>
 
       {/* Usage */}

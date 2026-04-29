@@ -7,11 +7,9 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Star, Mail, BookOpen, ChevronRight, X, ArrowRight } from "lucide-react-native";
+import { CheckCircle, Star, Mail, BookOpen, ChevronRight, X } from "lucide-react-native";
 import { useCheckout } from "@/lib/hooks/useCheckout";
-import { useSubscription } from "@/lib/hooks/useSubscription";
 import { useTheme } from "@/lib/theme";
 import { useAnalytics } from "@/lib/analytics";
 
@@ -27,12 +25,8 @@ interface ProUpgradeProps {
 export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgradeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const router = useRouter();
   const { initCheckout, checkStatus, isLoading, error } = useCheckout(tripId);
-  const { subscription } = useSubscription();
   const { track, getFeatureFlag } = useAnalytics();
-  const isSubscriber =
-    subscription?.tier === "explorer" || subscription?.tier === "voyager";
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const statusChecked = useRef(false);
@@ -362,29 +356,6 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
             {t("checkout.successDescription")}
           </Text>
         </View>
-        {!isSubscriber && (
-          <View style={styles.upsellContainer as object}>
-            <Text style={styles.upsellTitle}>
-              {t("subscription.upsell.title")}
-            </Text>
-            <Text style={styles.upsellDescription}>
-              {t("subscription.upsell.description")}
-            </Text>
-            <Pressable
-              style={styles.upsellLink as object}
-              onPress={() => {
-                // Navigate to settings where SubscriptionCard lives
-                // Using Linking to avoid deep router dependency
-              }}
-              accessibilityRole="button"
-            >
-              <ChevronRight color={colors.accent} size={14} />
-              <Text style={styles.upsellLinkText}>
-                {t("subscription.subscribe")}
-              </Text>
-            </Pressable>
-          </View>
-        )}
       </View>
     );
   }
@@ -495,19 +466,6 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
         )}
       </Pressable>
 
-      {/* Subscription alternative — nudge users toward monthly plans */}
-      {!isSubscriber && (
-        <Pressable
-          style={styles.subscriptionAltContainer as object}
-          onPress={() => router.push("/(tabs)/settings" as never)}
-          accessibilityRole="button"
-        >
-          <Text style={styles.subscriptionAltText}>
-            {t("checkout.subscriptionAlt")}
-          </Text>
-          <ArrowRight size={14} color={colors.accent} />
-        </Pressable>
-      )}
     </View>
   );
 }

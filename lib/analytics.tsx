@@ -9,6 +9,16 @@
  * - Cookie-less mode (persistence set to "memory").
  * - Gracefully no-ops when EXPO_PUBLIC_POSTHOG_KEY is empty (dev/test).
  * - Allowlist-based property filter: only known-safe keys are forwarded.
+ *
+ * Platform note: this module imports `posthog-js`, the browser SDK. It
+ * relies on `window`, `document`, and the browser's localStorage. On
+ * iOS/Android (React Native), those globals don't exist and the SDK
+ * either crashes on init or silently no-ops, depending on bundler
+ * shimming. The provider uses Platform.OS to gate initialisation to web
+ * — native builds intentionally run with analytics disabled until we
+ * swap in `posthog-react-native`. That swap is its own PR (different
+ * SDK shape — no `posthog.init`, different session-replay config) and
+ * isn't worth doing while native isn't shipping yet.
  */
 
 import {
@@ -19,6 +29,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
+import { Platform } from "react-native";
 import type { ReactNode } from "react";
 import posthog from "posthog-js";
 import type { PostHog } from "posthog-js";
@@ -138,6 +149,9 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
 
   // Initialise PostHog once on mount
   useEffect(() => {
+    // posthog-js is browser-only — gate on Platform so native builds
+    // (which never ship right now anyway) don't crash on `window`.
+    if (Platform.OS !== "web") return;
     const key = getConfig().posthogKey;
     if (!key) return; // analytics disabled (dev / test)
 
@@ -150,11 +164,15 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
       // Disable automatic pageview — we fire session_start manually
       capture_pageview: false,
       capture_pageleave: false,
-      // Session replay privacy
-      session_recording: {
-        maskAllInputs: true,
-        maskTextSelector: "*",
-      },
+      // Session replay is intentionally OFF. The previous config set
+      // session_recording masking flags, but `advanced_disable_decide:
+      // true` (below) disables the /decide endpoint that PostHog uses
+      // to *enable* recording from the server side — so masking config
+      // was theatre, recording wasn't running anyway. Rather than wire
+      // a half-working feature, we keep it disabled and the privacy
+      // policy stays true to "we don't run session replay". When/if we
+      // turn it on, this is the only line that needs to flip.
+      disable_session_recording: true,
       // Disable surveys + toolbar to minimise bundle
       advanced_disable_decide: true,
     });
