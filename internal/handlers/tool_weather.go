@@ -16,7 +16,9 @@ import (
 // WeatherTool is a chat tool that provides weather data for a location.
 // Uses the free Open-Meteo API (no API key required).
 type WeatherTool struct {
-	client *http.Client
+	client          *http.Client
+	forecastBaseURL string
+	geocodeBaseURL  string
 }
 
 type weatherArgs struct {
@@ -25,10 +27,31 @@ type weatherArgs struct {
 	City      string  `json:"city"`
 }
 
+const (
+	openMeteoForecastDefault = "https://api.open-meteo.com/v1"
+	openMeteoGeocodeDefault  = "https://geocoding-api.open-meteo.com/v1"
+)
+
 func NewWeatherTool() *WeatherTool {
 	return &WeatherTool{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client:          &http.Client{Timeout: 10 * time.Second},
+		forecastBaseURL: openMeteoForecastDefault,
+		geocodeBaseURL:  openMeteoGeocodeDefault,
 	}
+}
+
+// WithBaseURLs overrides the upstream Open-Meteo endpoints. Used by tests
+// to redirect to an httptest.Server — Open-Meteo has no sandbox endpoint
+// and we don't want CI hitting the live API on every run. Either argument
+// may be empty to keep the current default for that endpoint.
+func (t *WeatherTool) WithBaseURLs(forecast, geocode string) *WeatherTool {
+	if forecast != "" {
+		t.forecastBaseURL = forecast
+	}
+	if geocode != "" {
+		t.geocodeBaseURL = geocode
+	}
+	return t
 }
 
 func (t *WeatherTool) Definition() ai.ToolDefinition {
@@ -84,8 +107,8 @@ func (t *WeatherTool) Execute(ctx context.Context, args json.RawMessage) (json.R
 
 	// Fetch weather from Open-Meteo (free, no API key).
 	u := fmt.Sprintf(
-		"https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=auto&forecast_days=7",
-		lat, lng,
+		"%s/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=auto&forecast_days=7",
+		t.forecastBaseURL, lat, lng,
 	)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -163,7 +186,7 @@ func (t *WeatherTool) Execute(ctx context.Context, args json.RawMessage) (json.R
 }
 
 func (t *WeatherTool) geocodeCity(ctx context.Context, city string) (float64, float64, error) {
-	u := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1&language=en", url.QueryEscape(city))
+	u := fmt.Sprintf("%s/search?name=%s&count=1&language=en", t.geocodeBaseURL, url.QueryEscape(city))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return 0, 0, err
@@ -215,8 +238,13 @@ type openMeteoResponse struct {
 }
 
 // weatherCodeToText converts WMO weather codes to human-readable text.
+// WMO codes are non-negative integers; defensive handling for negative
+// inputs returns "Unknown" rather than letting them fall through to the
+// "code <= 3" case (which would mis-classify -1 as "Partly cloudy").
 func weatherCodeToText(code int) string {
 	switch {
+	case code < 0:
+		return "Unknown"
 	case code == 0:
 		return "Clear sky"
 	case code <= 3:
