@@ -172,4 +172,82 @@ describe("AIDisclaimerGate", () => {
       expect(screen.getByTestId("ai-disclaimer-gate")).toBeInTheDocument();
     });
   });
+
+  it("fails CLOSED when localStorage.getItem throws on the AI-disclaimer key (iOS private mode, etc.)", async () => {
+    // Simulate iOS Safari private browsing or quota-exceeded — read
+    // throws ONLY for the AI-disclaimer key. Mocking the whole
+    // Storage.prototype.getItem leaks into ThemeProvider's persisted
+    // theme read and causes spurious unhandled rejections, so we
+    // scope the failure to the key under test.
+    const realGetItem = Storage.prototype.getItem;
+    const getItemSpy = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(function (this: Storage, key: string) {
+        if (key === STORAGE_KEY("user-1")) {
+          throw new Error("QuotaExceededError: private mode");
+        }
+        return realGetItem.call(this, key);
+      });
+
+    mockedUseAuth.mockReturnValue({
+      accessToken: "token",
+      user: { id: "user-1" },
+    });
+
+    await act(async () => {
+      renderGate();
+    });
+
+    // Pre-fix this would leave needsAck stuck at null, the modal would
+    // never render, and the user would bypass the legal gate. The fix
+    // (issue #198) catches the error in getStorageItem and returns null,
+    // which `null !== "true"` evaluates to true, so the modal renders.
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-disclaimer-gate")).toBeInTheDocument();
+    });
+
+    getItemSpy.mockRestore();
+  });
+
+  it("does NOT trap user on the modal when localStorage.setItem throws on acknowledge", async () => {
+    // The legal audit trail is the PostHog event, not the local flag.
+    // If the storage write fails we still want to: (1) fire the event
+    // (so the trail captures the click), and (2) dismiss the modal so
+    // the user isn't stuck. They'll re-see the modal on next session,
+    // which is acceptable.
+    mockedUseAuth.mockReturnValue({
+      accessToken: "token",
+      user: { id: "user-1" },
+    });
+
+    await act(async () => {
+      renderGate();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-disclaimer-acknowledge")).toBeInTheDocument();
+    });
+
+    const realSetItem = Storage.prototype.setItem;
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(function (this: Storage, key: string, value: string) {
+        if (key === STORAGE_KEY("user-1")) {
+          throw new Error("QuotaExceededError");
+        }
+        return realSetItem.call(this, key, value);
+      });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ai-disclaimer-acknowledge"));
+    });
+
+    // The PostHog event MUST fire even when storage fails — the
+    // event is the actual audit trail.
+    await waitFor(() => {
+      expect(mockedTrack).toHaveBeenCalledWith("ai_disclaimer_acknowledged");
+    });
+
+    setItemSpy.mockRestore();
+  });
 });
