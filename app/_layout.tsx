@@ -39,9 +39,12 @@ function initSentry() {
 
     enableLogs: true,
 
-    // Session Replay: mask all text AND images for privacy
-    // (travel photos, maps, booking confirmations should not be captured)
-    replaysSessionSampleRate: 0.1,
+    // Session replay (random-sample) is OFF. The privacy policy doesn't
+    // disclose ambient session recording outside of error events, so we
+    // shouldn't be running it. Replay only on errors — that's what users
+    // get with replaysOnErrorSampleRate alone, with masking still applied
+    // for the captured frames.
+    replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1,
     integrations: [
       Sentry.mobileReplayIntegration({
