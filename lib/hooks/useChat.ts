@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createClient, Code, ConnectError } from "@connectrpc/connect";
 import { useTransport } from "@/lib/transport";
 import { useAuth } from "@/lib/auth";
+import { useAnalytics } from "@/lib/analytics";
 import { ChatService, ChatMode } from "@gen/toqui/v1/chat_pb";
 import type { ChatMessage as ProtoChatMessage } from "@gen/toqui/v1/chat_pb";
 import type { Persona } from "@gen/toqui/v1/persona_pb";
@@ -147,6 +148,7 @@ export function useChat(
   const transport = useTransport();
   const { isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { track } = useAnalytics();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -537,6 +539,14 @@ export function useChat(
                 const newActive = personaToActive(ps.newPersona);
                 activePersonaRef.current = newActive;
                 setActivePersona(newActive);
+                // Funnel event — measures the core "AI matched a
+                // composed expert to your trip" feature actually
+                // landing in the chat. `mode` distinguishes selection
+                // (handoff during trip discovery) vs planning vs
+                // companion (location-aware) handoffs. Persona name
+                // is NOT sent — that's effectively destination/theme
+                // metadata which is sensitive (CLAUDE.md privacy).
+                track("persona_switched", { mode });
               }
               if (ps.handoffMessage) {
                 const persona = ps.newPersona;
