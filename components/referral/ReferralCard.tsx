@@ -5,10 +5,12 @@ import * as Clipboard from "expo-clipboard";
 import { Gift, Copy, Share2, Users } from "lucide-react-native";
 import { useReferral } from "@/lib/hooks/useReferral";
 import { useTheme } from "@/lib/theme";
+import { useAnalytics } from "@/lib/analytics";
 
 export default function ReferralCard() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { track } = useAnalytics();
   const { code, successfulReferrals, rewardsEarned, rewardsRemaining, maxRewards, isLoading, error } = useReferral();
   const isCapped = rewardsRemaining <= 0 && rewardsEarned > 0;
   const [copied, setCopied] = useState(false);
@@ -24,10 +26,20 @@ export default function ReferralCard() {
     setCopied(true);
     clearTimeout(copiedTimer.current);
     copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+    // Funnel event — copy is a share intent. The referral code is NOT
+    // sent as a property (it's pseudo-PII identifying the referrer);
+    // `action: "copy"` distinguishes from native-share so the funnel
+    // shows which surface drives most viral pickup.
+    track("referral_shared", { action: "copy" });
   };
 
   const handleShare = async () => {
     if (!shareLink || !code) return;
+    // Pre-fire the event so it lands even if the user dismisses the
+    // native share sheet (which has no programmatic completion signal
+    // on either platform). The intent is what we measure, not the
+    // share-target landing.
+    track("referral_shared", { action: "native_share" });
     await Share.share({
       message: t("referral.shareMessage", { code, link: shareLink }),
     });
