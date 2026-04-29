@@ -31,6 +31,7 @@ type ConsentCheckFunc func(ctx context.Context, userID uuid.UUID) (bool, error)
 var consentExemptMethods = map[string]bool{
 	"/toqui.v1.AuthService/GoogleLogin":    true,
 	"/toqui.v1.AuthService/FacebookLogin":  true,
+	"/toqui.v1.AuthService/AppleLogin":     true,
 	"/toqui.v1.AuthService/RefreshToken":   true,
 	"/toqui.v1.AuthService/GetCurrentUser": true,
 	"/toqui.v1.AuthService/DeleteAccount":  true,

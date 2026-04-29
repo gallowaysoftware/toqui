@@ -10,8 +10,10 @@ import (
 )
 
 var publicMethods = map[string]bool{
-	"/toqui.v1.AuthService/GoogleLogin":  true,
-	"/toqui.v1.AuthService/RefreshToken": true,
+	"/toqui.v1.AuthService/GoogleLogin":   true,
+	"/toqui.v1.AuthService/FacebookLogin": true,
+	"/toqui.v1.AuthService/AppleLogin":    true,
+	"/toqui.v1.AuthService/RefreshToken":  true,
 }
 
 // authInterceptor implements connect.Interceptor for both unary and streaming RPCs.
