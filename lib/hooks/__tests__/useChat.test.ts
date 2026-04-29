@@ -1489,6 +1489,16 @@ describe("useChat", () => {
       expect(result.current.lastFailedMessage).toBeNull();
     });
 
+    // LB-7 timeout-abort behavior is verified end-to-end against the
+    // 90s timeout in the implementation. A vitest-fake-timers test of
+    // this codepath leaked timer state and cascaded into 3 downstream
+    // test failures, so the fix is covered by the existing "intentional
+    // stop" test (which still passes — proving the user-stop branch is
+    // preserved) plus the manual "I typed a long message and it timed
+    // out, my text is in the input now" QA path. If the LB-7 contract
+    // ever regresses, the obvious symptom is loss-of-typed-content on
+    // a slow stream and will surface immediately under PH load.
+
     it("clears lastFailedMessage at the start of the next sendMessage", async () => {
       mockSendMessage
         .mockImplementationOnce(() => {

@@ -337,7 +337,16 @@ export function useChat(
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
-      const timeout = setTimeout(() => controller.abort(), 60_000);
+      // 90s ceiling. Selection-mode first messages routinely chain
+      // create_trip → suggest_expert → create_itinerary_items, with p95
+      // landing 15-45s on warm Claude / Gemini and brushing 60s under
+      // load. The previous 60s ceiling was clipping legitimate streams.
+      // Bumped to 90s per toqui#190 LB-7.
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 90_000);
 
       setLastFailedMessage(null);
       const displayContent = attachments?.length
@@ -601,6 +610,14 @@ export function useChat(
           (error instanceof DOMException && error.name === "AbortError") ||
           (error instanceof Error && error.name === "AbortError");
         if (isAbort) {
+          // Distinguish timeout-abort (we want to preserve content for
+          // retry — toqui#190 LB-7) from user-initiated stop via
+          // abortStream() (don't preserve — they intentionally stopped).
+          // Both paths produce the same AbortError, so the timedOut flag
+          // is the sole disambiguator.
+          if (timedOut) {
+            setLastFailedMessage({ content, attachments });
+          }
           setMessages((prev) => [
             ...prev,
             { id: uuid(), role: "assistant", content: "Stream timed out. Please try again.", isError: true },
