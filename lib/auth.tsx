@@ -65,7 +65,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isLoading: boolean;
-  login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
+  login: (googleAuthCode: string, redirectUri?: string) => Promise<{ consentPending: boolean }>;
   user: AuthUser | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
@@ -161,6 +161,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await tokenStorage.set("toqui_access_token", res.accessToken);
     await tokenStorage.set("toqui_refresh_token", res.refreshToken);
+    // Surface consentPending so callers (auth/callback.tsx) can fire
+    // the right analytics event — signup_completed for first-time
+    // users (consent not yet recorded), signin_completed otherwise.
+    // Pre-fix this leaked signup_completed on every returning sign-in
+    // (toqui#190 LB-8) which polluted the funnel-conversion metric.
+    return { consentPending: res.consentPending };
   }, []);
 
   const refreshTokens = useCallback(async (): Promise<string | null> => {
