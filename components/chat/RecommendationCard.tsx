@@ -56,12 +56,23 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
     disclosureBadge: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 8,
+      marginBottom: 4,
     },
     disclosureLabel: {
       fontSize: 11,
       color: colors.textTertiary,
       fontWeight: "500",
+      lineHeight: 14,
+    },
+    verifyBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    verifyLabel: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      fontStyle: "italic",
       lineHeight: 14,
     },
   });
@@ -94,6 +105,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       <View style={styles.disclosureBadge}>
         <Text style={styles.disclosureLabel}>
           {recommendation.disclosure ?? "Partner link — booking supports Toqui at no cost to you."}
+        </Text>
+      </View>
+      <View style={styles.verifyBadge}>
+        <Text style={styles.verifyLabel}>
+          AI-suggested. Verify price, availability, and details on the partner site before booking.
         </Text>
       </View>
       <View style={styles.cta}>
