@@ -15,7 +15,8 @@ import (
 // CurrencyTool provides real-time exchange rate lookups.
 // Uses the free exchangerate.host API (no API key required for basic usage).
 type CurrencyTool struct {
-	client *http.Client
+	client  *http.Client
+	baseURL string
 }
 
 type currencyArgs struct {
@@ -24,10 +25,25 @@ type currencyArgs struct {
 	To     string  `json:"to"`
 }
 
+// frankfurterDefaultBaseURL is the default upstream base URL. Extracted as a
+// constant (rather than inlined into Execute) so tests can swap it out via
+// WithBaseURL — Frankfurter doesn't have a sandbox endpoint and we don't want
+// CI to hit the live API on every run.
+const frankfurterDefaultBaseURL = "https://api.frankfurter.app"
+
 func NewCurrencyTool() *CurrencyTool {
 	return &CurrencyTool{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client:  &http.Client{Timeout: 10 * time.Second},
+		baseURL: frankfurterDefaultBaseURL,
 	}
+}
+
+// WithBaseURL overrides the upstream exchange-rate API base URL. Used by
+// tests to redirect requests to an httptest.Server. Returning *CurrencyTool
+// preserves chainability for any future option setters.
+func (t *CurrencyTool) WithBaseURL(u string) *CurrencyTool {
+	t.baseURL = u
+	return t
 }
 
 func (t *CurrencyTool) Definition() ai.ToolDefinition {
@@ -75,7 +91,7 @@ func (t *CurrencyTool) Execute(ctx context.Context, args json.RawMessage) (json.
 	}
 
 	// Use Open Exchange Rates alternative — frankfurter.app (free, no key).
-	u := fmt.Sprintf("https://api.frankfurter.app/latest?amount=%.2f&from=%s&to=%s", params.Amount, from, to)
+	u := fmt.Sprintf("%s/latest?amount=%.2f&from=%s&to=%s", t.baseURL, params.Amount, from, to)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create currency request: %w", err)
