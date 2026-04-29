@@ -37,12 +37,23 @@ import { useTheme } from "@/lib/theme";
 
 const STORAGE_KEY_PREFIX = "toqui_ai_disclaimer_acked_v1_";
 
+// Storage helpers swallow read errors and surface them as null so the
+// caller's "no value found" branch handles the same way as "couldn't
+// read" — see useEffect below for the fail-CLOSED policy. Write errors
+// rethrow so the caller can decide whether to surface them; in this
+// component we swallow them in handleAcknowledge to avoid trapping the
+// user on the modal (the audit trail is the PostHog event, not the
+// local flag — see issue #198).
 async function getStorageItem(key: string): Promise<string | null> {
-  if (Platform.OS === "web") {
-    return localStorage.getItem(key);
+  try {
+    if (Platform.OS === "web") {
+      return localStorage.getItem(key);
+    }
+    const { getItemAsync } = await import("expo-secure-store");
+    return getItemAsync(key);
+  } catch {
+    return null;
   }
-  const { getItemAsync } = await import("expo-secure-store");
-  return getItemAsync(key);
 }
 
 async function setStorageItem(key: string, value: string): Promise<void> {
@@ -74,6 +85,11 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
       return;
     }
     let cancelled = false;
+    // Fail-CLOSED via getStorageItem's swallow-to-null: a read error
+    // (iOS Safari private mode, quota exceeded, secure-store import
+    // failure) returns null, which `null !== "true"` evaluates to true,
+    // so the modal shows. Better to over-prompt than to bypass the
+    // legal gate (issue #198).
     void getStorageItem(STORAGE_KEY_PREFIX + user.id).then((v) => {
       if (!cancelled) setNeedsAck(v !== "true");
     });
@@ -84,12 +100,19 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
 
   const handleAcknowledge = useCallback(async () => {
     if (!user?.id) return;
-    await setStorageItem(STORAGE_KEY_PREFIX + user.id, "true");
-    // Server-side audit trail via PostHog. The event timestamp + the
-    // hashed distinct_id together prove "this user clicked through this
-    // disclaimer at this time" — sufficient for a side-project liability
-    // surface; replace with a backend consent row if usage scales.
+    // Track FIRST — PostHog is the audit trail; the local storage write
+    // is just a "don't re-prompt" UX nicety. If the storage write throws
+    // (quota, private mode, etc.) we still want the audit-trail event
+    // to land and we still want the user to proceed past the modal —
+    // they'll see it again on next session, which is acceptable.
+    // Pre-fix, a thrown setItemAsync would leave the user stuck on the
+    // modal forever (issue #198).
     track("ai_disclaimer_acknowledged");
+    try {
+      await setStorageItem(STORAGE_KEY_PREFIX + user.id, "true");
+    } catch {
+      // intentionally swallow — see comment above
+    }
     setNeedsAck(false);
   }, [user?.id, track]);
 
@@ -100,11 +123,24 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
         visible={needsAck === true}
         animationType="fade"
         transparent
+        // accessibilityViewIsModal tells iOS VoiceOver to trap focus
+        // inside the modal — without it, swipe-to-explore can land on
+        // the backgrounded children and screen-reader users can dismiss
+        // the modal accidentally without acknowledging.
+        // eslint-disable-next-line react/no-unknown-property
+        accessibilityViewIsModal
         onRequestClose={() => {
           // Android back button — ignored. The modal must be acknowledged.
         }}
       >
-        <View style={styles.backdrop}>
+        <View
+          style={styles.backdrop}
+          // role="dialog" on web (react-native-web maps it from accessibilityRole),
+          // ignored on native. Combined with accessibilityViewIsModal above this
+          // makes the modal announce itself to assistive tech on every platform.
+          accessibilityRole={Platform.OS === "web" ? ("dialog" as never) : undefined}
+          aria-modal={Platform.OS === "web" ? true : undefined}
+        >
           <View
             style={[styles.card, { backgroundColor: colors.surface }]}
             testID="ai-disclaimer-gate"
