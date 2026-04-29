@@ -326,10 +326,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		if cached := h.locationCache.Get(userID); cached != nil {
 			params.LocationLat = cached.Lat
 			params.LocationLng = cached.Lng
+			// Privacy: location coordinates must NEVER appear in logs.
+			// privacy.astro §1.4 promises location is ephemeral and never
+			// written to any persistent log. Log presence-only.
 			slog.Debug("injected cached location into companion chat",
 				"user_id", userID,
-				"lat", cached.Lat,
-				"lng", cached.Lng,
+				"location_present", true,
 			)
 		}
 	}
@@ -749,10 +751,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 			}
 			for _, rec := range localRecs {
+				// Privacy: recommendation titles can include destination
+				// names ("Hotel X in Paris"), revealing user travel intent
+				// in logs. Track partner+category counts only.
 				slog.Info("affiliate recommendation generated",
 					"partner", rec.Partner,
 					"category", rec.Category,
-					"title", rec.Title,
 					"user_id", userID,
 				)
 			}

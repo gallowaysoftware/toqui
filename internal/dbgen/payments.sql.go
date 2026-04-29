@@ -14,7 +14,7 @@ import (
 )
 
 const countUserPayments = `-- name: CountUserPayments :one
-SELECT COUNT(*) FROM helcim_payments WHERE user_id = $1
+SELECT COUNT(*) FROM payments WHERE user_id = $1
 `
 
 func (q *Queries) CountUserPayments(ctx context.Context, userID uuid.UUID) (int64, error) {
@@ -25,36 +25,33 @@ func (q *Queries) CountUserPayments(ctx context.Context, userID uuid.UUID) (int6
 }
 
 const createCheckoutSession = `-- name: CreateCheckoutSession :one
-INSERT INTO helcim_checkout_sessions (user_id, trip_id, checkout_token, secret_token, amount_cents, currency)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, user_id, trip_id, checkout_token, secret_token, amount_cents, currency, status, created_at, completed_at
+INSERT INTO checkout_sessions (user_id, trip_id, checkout_token, amount_cents, currency)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, trip_id, checkout_token, amount_cents, currency, status, created_at, completed_at
 `
 
 type CreateCheckoutSessionParams struct {
 	UserID        uuid.UUID `json:"user_id"`
 	TripID        uuid.UUID `json:"trip_id"`
 	CheckoutToken string    `json:"checkout_token"`
-	SecretToken   string    `json:"secret_token"`
 	AmountCents   int32     `json:"amount_cents"`
 	Currency      string    `json:"currency"`
 }
 
-func (q *Queries) CreateCheckoutSession(ctx context.Context, arg CreateCheckoutSessionParams) (HelcimCheckoutSession, error) {
+func (q *Queries) CreateCheckoutSession(ctx context.Context, arg CreateCheckoutSessionParams) (CheckoutSession, error) {
 	row := q.db.QueryRow(ctx, createCheckoutSession,
 		arg.UserID,
 		arg.TripID,
 		arg.CheckoutToken,
-		arg.SecretToken,
 		arg.AmountCents,
 		arg.Currency,
 	)
-	var i HelcimCheckoutSession
+	var i CheckoutSession
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.TripID,
 		&i.CheckoutToken,
-		&i.SecretToken,
 		&i.AmountCents,
 		&i.Currency,
 		&i.Status,
@@ -65,47 +62,38 @@ func (q *Queries) CreateCheckoutSession(ctx context.Context, arg CreateCheckoutS
 }
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO helcim_payments (user_id, trip_id, helcim_transaction_id, approval_code, card_token, amount_cents, currency, status, response_hash)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, user_id, trip_id, helcim_transaction_id, approval_code, card_token, amount_cents, currency, status, response_hash, created_at
+INSERT INTO payments (user_id, trip_id, external_payment_id, amount_cents, currency, status)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, trip_id, external_payment_id, amount_cents, currency, status, created_at
 `
 
 type CreatePaymentParams struct {
-	UserID              uuid.UUID   `json:"user_id"`
-	TripID              uuid.UUID   `json:"trip_id"`
-	HelcimTransactionID string      `json:"helcim_transaction_id"`
-	ApprovalCode        pgtype.Text `json:"approval_code"`
-	CardToken           pgtype.Text `json:"card_token"`
-	AmountCents         int32       `json:"amount_cents"`
-	Currency            string      `json:"currency"`
-	Status              string      `json:"status"`
-	ResponseHash        pgtype.Text `json:"response_hash"`
+	UserID            uuid.UUID `json:"user_id"`
+	TripID            uuid.UUID `json:"trip_id"`
+	ExternalPaymentID string    `json:"external_payment_id"`
+	AmountCents       int32     `json:"amount_cents"`
+	Currency          string    `json:"currency"`
+	Status            string    `json:"status"`
 }
 
-func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (HelcimPayment, error) {
+func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, createPayment,
 		arg.UserID,
 		arg.TripID,
-		arg.HelcimTransactionID,
-		arg.ApprovalCode,
-		arg.CardToken,
+		arg.ExternalPaymentID,
 		arg.AmountCents,
 		arg.Currency,
 		arg.Status,
-		arg.ResponseHash,
 	)
-	var i HelcimPayment
+	var i Payment
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.TripID,
-		&i.HelcimTransactionID,
-		&i.ApprovalCode,
-		&i.CardToken,
+		&i.ExternalPaymentID,
 		&i.AmountCents,
 		&i.Currency,
 		&i.Status,
-		&i.ResponseHash,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -145,18 +133,17 @@ func (q *Queries) CreateTripUnlock(ctx context.Context, arg CreateTripUnlockPara
 }
 
 const getCheckoutSessionByToken = `-- name: GetCheckoutSessionByToken :one
-SELECT id, user_id, trip_id, checkout_token, secret_token, amount_cents, currency, status, created_at, completed_at FROM helcim_checkout_sessions WHERE checkout_token = $1
+SELECT id, user_id, trip_id, checkout_token, amount_cents, currency, status, created_at, completed_at FROM checkout_sessions WHERE checkout_token = $1
 `
 
-func (q *Queries) GetCheckoutSessionByToken(ctx context.Context, checkoutToken string) (HelcimCheckoutSession, error) {
+func (q *Queries) GetCheckoutSessionByToken(ctx context.Context, checkoutToken string) (CheckoutSession, error) {
 	row := q.db.QueryRow(ctx, getCheckoutSessionByToken, checkoutToken)
-	var i HelcimCheckoutSession
+	var i CheckoutSession
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.TripID,
 		&i.CheckoutToken,
-		&i.SecretToken,
 		&i.AmountCents,
 		&i.Currency,
 		&i.Status,
@@ -167,23 +154,20 @@ func (q *Queries) GetCheckoutSessionByToken(ctx context.Context, checkoutToken s
 }
 
 const getPaymentByTransactionID = `-- name: GetPaymentByTransactionID :one
-SELECT id, user_id, trip_id, helcim_transaction_id, approval_code, card_token, amount_cents, currency, status, response_hash, created_at FROM helcim_payments WHERE helcim_transaction_id = $1
+SELECT id, user_id, trip_id, external_payment_id, amount_cents, currency, status, created_at FROM payments WHERE external_payment_id = $1
 `
 
-func (q *Queries) GetPaymentByTransactionID(ctx context.Context, helcimTransactionID string) (HelcimPayment, error) {
-	row := q.db.QueryRow(ctx, getPaymentByTransactionID, helcimTransactionID)
-	var i HelcimPayment
+func (q *Queries) GetPaymentByTransactionID(ctx context.Context, externalPaymentID string) (Payment, error) {
+	row := q.db.QueryRow(ctx, getPaymentByTransactionID, externalPaymentID)
+	var i Payment
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.TripID,
-		&i.HelcimTransactionID,
-		&i.ApprovalCode,
-		&i.CardToken,
+		&i.ExternalPaymentID,
 		&i.AmountCents,
 		&i.Currency,
 		&i.Status,
-		&i.ResponseHash,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -206,8 +190,8 @@ func (q *Queries) IsTripUnlocked(ctx context.Context, arg IsTripUnlockedParams) 
 }
 
 const listUserPayments = `-- name: ListUserPayments :many
-SELECT p.id, p.user_id, p.trip_id, p.helcim_transaction_id, p.approval_code, p.card_token, p.amount_cents, p.currency, p.status, p.response_hash, p.created_at, t.title as trip_title
-FROM helcim_payments p
+SELECT p.id, p.user_id, p.trip_id, p.external_payment_id, p.amount_cents, p.currency, p.status, p.created_at, t.title as trip_title
+FROM payments p
 JOIN trips t ON t.id = p.trip_id
 WHERE p.user_id = $1
 ORDER BY p.created_at DESC
@@ -221,18 +205,15 @@ type ListUserPaymentsParams struct {
 }
 
 type ListUserPaymentsRow struct {
-	ID                  uuid.UUID   `json:"id"`
-	UserID              uuid.UUID   `json:"user_id"`
-	TripID              uuid.UUID   `json:"trip_id"`
-	HelcimTransactionID string      `json:"helcim_transaction_id"`
-	ApprovalCode        pgtype.Text `json:"approval_code"`
-	CardToken           pgtype.Text `json:"card_token"`
-	AmountCents         int32       `json:"amount_cents"`
-	Currency            string      `json:"currency"`
-	Status              string      `json:"status"`
-	ResponseHash        pgtype.Text `json:"response_hash"`
-	CreatedAt           time.Time   `json:"created_at"`
-	TripTitle           string      `json:"trip_title"`
+	ID                uuid.UUID `json:"id"`
+	UserID            uuid.UUID `json:"user_id"`
+	TripID            uuid.UUID `json:"trip_id"`
+	ExternalPaymentID string    `json:"external_payment_id"`
+	AmountCents       int32     `json:"amount_cents"`
+	Currency          string    `json:"currency"`
+	Status            string    `json:"status"`
+	CreatedAt         time.Time `json:"created_at"`
+	TripTitle         string    `json:"trip_title"`
 }
 
 func (q *Queries) ListUserPayments(ctx context.Context, arg ListUserPaymentsParams) ([]ListUserPaymentsRow, error) {
@@ -248,13 +229,10 @@ func (q *Queries) ListUserPayments(ctx context.Context, arg ListUserPaymentsPara
 			&i.ID,
 			&i.UserID,
 			&i.TripID,
-			&i.HelcimTransactionID,
-			&i.ApprovalCode,
-			&i.CardToken,
+			&i.ExternalPaymentID,
 			&i.AmountCents,
 			&i.Currency,
 			&i.Status,
-			&i.ResponseHash,
 			&i.CreatedAt,
 			&i.TripTitle,
 		); err != nil {
@@ -315,7 +293,7 @@ func (q *Queries) ListUserTripUnlocks(ctx context.Context, userID uuid.UUID) ([]
 }
 
 const markCheckoutSessionComplete = `-- name: MarkCheckoutSessionComplete :exec
-UPDATE helcim_checkout_sessions SET status = 'complete', completed_at = NOW()
+UPDATE checkout_sessions SET status = 'complete', completed_at = NOW()
 WHERE checkout_token = $1 AND status = 'open'
 `
 
@@ -325,11 +303,67 @@ func (q *Queries) MarkCheckoutSessionComplete(ctx context.Context, checkoutToken
 }
 
 const markCheckoutSessionExpired = `-- name: MarkCheckoutSessionExpired :exec
-UPDATE helcim_checkout_sessions SET status = 'expired'
+UPDATE checkout_sessions SET status = 'expired'
 WHERE checkout_token = $1 AND status = 'open'
 `
 
 func (q *Queries) MarkCheckoutSessionExpired(ctx context.Context, checkoutToken string) error {
 	_, err := q.db.Exec(ctx, markCheckoutSessionExpired, checkoutToken)
 	return err
+}
+
+const markStripeEventFailed = `-- name: MarkStripeEventFailed :exec
+UPDATE stripe_events SET last_error = $1
+WHERE id = $2
+`
+
+type MarkStripeEventFailedParams struct {
+	LastError pgtype.Text `json:"last_error"`
+	ID        string      `json:"id"`
+}
+
+func (q *Queries) MarkStripeEventFailed(ctx context.Context, arg MarkStripeEventFailedParams) error {
+	_, err := q.db.Exec(ctx, markStripeEventFailed, arg.LastError, arg.ID)
+	return err
+}
+
+const markStripeEventProcessed = `-- name: MarkStripeEventProcessed :exec
+UPDATE stripe_events SET processed_at = NOW(), last_error = NULL
+WHERE id = $1
+`
+
+func (q *Queries) MarkStripeEventProcessed(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markStripeEventProcessed, id)
+	return err
+}
+
+const recordStripeEvent = `-- name: RecordStripeEvent :one
+INSERT INTO stripe_events (id, event_type)
+VALUES ($1, $2)
+ON CONFLICT (id) DO UPDATE SET retry_count = stripe_events.retry_count + 1
+RETURNING id, event_type, received_at, processed_at, retry_count, last_error
+`
+
+type RecordStripeEventParams struct {
+	ID        string `json:"id"`
+	EventType string `json:"event_type"`
+}
+
+// Idempotency record for Stripe webhook events. Returns the row's
+// processed_at to let the handler decide whether to short-circuit.
+// ON CONFLICT bumps retry_count so we can tell repeat retries apart from
+// first-time deliveries; if processed_at IS NOT NULL on conflict, the
+// handler returns 200 immediately without re-running side effects.
+func (q *Queries) RecordStripeEvent(ctx context.Context, arg RecordStripeEventParams) (StripeEvent, error) {
+	row := q.db.QueryRow(ctx, recordStripeEvent, arg.ID, arg.EventType)
+	var i StripeEvent
+	err := row.Scan(
+		&i.ID,
+		&i.EventType,
+		&i.ReceivedAt,
+		&i.ProcessedAt,
+		&i.RetryCount,
+		&i.LastError,
+	)
+	return i, err
 }

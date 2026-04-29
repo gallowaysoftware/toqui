@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stripe/stripe-go/v82"
 
@@ -252,14 +253,74 @@ func (h *SubscriptionHandler) HandleWebhook(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Idempotency. Stripe occasionally redelivers events (network blips,
+	// our 5xx responses, queue replay). RecordStripeEvent inserts the
+	// event ID; on conflict it bumps retry_count and returns the existing
+	// row so we can detect "already processed" via processed_at.
+	rec, err := h.queries.RecordStripeEvent(r.Context(), dbgen.RecordStripeEventParams{
+		ID:        event.ID,
+		EventType: string(event.Type),
+	})
+	if err != nil {
+		// Idempotency table unavailable — fail loud with 500 so Stripe
+		// retries. Better to delay processing than to risk double-charge
+		// or double-unlock from a transient DB error.
+		slog.Error("stripe webhook idempotency record failed",
+			"error", err,
+			"event_id", event.ID,
+			"event_type", event.Type,
+		)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if rec.ProcessedAt.Valid {
+		slog.Info("stripe webhook duplicate, already processed",
+			"event_id", event.ID,
+			"event_type", event.Type,
+			"retry_count", rec.RetryCount,
+		)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"received":true,"duplicate":true}`))
+		return
+	}
+
 	if err := h.subSvc.HandleWebhook(r.Context(), event); err != nil {
-		slog.Error("stripe webhook processing failed", "error", err, "event_type", event.Type)
-		// Return 200 anyway to prevent Stripe from retrying indefinitely.
-		// The error is logged for investigation.
+		slog.Error("stripe webhook processing failed",
+			"error", err,
+			"event_id", event.ID,
+			"event_type", event.Type,
+		)
+		// Persist the error message so future retries / debugging have
+		// context. Best-effort; ignore failure (we're already returning
+		// 500 below).
+		errMsg := err.Error()
+		if len(errMsg) > 1024 {
+			errMsg = errMsg[:1024]
+		}
+		_ = h.queries.MarkStripeEventFailed(r.Context(), dbgen.MarkStripeEventFailedParams{
+			ID:        event.ID,
+			LastError: pgtype.Text{String: errMsg, Valid: true},
+		})
+		// Return 500 so Stripe retries. The previous behaviour ("return
+		// 200 anyway") meant a transient DB blip during processing left
+		// the user paid-but-not-unlocked with no recovery path.
+		http.Error(w, "webhook processing failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.queries.MarkStripeEventProcessed(r.Context(), event.ID); err != nil {
+		// Processing succeeded but we couldn't mark it done — log and
+		// return 200 anyway. A subsequent redelivery will find the row
+		// without processed_at set and re-run, but the side effects are
+		// idempotent at the service layer (IsTripUnlocked check etc.).
+		slog.Warn("stripe webhook mark-processed failed",
+			"error", err,
+			"event_id", event.ID,
+		)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"received":true}`))
+	_, _ = w.Write([]byte(`{"received":true}`))
 }
 
 // HandleCreatePortal handles POST /api/subscription/portal.

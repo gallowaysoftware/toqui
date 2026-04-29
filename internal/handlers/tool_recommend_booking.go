@@ -169,13 +169,17 @@ func (t *RecommendBookingTool) Execute(ctx context.Context, args json.RawMessage
 		return nil, fmt.Errorf("query is required")
 	}
 
+	// Privacy: travel data (destination, dates, free-text query) must NEVER
+	// appear in logs (CLAUDE.md "Never log destination names, chat content,
+	// specific travel dates, hotel/flight names"). Log shape only — what
+	// fields were present, not what they contained — so an accidental log
+	// level flip doesn't leak user trips.
 	slog.Debug("recommend_booking tool executing",
 		"category", params.Category,
-		"query", params.Query,
-		"origin", params.Origin,
-		"destination", params.Destination,
-		"date_from", params.DateFrom,
-		"date_to", params.DateTo,
+		"has_query", params.Query != "",
+		"has_origin", params.Origin != "",
+		"has_destination", params.Destination != "",
+		"has_dates", params.DateFrom != "" || params.DateTo != "",
 		"user_tier", string(t.userTier),
 	)
 

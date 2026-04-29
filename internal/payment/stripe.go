@@ -145,8 +145,7 @@ func (s *Service) InitializeCheckoutWithPrice(ctx context.Context, userID, tripI
 	_, dbErr := s.queries.CreateCheckoutSession(ctx, dbgen.CreateCheckoutSessionParams{
 		UserID:        userID,
 		TripID:        tripID,
-		CheckoutToken: session.ID, // Use Stripe session ID as the checkout token
-		SecretToken:   "",         // Not needed for Stripe (webhook-based validation)
+		CheckoutToken: session.ID, // Stripe session ID
 		AmountCents:   int32(priceCents),
 		Currency:      "CAD",
 	})
@@ -187,12 +186,12 @@ func (s *Service) HandlePaymentWebhook(ctx context.Context, userID, tripID uuid.
 
 	// Record payment
 	payment, err := s.queries.CreatePayment(ctx, dbgen.CreatePaymentParams{
-		UserID:              userID,
-		TripID:              tripID,
-		HelcimTransactionID: sessionID, // Reuse the column for Stripe session ID
-		AmountCents:         amountCents,
-		Currency:            "CAD",
-		Status:              "approved",
+		UserID:            userID,
+		TripID:            tripID,
+		ExternalPaymentID: sessionID,
+		AmountCents:       amountCents,
+		Currency:          "CAD",
+		Status:            "approved",
 	})
 	if err != nil {
 		return fmt.Errorf("record payment: %w", err)

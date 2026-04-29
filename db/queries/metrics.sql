@@ -11,7 +11,7 @@ SELECT COUNT(*) FROM trips;
 SELECT COALESCE(SUM(message_count), 0)::bigint FROM daily_usage WHERE date = CURRENT_DATE;
 
 -- name: CountTripProPurchases :one
-SELECT COUNT(*) FROM helcim_payments;
+SELECT COUNT(*) FROM payments;
 
 -- name: CountProUsers :one
 SELECT COUNT(*) FROM users WHERE subscription_tier = 'pro';
@@ -33,10 +33,10 @@ GROUP BY tier;
 
 -- name: GetTotalTripProRevenueCents :one
 SELECT COALESCE(SUM(amount_cents), 0)::bigint
-FROM helcim_payments
+FROM payments
 WHERE status = 'approved';
 
 -- name: GetMonthlyTripProRevenueCents :one
 SELECT COALESCE(SUM(amount_cents), 0)::bigint
-FROM helcim_payments
+FROM payments
 WHERE status = 'approved' AND created_at >= CURRENT_DATE - INTERVAL '30 days';

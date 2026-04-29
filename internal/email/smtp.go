@@ -52,18 +52,21 @@ func (s *Sender) Send(to, subject, body string) error {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		slog.Error("email send failed", "to", to, "subject", subject, "error", err)
+		// Recipient is masked because subject can include personal names
+		// for collab invites ("X invited you to collaborate on ...") and
+		// recipient is PII; both flow into Cloud Logging unredacted otherwise.
+		slog.Error("email send failed", "to", MaskEmail(to), "error", err)
 		return fmt.Errorf("send email: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		slog.Error("email send failed", "to", to, "subject", subject, "status", resp.StatusCode, "body", string(respBody))
+		slog.Error("email send failed", "to", MaskEmail(to), "status", resp.StatusCode, "body", string(respBody))
 		return fmt.Errorf("resend API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	slog.Info("email sent", "to", to, "subject", subject)
+	slog.Info("email sent", "to", MaskEmail(to))
 	return nil
 }
 

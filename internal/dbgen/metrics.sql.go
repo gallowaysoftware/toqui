@@ -98,7 +98,7 @@ func (q *Queries) CountTotalUsers(ctx context.Context) (int64, error) {
 }
 
 const countTripProPurchases = `-- name: CountTripProPurchases :one
-SELECT COUNT(*) FROM helcim_payments
+SELECT COUNT(*) FROM payments
 `
 
 func (q *Queries) CountTripProPurchases(ctx context.Context) (int64, error) {
@@ -142,7 +142,7 @@ func (q *Queries) GetActiveSubscriptionsByTier(ctx context.Context) ([]GetActive
 
 const getMonthlyTripProRevenueCents = `-- name: GetMonthlyTripProRevenueCents :one
 SELECT COALESCE(SUM(amount_cents), 0)::bigint
-FROM helcim_payments
+FROM payments
 WHERE status = 'approved' AND created_at >= CURRENT_DATE - INTERVAL '30 days'
 `
 
@@ -155,7 +155,7 @@ func (q *Queries) GetMonthlyTripProRevenueCents(ctx context.Context) (int64, err
 
 const getTotalTripProRevenueCents = `-- name: GetTotalTripProRevenueCents :one
 SELECT COALESCE(SUM(amount_cents), 0)::bigint
-FROM helcim_payments
+FROM payments
 WHERE status = 'approved'
 `
 
