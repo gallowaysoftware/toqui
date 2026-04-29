@@ -337,9 +337,9 @@ Both generate from the trip itinerary and are accessible from the trip settings 
 
 EU-hosted PostHog instance (`eu.i.posthog.com`). Privacy-first setup compliant with Core Principles:
 
-- **Tracked events (acquisition)**: session_start, return_visit, signup_started, signup_completed, age_gate_passed, onboarding_completed, template_selected
-- **Tracked events (engagement)**: app_opened, trip_created, first_trip_created, second_trip_created, trip_shared, shared_trip_viewed, shared_trip_signup_clicked, chat_message_sent, first_message_sent, first_itinerary_generated, itinerary_exported, persona_switched, booking_added
-- **Tracked events (monetization)**: upgrade_viewed, upgrade_prompt_shown, upgrade_started, checkout_initiated, payment_completed, payment_validation_failed, pro_purchased, recommendation_clicked, referral_shared, referral_redeemed
+- **Tracked events (acquisition)**: session_start, return_visit, signup_started, signup_completed, signin_completed, age_gate_passed, ai_disclaimer_acknowledged, consent_recorded, onboarding_completed
+- **Tracked events (engagement)**: trip_created, first_trip_created, second_trip_created, trip_shared, shared_trip_viewed, shared_trip_signup_clicked, first_message_sent, first_itinerary_generated, itinerary_generated, error_encountered
+- **Tracked events (monetization)**: upgrade_viewed, upgrade_prompt_shown, upgrade_started, checkout_initiated, payment_completed, recommendation_clicked, subscription_started, subscription_cancel_started, subscription_manage_opened
 - All events track behavior patterns only — no destination names, chat content, or PII
 - User IDs are pseudonymized (SHA-256 hashed)
 - Session replay enabled with all text inputs and chat content masked
