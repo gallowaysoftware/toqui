@@ -57,6 +57,17 @@ INSERT INTO users (email, name, facebook_id, avatar_url)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
+-- name: GetUserByAppleSub :one
+SELECT * FROM users WHERE apple_sub = $1;
+
+-- name: UpdateUserAppleSub :exec
+UPDATE users SET apple_sub = $2, updated_at = NOW() WHERE id = $1;
+
+-- name: CreateUserWithApple :one
+INSERT INTO users (email, name, apple_sub, avatar_url)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
 -- name: IsUserAdmin :one
 SELECT is_admin FROM users WHERE id = $1;
 

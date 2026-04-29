@@ -28,6 +28,7 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
+	"github.com/gallowaysoftware/toqui-backend/internal/auth/apple"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
@@ -123,6 +124,27 @@ func main() {
 		cfg.GoogleRedirectURI,
 		cfg.JWTSecret,
 	)
+
+	// Apple Sign-In: enabled only when all four credentials are present.
+	// Until Apple Developer enrollment completes, these are blank in every
+	// environment and AppleLogin returns Unimplemented.
+	if apple.IsConfigured(cfg.AppleTeamID, cfg.AppleServicesID, cfg.AppleKeyID, []byte(cfg.ApplePrivateKey)) {
+		appleClient, err := apple.NewClient(apple.Config{
+			TeamID:     cfg.AppleTeamID,
+			ServicesID: cfg.AppleServicesID,
+			KeyID:      cfg.AppleKeyID,
+			PrivateKey: []byte(cfg.ApplePrivateKey),
+		})
+		if err != nil {
+			slog.Error("apple sign-in client initialization failed — AppleLogin will be unimplemented",
+				"error", err)
+		} else {
+			authSvc.WithAppleClient(appleClient)
+			slog.Info("apple sign-in configured", "services_id", cfg.AppleServicesID, "team_id", cfg.AppleTeamID)
+		}
+	} else {
+		slog.Warn("apple sign-in not configured (waiting on Apple Developer enrollment) — AppleLogin returns Unimplemented")
+	}
 
 	// Allow frontend origins to use their own /auth/callback as redirect URI.
 	// This is needed because the SPA sends the auth code to GoogleLogin with

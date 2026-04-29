@@ -10,6 +10,7 @@ import "google/protobuf/timestamp.proto";
 service AuthService {
   rpc GoogleLogin(GoogleLoginRequest) returns (GoogleLoginResponse);
   rpc FacebookLogin(FacebookLoginRequest) returns (FacebookLoginResponse);
+  rpc AppleLogin(AppleLoginRequest) returns (AppleLoginResponse);
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
   rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
 
@@ -40,6 +41,27 @@ message FacebookLoginResponse {
   string refresh_token = 2;
   User user = 3;
   bool consent_pending = 4;  // True when the user has not yet accepted terms/privacy
+}
+
+// Apple Sign-In: the frontend (expo-apple-authentication) returns an
+// authorization_code + id_token after the user taps "Sign in with Apple."
+// The backend exchanges the code with Apple, verifies the signed ID token,
+// and creates / links a Toqui user account.
+message AppleLoginRequest {
+  string authorization_code = 1 [(buf.validate.field).string.min_len = 1];
+  string id_token = 2 [(buf.validate.field).string.min_len = 1];
+  // Optional. The Services-ID redirect URI the frontend supplied during the
+  // initial authorization request. Apple verifies this against the value it
+  // saw client-side, so it must match exactly.
+  string redirect_uri = 3;
+}
+
+message AppleLoginResponse {
+  User user = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  bool consent_pending = 5;  // True when the user has not yet accepted terms/privacy
 }
 
 message RefreshTokenRequest {

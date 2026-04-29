@@ -259,6 +259,7 @@ type User struct {
 	AgeVerifiedAt    pgtype.Timestamptz `json:"age_verified_at"`
 	FacebookID       pgtype.Text        `json:"facebook_id"`
 	IsAdmin          bool               `json:"is_admin"`
+	AppleSub         pgtype.Text        `json:"apple_sub"`
 }
 
 type UserConsent struct {

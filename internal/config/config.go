@@ -31,6 +31,19 @@ type Config struct {
 	FacebookClientSecret string
 	FacebookRedirectURI  string
 
+	// Apple Sign-In
+	// All four fields are required to enable Apple Sign-In; when any is
+	// empty, the AppleLogin RPC returns Unimplemented (deliberate — the
+	// backend ships before Apple Developer enrollment completes).
+	//
+	// Note: AppleServicesID is the Services ID configured in the Apple
+	// Developer portal, NOT the iOS app bundle ID. ApplePrivateKey holds
+	// the PEM-encoded contents of the .p8 key (supports gcsm:// resolution).
+	AppleTeamID     string
+	AppleServicesID string
+	AppleKeyID      string
+	ApplePrivateKey string
+
 	// JWT
 	JWTSecret string
 
@@ -170,6 +183,10 @@ func Load() (*Config, error) {
 		FacebookClientID:               os.Getenv("FACEBOOK_CLIENT_ID"),
 		FacebookClientSecret:           os.Getenv("FACEBOOK_CLIENT_SECRET"),
 		FacebookRedirectURI:            getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
+		AppleTeamID:                    os.Getenv("APPLE_TEAM_ID"),
+		AppleServicesID:                os.Getenv("APPLE_SERVICES_ID"),
+		AppleKeyID:                     os.Getenv("APPLE_KEY_ID"),
+		ApplePrivateKey:                os.Getenv("APPLE_PRIVATE_KEY"),
 		JWTSecret:                      getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		AnthropicAPIKey:                os.Getenv("ANTHROPIC_API_KEY"),
 		GeminiAPIKey:                   os.Getenv("GEMINI_API_KEY"),

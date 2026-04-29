@@ -36,6 +36,9 @@ const (
 	EventFacebookLogin       = "auth.facebook_login"
 	EventFacebookLoginNew    = "auth.facebook_login_new_user"
 	EventFacebookLink        = "auth.facebook_link"
+	EventAppleLogin          = "auth.apple_login"
+	EventAppleLoginNew       = "auth.apple_login_new_user"
+	EventAppleLink           = "auth.apple_link"
 	EventAdminSeedRole       = "admin.seed_role"
 	EventAdminSetRole        = "admin.set_role"
 )
