@@ -103,7 +103,13 @@ export function ProUpgrade({ tripId, onUnlocked, compact, onDismiss }: ProUpgrad
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
-    // Polling exhausted — payment may still be processing on Stripe's side
+    // Polling exhausted — the user returned from Stripe but the unlock
+    // never confirmed within 20s. This usually means the webhook is
+    // still being processed, but it can also mean the payment failed,
+    // was disputed, or the webhook was lost. The funnel needs to
+    // distinguish "started checkout, never completed" from "completed
+    // and unlocked" cleanly. Pre-fix this case was just silent.
+    track("payment_validation_failed", { trigger: "poll_timeout" });
     setPaymentPending(true);
   }, [checkStatus, onUnlocked, track]);
 
