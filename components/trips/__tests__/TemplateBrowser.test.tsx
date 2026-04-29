@@ -36,6 +36,16 @@ vi.mock("@/lib/theme", () => ({
   }),
 }));
 
+const mockTrack = vi.fn();
+vi.mock("@/lib/analytics", () => ({
+  useAnalytics: () => ({
+    track: mockTrack,
+    identify: vi.fn(),
+    reset: vi.fn(),
+    getFeatureFlag: vi.fn(),
+  }),
+}));
+
 vi.mock("lucide-react-native", () => {
   const Stub = () => null;
   return {
@@ -58,6 +68,7 @@ vi.mock("lucide-react-native", () => {
 describe("TemplateBrowser", () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockTrack.mockClear();
   });
 
   it("renders all template cards", () => {
@@ -80,6 +91,22 @@ describe("TemplateBrowser", () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/trips/new",
       params: { template: "paris-weekend" },
+    });
+  });
+
+  it("fires the template_selected analytics event with the template id (#215)", () => {
+    // Pins the funnel-instrumentation contract: the click that
+    // navigates to /trips/new must also fire `template_selected` so
+    // the funnel chart can measure template→trip conversion. Pre-fix,
+    // template-driven trip creation was indistinguishable from free-
+    // text creation in PostHog.
+    render(<TemplateBrowser />);
+    const parisCard = screen.getByRole("button", {
+      name: "templates.items.parisWeekend.title",
+    });
+    fireEvent.click(parisCard);
+    expect(mockTrack).toHaveBeenCalledWith("template_selected", {
+      template_id: "paris-weekend",
     });
   });
 
