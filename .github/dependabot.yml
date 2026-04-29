@@ -38,12 +38,25 @@ updates:
     # Expo SDK majors require coordinated upgrades of expo-router, the
     # native pods, and the EAS build profile — Dependabot can't do that
     # in one PR, so we ignore majors and bump them deliberately.
+    #
+    # React Native minors are also pinned out of the auto group: 0.83 →
+    # 0.85 in toqui#210 broke the build with a babel-plugin-codegen
+    # error from a new private component. RN minor versions are
+    # effectively breaking even when versioned as minor; bump them
+    # deliberately alongside the matching Expo SDK + native pod refresh.
+    #
+    # async-storage majors are also pinned (toqui#213 evidence):
+    # 2 → 3 broke api-contracts tests in lib/hooks/__tests__/.
     ignore:
       - dependency-name: "expo"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-native"
-        update-types: ["version-update:semver-major"]
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
       - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@react-native-async-storage/async-storage"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
