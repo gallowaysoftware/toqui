@@ -94,6 +94,8 @@ graph TB
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
 | `internal/csrf/`        | CSRF protection middleware (Origin/Referer validation for state-changing requests)        |
 | `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
+| `internal/analytics/`   | Server-side PostHog event ingestion + funnel/alert helpers (pseudonymized, EU-hosted)     |
+| `internal/telemetry/`   | OpenTelemetry initialization + HTTP metrics middleware (OTLP exporter, Cloud Monitoring)  |
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
 | `internal/email/`       | Transactional email via Resend API (waitlist verification, invite emails)                   |
@@ -364,8 +366,13 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `suggest_expert`         | all modes | Toqui hands off to a composed expert persona. **Free-tier gate**: limited to 5 expert handoffs per trip (DB-persisted), then returns an upgrade prompt directing the user to Trip Pro. | `PersonaSwitch`        |
 | `recommend_booking`      | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
 | `nearby_places`          | companion | Find nearby places using user's cached location (location-aware)                                                                                       | —                      |
+| `reorder_itinerary_items`| planning, companion | AI moves itinerary items to different days/positions (e.g. "swap day 2 and day 3"). Owner-or-editor gated.                                       | `ItineraryUpdate`      |
+| `get_weather`            | all modes | Current weather + 7-day forecast for a destination (lat/lng or city). Backed by Open-Meteo (no key required).                                          | —                      |
+| `currency_convert`       | all modes | Convert amounts between currencies using live exchange rates. Used when the user asks "how much is X in USD".                                          | —                      |
 | `web_search`             | all modes | Search the web for current info (global tool registry)                                                                                                 | —                      |
 | `place_lookup`           | all modes | Google Places API lookup (global tool registry)                                                                                                        | —                      |
+
+**CompanionGate** (`internal/handlers/tool_companion_gate.go`): in companion mode, `create_itinerary_items`, `delete_itinerary_items`, and `reorder_itinerary_items` are wrapped by an LLM-classifier gate that only allows execution when the user's most recent message *explicitly* requests an itinerary modification. This prevents the regression where Gemini interprets "recommend a lunch spot" as "add a lunch spot to the itinerary." Fail-closed: classifier errors block the call rather than letting it through. ~$0.001 per check on the fast tier.
 
 ### Adding a New Chat Tool
 
