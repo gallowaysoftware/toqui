@@ -31,7 +31,10 @@ import {
 } from "react";
 import { Platform } from "react-native";
 import type { ReactNode } from "react";
-import posthog from "posthog-js";
+// posthog-js is loaded dynamically inside the provider so it doesn't ship
+// in the entry chunk. ~33 KB gzipped saved on first paint for every visitor
+// (most haven't consented yet at first paint) — see issue #204.
+// Type-only import: TS strips this at build, no runtime cost.
 import type { PostHog } from "posthog-js";
 
 import { getConfig } from "./config";
@@ -144,10 +147,23 @@ interface AnalyticsProviderProps {
   children: ReactNode;
 }
 
+// Calls fired before the dynamic import resolves get queued and replayed
+// on first init. Without buffering, the very first session_start event
+// (fired in app/_layout.tsx on mount, which can race with the dynamic
+// import) would be silently dropped.
+type PendingCall =
+  | { kind: "track"; event: string; properties?: Record<string, unknown> }
+  | { kind: "identify"; userId: string }
+  | { kind: "reset" };
+
 export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   const clientRef = useRef<PostHog | null>(null);
+  const pendingRef = useRef<PendingCall[]>([]);
 
-  // Initialise PostHog once on mount
+  // Lazy-load posthog-js: it's a ~33 KB gzipped browser SDK that we don't
+  // need until after first paint, and many users will never consent (so
+  // analytics never fires for them). Static-import was forcing every
+  // visitor to download the SDK even when they bounce immediately.
   useEffect(() => {
     // posthog-js is browser-only — gate on Platform so native builds
     // (which never ship right now anyway) don't crash on `window`.
@@ -155,31 +171,58 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     const key = getConfig().posthogKey;
     if (!key) return; // analytics disabled (dev / test)
 
-    posthog.init(key, {
-      api_host: "https://eu.i.posthog.com",
-      // Cookie-less: keep state in memory only
-      persistence: "memory",
-      // Never autocapture — we use explicit events only
-      autocapture: false,
-      // Disable automatic pageview — we fire session_start manually
-      capture_pageview: false,
-      capture_pageleave: false,
-      // Session replay is intentionally OFF. The previous config set
-      // session_recording masking flags, but `advanced_disable_decide:
-      // true` (below) disables the /decide endpoint that PostHog uses
-      // to *enable* recording from the server side — so masking config
-      // was theatre, recording wasn't running anyway. Rather than wire
-      // a half-working feature, we keep it disabled and the privacy
-      // policy stays true to "we don't run session replay". When/if we
-      // turn it on, this is the only line that needs to flip.
-      disable_session_recording: true,
-      // Disable surveys + toolbar to minimise bundle
-      advanced_disable_decide: true,
+    let cancelled = false;
+    void import("posthog-js").then(({ default: posthog }) => {
+      if (cancelled) return;
+
+      posthog.init(key, {
+        api_host: "https://eu.i.posthog.com",
+        // Cookie-less: keep state in memory only
+        persistence: "memory",
+        // Never autocapture — we use explicit events only
+        autocapture: false,
+        // Disable automatic pageview — we fire session_start manually
+        capture_pageview: false,
+        capture_pageleave: false,
+        // Session replay is intentionally OFF. The previous config set
+        // session_recording masking flags, but `advanced_disable_decide:
+        // true` (below) disables the /decide endpoint that PostHog uses
+        // to *enable* recording from the server side — so masking config
+        // was theatre, recording wasn't running anyway. Rather than wire
+        // a half-working feature, we keep it disabled and the privacy
+        // policy stays true to "we don't run session replay". When/if we
+        // turn it on, this is the only line that needs to flip.
+        disable_session_recording: true,
+        // Disable surveys + toolbar to minimise bundle
+        advanced_disable_decide: true,
+      });
+
+      clientRef.current = posthog;
+
+      // Flush queued calls in arrival order. session_start is almost
+      // always first in the queue; without this the first event of
+      // every session would be silently dropped.
+      const queued = pendingRef.current;
+      pendingRef.current = [];
+      for (const call of queued) {
+        switch (call.kind) {
+          case "track":
+            posthog.capture(call.event, stripSensitiveProps(call.properties));
+            break;
+          case "identify":
+            void hashUserId(call.userId).then((hashed) => {
+              posthog.identify(hashed);
+            });
+            break;
+          case "reset":
+            posthog.reset();
+            break;
+        }
+      }
     });
 
-    clientRef.current = posthog;
-
     return () => {
+      cancelled = true;
       // PostHog doesn't have a destroy, but we can clear the ref
       clientRef.current = null;
     };
@@ -187,21 +230,33 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
 
   const track = useCallback(
     (event: string, properties?: Record<string, unknown>) => {
-      clientRef.current?.capture(event, stripSensitiveProps(properties));
+      if (clientRef.current) {
+        clientRef.current.capture(event, stripSensitiveProps(properties));
+      } else {
+        pendingRef.current.push({ kind: "track", event, properties });
+      }
     },
     [],
   );
 
   const identify = useCallback((userId: string) => {
-    // hashUserId is async — fire and forget (identify is not a hot path)
-    void hashUserId(userId).then((hashed) => {
-      // Identify WITHOUT any $set properties — no PII
-      clientRef.current?.identify(hashed);
-    });
+    if (clientRef.current) {
+      // hashUserId is async — fire and forget (identify is not a hot path)
+      void hashUserId(userId).then((hashed) => {
+        // Identify WITHOUT any $set properties — no PII
+        clientRef.current?.identify(hashed);
+      });
+    } else {
+      pendingRef.current.push({ kind: "identify", userId });
+    }
   }, []);
 
   const reset = useCallback(() => {
-    clientRef.current?.reset();
+    if (clientRef.current) {
+      clientRef.current.reset();
+    } else {
+      pendingRef.current.push({ kind: "reset" });
+    }
   }, []);
 
   const getFeatureFlag = useCallback(
