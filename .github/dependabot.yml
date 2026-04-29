@@ -1,0 +1,84 @@
+# Dependabot keeps npm dependencies, GitHub Actions versions, and Docker base
+# images current.
+#
+# Cadence + grouping rationale:
+#  - Weekly on Monday — reviewable in one focused window rather than scattered
+#    daily PRs.
+#  - Minor/patch updates are grouped into a single PR per ecosystem because
+#    they're high-confidence, low-blast-radius. Bundling cuts review overhead.
+#  - Major updates land as individual PRs so they get scrutinized per-bump.
+#
+# Auto-merge policy: NONE here — even though the toqui frontend auto-deploys
+# to prod on push to main, the prior dep-bump round (CVE sweep) found that
+# breaking-change shapes (e.g. Expo SDK majors, React Native point releases)
+# can pass type-checks but blow up at runtime. Human review on every bump.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Halifax"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      js-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    # Pin Expo and React Native to manual major-bump review windows.
+    # Expo SDK majors require coordinated upgrades of expo-router, the
+    # native pods, and the EAS build profile — Dependabot can't do that
+    # in one PR, so we ignore majors and bump them deliberately.
+    ignore:
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Halifax"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docker base image updates for the Cloud Run web image.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Halifax"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
