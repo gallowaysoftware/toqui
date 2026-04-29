@@ -65,6 +65,7 @@ const SAFE_PROPERTIES = new Set([
   "is_first",
   "price_variant",
   "remaining",
+  "format", // itinerary_exported: "pdf" | "calendar"
   "$lib",
   "$lib_version",
 ]);
