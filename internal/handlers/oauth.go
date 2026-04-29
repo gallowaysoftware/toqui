@@ -45,6 +45,7 @@ type OAuthHandler struct {
 	facebookRedirectURI  string
 
 	analyticsClient *analytics.Client
+	alertChecker    *analytics.AlertChecker
 }
 
 func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
@@ -70,6 +71,16 @@ func (h *OAuthHandler) WithMaxFreeUsers(maxFreeUsers int) *OAuthHandler {
 // WithAnalytics configures the OAuth handler to send events to PostHog.
 func (h *OAuthHandler) WithAnalytics(client *analytics.Client) *OAuthHandler {
 	h.analyticsClient = client
+	return h
+}
+
+// WithAlertChecker wires the in-process AlertChecker so each successful
+// signup_completed Track call also resets the idle-signup timer. The
+// AlertChecker's idle-signup threshold (default 24h) fires a Cloud
+// Logging warning when no signups happen — early detection of e.g. a
+// broken Google OAuth callback. Optional.
+func (h *OAuthHandler) WithAlertChecker(checker *analytics.AlertChecker) *OAuthHandler {
+	h.alertChecker = checker
 	return h
 }
 
@@ -271,6 +282,9 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
 			"auth_provider": "google",
 		})
+	}
+	if h.alertChecker != nil && isNewUser {
+		h.alertChecker.RecordSignup()
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
@@ -771,6 +785,9 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
 			"auth_provider": "facebook",
 		})
+	}
+	if h.alertChecker != nil && fbIsNewUser {
+		h.alertChecker.RecordSignup()
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)

@@ -55,6 +55,7 @@ type ChatHandler struct {
 	placesAPIKey  string
 	adminEmails   map[string]bool
 	analytics     *analytics.Client
+	alertChecker  *analytics.AlertChecker
 }
 
 func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
@@ -88,6 +89,17 @@ func (h *ChatHandler) WithPlacesAPIKey(key string) *ChatHandler {
 // WithAnalytics configures the chat handler to send events to PostHog.
 func (h *ChatHandler) WithAnalytics(client *analytics.Client) *ChatHandler {
 	h.analytics = client
+	return h
+}
+
+// WithAlertChecker wires the in-process health AlertChecker so the
+// chat handler can mark `last message received` whenever a chat turn
+// lands. The AlertChecker's idle-message threshold (default 6h) fires
+// a Cloud Logging warning when this stops happening — early detection
+// of an outage where the API is up but messages aren't being processed.
+// Optional — chat works without it.
+func (h *ChatHandler) WithAlertChecker(checker *analytics.AlertChecker) *ChatHandler {
+	h.alertChecker = checker
 	return h
 }
 
@@ -194,6 +206,13 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		h.analytics.Track(userID.String(), "chat_message_sent", map[string]any{
 			"mode": mode,
 		})
+	}
+	// Reset the in-process idle-message timer. If chat traffic stops, the
+	// AlertChecker logs an alert after the idle threshold; without this
+	// recorder, the alert would fire constantly because lastMessage stays
+	// pinned to whatever NewAlertChecker initialized it to.
+	if h.alertChecker != nil {
+		h.alertChecker.RecordMessage()
 	}
 
 	// Look up trip context for persona resolution and system prompt injection

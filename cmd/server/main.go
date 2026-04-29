@@ -101,6 +101,13 @@ func main() {
 		slog.Info("PostHog analytics enabled", "endpoint", "eu.i.posthog.com")
 	}
 
+	// In-process health AlertChecker — emits Cloud Logging warnings when
+	// chat/signup traffic stalls (early-detection of upstream breakage
+	// where the API stays up but no traffic flows). The goroutine lives
+	// for the whole server lifetime; stops on ctx cancel.
+	alertChecker := analytics.NewAlertChecker()
+	alertChecker.StartPeriodicCheck(ctx, 5*time.Minute)
+
 	// Database
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -400,6 +407,7 @@ func main() {
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
 		WithAnalytics(posthogClient).
+		WithAlertChecker(alertChecker).
 		WithAIProvider(aiProvider)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc, queries)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
@@ -418,7 +426,8 @@ func main() {
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender).
 		WithMaxFreeUsers(cfg.MaxFreeUsers).
 		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
-		WithAnalytics(posthogClient)
+		WithAnalytics(posthogClient).
+		WithAlertChecker(alertChecker)
 
 	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc, pool)
 
