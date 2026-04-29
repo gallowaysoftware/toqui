@@ -52,7 +52,7 @@
     "expo-web-browser": "^55.0.10",
     "i18next": "^26.0.3",
     "lucide-react-native": "^1.7.0",
-    "posthog-js": "^1.364.7",
+    "posthog-js": "^1.372.5",
     "punycode": "^2.3.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -75,8 +75,16 @@
     "jsdom": "^29.0.1",
     "prettier": "^3.8.0",
     "typescript": "~6.0.2",
-    "vite": "^8.0.3",
+    "vite": "^8.0.10",
     "vitest": "^4.1.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs@>=7.0.0 <7.5.5": "^7.5.6",
+      "dompurify@<3.4.0": "^3.4.0",
+      "@xmldom/xmldom@<0.8.13": "^0.8.13",
+      "markdown-it@<12.3.2": "^12.3.2"
+    }
   },
   "private": true
 }
