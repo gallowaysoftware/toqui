@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v82"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
@@ -27,13 +28,22 @@ var ErrNotTripOwner = trip.ErrNotOwnerOrEditor
 
 // Service handles Stripe payment operations for Trip Pro one-time purchases.
 type Service struct {
-	client         *stripe.Client
-	productID      string // Stripe Product ID for Trip Pro one-time purchase
-	priceCents     int
-	queries        *dbgen.Queries
-	alwaysUnlocked bool
-	frontendURL    string
-	enabled        bool
+	client          *stripe.Client
+	productID       string // Stripe Product ID for Trip Pro one-time purchase
+	priceCents      int
+	queries         *dbgen.Queries
+	alwaysUnlocked  bool
+	frontendURL     string
+	enabled         bool
+	analyticsClient *analytics.Client
+}
+
+// WithAnalytics attaches a PostHog client so successful Trip Pro
+// purchases fire the `trip_pro_purchased` revenue event. Optional —
+// the service is fully functional without it.
+func (s *Service) WithAnalytics(client *analytics.Client) *Service {
+	s.analyticsClient = client
+	return s
 }
 
 // NewService creates a new payment service. If stripeKey is empty, the service
@@ -219,6 +229,21 @@ func (s *Service) HandlePaymentWebhook(ctx context.Context, userID, tripID uuid.
 		"amount_cents", amountCents,
 		"stripe_session", sessionID,
 	)
+
+	// Funnel event — backend-side ground truth for the revenue event.
+	// Stripe is the authoritative source (we only fire on the webhook
+	// after we've successfully created the unlock row), so this can't
+	// double-count vs. a frontend "thanks for purchasing" event. We
+	// deliberately omit the trip_id from the property bag — the
+	// purchase signal is what the funnel needs, not which trip was
+	// unlocked, and trip metadata is sensitive content (CLAUDE.md
+	// "Privacy" — Article 9 categories).
+	if s.analyticsClient != nil {
+		s.analyticsClient.Track(userID.String(), "trip_pro_purchased", map[string]any{
+			"amount_cents": amountCents,
+			"currency":     "CAD",
+		})
+	}
 
 	slog.Info("trip pro purchased via stripe",
 		"user_id", userID,

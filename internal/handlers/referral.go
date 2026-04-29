@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -18,10 +19,11 @@ import (
 
 // ReferralHandler handles referral code endpoints.
 type ReferralHandler struct {
-	authSvc    *auth.Service
-	queries    *dbgen.Queries
-	appURL     string
-	maxRewards int // maximum referral trip unlocks a referrer can earn
+	authSvc         *auth.Service
+	queries         *dbgen.Queries
+	appURL          string
+	maxRewards      int // maximum referral trip unlocks a referrer can earn
+	analyticsClient *analytics.Client
 }
 
 // NewReferralHandler creates a new ReferralHandler.
@@ -32,6 +34,13 @@ func NewReferralHandler(authSvc *auth.Service, pool *pgxpool.Pool, appURL string
 		appURL:     appURL,
 		maxRewards: maxRewards,
 	}
+}
+
+// WithAnalytics attaches a PostHog client so successful redemptions
+// fire the `referral_redeemed` funnel event. Optional.
+func (h *ReferralHandler) WithAnalytics(client *analytics.Client) *ReferralHandler {
+	h.analyticsClient = client
+	return h
 }
 
 // HandleGetReferralCode handles GET /api/referral — get or create user's referral code.
@@ -182,6 +191,18 @@ func (h *ReferralHandler) HandleRedeemReferral(w http.ResponseWriter, r *http.Re
 		"referrer_id", ref.ReferrerID.String(),
 		"code", req.Code,
 	)
+
+	// Funnel event — distinguishes referral-driven signups from organic.
+	// Tracked under the REFEREE's user ID (the one who just redeemed).
+	// `referrer_capped` lets us see when the cap is biting growth.
+	// We deliberately do NOT include the literal referral code here — codes
+	// are pseudo-PII (they identify the referrer) and shouldn't ride into
+	// PostHog event properties (CLAUDE.md "Privacy" — pseudonymize).
+	if h.analyticsClient != nil {
+		h.analyticsClient.Track(userID.String(), "referral_redeemed", map[string]any{
+			"referrer_capped": referrerCapped,
+		})
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{

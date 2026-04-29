@@ -912,15 +912,32 @@ Users can share a trip publicly via `POST /api/trips/share`, which generates a s
 
 ### PostHog Analytics (Server-Side)
 
-Server-side event tracking via PostHog (EU-hosted, `eu.i.posthog.com`). User IDs are SHA-256 hashed before sending. Five tracked events:
+Server-side event tracking via PostHog (EU-hosted, `eu.i.posthog.com`). User IDs are SHA-256 hashed before sending. The events listed below are **backend-only** ground-truth fires — the frontend separately tracks UI/funnel events (see toqui CLAUDE.md analytics list).
 
-- `user_signed_up` — new account created
-- `trip_created` — new trip created
-- `trip_pro_purchased` — Trip Pro payment completed
-- `referral_redeemed` — referral code redeemed
-- `message_sent` — chat message sent (count only, no content)
+**Acquisition / lifecycle:**
+- `signup_completed` — new account created (Google or Facebook OAuth, fired only on first-ever login per user)
 
-Requires `POSTHOG_API_KEY` env var. Events are fire-and-forget (non-blocking). No PII or travel content is ever sent to PostHog.
+**Engagement:**
+- `chat_message_sent` — user sent a chat turn (count + tier only, no content)
+- `trip_created` — REST `CreateTrip` succeeded; properties: `is_first_trip`, `has_dates`, `has_budget`, `initial_status` (no destination/title/description)
+- `itinerary_generated` — AI-driven itinerary item batch created via the chat tool
+- `shared_trip_viewed` — anonymous user viewed `/shared/{token}` (anonymous distinct ID)
+- `affiliate_link_generated` — booking recommendation included an affiliate link
+- `affiliate_link_clicked` — outbound affiliate click via `/api/affiliate/redirect`
+
+**Monetization:**
+- `checkout_initiated` — REST `POST /api/checkout` succeeded (Trip Pro)
+- `trip_pro_purchased` — Stripe webhook confirmed payment + unlock created (revenue ground truth, backend-side; properties: `amount_cents`, `currency`)
+- `subscription_checkout_initiated` — Explorer/Voyager checkout session created
+- `subscription_canceled` — REST `POST /api/subscription/cancel` succeeded
+- `referral_redeemed` — `POST /api/referral/redeem` succeeded; property: `referrer_capped` (so the cap-vs-growth tradeoff is measurable)
+
+**Privacy guardrails enforced in code:**
+- User IDs are sent as the bare UUID; PostHog is told to project them via `process_person_profile=identified_only` so anonymized rollups are still possible.
+- Travel content (destination, dates, hotel names, chat message text, itinerary items) is NEVER sent — only counts, categories, and booleans.
+- Referral codes are NOT sent (they're pseudo-PII because they identify the referrer).
+
+Requires `POSTHOG_API_KEY` env var. Events are fire-and-forget (non-blocking). When the API key is empty, `Track` is a no-op so local development doesn't pollute the project.
 
 ### AI Prompt Engineering
 

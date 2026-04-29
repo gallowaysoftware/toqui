@@ -372,7 +372,8 @@ func main() {
 	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
 	defer authLimiter.Stop()
 
-	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProProductID, cfg.TripProPriceCents, queries, cfg.FrontendURL)
+	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProProductID, cfg.TripProPriceCents, queries, cfg.FrontendURL).
+		WithAnalytics(posthogClient)
 	if cfg.StagingProAll {
 		if cfg.TargetEnv != "staging" {
 			slog.Error("STAGING_PRO_ALL=true is only allowed in staging environment, ignoring", "env", cfg.TargetEnv)
@@ -394,7 +395,8 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
 		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
-	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
+	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool)).
+		WithAnalytics(posthogClient)
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
 		WithAnalytics(posthogClient).
@@ -559,7 +561,8 @@ func main() {
 	mux.HandleFunc("/api/feedback", feedbackHandler.HandleSubmitFeedback)
 
 	// Referral system
-	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL, cfg.ReferralMaxRewards)
+	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL, cfg.ReferralMaxRewards).
+		WithAnalytics(posthogClient)
 	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
 	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
 
