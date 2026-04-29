@@ -434,6 +434,17 @@
     "logout": "Log out instead",
     "error": "Couldn't record your consent. Please try again."
   },
+  "aiDisclaimer": {
+    "title": "A note before you plan",
+    "subtitle": "Toqui's recommendations come from an AI model — useful, but not infallible. We're upfront about the limits because traveling well matters more than us looking smart.",
+    "bullet1Heading": "Verify the things that bite if they're wrong.",
+    "bullet1Body": "Visa requirements, vaccination rules, medical info, safety advisories — always check official sources (your country's foreign ministry, embassies, the destination's tourism board) before you book or travel.",
+    "bullet2Heading": "Hours, prices, and \"is this place still open?\" change constantly.",
+    "bullet2Body": "Cross-check with Google Maps, the venue's website, or recent reviews before showing up.",
+    "bullet3Heading": "Recommendations are AI-generated — not paid placement.",
+    "bullet3Body": "When a partner link earns us a commission we say so on the card. We never bias the AI for revenue.",
+    "acknowledge": "I understand"
+  },
   "weather": {
     "title": "Weather forecast",
     "climateNote": "Based on historical climate averages for this time of year. Actual conditions may vary.",

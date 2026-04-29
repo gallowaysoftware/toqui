@@ -11,6 +11,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AgeGate } from "@/components/auth/AgeGate";
 import { ConsentGate } from "@/components/auth/ConsentGate";
+import { AIDisclaimerGate } from "@/components/auth/AIDisclaimerGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig, getConfig } from "@/lib/config";
 import * as Sentry from "@sentry/react-native";
@@ -232,13 +233,15 @@ export default Sentry.wrap(function RootLayout() {
               <TransportProvider>
                 <AgeGate>
                   <ConsentGate>
-                    <AnalyticsErrorBoundary>
-                      <AnalyticsBootstrap />
-                      <View style={layoutStyles.root}>
-                        <OfflineBanner />
-                        <ThemedStack />
-                      </View>
-                    </AnalyticsErrorBoundary>
+                    <AIDisclaimerGate>
+                      <AnalyticsErrorBoundary>
+                        <AnalyticsBootstrap />
+                        <View style={layoutStyles.root}>
+                          <OfflineBanner />
+                          <ThemedStack />
+                        </View>
+                      </AnalyticsErrorBoundary>
+                    </AIDisclaimerGate>
                   </ConsentGate>
                 </AgeGate>
               </TransportProvider>
