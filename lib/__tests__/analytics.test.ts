@@ -144,24 +144,36 @@ describe("AnalyticsProvider (key present)", () => {
     vi.clearAllMocks();
   });
 
-  it("initialises PostHog with EU host", () => {
+  it("initialises PostHog with EU host", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(AnalyticsProvider, null, children);
     renderHook(() => useAnalytics(), { wrapper });
-    expect(mockInit).toHaveBeenCalledWith(
-      "phc_test_key",
-      expect.objectContaining({
-        api_host: "https://eu.i.posthog.com",
-        persistence: "memory",
-        autocapture: false,
-      }),
-    );
+
+    // Init runs after the dynamic import("posthog-js") resolves —
+    // wait for it instead of asserting synchronously (lazy-load
+    // change for issue #204).
+    await vi.waitFor(() => {
+      expect(mockInit).toHaveBeenCalledWith(
+        "phc_test_key",
+        expect.objectContaining({
+          api_host: "https://eu.i.posthog.com",
+          persistence: "memory",
+          autocapture: false,
+        }),
+      );
+    });
   });
 
-  it("track fires posthog.capture with only allowlisted properties", () => {
+  it("track fires posthog.capture with only allowlisted properties (after init)", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(AnalyticsProvider, null, children);
     const { result } = renderHook(() => useAnalytics(), { wrapper });
+
+    // Wait for the dynamic import to resolve before tracking, otherwise
+    // the call gets queued and the immediate assertion would race the
+    // init promise.
+    await vi.waitFor(() => expect(mockInit).toHaveBeenCalled());
+
     act(() => {
       result.current.track("trip_created", {
         has_dates: true,
@@ -173,10 +185,36 @@ describe("AnalyticsProvider (key present)", () => {
     });
   });
 
+  it("track calls fired BEFORE init resolves are queued and replayed (issue #204)", async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(AnalyticsProvider, null, children);
+    const { result } = renderHook(() => useAnalytics(), { wrapper });
+
+    // Fire BEFORE awaiting init — this exercises the queue path.
+    // Without queueing, the very first session_start event of every
+    // visit (fired in app/_layout.tsx on mount) would be silently
+    // dropped while the SDK loads.
+    act(() => {
+      result.current.track("session_start", { platform: "web" });
+    });
+
+    // Now wait for init + flush.
+    await vi.waitFor(() => {
+      expect(mockCapture).toHaveBeenCalledWith("session_start", {
+        platform: "web",
+      });
+    });
+  });
+
   it("identify sends SHA-256 hashed user ID", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(AnalyticsProvider, null, children);
     const { result } = renderHook(() => useAnalytics(), { wrapper });
+
+    // Wait for init before identify so the call doesn't get queued
+    // (queued identify would still hash + identify, but the
+    // microtask timing differs and makes this test brittle).
+    await vi.waitFor(() => expect(mockInit).toHaveBeenCalled());
 
     act(() => {
       result.current.identify("user-uuid-123");
@@ -191,10 +229,13 @@ describe("AnalyticsProvider (key present)", () => {
     expect(mockIdentify).toHaveBeenCalledWith(hashedId);
   });
 
-  it("reset calls posthog.reset", () => {
+  it("reset calls posthog.reset (after init)", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(AnalyticsProvider, null, children);
     const { result } = renderHook(() => useAnalytics(), { wrapper });
+
+    await vi.waitFor(() => expect(mockInit).toHaveBeenCalled());
+
     act(() => {
       result.current.reset();
     });
