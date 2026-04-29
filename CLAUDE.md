@@ -276,7 +276,7 @@ Unlocked trips get: unlimited messages, all 800+ expert personas, email forwardi
 Providers wrap the entire app in `app/_layout.tsx`:
 
 ```
-ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → ConsentGate → {children}
+ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → ConsentGate → AIDisclaimerGate → {children}
 ```
 
 - **ThemeProvider** — Light/dark/system theme management with persistence (`lib/theme.tsx`). Provides `ThemeColors` interface to all components.
@@ -285,8 +285,9 @@ ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → Anal
 - **AuthProvider** — JWT token management, SecureStore/localStorage persistence
 - **AnalyticsProvider** — PostHog initialization, user identification, feature flags (`lib/analytics.tsx`)
 - **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401. Also detects the backend `FailedPrecondition("consent_required")` sentinel and exposes it via `useConsentSignal()`.
-- **AgeGate** — Wraps the app to enforce age verification (18+). Users who haven't verified age are redirected to the age gate screen.
-- **ConsentGate** — Pops a blocking modal when the transport interceptor sees `FailedPrecondition("consent_required")` from the backend (see `toqui-backend` PR #374). Calls `POST /auth/consent` to record `terms` + `privacy_policy` and clears the signal on success.
+- **AgeGate** — Wraps the app to enforce age verification (18+). Users who haven't verified age are redirected to the age gate screen. Skips the modal for users whose `User.age_verified_at` is set on the proto (returning users on a fresh device — toqui-backend#371 / toqui#194).
+- **ConsentGate** — Pops a blocking modal when the transport interceptor sees `FailedPrecondition("consent_required")` from the backend (toqui-backend PR #374). Calls `POST /auth/consent` to record `terms` + `privacy_policy`, invalidates React Query caches so errored fetches refire, and clears the signal on success.
+- **AIDisclaimerGate** — One-time blocking modal on first sign-in per device that surfaces the "AI may be wrong, especially on visa/health/safety; verify before booking" disclaimer (toqui#197). Acceptance is stored per-user in `expo-secure-store` (native) or `localStorage` (web) under `toqui_ai_disclaimer_acked_v1_<userId>` and audit-trailed via the PostHog `ai_disclaimer_acknowledged` event.
 
 ## Hooks
 
