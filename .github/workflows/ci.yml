@@ -61,7 +61,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npx expo export --platform ${{ matrix.platform }} --output-dir dist/${{ matrix.platform }} --clear
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: matrix.platform == 'web'
         with:
           name: web-build
