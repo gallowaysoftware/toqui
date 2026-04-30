@@ -18,7 +18,7 @@ jobs:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -33,7 +33,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -51,7 +51,7 @@ jobs:
       matrix:
         platform: [web, ios, android]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -108,7 +108,7 @@ jobs:
     env:
       IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -181,7 +181,7 @@ jobs:
     env:
       IMAGE: northamerica-northeast1-docker.pkg.dev/toqui-infra/toqui-frontend/toqui-frontend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 10
