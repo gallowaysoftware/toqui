@@ -97,6 +97,15 @@ func (j *Jobs) cleanupExpiredTokens(ctx context.Context) {
 }
 
 func (j *Jobs) archiveTrips(ctx context.Context) {
+	// Defensive nil-guard mirrors the one in cleanupExpiredTokens. The
+	// test harness deliberately constructs &Jobs{} with nil deps, and
+	// when rand.IntN(60) returns 0 the `archiveReady := time.After(0)`
+	// case can fire before the test cancels the context — calling
+	// `j.lifecycleSvc.ArchiveCompletedTrips` on nil panics. The guard
+	// is cheap and defensive against any future partial-init code path.
+	if j.lifecycleSvc == nil {
+		return
+	}
 	count, err := j.lifecycleSvc.ArchiveCompletedTrips(ctx)
 	if err != nil {
 		slog.Error("lifecycle: failed to archive completed trips", "error", err)
@@ -106,6 +115,10 @@ func (j *Jobs) archiveTrips(ctx context.Context) {
 }
 
 func (j *Jobs) retryFailedDeletions(ctx context.Context) {
+	// Defensive nil-guard — see archiveTrips for the same rationale.
+	if j.lifecycleSvc == nil {
+		return
+	}
 	retried, failed, err := j.lifecycleSvc.RetryFailedDeletions(ctx)
 	if err != nil {
 		slog.Error("lifecycle: failed to retry deletions", "error", err)
