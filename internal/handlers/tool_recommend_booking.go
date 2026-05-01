@@ -252,7 +252,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if date == "" {
 			date = "anytime"
 		}
-		sources = t.linkBuilder.FlightSources(origin, dest, date, tripHash)
+		sources = t.linkBuilder.FlightSources(origin, dest, date, tripHash, t.userTier.IsPro())
 		fallbackTitle = fmt.Sprintf("Search flights: %s to %s", origin, dest)
 		fallbackDescription = fmt.Sprintf("Find and compare flight prices from %s to %s", origin, dest)
 		if params.DateFrom != "" {
@@ -267,7 +267,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if city == "" {
 			city = "your destination"
 		}
-		sources = t.linkBuilder.HotelSources(params.PropertyName, city, params.DateFrom, params.DateTo, tripHash)
+		sources = t.linkBuilder.HotelSources(params.PropertyName, city, params.DateFrom, params.DateTo, tripHash, t.userTier.IsPro())
 		if params.PropertyName != "" {
 			fallbackTitle = fmt.Sprintf("Book %s", params.PropertyName)
 			fallbackDescription = fmt.Sprintf("View rates and availability for %s in %s", params.PropertyName, city)
@@ -287,7 +287,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if city == "" {
 			city = "your destination"
 		}
-		sources = t.linkBuilder.VacationRentalSources(city, params.DateFrom, params.DateTo, tripHash)
+		sources = t.linkBuilder.VacationRentalSources(city, params.DateFrom, params.DateTo, tripHash, t.userTier.IsPro())
 		fallbackTitle = fmt.Sprintf("Vacation rentals in %s", city)
 		fallbackDescription = fmt.Sprintf("Browse houses, cabins, and villas in %s", city)
 		if params.DateFrom != "" && params.DateTo != "" {
@@ -299,7 +299,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if city == "" {
 			city = t.tripDestination
 		}
-		sources = t.linkBuilder.ActivitySources(params.Query, city, tripHash)
+		sources = t.linkBuilder.ActivitySources(params.Query, city, tripHash, t.userTier.IsPro())
 		fallbackTitle = fmt.Sprintf("Search activities: %s", params.Query)
 		fallbackDescription = fmt.Sprintf("Discover tours, experiences, and activities: %s", params.Query)
 
@@ -311,7 +311,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if location == "" {
 			location = "your destination"
 		}
-		sources = t.linkBuilder.CarRentalSources(location, params.DateFrom, params.DateTo)
+		sources = t.linkBuilder.CarRentalSources(location, params.DateFrom, params.DateTo, t.userTier.IsPro())
 		fallbackTitle = fmt.Sprintf("Search car rentals in %s", location)
 		fallbackDescription = fmt.Sprintf("Compare car rental prices and options in %s", location)
 		if params.DateFrom != "" && params.DateTo != "" {
@@ -326,7 +326,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		if dest == "" {
 			dest = "your trip"
 		}
-		sources = t.linkBuilder.InsuranceSources(dest)
+		sources = t.linkBuilder.InsuranceSources(dest, t.userTier.IsPro())
 		fallbackTitle = fmt.Sprintf("Travel insurance for %s", dest)
 		fallbackDescription = fmt.Sprintf("Get travel medical insurance coverage for %s with SafetyWing Nomad Insurance", dest)
 

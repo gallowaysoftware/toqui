@@ -117,7 +117,7 @@ func TestSelectAndDisclose_ProInsurance_PicksGoogleSearchAndIndependent(t *testi
 	// the Google fallback, this test will fail loudly (rather than silently
 	// flipping to a ProDisclosure path via a t.Logf no-op).
 	b := NewLinkBuilder(LinkBuilderConfig{SafetyWingID: "sw303"})
-	sources := b.InsuranceSources("Japan")
+	sources := b.InsuranceSources("Japan", false)
 	selected := SelectForPreference(true, sources)
 	disc := DisclosureFor(selected, true)
 
@@ -160,7 +160,7 @@ func TestSelectAndDisclose_ProInsuranceAffiliateFallback(t *testing.T) {
 
 func TestSelectAndDisclose_ProFlight_PicksGoogleAndIndependent(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
-	sources := b.FlightSources("JFK", "PRG", "2026-06-15", "")
+	sources := b.FlightSources("JFK", "PRG", "2026-06-15", "", false)
 	selected := SelectForPreference(true, sources)
 	if selected.Partner != PartnerGoogle {
 		t.Errorf("Pro flight should select Google, got %q", selected.Partner)
@@ -172,7 +172,7 @@ func TestSelectAndDisclose_ProFlight_PicksGoogleAndIndependent(t *testing.T) {
 
 func TestSelectAndDisclose_FreeFlight_PicksSkyscannerAndFTC(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
-	sources := b.FlightSources("JFK", "PRG", "2026-06-15", "")
+	sources := b.FlightSources("JFK", "PRG", "2026-06-15", "", false)
 	selected := SelectForPreference(false, sources)
 	if selected.Partner != PartnerSkyscanner {
 		t.Errorf("Free flight should select Skyscanner, got %q", selected.Partner)

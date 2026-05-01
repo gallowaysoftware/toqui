@@ -561,7 +561,7 @@ func TestVacationRentalSources_EmptyCityProducesCleanTitle(t *testing.T) {
 	// spaces — when city was empty. Adversarial review W5. Titles
 	// should degrade to a city-less form without a double-space.
 	b := NewLinkBuilder(LinkBuilderConfig{ExpediaPublisherID: "1011l428984"})
-	sources := b.VacationRentalSources("", "", "", "")
+	sources := b.VacationRentalSources("", "", "", "", false)
 	for _, s := range sources {
 		if strings.Contains(s.Title, "  ") {
 			t.Errorf("source title contains double-space for empty city: %q (id=%s)", s.Title, s.ID)

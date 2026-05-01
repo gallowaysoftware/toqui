@@ -32,6 +32,31 @@ const (
 	PartnerGoogle      Partner = "google"
 	PartnerWikivoyage  Partner = "wikivoyage"
 	PartnerOfficialGov Partner = "official_gov"
+
+	// Pro-tier-only sources. These are added to the candidate pool only
+	// when the caller passes includePro=true to the per-category source
+	// builders, and they're the concrete payoff behind the toqui-site
+	// claim that Pro "widens the candidate pool beyond affiliate
+	// partners" (toqui-backend#386). All commission-free as of writing —
+	// either the partner has no affiliate program, or we've deliberately
+	// kept the link plain so Pro users see truly independent options.
+	//
+	// Adding a new Pro source: pick a Partner here, append in the
+	// matching FlightSources / HotelSources / etc. builder under the
+	// `if includePro` block, and verify IsAffiliate is false (pin in
+	// tests). If a future partner DOES have an affiliate program we
+	// intend to use, IsAffiliate flips to true and the Pro-tier
+	// non-affiliate-preference rule will skip it during selection.
+	PartnerITAMatrix    Partner = "ita_matrix"    // matrix.itasoftware.com — Google's flight backend, no commission
+	PartnerMomondo      Partner = "momondo"       // commercial aggregator but adds breadth not in Skyscanner
+	PartnerHotellook    Partner = "hotellook"     // hotel meta-search aggregator
+	PartnerAtlasObscura Partner = "atlas_obscura" // editorial activities/places, no affiliate program
+	PartnerTimeOut      Partner = "timeout"       // editorial things-to-do, no affiliate program
+	PartnerSquaremouth  Partner = "squaremouth"   // travel insurance comparison, no affiliate ID for us
+	PartnerInsureMyTrip Partner = "insuremytrip"  // travel insurance comparison
+	PartnerTuro         Partner = "turo"          // peer-to-peer car rental
+	PartnerAutoEurope   Partner = "auto_europe"   // car-rental broker (strong in Europe)
+	PartnerAirbnb       Partner = "airbnb"        // vacation rental — scaffolded without affiliate ID until Impact.com partnership
 )
 
 // Recommendation is a booking recommendation with an affiliate link.

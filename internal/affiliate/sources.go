@@ -36,7 +36,14 @@ type Source struct {
 // sources[0] get the current behaviour. origin, dest, and date follow
 // the same semantics as FlightSearchURL. tripIDHash is appended as a
 // sub-ID on the affiliate candidate for conversion attribution.
-func (b *LinkBuilder) FlightSources(origin, dest, date, tripIDHash string) []Source {
+//
+// includePro controls whether Pro-tier-only sources are appended. When
+// true, the slice gains ITA Matrix (Google's flight backend, the most
+// powerful flight search tool publicly available) and Momondo (price
+// breadth that Skyscanner sometimes misses). Both are non-affiliate so
+// they're invisible to free-tier users — that's the marketed Pro "wider
+// candidate pool" deliverable per toqui-backend#386.
+func (b *LinkBuilder) FlightSources(origin, dest, date, tripIDHash string, includePro bool) []Source {
 	origin = strings.TrimSpace(origin)
 	dest = strings.TrimSpace(dest)
 	date = strings.TrimSpace(date)
@@ -82,14 +89,55 @@ func (b *LinkBuilder) FlightSources(origin, dest, date, tripIDHash string) []Sou
 		Description: "Independent flight search on Google Flights — Toqui earns no commission.",
 	})
 
+	if includePro {
+		// Pro: ITA Matrix — Google's underlying flight search engine,
+		// far more powerful than Google Flights for complex routings
+		// (codeshares, multi-city, fare-class filtering). No affiliate
+		// program; deep-link uses the documented &p= path-segment
+		// shape with a routing language string.
+		itaQuery := url.Values{}
+		itaQuery.Set("p", fmt.Sprintf("%s %s %s", origin, dest, date))
+		out = append(out, Source{
+			ID:          "ita_matrix",
+			Partner:     PartnerITAMatrix,
+			IsAffiliate: false,
+			URL:         "https://matrix.itasoftware.com/search?" + itaQuery.Encode(),
+			Title:       fmt.Sprintf("ITA Matrix advanced search: %s to %s", origin, dest),
+			Description: "Pro: deep flight search via ITA Matrix (Google's flight backend) — independent, no commission.",
+		})
+		// Pro: Momondo — different inventory mix from Skyscanner, often
+		// surfaces fares neither finds. Plain destination-search URL,
+		// no tracking ID.
+		mqQuery := url.Values{}
+		mqQuery.Set("Search", "true")
+		mqQuery.Set("TripType", "2") // round-trip
+		mqQuery.Set("SegNo", "2")
+		mqQuery.Set("SO0", origin)
+		mqQuery.Set("SD0", dest)
+		if date != "" && date != "anytime" {
+			mqQuery.Set("SDP0", date)
+		}
+		out = append(out, Source{
+			ID:          "momondo",
+			Partner:     PartnerMomondo,
+			IsAffiliate: false,
+			URL:         "https://www.momondo.com/flightsearch?" + mqQuery.Encode(),
+			Title:       fmt.Sprintf("Momondo: %s to %s", origin, dest),
+			Description: "Pro: Momondo flight comparison — different inventory mix from Skyscanner.",
+		})
+	}
+
 	return out
 }
 
 // HotelSources returns the candidate sources for a hotel search.
 // propertyName takes precedence over city when non-empty (for deep-linked
 // property searches). Ordered affiliate-first (Booking.com), with Google
-// Maps hotels as the independent fallback.
-func (b *LinkBuilder) HotelSources(propertyName, city, checkin, checkout, tripIDHash string) []Source {
+// Maps hotels as the independent fallback. When includePro=true, adds
+// Hotellook (multi-aggregator meta-search) — Pro users get price
+// comparison across booking platforms in one extra source per
+// toqui-backend#386.
+func (b *LinkBuilder) HotelSources(propertyName, city, checkin, checkout, tripIDHash string, includePro bool) []Source {
 	propertyName = strings.TrimSpace(propertyName)
 	city = strings.TrimSpace(city)
 	searchStr := propertyName
@@ -150,14 +198,45 @@ func (b *LinkBuilder) HotelSources(propertyName, city, checkin, checkout, tripID
 		Description: gDesc,
 	})
 
+	if includePro {
+		// Pro: Hotellook — meta-search aggregating Booking.com, Hotels.com,
+		// Agoda, Hostelworld, etc. Different inventory shape than
+		// Booking.com alone. No affiliate ID configured here so Pro
+		// users see truly independent comparison; if we later sign on
+		// with TravelPayouts, flip IsAffiliate=true and add the marker
+		// query param.
+		hlSearch := searchStr
+		if hlSearch == "" {
+			hlSearch = "hotels"
+		}
+		hlParams := url.Values{}
+		hlParams.Set("destination", hlSearch)
+		if checkin != "" {
+			hlParams.Set("checkIn", checkin)
+		}
+		if checkout != "" {
+			hlParams.Set("checkOut", checkout)
+		}
+		out = append(out, Source{
+			ID:          "hotellook",
+			Partner:     PartnerHotellook,
+			IsAffiliate: false,
+			URL:         "https://search.hotellook.com/?" + hlParams.Encode(),
+			Title:       fmt.Sprintf("Compare hotel prices: %s (Hotellook)", hlSearch),
+			Description: "Pro: Hotellook compares prices across Booking.com, Hotels.com, Agoda, and others.",
+		})
+	}
+
 	return out
 }
 
 // ActivitySources returns the candidate sources for an activity search.
 // Ordered: GetYourGuide (affiliate), then Google Maps (independent), then
 // Wikivoyage (independent, deep local knowledge). city may be empty — if
-// so we fall back to the raw query.
-func (b *LinkBuilder) ActivitySources(query, city, tripIDHash string) []Source {
+// so we fall back to the raw query. When includePro=true, adds Atlas
+// Obscura and Time Out — editorial sources surfacing experiences that
+// don't appear in commercial activity aggregators (#386).
+func (b *LinkBuilder) ActivitySources(query, city, tripIDHash string, includePro bool) []Source {
 	query = strings.TrimSpace(query)
 	city = strings.TrimSpace(city)
 
@@ -214,12 +293,50 @@ func (b *LinkBuilder) ActivitySources(query, city, tripIDHash string) []Source {
 		})
 	}
 
+	if includePro {
+		// Pro: Atlas Obscura — editorial coverage of the unusual
+		// experiences that GetYourGuide doesn't index (museum-of-X
+		// type things, hidden ruins, tucked-away workshops). No
+		// affiliate program; deep-link via search.
+		aoQuery := query
+		if city != "" {
+			aoQuery = city + " " + query
+		}
+		out = append(out, Source{
+			ID:          "atlas_obscura",
+			Partner:     PartnerAtlasObscura,
+			IsAffiliate: false,
+			URL:         "https://www.atlasobscura.com/search?q=" + url.QueryEscape(strings.TrimSpace(aoQuery)),
+			Title:       fmt.Sprintf("Atlas Obscura: %s", query),
+			Description: "Pro: editorial coverage of unusual experiences — Toqui earns no commission.",
+		})
+		// Pro: Time Out city page — editorial things-to-do curated by
+		// local editors. Major cities only; for unsupported cities
+		// the link still 404-pages gracefully (Time Out renders a
+		// search form). Slug shape is the city name lowercased and
+		// hyphenated, but Time Out's URLs are fairly forgiving.
+		if city != "" {
+			toSlug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(city), " ", "-"))
+			out = append(out, Source{
+				ID:          "timeout",
+				Partner:     PartnerTimeOut,
+				IsAffiliate: false,
+				URL:         "https://www.timeout.com/" + url.PathEscape(toSlug),
+				Title:       fmt.Sprintf("Time Out %s", city),
+				Description: fmt.Sprintf("Pro: locally-edited things to do in %s — independent of any booking aggregator.", city),
+			})
+		}
+	}
+
 	return out
 }
 
 // CarRentalSources returns the candidate sources for a car rental search.
-// Ordered: DiscoverCars (affiliate), then Google Maps (independent).
-func (b *LinkBuilder) CarRentalSources(location, pickupDate, dropoffDate string) []Source {
+// Ordered: DiscoverCars (affiliate), then Google Maps (independent). When
+// includePro=true, adds Turo (peer-to-peer rental — different inventory
+// shape from agency rentals) and AutoEurope (specialty broker, strong in
+// Europe).
+func (b *LinkBuilder) CarRentalSources(location, pickupDate, dropoffDate string, includePro bool) []Source {
 	location = strings.TrimSpace(location)
 
 	var out []Source
@@ -256,6 +373,46 @@ func (b *LinkBuilder) CarRentalSources(location, pickupDate, dropoffDate string)
 		},
 	)
 
+	if includePro {
+		// Pro: Turo — peer-to-peer car rental marketplace, different
+		// inventory shape (specialty/luxury, no airport queue, often
+		// cheaper for longer stays). No affiliate ID.
+		turoParams := url.Values{}
+		turoParams.Set("location", location)
+		if pickupDate != "" {
+			turoParams.Set("startDate", pickupDate)
+		}
+		if dropoffDate != "" {
+			turoParams.Set("endDate", dropoffDate)
+		}
+		out = append(out, Source{
+			ID:          "turo",
+			Partner:     PartnerTuro,
+			IsAffiliate: false,
+			URL:         "https://turo.com/us/en/search?" + turoParams.Encode(),
+			Title:       fmt.Sprintf("Turo peer-to-peer rentals in %s", location),
+			Description: "Pro: peer-to-peer car rentals — no airport queue, often cheaper for longer stays.",
+		})
+		// Pro: AutoEurope — specialty broker, strong in Europe. Their
+		// search URL takes "ToCity" as the pickup location.
+		aeParams := url.Values{}
+		aeParams.Set("ToCity", location)
+		if pickupDate != "" {
+			aeParams.Set("PickupDate", pickupDate)
+		}
+		if dropoffDate != "" {
+			aeParams.Set("DropoffDate", dropoffDate)
+		}
+		out = append(out, Source{
+			ID:          "auto_europe",
+			Partner:     PartnerAutoEurope,
+			IsAffiliate: false,
+			URL:         "https://www.autoeurope.com/results?" + aeParams.Encode(),
+			Title:       fmt.Sprintf("AutoEurope car rental in %s", location),
+			Description: "Pro: specialty car-rental broker, strongest inventory in Europe.",
+		})
+	}
+
 	return out
 }
 
@@ -263,8 +420,11 @@ func (b *LinkBuilder) CarRentalSources(location, pickupDate, dropoffDate string)
 // Ordered: SafetyWing (affiliate), then a Google search (independent).
 // Insurance is the category with the weakest independent alternative —
 // there is no widely-used non-affiliate comparison site with a stable
-// URL scheme, so the independent option is a plain Google search.
-func (b *LinkBuilder) InsuranceSources(destination string) []Source {
+// URL scheme for the free tier, so the independent option is a plain
+// Google search. When includePro=true, adds Squaremouth and InsureMyTrip
+// — comparison-shopping sites that show side-by-side quotes from
+// multiple insurers (which is what users actually want to do here).
+func (b *LinkBuilder) InsuranceSources(destination string, includePro bool) []Source {
 	destination = strings.TrimSpace(destination)
 
 	var out []Source
@@ -298,16 +458,49 @@ func (b *LinkBuilder) InsuranceSources(destination string) []Source {
 		Description: "Independent Google search — Toqui earns no commission.",
 	})
 
+	if includePro {
+		// Pro: Squaremouth — side-by-side quote comparison from 25+
+		// insurers, far better experience than a Google search. No
+		// affiliate ID configured (commission-free for Pro users).
+		smParams := url.Values{}
+		if destination != "" {
+			smParams.Set("destination", destination)
+		}
+		out = append(out, Source{
+			ID:          "squaremouth",
+			Partner:     PartnerSquaremouth,
+			IsAffiliate: false,
+			URL:         "https://www.squaremouth.com/?" + smParams.Encode(),
+			Title:       fmt.Sprintf("Compare insurance quotes (Squaremouth): %s", destination),
+			Description: "Pro: side-by-side quotes from 25+ insurers — Toqui earns no commission.",
+		})
+		// Pro: InsureMyTrip — same comparison-shop pattern, different
+		// insurer mix.
+		imtParams := url.Values{}
+		if destination != "" {
+			imtParams.Set("destination", destination)
+		}
+		out = append(out, Source{
+			ID:          "insuremytrip",
+			Partner:     PartnerInsureMyTrip,
+			IsAffiliate: false,
+			URL:         "https://www.insuremytrip.com/?" + imtParams.Encode(),
+			Title:       fmt.Sprintf("Compare insurance quotes (InsureMyTrip): %s", destination),
+			Description: "Pro: side-by-side quotes from a different insurer panel than Squaremouth.",
+		})
+	}
+
 	return out
 }
 
 // VacationRentalSources returns the candidate sources for a vacation
 // rental search (houses, cabins, villas — the segment Booking.com is
 // weak in). Ordered: VRBO (affiliate via Partnerize), then a Google
-// search (independent). Airbnb is deliberately omitted until we have a
-// separate Impact.com partnership; the current Partnerize publisher ID
-// covers Expedia-group brands only.
-func (b *LinkBuilder) VacationRentalSources(city, checkin, checkout, tripIDHash string) []Source {
+// search (independent). When includePro=true, adds an Airbnb deep-link
+// (scaffolded WITHOUT an affiliate ID until a separate Impact.com
+// partnership is signed; Pro users get a plain commission-free Airbnb
+// search until then).
+func (b *LinkBuilder) VacationRentalSources(city, checkin, checkout, tripIDHash string, includePro bool) []Source {
 	city = strings.TrimSpace(city)
 	checkin = strings.TrimSpace(checkin)
 	checkout = strings.TrimSpace(checkout)
@@ -358,6 +551,33 @@ func (b *LinkBuilder) VacationRentalSources(city, checkin, checkout, tripIDHash 
 		Title:       googleTitle,
 		Description: "Independent Google search — Toqui earns no commission.",
 	})
+
+	if includePro {
+		// Pro: Airbnb — different inventory mix from VRBO (urban
+		// apartments / unique stays vs. VRBO's house/cabin slant).
+		// Scaffolded WITHOUT an affiliate ID — current Partnerize
+		// publisher ID only covers Expedia-group brands. When/if an
+		// Impact.com Airbnb partnership lands, flip IsAffiliate=true
+		// and append the marker query param.
+		abParams := url.Values{}
+		if city != "" {
+			abParams.Set("query", city)
+		}
+		if checkin != "" {
+			abParams.Set("checkin", checkin)
+		}
+		if checkout != "" {
+			abParams.Set("checkout", checkout)
+		}
+		out = append(out, Source{
+			ID:          "airbnb",
+			Partner:     PartnerAirbnb,
+			IsAffiliate: false, // no affiliate ID; flip when Impact.com partnership signs
+			URL:         "https://www.airbnb.com/s/homes?" + abParams.Encode(),
+			Title:       fmt.Sprintf("Airbnb stays in %s", city),
+			Description: "Pro: Airbnb apartments + unique stays — different inventory mix from VRBO.",
+		})
+	}
 
 	return out
 }

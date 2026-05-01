@@ -9,7 +9,7 @@ import (
 
 func TestFlightSources_OrderingAffiliateFirst(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
-	got := b.FlightSources("JFK", "PRG", "2026-06-15", "")
+	got := b.FlightSources("JFK", "PRG", "2026-06-15", "", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources, got %d", len(got))
@@ -42,7 +42,7 @@ func TestFlightSources_NoAffiliateID_StillAffiliatePartner(t *testing.T) {
 	// copy — an affirmative misleading claim. For the "is our tracking ID
 	// wired up?" concept, use LinkBuilder.HasPartner instead.
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	got := b.FlightSources("JFK", "PRG", "2026-06-15", "")
+	got := b.FlightSources("JFK", "PRG", "2026-06-15", "", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources, got %d", len(got))
@@ -61,7 +61,7 @@ func TestFlightSources_NoAffiliateID_StillAffiliatePartner(t *testing.T) {
 
 func TestFlightSources_GoogleFlightsURL(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
-	got := b.FlightSources("JFK", "PRG", "2026-06-15", "")
+	got := b.FlightSources("JFK", "PRG", "2026-06-15", "", false)
 
 	gf := got[1]
 	if !strings.HasPrefix(gf.URL, "https://www.google.com/travel/flights?q=") {
@@ -77,7 +77,7 @@ func TestFlightSources_GoogleFlightsURL(t *testing.T) {
 
 func TestFlightSources_GoogleFlightsAnytimeOmitsDate(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	got := b.FlightSources("JFK", "PRG", "anytime", "")
+	got := b.FlightSources("JFK", "PRG", "anytime", "", false)
 	gf := got[1]
 	if strings.Contains(gf.URL, "anytime") {
 		t.Errorf("Google Flights URL should not include the literal 'anytime' sentinel: %s", gf.URL)
@@ -86,7 +86,7 @@ func TestFlightSources_GoogleFlightsAnytimeOmitsDate(t *testing.T) {
 
 func TestFlightSources_SubIDOnlyOnAffiliate(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
-	got := b.FlightSources("JFK", "PRG", "2026-06-15", "trip-hash-123")
+	got := b.FlightSources("JFK", "PRG", "2026-06-15", "trip-hash-123", false)
 
 	if !strings.Contains(got[0].URL, "utm_content=trip-hash-123") {
 		t.Errorf("affiliate URL should carry sub-ID: %s", got[0].URL)
@@ -100,7 +100,7 @@ func TestFlightSources_SubIDOnlyOnAffiliate(t *testing.T) {
 
 func TestHotelSources_OrderingAffiliateFirst(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{BookingComID: "book456"})
-	got := b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "")
+	got := b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources, got %d", len(got))
@@ -121,7 +121,7 @@ func TestHotelSources_OrderingAffiliateFirst(t *testing.T) {
 
 func TestHotelSources_PropertyNameUsesGoogleSearch(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	got := b.HotelSources("Park Hyatt Tokyo", "Tokyo", "", "", "")
+	got := b.HotelSources("Park Hyatt Tokyo", "Tokyo", "", "", "", false)
 	gh := got[1]
 
 	if !strings.HasPrefix(gh.URL, "https://www.google.com/search?q=") {
@@ -134,7 +134,7 @@ func TestHotelSources_PropertyNameUsesGoogleSearch(t *testing.T) {
 
 func TestHotelSources_NoPropertyUsesGoogleMaps(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	got := b.HotelSources("", "Reykjavik", "", "", "")
+	got := b.HotelSources("", "Reykjavik", "", "", "", false)
 	gh := got[1]
 
 	if !strings.HasPrefix(gh.URL, "https://www.google.com/maps/search/") {
@@ -149,7 +149,7 @@ func TestHotelSources_NoPropertyUsesGoogleMaps(t *testing.T) {
 
 func TestActivitySources_WithCity_IncludesWikivoyage(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{GetYourGuideID: "gyg789"})
-	got := b.ActivitySources("walking tour", "Prague", "")
+	got := b.ActivitySources("walking tour", "Prague", "", false)
 
 	if len(got) != 3 {
 		t.Fatalf("expected 3 sources (gyg, google, wikivoyage), got %d", len(got))
@@ -167,7 +167,7 @@ func TestActivitySources_WithCity_IncludesWikivoyage(t *testing.T) {
 
 func TestActivitySources_NoCity_OmitsWikivoyage(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{GetYourGuideID: "gyg789"})
-	got := b.ActivitySources("walking tour", "", "")
+	got := b.ActivitySources("walking tour", "", "", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources without city, got %d", len(got))
@@ -181,7 +181,7 @@ func TestActivitySources_NoCity_OmitsWikivoyage(t *testing.T) {
 
 func TestActivitySources_WikivoyageURLEncoding(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{})
-	got := b.ActivitySources("anything", "New York City", "")
+	got := b.ActivitySources("anything", "New York City", "", false)
 
 	var wv Source
 	for _, s := range got {
@@ -202,7 +202,7 @@ func TestActivitySources_WikivoyageURLEncoding(t *testing.T) {
 
 func TestCarRentalSources_OrderingAffiliateFirst(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{DiscoverCarsID: "dc202"})
-	got := b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10")
+	got := b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources, got %d", len(got))
@@ -222,7 +222,7 @@ func TestCarRentalSources_OrderingAffiliateFirst(t *testing.T) {
 
 func TestInsuranceSources_HasIndependentFallback(t *testing.T) {
 	b := NewLinkBuilder(LinkBuilderConfig{SafetyWingID: "sw303"})
-	got := b.InsuranceSources("Japan")
+	got := b.InsuranceSources("Japan", false)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 sources (safetywing, google), got %d", len(got))
@@ -261,11 +261,11 @@ func TestSources_IsAffiliateIsStaticPerPartner(t *testing.T) {
 		name    string
 		sources []Source
 	}{
-		{"FlightSources", b.FlightSources("JFK", "PRG", "2026-06-15", "")},
-		{"HotelSources", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "")},
-		{"ActivitySources", b.ActivitySources("walking tour", "Prague", "")},
-		{"CarRentalSources", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10")},
-		{"InsuranceSources", b.InsuranceSources("Japan")},
+		{"FlightSources", b.FlightSources("JFK", "PRG", "2026-06-15", "", false)},
+		{"HotelSources", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false)},
+		{"ActivitySources", b.ActivitySources("walking tour", "Prague", "", false)},
+		{"CarRentalSources", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false)},
+		{"InsuranceSources", b.InsuranceSources("Japan", false)},
 	}
 
 	// Partners that are always commission-earning commercial domains.
@@ -327,37 +327,37 @@ func TestProTierSelection_EmptyConfig_GetsIndependentSource(t *testing.T) {
 	}{
 		{
 			name:           "flight",
-			sources:        b.FlightSources("JFK", "PRG", "2026-06-15", ""),
+			sources:        b.FlightSources("JFK", "PRG", "2026-06-15", "", false),
 			wantPartner:    PartnerGoogle,
 			forbiddenHosts: []string{"skyscanner.com"},
 		},
 		{
 			name:           "hotel (city-only)",
-			sources:        b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", ""),
+			sources:        b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false),
 			wantPartner:    PartnerGoogle,
 			forbiddenHosts: []string{"booking.com"},
 		},
 		{
 			name:           "hotel (property name)",
-			sources:        b.HotelSources("Park Hyatt Tokyo", "Tokyo", "", "", ""),
+			sources:        b.HotelSources("Park Hyatt Tokyo", "Tokyo", "", "", "", false),
 			wantPartner:    PartnerGoogle,
 			forbiddenHosts: []string{"booking.com"},
 		},
 		{
 			name:           "activity",
-			sources:        b.ActivitySources("walking tour", "Prague", ""),
+			sources:        b.ActivitySources("walking tour", "Prague", "", false),
 			wantPartner:    PartnerGoogle, // Google Maps is preferred over Wikivoyage (earlier in slice)
 			forbiddenHosts: []string{"getyourguide.com", "viator.com"},
 		},
 		{
 			name:           "car rental",
-			sources:        b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10"),
+			sources:        b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false),
 			wantPartner:    PartnerGoogle,
 			forbiddenHosts: []string{"discovercars.com"},
 		},
 		{
 			name:           "insurance",
-			sources:        b.InsuranceSources("Japan"),
+			sources:        b.InsuranceSources("Japan", false),
 			wantPartner:    PartnerGoogle,
 			forbiddenHosts: []string{"safetywing.com"},
 		},
@@ -398,11 +398,11 @@ func TestFreeTierSelection_EmptyConfig_StillHonorsFTC(t *testing.T) {
 		sources     []Source
 		wantPartner Partner
 	}{
-		{"flight", b.FlightSources("JFK", "PRG", "2026-06-15", ""), PartnerSkyscanner},
-		{"hotel", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", ""), PartnerBookingCom},
-		{"activity", b.ActivitySources("walking tour", "Prague", ""), PartnerGetYourGuide},
-		{"car rental", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10"), PartnerDiscoverCars},
-		{"insurance", b.InsuranceSources("Japan"), PartnerSafetyWing},
+		{"flight", b.FlightSources("JFK", "PRG", "2026-06-15", "", false), PartnerSkyscanner},
+		{"hotel", b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false), PartnerBookingCom},
+		{"activity", b.ActivitySources("walking tour", "Prague", "", false), PartnerGetYourGuide},
+		{"car rental", b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false), PartnerDiscoverCars},
+		{"insurance", b.InsuranceSources("Japan", false), PartnerSafetyWing},
 	}
 
 	for _, tc := range cases {
@@ -419,4 +419,258 @@ func TestFreeTierSelection_EmptyConfig_StillHonorsFTC(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Pro-tier source-pool widening (#386)
+//
+// When includePro=true, each per-category builder appends additional
+// candidate sources that the free-tier pool deliberately excludes. The
+// invariants we pin:
+//
+//   - Free pool is a strict subset of Pro pool (same prefix, Pro just
+//     appends). A future bug that reorders or replaces sources between
+//     tiers gets caught here.
+//   - Every Pro-only source is IsAffiliate=false. The marketing claim
+//     ("widens beyond affiliate partners") would be falsified if any
+//     Pro addition was a commission source. If/when we sign an
+//     Airbnb / Squaremouth affiliate partnership, IsAffiliate flips to
+//     true on that specific source and these tests must be updated
+//     deliberately.
+//   - Each Pro source has a non-empty URL — pin against a regression
+//     where a builder appends a Source{} zero value.
+// ---------------------------------------------------------------------------
+
+func TestProTier_FreePoolIsSubsetOfProPool(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+
+	cases := []struct {
+		name string
+		free []Source
+		pro  []Source
+	}{
+		{"flights",
+			b.FlightSources("JFK", "PRG", "2026-06-15", "", false),
+			b.FlightSources("JFK", "PRG", "2026-06-15", "", true)},
+		{"hotels",
+			b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false),
+			b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", true)},
+		{"activities",
+			b.ActivitySources("walking tour", "Prague", "", false),
+			b.ActivitySources("walking tour", "Prague", "", true)},
+		{"car rental",
+			b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false),
+			b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", true)},
+		{"insurance",
+			b.InsuranceSources("Japan", false),
+			b.InsuranceSources("Japan", true)},
+		{"vacation rental",
+			b.VacationRentalSources("Lisbon", "", "", "", false),
+			b.VacationRentalSources("Lisbon", "", "", "", true)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.pro) <= len(tc.free) {
+				t.Errorf("Pro pool (%d) must strictly extend free pool (%d) — got no widening",
+					len(tc.pro), len(tc.free))
+			}
+			for i, free := range tc.free {
+				if i >= len(tc.pro) || tc.pro[i].ID != free.ID {
+					t.Errorf("Pro pool[%d] ID = %q, want free pool[%d] ID = %q (Pro must append, not reorder)",
+						i, tc.pro[i].ID, i, free.ID)
+				}
+			}
+		})
+	}
+}
+
+func TestProTier_AllProAdditionsAreNonAffiliate(t *testing.T) {
+	// The marketing claim is "widens beyond affiliate partners". Pin
+	// that every Pro-only addition is IsAffiliate=false. If/when an
+	// Airbnb / Squaremouth affiliate partnership is signed, flip the
+	// specific source's IsAffiliate=true and update this test
+	// deliberately — the invariant change is the signal.
+	b := NewLinkBuilder(LinkBuilderConfig{})
+
+	cases := []struct {
+		name string
+		free []Source
+		pro  []Source
+	}{
+		{"flights",
+			b.FlightSources("JFK", "PRG", "2026-06-15", "", false),
+			b.FlightSources("JFK", "PRG", "2026-06-15", "", true)},
+		{"hotels",
+			b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", false),
+			b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", true)},
+		{"activities (with city)",
+			b.ActivitySources("walking tour", "Prague", "", false),
+			b.ActivitySources("walking tour", "Prague", "", true)},
+		{"car rental",
+			b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", false),
+			b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", true)},
+		{"insurance",
+			b.InsuranceSources("Japan", false),
+			b.InsuranceSources("Japan", true)},
+		{"vacation rental",
+			b.VacationRentalSources("Lisbon", "", "", "", false),
+			b.VacationRentalSources("Lisbon", "", "", "", true)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			additions := tc.pro[len(tc.free):]
+			if len(additions) == 0 {
+				t.Skip("no Pro additions for this category yet")
+			}
+			for _, src := range additions {
+				if src.IsAffiliate {
+					t.Errorf("Pro addition %q (%s) is IsAffiliate=true — violates 'widens beyond affiliate partners' marketing claim",
+						src.ID, src.Partner)
+				}
+				if src.URL == "" {
+					t.Errorf("Pro addition %q has empty URL — likely a Source{} zero value bug", src.ID)
+				}
+				if src.Title == "" {
+					t.Errorf("Pro addition %q has empty Title — would render as an empty card in chat", src.ID)
+				}
+			}
+		})
+	}
+}
+
+func TestProTier_FlightSources_AddsITAMatrixAndMomondo(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.FlightSources("JFK", "PRG", "2026-06-15", "", true)
+
+	// Find the additions by ID — we don't pin position because future
+	// builders may reorder.
+	ids := make(map[string]Source, len(pro))
+	for _, s := range pro {
+		ids[s.ID] = s
+	}
+
+	if _, ok := ids["ita_matrix"]; !ok {
+		t.Errorf("Pro flight pool should include ita_matrix; got IDs: %v", mapsKeys(ids))
+	}
+	if _, ok := ids["momondo"]; !ok {
+		t.Errorf("Pro flight pool should include momondo; got IDs: %v", mapsKeys(ids))
+	}
+	// Pin the URL shapes — these are part of the contract with the
+	// upstream services. A typo or ordering change here breaks the
+	// integration silently.
+	if !strings.Contains(ids["ita_matrix"].URL, "matrix.itasoftware.com") {
+		t.Errorf("ita_matrix URL = %q, want matrix.itasoftware.com host", ids["ita_matrix"].URL)
+	}
+	if !strings.Contains(ids["momondo"].URL, "momondo.com") {
+		t.Errorf("momondo URL = %q, want momondo.com host", ids["momondo"].URL)
+	}
+}
+
+func TestProTier_HotelSources_AddsHotellook(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.HotelSources("", "Prague", "2026-06-15", "2026-06-20", "", true)
+	for _, s := range pro {
+		if s.ID == "hotellook" {
+			if !strings.Contains(s.URL, "hotellook.com") {
+				t.Errorf("hotellook URL = %q, want hotellook.com host", s.URL)
+			}
+			return
+		}
+	}
+	t.Error("Pro hotel pool should include hotellook")
+}
+
+func TestProTier_ActivitySources_AddsAtlasObscuraAndTimeOut(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.ActivitySources("walking tour", "Prague", "", true)
+
+	ids := make(map[string]Source, len(pro))
+	for _, s := range pro {
+		ids[s.ID] = s
+	}
+	if _, ok := ids["atlas_obscura"]; !ok {
+		t.Errorf("Pro activity pool should include atlas_obscura; got: %v", mapsKeys(ids))
+	}
+	if _, ok := ids["timeout"]; !ok {
+		t.Errorf("Pro activity pool with city should include timeout; got: %v", mapsKeys(ids))
+	}
+}
+
+func TestProTier_ActivitySources_TimeOutOmittedWhenCityMissing(t *testing.T) {
+	// Time Out's URL slug pattern is the city name. Without a city we
+	// can't construct a meaningful URL, so the source must be skipped
+	// rather than landing the user on a broken page.
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.ActivitySources("walking tour", "", "", true)
+	for _, s := range pro {
+		if s.ID == "timeout" {
+			t.Errorf("timeout source should be omitted when city is empty, got URL %q", s.URL)
+		}
+	}
+}
+
+func TestProTier_CarRentalSources_AddsTuroAndAutoEurope(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.CarRentalSources("Lisbon", "2026-07-01", "2026-07-10", true)
+
+	ids := make(map[string]Source, len(pro))
+	for _, s := range pro {
+		ids[s.ID] = s
+	}
+	if _, ok := ids["turo"]; !ok {
+		t.Errorf("Pro car-rental pool should include turo; got: %v", mapsKeys(ids))
+	}
+	if _, ok := ids["auto_europe"]; !ok {
+		t.Errorf("Pro car-rental pool should include auto_europe; got: %v", mapsKeys(ids))
+	}
+}
+
+func TestProTier_InsuranceSources_AddsSquaremouthAndInsureMyTrip(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.InsuranceSources("Japan", true)
+
+	ids := make(map[string]Source, len(pro))
+	for _, s := range pro {
+		ids[s.ID] = s
+	}
+	if _, ok := ids["squaremouth"]; !ok {
+		t.Errorf("Pro insurance pool should include squaremouth; got: %v", mapsKeys(ids))
+	}
+	if _, ok := ids["insuremytrip"]; !ok {
+		t.Errorf("Pro insurance pool should include insuremytrip; got: %v", mapsKeys(ids))
+	}
+}
+
+func TestProTier_VacationRentalSources_AddsAirbnb(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{})
+	pro := b.VacationRentalSources("Lisbon", "", "", "", true)
+	for _, s := range pro {
+		if s.ID == "airbnb" {
+			// Verifies the explicit comment in the Pro-tier code: Airbnb
+			// is currently scaffolded WITHOUT an affiliate ID. If an
+			// Impact.com partnership lands, IsAffiliate flips to true
+			// and this test must be updated.
+			if s.IsAffiliate {
+				t.Errorf("airbnb source should be non-affiliate until Impact.com partnership is signed; got IsAffiliate=true")
+			}
+			if !strings.Contains(s.URL, "airbnb.com") {
+				t.Errorf("airbnb URL = %q, want airbnb.com host", s.URL)
+			}
+			return
+		}
+	}
+	t.Error("Pro vacation-rental pool should include airbnb")
+}
+
+// mapsKeys is a tiny test helper — pulled out so the test bodies stay
+// focused on the assertion. Drop once Go's std map-keys helper is
+// available everywhere we run.
+func mapsKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
