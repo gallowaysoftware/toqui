@@ -69,6 +69,16 @@ type Recommendation struct {
 	Category    string  `json:"category"`
 	ImageURL    string  `json:"image_url,omitempty"`
 	Disclosure  string  `json:"disclosure"`
+
+	// Rationale is the short, comma-separated explanation produced by the
+	// scored fit ranker — e.g. "non-affiliate (Pro), dated query fits
+	// aggregator". It travels in the recommend_booking tool result so the
+	// AI can include a one-sentence paraphrase ("I picked ITA Matrix
+	// because it's commission-free and your dates fit a search engine
+	// best") in its reply. omitempty: legacy callers / categories that
+	// hit the defensive empty-URL fallback don't surface a rationale.
+	// See affiliate.ScoreSources for how the rationale is built.
+	Rationale string `json:"rationale,omitempty"`
 }
 
 // FTCDisclosure is the standard disclosure text used on every affiliate

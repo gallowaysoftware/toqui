@@ -155,6 +155,26 @@ func scoreOne(ctx ScoreContext, s Source) ScoredSource {
 		reasons = append(reasons, "scaffolded partner")
 	}
 
+	// --- Pro-pool addition tiebreak ---
+	// The 10 partners added in #386 PR 1 are the marketed Pro value-add
+	// (ITA Matrix, Momondo, Hotellook, Atlas Obscura, Time Out,
+	// Squaremouth, InsureMyTrip, Turo, Auto Europe, Airbnb). Without an
+	// explicit boost they tied with the free-pool non-affiliate sources
+	// (mostly Google) on Pro tier and lost on stable-sort input order —
+	// so the marketing claim "Pro: Atlas Obscura editorial coverage"
+	// was hollow because Wikivoyage always won the tie. The bump is
+	// deliberately tiny (+0.05) so it ONLY moves things when scores
+	// would otherwise tie; it can't outrank the affiliate-status
+	// signal or the fit signals.
+	//
+	// Note: Airbnb is a Pro addition AND scaffolded — the -0.2
+	// scaffolded penalty still dominates the +0.05 here, so Airbnb
+	// continues to rank below established alternatives. By design.
+	if isProAddition(s.Partner) {
+		score += 0.05
+		reasons = append(reasons, "Pro-pool addition")
+	}
+
 	return ScoredSource{
 		Source:    s,
 		Score:     score,
@@ -208,6 +228,34 @@ func isCityCurated(p Partner) bool {
 // its tracking is plumbed.
 func isScaffolded(p Partner) bool {
 	return p == PartnerAirbnb
+}
+
+// isProAddition reports whether the partner is one of the 10 sources
+// added in #386 PR 1 to widen the Pro candidate pool. These partners
+// are only ever in the candidate pool when the source builder was
+// called with includePro=true, so this predicate is effectively
+// "is this partner unique to Pro tier?". The +0.05 tiebreak in
+// scoreOne uses this list to ensure the marketed Pro additions
+// outrank the free-pool non-affiliate sources (mostly Google) when
+// scores would otherwise tie — without altering the dominant
+// affiliate-status or fit signals.
+//
+// Add new partners here as they're added to the Pro pool.
+func isProAddition(p Partner) bool {
+	switch p {
+	case PartnerITAMatrix,
+		PartnerMomondo,
+		PartnerHotellook,
+		PartnerAtlasObscura,
+		PartnerTimeOut,
+		PartnerSquaremouth,
+		PartnerInsureMyTrip,
+		PartnerTuro,
+		PartnerAutoEurope,
+		PartnerAirbnb:
+		return true
+	}
+	return false
 }
 
 // SelectForPreference picks a single Source from a candidate list built by

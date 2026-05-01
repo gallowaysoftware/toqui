@@ -343,3 +343,85 @@ func TestScoreSources_StableTiebreakerPreservesInputOrder(t *testing.T) {
 		t.Errorf("equal-scored sources should preserve input order, got [%q, %q]", scored[0].ID, scored[1].ID)
 	}
 }
+
+// --- Pro-pool addition tiebreak (addresses adversarial review W1/W2) ---
+//
+// Without this tiebreak, the marketed Pro additions (ITA Matrix,
+// Squaremouth, Atlas Obscura, etc.) tied with the free-pool Google
+// non-affiliate sources and lost on stable-sort input order — making
+// the "Pro: Squaremouth comparison shop" claim hollow because plain
+// Google search always won the tie. The +0.05 isProAddition bump is
+// what makes those sources actually surface.
+
+func TestScoreSources_ProInsurance_SquaremouthBeatsGoogle(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SafetyWingID: "sw303"})
+	sources := b.InsuranceSources("Japan", true) // pro pool
+	scored := ScoreSources(ScoreContext{
+		PreferNonAffiliate: true,
+		HasSpecificCity:    true,
+	}, sources)
+
+	if scored[0].Partner != PartnerSquaremouth {
+		t.Errorf("Pro insurance with Pro-pool addition should pick Squaremouth (the marketed comparison shop) over plain Google, got %q (rationale: %s)", scored[0].Partner, scored[0].Rationale)
+	}
+}
+
+func TestScoreSources_ProActivity_AtlasObscuraBeatsWikivoyage(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{GetYourGuideID: "gyg789"})
+	sources := b.ActivitySources("walking tour", "Prague", "", true)
+	scored := ScoreSources(ScoreContext{
+		PreferNonAffiliate: true,
+		HasSpecificCity:    true,
+	}, sources)
+
+	if scored[0].Partner != PartnerAtlasObscura {
+		t.Errorf("Pro activity with city should pick Atlas Obscura (Pro-pool editorial) over Wikivoyage on tiebreak, got %q (rationale: %s)", scored[0].Partner, scored[0].Rationale)
+	}
+}
+
+func TestScoreSources_ProFlight_ITAMatrixBeatsGoogleFlights(t *testing.T) {
+	b := NewLinkBuilder(LinkBuilderConfig{SkyscannerID: "sky123"})
+	sources := b.FlightSources("JFK", "PRG", "2026-06-15", "", true)
+	scored := ScoreSources(ScoreContext{
+		PreferNonAffiliate: true,
+		HasSpecificDates:   true,
+	}, sources)
+
+	if scored[0].Partner != PartnerITAMatrix {
+		t.Errorf("Pro flight with Pro-pool addition should pick ITA Matrix (the marketed deep-search engine) over Google Flights, got %q (rationale: %s)", scored[0].Partner, scored[0].Rationale)
+	}
+}
+
+func TestScoreSources_ProAdditionDoesNotOverrideAffiliatePreference(t *testing.T) {
+	// Sanity check: the +0.05 Pro-addition tiebreak must NOT be large
+	// enough to outrank the +1.5 affiliate-status signal. Otherwise we
+	// could route a Pro user to a Pro-pool partner that happens to be
+	// affiliate (Momondo's affiliate program could land tomorrow). For
+	// now Momondo is non-affiliate so this is a forward-looking
+	// guarantee — synthesize a fake affiliate Pro-pool source vs a
+	// non-affiliate non-Pro source and verify the non-affiliate wins.
+	sources := []Source{
+		{ID: "fake_affiliate_pro", Partner: PartnerMomondo, IsAffiliate: true},
+		{ID: "non_aff", Partner: PartnerGoogle, IsAffiliate: false},
+	}
+	scored := ScoreSources(ScoreContext{PreferNonAffiliate: true}, sources)
+	if scored[0].Partner != PartnerGoogle {
+		t.Errorf("affiliate-status signal must dominate Pro-addition tiebreak; expected non-affiliate Google to win, got %q", scored[0].Partner)
+	}
+}
+
+func TestScoreSources_ScaffoldedAirbnb_StillLosesDespiteProBump(t *testing.T) {
+	// Airbnb is BOTH a Pro-pool addition (+0.05) AND scaffolded (-0.2).
+	// Net effect: -0.15. It must still rank below an established
+	// Pro-pool alternative. For vacation_rental there's no established
+	// non-affiliate alternative besides Google, so this test uses a
+	// synthetic pool to pin the policy.
+	sources := []Source{
+		{ID: "airbnb", Partner: PartnerAirbnb, IsAffiliate: false},
+		{ID: "google", Partner: PartnerGoogle, IsAffiliate: false},
+	}
+	scored := ScoreSources(ScoreContext{PreferNonAffiliate: true}, sources)
+	if scored[0].Partner != PartnerGoogle {
+		t.Errorf("scaffolded Airbnb (-0.15 net) must lose to established Google (1.5) even with Pro-addition bump, got top=%q (rationale: %s)", scored[0].Partner, scored[0].Rationale)
+	}
+}

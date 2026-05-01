@@ -546,9 +546,12 @@ func TestRecommendBookingTool_FreeTier_Disclosure(t *testing.T) {
 }
 
 func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
-	// Pro tier prefers non-affiliate sources for flights (Google Flights),
-	// so the disclosure should be IndependentDisclosure and the URL must
-	// not carry the Skyscanner affiliate ID.
+	// Pro tier flight: ITA Matrix is the marketed Pro addition (Google's
+	// flight backend, the most powerful flight search tool publicly
+	// available) and ranks above plain Google Flights via the +0.05
+	// Pro-pool addition tiebreak. Both are non-affiliate so the
+	// disclosure is still IndependentDisclosure either way; this test
+	// pins that the Pro addition wins the tiebreak rather than Google.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -571,8 +574,8 @@ func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
 	if rec.Disclosure != affiliate.IndependentDisclosure {
 		t.Errorf("pro tier flight should have independent disclosure, got %q", rec.Disclosure)
 	}
-	if rec.Partner != affiliate.PartnerGoogle {
-		t.Errorf("pro tier flight should select Google partner, got %q", rec.Partner)
+	if rec.Partner != affiliate.PartnerITAMatrix {
+		t.Errorf("pro tier flight should select ITA Matrix (Pro-pool addition outranking plain Google Flights), got %q", rec.Partner)
 	}
 	if strings.Contains(rec.URL, "skyscanner.com") {
 		t.Errorf("pro tier flight URL should not be Skyscanner, got %q", rec.URL)
@@ -583,7 +586,12 @@ func TestRecommendBookingTool_ProTier_Disclosure(t *testing.T) {
 }
 
 func TestRecommendBookingTool_ProTier_HotelDisclosure(t *testing.T) {
-	// Pro tier prefers Google Maps hotel search over Booking.com.
+	// Pro tier hotel: Hotellook is the marketed Pro addition (a hotel
+	// meta-search aggregator that compares prices across booking sites)
+	// and ranks above plain Google Maps via the +0.05 Pro-pool addition
+	// tiebreak in ranking.go. Both are non-affiliate so the disclosure
+	// is still IndependentDisclosure either way; this test pins that
+	// the Pro addition wins the tiebreak rather than Google.
 	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{BookingComID: "book456"})
 	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
 
@@ -604,8 +612,8 @@ func TestRecommendBookingTool_ProTier_HotelDisclosure(t *testing.T) {
 	if rec.Disclosure != affiliate.IndependentDisclosure {
 		t.Errorf("pro tier hotel should have independent disclosure, got %q", rec.Disclosure)
 	}
-	if rec.Partner != affiliate.PartnerGoogle {
-		t.Errorf("pro tier hotel should select Google partner, got %q", rec.Partner)
+	if rec.Partner != affiliate.PartnerHotellook {
+		t.Errorf("pro tier hotel should select Hotellook (Pro-pool addition), got %q", rec.Partner)
 	}
 	if strings.Contains(rec.URL, "booking.com") {
 		t.Errorf("pro tier hotel URL should not be Booking.com, got %q", rec.URL)
@@ -696,10 +704,10 @@ func TestRecommendBookingTool_ProTier_InsuranceDisclosure(t *testing.T) {
 	}
 
 	if rec.Disclosure != affiliate.IndependentDisclosure {
-		t.Errorf("pro tier insurance should have independent disclosure (Google search fallback exists), got %q", rec.Disclosure)
+		t.Errorf("pro tier insurance should have independent disclosure (Squaremouth fallback exists), got %q", rec.Disclosure)
 	}
-	if rec.Partner != affiliate.PartnerGoogle {
-		t.Errorf("pro tier insurance should select Google partner, got %q", rec.Partner)
+	if rec.Partner != affiliate.PartnerSquaremouth {
+		t.Errorf("pro tier insurance should select Squaremouth (Pro-pool addition outranking plain Google), got %q", rec.Partner)
 	}
 	if strings.Contains(rec.URL, "safetywing.com") {
 		t.Errorf("pro tier insurance URL should not be SafetyWing, got %q", rec.URL)
@@ -1048,5 +1056,117 @@ func TestRecommendBookingTool_NilAnalytics_NoPanic(t *testing.T) {
 	}`))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// --- Rationale propagation (#386 PR 3) ---
+
+// The scored ranker emits a per-source rationale string and the tool result
+// must surface it. The AI sees the rationale field in the tool result and
+// can paraphrase it in the user-facing reply ("I picked Skyscanner because
+// affiliate, dated query fits aggregator" → "Skyscanner is best for dated
+// flight searches"). The tool description tells the AI to paraphrase, not
+// quote raw — but the wire contract is simply "rationale field is non-empty
+// for any selected source". Test that.
+
+func TestRecommendBookingTool_RationaleIsSurfaced_FreeTierFlight(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights from NYC to Prague",
+		"origin": "JFK",
+		"destination": "PRG",
+		"date_from": "2026-06-15"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Rationale == "" {
+		t.Errorf("expected non-empty rationale on free-tier flight (selected: %q), got empty", rec.Partner)
+	}
+	// Free-tier affiliate-first selection should mention "affiliate (free)"
+	// per ranking.go's scoreOne. The test couples to this exact phrase
+	// because PR 3 promises stable rationale fragments — they're part of
+	// the public contract for the AI prompt.
+	if !strings.Contains(rec.Rationale, "affiliate (free)") {
+		t.Errorf("free-tier flight rationale should mention 'affiliate (free)', got %q", rec.Rationale)
+	}
+}
+
+func TestRecommendBookingTool_RationaleIsSurfaced_ProTierFlight(t *testing.T) {
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Pro, nil)
+
+	result, err := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights from NYC to Prague",
+		"origin": "JFK",
+		"destination": "PRG",
+		"date_from": "2026-06-15"
+	}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var rec affiliate.Recommendation
+	if err := json.Unmarshal(result, &rec); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if rec.Rationale == "" {
+		t.Errorf("expected non-empty rationale on pro-tier flight (selected: %q), got empty", rec.Partner)
+	}
+	if !strings.Contains(rec.Rationale, "non-affiliate (Pro)") {
+		t.Errorf("pro-tier flight rationale should mention 'non-affiliate (Pro)', got %q", rec.Rationale)
+	}
+}
+
+func TestRecommendBookingTool_RationaleMentionsDates_WhenDatedAggregator(t *testing.T) {
+	// Skyscanner is a search aggregator and the user supplied dates: the
+	// rationale should include the "dated query fits aggregator" fragment.
+	// Without this signal the AI can't justify aggregator picks for dated
+	// searches.
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{SkyscannerID: "sky123"})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+
+	result, _ := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "flight",
+		"query": "flights",
+		"origin": "JFK",
+		"destination": "PRG",
+		"date_from": "2026-06-15"
+	}`))
+
+	var rec affiliate.Recommendation
+	_ = json.Unmarshal(result, &rec)
+
+	if !strings.Contains(rec.Rationale, "dated query fits aggregator") {
+		t.Errorf("expected rationale to mention 'dated query fits aggregator' for dated free-tier flight, got %q", rec.Rationale)
+	}
+}
+
+func TestRecommendBookingTool_RationaleOmitted_WhenFallbackUsed(t *testing.T) {
+	// Defensive path: an unknown category hits the fallback that
+	// short-circuits before ScoreSources is called. The Recommendation
+	// returned has no rationale, and JSON serialization should omit
+	// the field via omitempty (no empty "rationale": "" key).
+	lb := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{})
+	tool := NewRecommendBookingTool(lb, tier.Free, nil)
+
+	result, _ := tool.Execute(context.Background(), json.RawMessage(`{
+		"category": "unknown_category",
+		"query": "something"
+	}`))
+
+	if strings.Contains(string(result), `"rationale"`) {
+		t.Errorf("rationale field should be omitted (omitempty) when no source was selected; got result %s", string(result))
 	}
 }

@@ -110,9 +110,9 @@ func (t *RecommendBookingTool) Definition() ai.ToolDefinition {
 	// than defaulting to partner-link language. The AI does not need to
 	// reason about which source was picked — the tool returns the disclosure
 	// string already matched to the URL, and the AI must include it verbatim.
-	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns a single recommendation with the search URL and a disclosure string — always include the disclosure verbatim in your reply to the user."
+	description := "Generate affiliate-linked booking recommendations. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. Returns a single recommendation with the search URL, a disclosure string, and a short rationale — always include the disclosure verbatim in your reply to the user. The rationale (e.g. \"affiliate (free), dated query fits aggregator\") explains why this source was picked; you may briefly paraphrase it (\"Skyscanner is best for dated flight searches\") but never quote it raw."
 	if t.userTier.IsPro() {
-		description = "Generate a booking recommendation that prefers commission-free sources. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. For Pro users this picks an independent source (Google Flights, Google Maps, Wikivoyage) when one is available, falling back to an affiliate partner only when no independent option exists. Returns a single recommendation with the search URL and a disclosure string — always include the disclosure verbatim in your reply to the user."
+		description = "Generate a booking recommendation that prefers commission-free sources. Use when the user asks about flights, hotels, activities, car rentals, or travel insurance. For Pro users this picks an independent source (Google Flights, ITA Matrix, Atlas Obscura, Wikivoyage, etc.) when one is available, falling back to an affiliate partner only when no independent option exists. Returns a single recommendation with the search URL, a disclosure string, and a short rationale — always include the disclosure verbatim in your reply to the user. The rationale (e.g. \"non-affiliate (Pro), dated query fits aggregator\") explains why this source was picked; briefly paraphrase it for the user (\"I picked ITA Matrix because it's commission-free and your dates fit a deep-search engine best\") but never quote it raw."
 	}
 
 	return ai.ToolDefinition{
@@ -345,10 +345,22 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		}, false
 	}
 
-	// Pick the source the user will actually see. Pro users prefer
-	// non-affiliate; everyone else takes sources[0] (affiliate-first).
+	// Pick the source the user will actually see, via the scored fit
+	// ranker (#386 PR 2). The ranker produces a sorted slice plus a
+	// per-source rationale we pass through to the tool result so the
+	// AI can paraphrase it in the user-facing reply (#386 PR 3).
+	//
+	// HasSpecificDates / HasSpecificCity are derived from the ORIGINAL
+	// args (not the trip-context fallbacks) because the rationale should
+	// reflect what the user actually asked for — a fallback "anywhere"
+	// or "anytime" string would inflate the fit signals incorrectly.
 	preferNonAffiliate := t.userTier.IsPro()
-	selected := affiliate.SelectForPreference(preferNonAffiliate, sources)
+	scoreCtx := affiliate.ScoreContext{
+		PreferNonAffiliate: preferNonAffiliate,
+		HasSpecificDates:   params.DateFrom != "" || params.DateTo != "",
+		HasSpecificCity:    params.Destination != "",
+	}
+	scored := affiliate.ScoreSources(scoreCtx, sources)
 
 	// Defensive: if the source builder returned nothing, fall back to the
 	// legacy partner-only behaviour so we never emit a Recommendation with a
@@ -356,7 +368,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 	// produces at least one candidate) but cheap insurance. isAffiliate is
 	// false here because the URL itself is empty — there's nothing to track
 	// as an affiliate link generation.
-	if selected.URL == "" {
+	if len(scored) == 0 || scored[0].URL == "" {
 		return affiliate.Recommendation{
 			Partner:     fallbackPartner,
 			Title:       fallbackTitle,
@@ -365,6 +377,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 			Disclosure:  affiliate.FTCDisclosure,
 		}, false
 	}
+	selected := scored[0]
 
 	// Use the selected source's title/description when present (they're
 	// crafted by the source builder to fit the URL — e.g. Wikivoyage's
@@ -385,6 +398,7 @@ func (t *RecommendBookingTool) buildRecommendation(params recommendBookingArgs) 
 		Description: description,
 		URL:         selected.URL,
 		Category:    params.Category,
-		Disclosure:  affiliate.DisclosureFor(selected, preferNonAffiliate),
+		Disclosure:  affiliate.DisclosureFor(selected.Source, preferNonAffiliate),
+		Rationale:   selected.Rationale,
 	}, selected.IsAffiliate
 }
