@@ -88,7 +88,7 @@ graph TB
 | `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
 | `internal/location/`    | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places)   |
 | `internal/theme/`       | Trip theme tagging (AI-driven classification)                                             |
-| `internal/affiliate/`   | Affiliate link builder — generates partner URLs for Skyscanner, Booking.com, GetYourGuide |
+| `internal/affiliate/`   | Affiliate link builder + scored fit ranker — generates partner URLs (Skyscanner, Booking.com, GetYourGuide, etc.) and ranks the candidate pool by tier-aware fit signals (#386). |
 | `internal/config/`      | Three-layer config: env file → os.Getenv → GCP Secret Manager                             |
 | `internal/db/`          | PostgreSQL connection pool + transaction helpers                                          |
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
@@ -898,6 +898,29 @@ The `internal/payment/` package handles Stripe payment integration for Trip Pro 
 - Stripe sends webhook on successful payment → backend unlocks the trip
 - `GET /api/checkout/status` lets the frontend poll unlock status
 - Unlocked trips have access to unlimited messages, all personas, and export features
+
+### Affiliate Link Builder + Scored Fit Ranker
+
+The `internal/affiliate/` package owns booking-recommendation URL construction and selection. The `recommend_booking` chat tool is its only caller (`internal/handlers/tool_recommend_booking.go`). Three layers, all stateless:
+
+1. **`sources.go` — per-category candidate pools.** `FlightSources`, `HotelSources`, `VacationRentalSources`, `ActivitySources`, `CarRentalSources`, `InsuranceSources`. Each takes `includePro bool` controlling whether the Pro-tier-only sources (ITA Matrix, Momondo, Hotellook, Atlas Obscura, Time Out, Squaremouth, InsureMyTrip, Turo, Auto Europe, Airbnb) are appended. Free-tier callers pass `false` and get the original pool unchanged.
+
+2. **`ranking.go` — `ScoreSources(ctx ScoreContext, sources []Source) []ScoredSource`.** Linear ranker (no learning) that returns sources sorted highest-fit-first with a per-source `Rationale` string. Score components:
+   - **Affiliate-status (dominant):** Pro non-affiliate +1.5, free affiliate +0.5
+   - **Dated-aggregator boost:** +0.3 when `HasSpecificDates && isSearchAggregator(partner)` (Skyscanner, Google, ITA Matrix, Booking.com, etc.)
+   - **City-curated boost:** +0.4 when `HasSpecificCity && isCityCurated(partner)` (Atlas Obscura, Time Out, Wikivoyage)
+   - **Scaffolded penalty:** -0.2 when `isScaffolded(partner)` (today only Airbnb, until Impact.com partnership lands)
+   - **Pro-pool addition tiebreak:** +0.05 when `isProAddition(partner)` so the marketed Pro additions outrank free-pool Google when scores would otherwise tie
+
+   Stable sort: equal scores preserve input order, so the affiliate-first ordering inside `sources.go` acts as the deterministic tiebreaker on free tier.
+
+3. **`SelectForPreference` + `DisclosureFor`.** `SelectForPreference` is a thin wrapper around `ScoreSources` that returns the top pick — preserved for legacy call sites. `DisclosureFor` keys disclosure text purely off `Source.IsAffiliate` (NEVER user tier, per #190 LB-4 regression test). The `recommend_booking` tool calls `ScoreSources` directly so it can surface the rationale to the AI in the tool result.
+
+**Tool result rationale.** The `Recommendation.Rationale` field (added #386 PR 3) carries the comma-separated reason fragments from the ranker — e.g. `"non-affiliate (Pro), dated query fits aggregator, Pro-pool addition"`. The `recommend_booking` tool description tells the AI to paraphrase the rationale ("I picked ITA Matrix because it's commission-free and your dates fit a deep-search engine best") rather than quote it raw.
+
+**Tier policy summary** (the marketed Pro value):
+- Free: affiliate-first ordering preserved → top pick is the affiliate (Skyscanner / Booking.com / GetYourGuide / DiscoverCars / SafetyWing) with FTC disclosure.
+- Pro: non-affiliate preference dominates → top pick is the marketed Pro addition (ITA Matrix for flights, Hotellook for hotels, Atlas Obscura/Time Out for activities, Squaremouth/InsureMyTrip for insurance) with Independent disclosure. Falls back to the affiliate candidate only if no non-affiliate exists, and in that case carries FTC disclosure (the same label free-tier users see — never softened, per #190 LB-4).
 
 ### Referral System
 Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POST /api/referral/redeem`. Redemption is audit-logged. Referral stats (count of referred users) are returned with the code.
