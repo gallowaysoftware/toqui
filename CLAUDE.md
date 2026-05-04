@@ -255,7 +255,7 @@ Trip Pro ($19/trip) is purchased via Stripe hosted checkout (all platforms):
 4. Stripe sends webhook to backend → backend verifies and unlocks the trip in the database
 5. `useCheckout.checkStatus(tripId)` polls `GET /api/checkout/status` to confirm unlock
 
-Unlocked trips get: unlimited messages, all 800+ expert personas, email forwarding, export, best-fit recommendations.
+Unlocked trips get: unlimited messages, all 989 expert personas (43 locations × 23 themes), email forwarding, export, best-fit recommendations.
 
 ## Referral
 `ReferralCard.tsx` and `useReferral` hook:
