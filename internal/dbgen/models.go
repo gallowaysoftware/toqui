@@ -246,6 +246,13 @@ type TripUnlock struct {
 	UnlockedAt time.Time   `json:"unlocked_at"`
 }
 
+type UnderAgeBlock struct {
+	ID            uuid.UUID `json:"id"`
+	EmailSha256   string    `json:"email_sha256"`
+	OauthProvider string    `json:"oauth_provider"`
+	BlockedAt     time.Time `json:"blocked_at"`
+}
+
 type User struct {
 	ID               uuid.UUID          `json:"id"`
 	Email            string             `json:"email"`

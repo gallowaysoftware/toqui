@@ -30,6 +30,13 @@ message GoogleLoginResponse {
   string refresh_token = 2;
   User user = 3;
   bool consent_pending = 4;  // True when the user has not yet accepted terms/privacy
+  // True when the user has not yet completed the 18+ age gate
+  // (POST /auth/verify-age). The frontend mounts the age form
+  // immediately after login when this is set. The check is also
+  // enforced server-side by the age interceptor on every gated RPC,
+  // so this flag is purely a UX hint — bypassing it doesn't bypass
+  // the gate. Mirrors the consent_pending pattern.
+  bool age_verification_required = 5;
 }
 
 message FacebookLoginRequest {
@@ -41,6 +48,7 @@ message FacebookLoginResponse {
   string refresh_token = 2;
   User user = 3;
   bool consent_pending = 4;  // True when the user has not yet accepted terms/privacy
+  bool age_verification_required = 5;  // see GoogleLoginResponse
 }
 
 // Apple Sign-In: the frontend (expo-apple-authentication) returns an
@@ -62,6 +70,7 @@ message AppleLoginResponse {
   string refresh_token = 3;
   google.protobuf.Timestamp expires_at = 4;
   bool consent_pending = 5;  // True when the user has not yet accepted terms/privacy
+  bool age_verification_required = 6;  // see GoogleLoginResponse
 }
 
 message RefreshTokenRequest {

@@ -12,6 +12,7 @@ const (
 	EventLogin               = "auth.login"
 	EventLoginDeniedDomain   = "auth.login_denied.domain"
 	EventLoginDeniedCapacity = "auth.login_denied.capacity"
+	EventLoginDeniedUnderAge = "auth.login_denied.under_age"
 	EventLoginAdmittedInvite = "auth.login_admitted.invite"
 	EventTokenRefresh        = "auth.token_refresh"
 	EventTokenRefreshDenied  = "auth.token_refresh_denied"
@@ -53,7 +54,7 @@ func severityForEvent(event string) slog.Level {
 		return slog.LevelError
 
 	// Suspicious / denied: failed auth attempts, payment validation failures.
-	case EventLoginDeniedDomain, EventLoginDeniedCapacity,
+	case EventLoginDeniedDomain, EventLoginDeniedCapacity, EventLoginDeniedUnderAge,
 		EventTokenRefreshDenied, EventPaymentValidation:
 		return slog.LevelWarn
 

@@ -89,8 +89,15 @@ type GoogleLoginResponse struct {
 	RefreshToken   string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	User           *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
 	ConsentPending bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True when the user has not yet completed the 18+ age gate
+	// (POST /auth/verify-age). The frontend mounts the age form
+	// immediately after login when this is set. The check is also
+	// enforced server-side by the age interceptor on every gated RPC,
+	// so this flag is purely a UX hint — bypassing it doesn't bypass
+	// the gate. Mirrors the consent_pending pattern.
+	AgeVerificationRequired bool `protobuf:"varint,5,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *GoogleLoginResponse) Reset() {
@@ -151,6 +158,13 @@ func (x *GoogleLoginResponse) GetConsentPending() bool {
 	return false
 }
 
+func (x *GoogleLoginResponse) GetAgeVerificationRequired() bool {
+	if x != nil {
+		return x.AgeVerificationRequired
+	}
+	return false
+}
+
 type FacebookLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
@@ -196,13 +210,14 @@ func (x *FacebookLoginRequest) GetAccessToken() string {
 }
 
 type FacebookLoginResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken    string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken   string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	User           *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	ConsentPending bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken             string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken            string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User                    *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	ConsentPending          bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"`                              // True when the user has not yet accepted terms/privacy
+	AgeVerificationRequired bool                   `protobuf:"varint,5,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"` // see GoogleLoginResponse
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *FacebookLoginResponse) Reset() {
@@ -259,6 +274,13 @@ func (x *FacebookLoginResponse) GetUser() *User {
 func (x *FacebookLoginResponse) GetConsentPending() bool {
 	if x != nil {
 		return x.ConsentPending
+	}
+	return false
+}
+
+func (x *FacebookLoginResponse) GetAgeVerificationRequired() bool {
+	if x != nil {
+		return x.AgeVerificationRequired
 	}
 	return false
 }
@@ -331,14 +353,15 @@ func (x *AppleLoginRequest) GetRedirectUri() string {
 }
 
 type AppleLoginResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	User           *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	AccessToken    string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken   string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	ExpiresAt      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	ConsentPending bool                   `protobuf:"varint,5,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	User                    *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken             string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken            string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresAt               *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	ConsentPending          bool                   `protobuf:"varint,5,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"`                              // True when the user has not yet accepted terms/privacy
+	AgeVerificationRequired bool                   `protobuf:"varint,6,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"` // see GoogleLoginResponse
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AppleLoginResponse) Reset() {
@@ -402,6 +425,13 @@ func (x *AppleLoginResponse) GetExpiresAt() *timestamppb.Timestamp {
 func (x *AppleLoginResponse) GetConsentPending() bool {
 	if x != nil {
 		return x.ConsentPending
+	}
+	return false
+}
+
+func (x *AppleLoginResponse) GetAgeVerificationRequired() bool {
+	if x != nil {
+		return x.AgeVerificationRequired
 	}
 	return false
 }
@@ -880,30 +910,33 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x12GoogleLoginRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
-	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\xaa\x01\n" +
+	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\xe6\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
-	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\"B\n" +
+	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
+	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"B\n" +
 	"\x14FacebookLoginRequest\x12*\n" +
-	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\xac\x01\n" +
+	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\xe8\x01\n" +
 	"\x15FacebookLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
-	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\"\x92\x01\n" +
+	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
+	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"\x92\x01\n" +
 	"\x11AppleLoginRequest\x126\n" +
 	"\x12authorization_code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x11authorizationCode\x12\"\n" +
 	"\bid_token\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aidToken\x12!\n" +
-	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\"\xe4\x01\n" +
+	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\"\xa0\x02\n" +
 	"\x12AppleLoginResponse\x12\"\n" +
 	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12!\n" +
 	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\x129\n" +
 	"\n" +
 	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12'\n" +
-	"\x0fconsent_pending\x18\x05 \x01(\bR\x0econsentPending\"C\n" +
+	"\x0fconsent_pending\x18\x05 \x01(\bR\x0econsentPending\x12:\n" +
+	"\x19age_verification_required\x18\x06 \x01(\bR\x17ageVerificationRequired\"C\n" +
 	"\x13RefreshTokenRequest\x12,\n" +
 	"\rrefresh_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\frefreshToken\"\x82\x01\n" +
 	"\x14RefreshTokenResponse\x12!\n" +

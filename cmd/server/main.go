@@ -530,7 +530,7 @@ func main() {
 	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)
 
 	// Age verification route (authenticated)
-	ageVerifyHandler := handlers.NewAgeVerifyHandler(authSvc, queries)
+	ageVerifyHandler := handlers.NewAgeVerifyHandler(authSvc, queries, lifecycleSvc)
 	mux.HandleFunc("/auth/verify-age", ageVerifyHandler.HandleVerifyAge)
 
 	// Health checks (public, no auth — for load balancer probes)

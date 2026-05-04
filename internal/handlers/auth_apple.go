@@ -71,6 +71,13 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 			audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(email))
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 		}
+
+		// Under-age refusal cache (first-sign-in only — the helper
+		// short-circuits on empty email anyway, but the gate is most
+		// effective on the first time Apple ships us the email).
+		if err := checkUnderAgeBlock(ctx, h.queries, email, "apple"); err != nil {
+			return nil, err
+		}
 	}
 
 	user, isNew, err := h.findOrCreateAppleUser(ctx, claims.Subject, email)
@@ -117,11 +124,12 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 	}
 
 	return connect.NewResponse(&toquiv1.AppleLoginResponse{
-		User:           userToProto(user, tier),
-		AccessToken:    accessToken,
-		RefreshToken:   refreshResult.Token,
-		ExpiresAt:      timestamppb.New(refreshResult.ExpiresAt),
-		ConsentPending: consentPending,
+		User:                    userToProto(user, tier),
+		AccessToken:             accessToken,
+		RefreshToken:            refreshResult.Token,
+		ExpiresAt:               timestamppb.New(refreshResult.ExpiresAt),
+		ConsentPending:          consentPending,
+		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
 	}), nil
 }
 

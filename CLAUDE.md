@@ -138,7 +138,7 @@ Request → validate.Interceptor → auth.Interceptor → age.Interceptor → ra
 
 - **validate**: Enforces `buf.validate` constraints on request protos (string lengths, UUID format, lat/lng bounds). Returns `InvalidArgument` on failure.
 - **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure.
-- **age**: Enforces age verification gate — users who haven't completed `POST /auth/verify-age` cannot access gated RPCs. Returns `PermissionDenied` if age not verified.
+- **age**: Enforces the 18+ age verification gate — users who haven't completed `POST /auth/verify-age` cannot access gated RPCs. Returns `PermissionDenied` if age not verified. The gate runs **after** OAuth (not before login as in the original design) — login responses include an `age_verification_required` flag the frontend uses to mount the form. If the user submits a DOB indicating <18, the handler **hard-deletes the user** via `lifecycle.Service.DeleteUser` and records the email's SHA-256 in `under_age_blocks` so subsequent OAuth attempts with the same email are refused at login (`auth.login_denied.under_age` audit event). The DOB itself is never stored — only `users.age_verified_at` (timestamp).
 
 **Consent flow**: Login responses (Google/Facebook/Apple OAuth, gRPC `GoogleLogin`/`FacebookLogin`/`AppleLogin`, and `POST /auth/exchange`) include a `consent_pending` flag. When true, the frontend must show a consent modal and call `POST /auth/consent` with `{"terms_accepted": true, "privacy_accepted": true, "marketing_opt_in": bool}` before the user can proceed. Individual consents can also be managed via `POST /api/privacy/consents` and `DELETE /api/privacy/consents/{type}`.
 - **ratelimit**: Per-user token bucket. Separate limits for AI RPCs (SendMessage) vs general RPCs. Returns `ResourceExhausted` when exceeded.
@@ -732,7 +732,9 @@ HTTP routes (outside ConnectRPC):
 - `POST /auth/exchange` — Reads OAuth cookie, returns `{user, expires_at}`, sets `toqui_access`/`toqui_refresh` HttpOnly cookies
 - `POST /auth/refresh` — Cookie-based token refresh. Rotates tokens (JTI/family), sets new cookies, returns `{user, expires_at}`
 - `POST /auth/logout` — Revokes refresh token, clears auth cookies, returns 204
-- `POST /auth/verify-age` — Authenticated. JSON body `{"date_of_birth":"YYYY-MM-DD"}`. Verifies user is 18+, stores verification.
+- `POST /auth/verify-age` — Authenticated. JSON body `{"date_of_birth":"YYYY-MM-DD"}`. **18+ only**. Age >= 18 → sets `users.age_verified_at`, returns `200 {"verified":true}`. Age < 18 → records the email's SHA-256 in `under_age_blocks` (anti-evasion), hard-deletes the user via `lifecycle.DeleteUser` (full Postgres CASCADE + Firestore chat purge), audit-logs **two events** (`auth.account_delete` with `reason=under_age` for the general deletion stream, and `auth.login_denied.under_age` for compliance reports that filter on a single event name across this path and the OAuth pre-check), returns `403 {"error":"under_age", "message":"..."}`. The DOB itself is never persisted. Future-dated or >150-year-old DOBs are treated as malformed input (400) — destructive action only fires on 0 ≤ age < 18.
+
+  **Anti-evasion at OAuth login**: every Google/Facebook/Apple login handler runs `checkUnderAgeBlock` after token validation and before user upsert. A previously-refused email (matched by SHA-256 hash) is rejected with `PermissionDenied` and the `auth.login_denied.under_age` audit event. The block is per-email, not per-(email, provider) — switching providers doesn't bypass it.
 
 ### Waitlist routes
 - `POST /waitlist` — Public. JSON `{"email":"..."}`. Sends verification email via Resend, returns `{"message":"Check your email to verify your waitlist signup!"}`. Re-submission resends verification. In local dev (no RESEND_API_KEY), auto-verifies.

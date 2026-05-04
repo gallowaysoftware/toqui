@@ -80,6 +80,15 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
+	// Under-age refusal cache: if this email previously failed the 18+
+	// gate at /auth/verify-age, refuse the OAuth exchange entirely
+	// rather than upserting a new user row that we'd just delete on
+	// the next verify-age call. Keeps the deletion+block paired and
+	// closes the "log out, log back in to retry" loophole.
+	if err := checkUnderAgeBlock(ctx, h.queries, info.Email, "google"); err != nil {
+		return nil, err
+	}
+
 	user, err := h.queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
 		GoogleID:  pgtype.Text{String: info.ID, Valid: info.ID != ""},
 		Email:     info.Email,
@@ -124,10 +133,11 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	}
 
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
-		AccessToken:    accessToken,
-		RefreshToken:   refreshResult.Token,
-		User:           userToProto(&user, tier),
-		ConsentPending: consentPending,
+		AccessToken:             accessToken,
+		RefreshToken:            refreshResult.Token,
+		User:                    userToProto(&user, tier),
+		ConsentPending:          consentPending,
+		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
 	}), nil
 }
 
@@ -151,6 +161,11 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 	if !isEmailDomainAllowed(fbUser.Email, h.allowedDomains) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(fbUser.Email))
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
+	}
+
+	// Under-age refusal cache (see comment on the Google flow).
+	if err := checkUnderAgeBlock(ctx, h.queries, fbUser.Email, "facebook"); err != nil {
+		return nil, err
 	}
 
 	// Use the shared findOrCreateFacebookUser logic via an inline OAuthHandler.
@@ -201,10 +216,11 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 	}
 
 	return connect.NewResponse(&toquiv1.FacebookLoginResponse{
-		AccessToken:    accessToken,
-		RefreshToken:   refreshResult.Token,
-		User:           userToProto(user, tier),
-		ConsentPending: consentPending,
+		AccessToken:             accessToken,
+		RefreshToken:            refreshResult.Token,
+		User:                    userToProto(user, tier),
+		ConsentPending:          consentPending,
+		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
 	}), nil
 }
 
