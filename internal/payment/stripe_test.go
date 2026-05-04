@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strings"
 	"testing"
 
@@ -20,10 +21,24 @@ import (
 
 // stubQueries is a hand-rolled test double for paymentQueries that lets each
 // test inject canned responses or function bodies for the methods it cares
-// about. Methods left at zero-value return zero values — most tests only
-// touch a couple of methods, and the unused-method panic from a stricter
-// stub would obscure the real assertion failure.
+// about.
+//
+// Fail-loud defaults. Each method, when called without an injected `*Fn`,
+// calls `tb.Fatalf("unexpected stubQueries.X call ...")` — the test fails
+// with a precise message identifying which method was called by surprise.
+//
+// Why fail-loud instead of return zero-value? An earlier draft returned
+// zero values from unconfigured methods; the adversarial review on
+// PR #418 (the original 0% → 98.2% coverage PR) flagged the hazard:
+// `GetTripByID` returning `dbgen.Trip{}, nil` when unconfigured silently
+// passes the ownership check (real DB returns `pgx.ErrNoRows`, which the
+// production code converts to `ErrNotTripOwner`). A future test that
+// forgot to set `getTripByIDFn` while exercising `InitializeCheckout`
+// would silently green-pass with zero-UUID trip data — masking the bug.
+// Fail-loud forces every test to make its expectations explicit. (W2 in
+// the review write-up.)
 type stubQueries struct {
+	tb                            testing.TB // for fail-loud defaults
 	getTripByIDFn                 func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error)
 	isTripUnlockedFn              func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error)
 	createCheckoutSessionFn       func(ctx context.Context, arg dbgen.CreateCheckoutSessionParams) (dbgen.CheckoutSession, error)
@@ -41,6 +56,7 @@ func (s *stubQueries) GetTripByID(ctx context.Context, arg dbgen.GetTripByIDPara
 	if s.getTripByIDFn != nil {
 		return s.getTripByIDFn(ctx, arg)
 	}
+	s.tb.Fatalf("unexpected stubQueries.GetTripByID(%+v) — set getTripByIDFn", arg)
 	return dbgen.Trip{}, nil
 }
 
@@ -48,6 +64,7 @@ func (s *stubQueries) IsTripUnlocked(ctx context.Context, arg dbgen.IsTripUnlock
 	if s.isTripUnlockedFn != nil {
 		return s.isTripUnlockedFn(ctx, arg)
 	}
+	s.tb.Fatalf("unexpected stubQueries.IsTripUnlocked(%+v) — set isTripUnlockedFn", arg)
 	return false, nil
 }
 
@@ -55,6 +72,7 @@ func (s *stubQueries) CreateCheckoutSession(ctx context.Context, arg dbgen.Creat
 	if s.createCheckoutSessionFn != nil {
 		return s.createCheckoutSessionFn(ctx, arg)
 	}
+	s.tb.Fatalf("unexpected stubQueries.CreateCheckoutSession(%+v) — set createCheckoutSessionFn", arg)
 	return dbgen.CheckoutSession{}, nil
 }
 
@@ -63,7 +81,8 @@ func (s *stubQueries) CreatePayment(ctx context.Context, arg dbgen.CreatePayment
 	if s.createPaymentFn != nil {
 		return s.createPaymentFn(ctx, arg)
 	}
-	return dbgen.Payment{ID: uuid.New()}, nil
+	s.tb.Fatalf("unexpected stubQueries.CreatePayment(%+v) — set createPaymentFn", arg)
+	return dbgen.Payment{}, nil
 }
 
 func (s *stubQueries) CreateTripUnlock(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error) {
@@ -71,6 +90,7 @@ func (s *stubQueries) CreateTripUnlock(ctx context.Context, arg dbgen.CreateTrip
 	if s.createTripUnlockFn != nil {
 		return s.createTripUnlockFn(ctx, arg)
 	}
+	s.tb.Fatalf("unexpected stubQueries.CreateTripUnlock(%+v) — set createTripUnlockFn", arg)
 	return dbgen.TripUnlock{}, nil
 }
 
@@ -79,6 +99,7 @@ func (s *stubQueries) MarkCheckoutSessionComplete(ctx context.Context, checkoutT
 	if s.markCheckoutSessionCompleteFn != nil {
 		return s.markCheckoutSessionCompleteFn(ctx, checkoutToken)
 	}
+	s.tb.Fatalf("unexpected stubQueries.MarkCheckoutSessionComplete(%q) — set markCheckoutSessionCompleteFn", checkoutToken)
 	return nil
 }
 
@@ -98,19 +119,32 @@ func (r *recordingTracker) Track(userID, event string, properties map[string]any
 	r.events = append(r.events, recordedEvent{userID: userID, event: event, properties: properties})
 }
 
-// newTestService builds a Service wired up with the stub queries directly
-// (bypassing NewService, which type-locks queries to *dbgen.Queries). This
-// is fine because the test lives in the same package and can poke at the
-// unexported fields.
+// newTestService builds a Service via the real NewService constructor so
+// constructor-side logic — `enabled = stripeKey != ""`, the structured
+// log, future feature-flag wiring — is exercised by every test that goes
+// through this helper. Then it swaps in the stub for `queries` (the only
+// field that NewService can't accept directly because its signature
+// type-locks to `*dbgen.Queries`).
+//
+// `enabled` is plumbed via the stripeKey: when true, we pass a dummy
+// non-empty key so NewService takes the enabled branch and constructs a
+// real `*stripe.Client`. Tests that need to override the client (e.g. the
+// httptest.Server-based happy-path test) replace `svc.client` after
+// construction.
+//
+// W3 from the PR #418 adversarial review: an earlier draft built the
+// struct literal directly, bypassing NewService — meaning a future
+// constructor change (feature flag, env-var read, etc.) would silently
+// not be exercised by 80% of these tests.
 func newTestService(t *testing.T, q paymentQueries, enabled bool) *Service {
 	t.Helper()
-	return &Service{
-		productID:   "prod_test",
-		priceCents:  1900,
-		queries:     q,
-		frontendURL: "https://app.toqui.test",
-		enabled:     enabled,
+	stripeKey := ""
+	if enabled {
+		stripeKey = "sk_test_dummy"
 	}
+	svc := NewService(stripeKey, "prod_test", 1900, nil, "https://app.toqui.test")
+	svc.queries = q
+	return svc
 }
 
 // --- NewService + disabled mode ---
@@ -149,7 +183,7 @@ func TestInitializeCheckout_DisabledReturnsError(t *testing.T) {
 	// Disabled-mode checkout must fail with a clean "stripe is not
 	// configured" error so handlers can map it to a meaningful response
 	// instead of nil-pointer-panicking on s.client.
-	svc := newTestService(t, &stubQueries{}, false)
+	svc := newTestService(t, &stubQueries{tb: t}, false)
 
 	_, err := svc.InitializeCheckout(context.Background(), uuid.New(), uuid.New())
 	if err == nil {
@@ -161,13 +195,13 @@ func TestInitializeCheckout_DisabledReturnsError(t *testing.T) {
 }
 
 func TestInitializeCheckout_MissingProductID(t *testing.T) {
-	svc := &Service{
-		productID:   "", // missing
-		priceCents:  1900,
-		queries:     &stubQueries{},
-		frontendURL: "https://app.toqui.test",
-		enabled:     true,
-	}
+	// Build via newTestService (so constructor logic runs), then zero out
+	// productID — NewService doesn't validate productID at construction
+	// (the validation lives in InitializeCheckoutWithPrice), so this is
+	// representative of the "key set but product unconfigured" misconfig
+	// path we actually care about.
+	svc := newTestService(t, &stubQueries{tb: t}, true)
+	svc.productID = ""
 
 	_, err := svc.InitializeCheckout(context.Background(), uuid.New(), uuid.New())
 	if err == nil {
@@ -184,7 +218,7 @@ func TestIsTripUnlocked_AlwaysUnlockedShortCircuits(t *testing.T) {
 	// alwaysUnlocked (staging) must short-circuit BEFORE hitting the DB.
 	// We prove it by giving the stub a function that fails the test if
 	// called — alwaysUnlocked should never reach it.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			t.Errorf("IsTripUnlocked DB query should not be called when alwaysUnlocked=true")
 			return false, nil
@@ -206,7 +240,7 @@ func TestIsTripUnlocked_DelegatesToQueriesWhenNotAlwaysUnlocked(t *testing.T) {
 	userID := uuid.New()
 	tripID := uuid.New()
 	called := false
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			called = true
 			if arg.UserID != userID || arg.TripID != tripID {
@@ -231,7 +265,7 @@ func TestIsTripUnlocked_DelegatesToQueriesWhenNotAlwaysUnlocked(t *testing.T) {
 
 func TestIsTripUnlocked_PropagatesQueryError(t *testing.T) {
 	wantErr := errors.New("db down")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, wantErr
 		},
@@ -253,7 +287,7 @@ func TestInitializeCheckout_NotOwnerReturnsErrNotTripOwner(t *testing.T) {
 	// rather than InternalError. This is the #361 regression test —
 	// previously the code went straight to IsTripUnlocked, leaking
 	// other-user trip IDs into Stripe sessions.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{}, pgx.ErrNoRows
 		},
@@ -268,7 +302,7 @@ func TestInitializeCheckout_NotOwnerReturnsErrNotTripOwner(t *testing.T) {
 
 func TestInitializeCheckout_OtherDBErrorPropagatesWrapped(t *testing.T) {
 	wantErr := errors.New("connection refused")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{}, wantErr
 		},
@@ -296,7 +330,7 @@ func TestInitializeCheckout_AlreadyUnlockedReturnsError(t *testing.T) {
 	// When IsTripUnlocked returns true, we must NOT create a Stripe
 	// session — the user already paid. Returning an error short-circuits
 	// the handler and prevents a duplicate charge attempt.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{ID: arg.ID, UserID: arg.UserID}, nil
 		},
@@ -321,7 +355,7 @@ func TestInitializeCheckout_AlreadyUnlockedReturnsError(t *testing.T) {
 
 func TestInitializeCheckout_IsTripUnlockedErrorPropagates(t *testing.T) {
 	wantErr := errors.New("db down")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{ID: arg.ID, UserID: arg.UserID}, nil
 		},
@@ -384,7 +418,7 @@ func TestInitializeCheckout_HappyPathSendsExpectedStripeParams(t *testing.T) {
 	tripID := uuid.New()
 
 	var captureCheckout dbgen.CreateCheckoutSessionParams
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{ID: arg.ID, UserID: arg.UserID}, nil
 		},
@@ -475,7 +509,7 @@ func TestInitializeCheckout_DBErrorOnSessionStoreIsNonFatal(t *testing.T) {
 	// CreateCheckoutSession failing is logged but does NOT fail the call —
 	// the Stripe webhook is the source of truth and will unlock without
 	// the local row. Verify the user still gets a redirect URL.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		getTripByIDFn: func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
 			return dbgen.Trip{ID: arg.ID, UserID: arg.UserID}, nil
 		},
@@ -512,7 +546,7 @@ func TestHandlePaymentWebhook_AlreadyUnlockedNoOp(t *testing.T) {
 	// second analytics event. The service short-circuits at the
 	// IsTripUnlocked check.
 	tracker := &recordingTracker{}
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return true, nil
 		},
@@ -538,7 +572,7 @@ func TestHandlePaymentWebhook_AlreadyUnlockedNoOp(t *testing.T) {
 
 func TestHandlePaymentWebhook_IsTripUnlockedErrorPropagates(t *testing.T) {
 	wantErr := errors.New("db down")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, wantErr
 		},
@@ -562,12 +596,21 @@ func TestHandlePaymentWebhook_HappyPathRecordsPaymentAndUnlocksAndFiresAnalytics
 	paymentID := uuid.New()
 
 	tracker := &recordingTracker{}
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, nil
 		},
 		createPaymentFn: func(ctx context.Context, arg dbgen.CreatePaymentParams) (dbgen.Payment, error) {
 			return dbgen.Payment{ID: paymentID}, nil
+		},
+		// Both downstream calls must be configured explicitly so
+		// fail-loud doesn't fire — assertions below check captured
+		// args, not return values.
+		markCheckoutSessionCompleteFn: func(ctx context.Context, checkoutToken string) error {
+			return nil
+		},
+		createTripUnlockFn: func(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error) {
+			return dbgen.TripUnlock{}, nil
 		},
 	}
 	svc := newTestService(t, q, true)
@@ -640,26 +683,57 @@ func TestHandlePaymentWebhook_HappyPathRecordsPaymentAndUnlocksAndFiresAnalytics
 	if got := ev.properties["currency"]; got != "CAD" {
 		t.Errorf("expected currency=CAD, got %v", got)
 	}
-	// Privacy regression guard: trip_id, destination, etc. must NEVER
-	// appear in the analytics event. CLAUDE.md treats trip metadata as
-	// GDPR Article 9 sensitive content.
-	for _, forbidden := range []string{"trip_id", "destination", "destination_country", "country"} {
-		if _, present := ev.properties[forbidden]; present {
-			t.Errorf("analytics event must not include %q (CLAUDE.md privacy rule), got props=%v", forbidden, ev.properties)
+	// Privacy regression guard. CLAUDE.md ("PostHog Analytics" + "User
+	// Privacy") treats trip metadata as GDPR Article 9 sensitive content
+	// and forbids destination, dates, hotel/flight names, booking details
+	// from analytics — counts and categories only. Inverted check: assert
+	// the property bag contains EXACTLY {amount_cents, currency} and no
+	// other key. The previous deny-list version (trip_id, destination,
+	// destination_country, country) only caught the four most-likely
+	// accidental additions; an inverted allow-list catches anything new
+	// — `start_date`, `hotel_name`, `trip_title`, etc. — without us
+	// having to anticipate which field a future regression might leak.
+	allowedKeys := map[string]bool{"amount_cents": true, "currency": true}
+	if len(ev.properties) != len(allowedKeys) {
+		t.Errorf("analytics event must have exactly %d properties (%v), got %d: %+v",
+			len(allowedKeys), allowedKeysSorted(allowedKeys), len(ev.properties), ev.properties)
+	}
+	for k := range ev.properties {
+		if !allowedKeys[k] {
+			t.Errorf("analytics event includes disallowed property %q (CLAUDE.md GDPR Article 9 — only counts/categories permitted), got props=%v",
+				k, ev.properties)
 		}
 	}
+}
+
+// allowedKeysSorted is a tiny test helper for stable error messages — map
+// iteration order is randomised in Go, so the failure output for the
+// privacy guard would otherwise be flaky and slightly harder to grep.
+func allowedKeysSorted(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func TestHandlePaymentWebhook_NilAnalyticsClientSafe(t *testing.T) {
 	// If WithAnalytics was never called the Track() call site must be
 	// guarded — webhook processing should succeed without an analytics
 	// client wired up.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, nil
 		},
 		createPaymentFn: func(ctx context.Context, arg dbgen.CreatePaymentParams) (dbgen.Payment, error) {
 			return dbgen.Payment{ID: uuid.New()}, nil
+		},
+		markCheckoutSessionCompleteFn: func(ctx context.Context, checkoutToken string) error {
+			return nil
+		},
+		createTripUnlockFn: func(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error) {
+			return dbgen.TripUnlock{}, nil
 		},
 	}
 	svc := newTestService(t, q, true)
@@ -677,7 +751,7 @@ func TestHandlePaymentWebhook_MarkSessionFailureDoesNotBlockUnlock(t *testing.T)
 	// MarkCheckoutSessionComplete failing is best-effort. The unlock MUST
 	// still be created — the session row is a tracking record, not the
 	// source of truth for entitlement.
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, nil
 		},
@@ -686,6 +760,12 @@ func TestHandlePaymentWebhook_MarkSessionFailureDoesNotBlockUnlock(t *testing.T)
 		},
 		markCheckoutSessionCompleteFn: func(ctx context.Context, checkoutToken string) error {
 			return errors.New("session not found")
+		},
+		// Explicit no-op so fail-loud doesn't fire — this test asserts
+		// the unlock IS created via captured calls; the return value
+		// itself is irrelevant.
+		createTripUnlockFn: func(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error) {
+			return dbgen.TripUnlock{}, nil
 		},
 	}
 	svc := newTestService(t, q, true)
@@ -704,7 +784,7 @@ func TestHandlePaymentWebhook_PaymentRecordFailureBlocksUnlock(t *testing.T) {
 	// Inverse: if recording the payment fails, we MUST NOT create the
 	// unlock — that would grant access without a payment audit trail.
 	wantErr := errors.New("payment insert failed")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, nil
 		},
@@ -725,12 +805,18 @@ func TestHandlePaymentWebhook_PaymentRecordFailureBlocksUnlock(t *testing.T) {
 
 func TestHandlePaymentWebhook_UnlockCreateFailurePropagates(t *testing.T) {
 	wantErr := errors.New("unlock insert failed")
-	q := &stubQueries{
+	q := &stubQueries{tb: t,
 		isTripUnlockedFn: func(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error) {
 			return false, nil
 		},
 		createPaymentFn: func(ctx context.Context, arg dbgen.CreatePaymentParams) (dbgen.Payment, error) {
 			return dbgen.Payment{ID: uuid.New()}, nil
+		},
+		// MarkCheckoutSessionComplete fires before the unlock create —
+		// explicit no-op so fail-loud doesn't mask the wantErr we're
+		// actually testing.
+		markCheckoutSessionCompleteFn: func(ctx context.Context, checkoutToken string) error {
+			return nil
 		},
 		createTripUnlockFn: func(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error) {
 			return dbgen.TripUnlock{}, wantErr
