@@ -1,9 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { createElement } from "react";
 import en from "@/messages/en.json";
 
-// Mock react-native with web platform
+// AgeGate redesign tests (toqui-backend#420 / age-gate-redesign-frontend).
+//
+// What changed from the old test suite:
+//
+//   - localStorage is no longer the source of truth. The new component
+//     derives "verified" from `user.ageVerifiedAt` only. Tests no longer
+//     setItem the old `toqui_age_verified` key.
+//   - Logged-out users are not gated. The old behaviour was "always
+//     show the form until localStorage cache exists"; the new behaviour
+//     is "render children unchanged when there's no accessToken".
+//   - Under-18 DOB is now a SERVER-side decision. The component sends
+//     the DOB to /auth/verify-age and reacts to the 403 response,
+//     instead of short-circuiting client-side. Tests mock authFetch
+//     to drive the various response shapes.
+//   - Successful verification no longer writes localStorage; the
+//     auth context's `user.ageVerifiedAt` repopulates on next refresh
+//     and the next render bypasses the gate.
+
 vi.mock("react-native", async () => {
   const actual = await vi.importActual<typeof import("react-native")>("react-native");
   return {
@@ -13,33 +30,44 @@ vi.mock("react-native", async () => {
   };
 });
 
-// Mock auth so AgeGate doesn't require AuthProvider in tests.
-// Tests can override the mock per-describe via `mockedUseAuth.mockReturnValue(...)`.
-const mockedUseAuth = vi.fn(() => ({ accessToken: null, user: null } as {
-  accessToken: string | null;
-  user: { ageVerifiedAt: string | null } | null;
+// Mocked auth context. Each describe block sets `mockedUseAuth.mockReturnValue`
+// to drive a specific (accessToken, user) state into the component.
+const mockedLogout = vi.fn(async () => {});
+const mockedUseAuth = vi.fn(() => ({
+  accessToken: null as string | null,
+  user: null as { ageVerifiedAt: string | null } | null,
+  logout: mockedLogout,
 }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => mockedUseAuth(),
 }));
 
-// Mock react-i18next to use actual English translations
+// Mocked authFetch. Tests set the response shape per-case.
+const mockedAuthFetch = vi.fn();
+vi.mock("@/lib/authFetch", () => ({
+  authFetch: (url: string, token: string, opts: RequestInit) =>
+    mockedAuthFetch(url, token, opts),
+}));
+
+vi.mock("@/lib/config", () => ({
+  getConfig: () => ({ apiUrl: "https://api.test" }),
+}));
+
+// Mocked analytics — capture the events fired so we can assert on them.
+const mockedTrack = vi.fn();
+vi.mock("@/lib/analytics", () => ({
+  useAnalytics: () => ({ track: mockedTrack }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, params?: Record<string, unknown>) => {
+    t: (key: string) => {
       const parts = key.split(".");
       let val: unknown = en;
       for (const p of parts) {
         val = (val as Record<string, unknown>)?.[p];
       }
-      if (typeof val !== "string") return key;
-      if (params) {
-        return Object.entries(params).reduce(
-          (s, [k, v]) => s.replace(`{{${k}}}`, String(v)),
-          val,
-        );
-      }
-      return val;
+      return typeof val === "string" ? val : key;
     },
     i18n: { language: "en" },
   }),
@@ -48,35 +76,27 @@ vi.mock("react-i18next", () => ({
 import { AgeGate } from "@/components/auth/AgeGate";
 import { ThemeProvider } from "@/lib/theme";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function renderAgeGate(children?: React.ReactNode) {
   return render(
     createElement(
       ThemeProvider,
       null,
-      createElement(AgeGate, null, children ?? createElement("div", { "data-testid": "protected-content" }, "Protected")),
+      createElement(
+        AgeGate,
+        null,
+        children ?? createElement("div", { "data-testid": "protected-content" }, "Protected"),
+      ),
     ),
   );
 }
 
-/** Fill the date fields and submit */
 function enterDOB(month: string, day: string, year: string) {
-  const monthInput = screen.getByPlaceholderText("MM");
-  const dayInput = screen.getByPlaceholderText("DD");
-  const yearInput = screen.getByPlaceholderText("YYYY");
-
-  fireEvent.change(monthInput, { target: { value: month } });
-  fireEvent.change(dayInput, { target: { value: day } });
-  fireEvent.change(yearInput, { target: { value: year } });
-
-  const button = screen.getByText("Verify Age");
-  fireEvent.click(button);
+  fireEvent.change(screen.getByPlaceholderText("MM"), { target: { value: month } });
+  fireEvent.change(screen.getByPlaceholderText("DD"), { target: { value: day } });
+  fireEvent.change(screen.getByPlaceholderText("YYYY"), { target: { value: year } });
+  fireEvent.click(screen.getByText("Verify age"));
 }
 
-/** Build a date string for someone who turns `age` today */
 function dobForAge(age: number): { year: string; month: string; day: string } {
   const today = new Date();
   return {
@@ -86,445 +106,196 @@ function dobForAge(age: number): { year: string; month: string; day: string } {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 beforeEach(() => {
-  localStorage.clear();
-  mockedUseAuth.mockReturnValue({ accessToken: null, user: null });
+  mockedUseAuth.mockReturnValue({ accessToken: null, user: null, logout: mockedLogout });
+  mockedAuthFetch.mockReset();
+  mockedTrack.mockReset();
+  mockedLogout.mockClear();
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("AgeGate", () => {
-  // ------ Renders children when verified ------
-
-  it("renders children immediately when already verified in storage", async () => {
-    localStorage.setItem("toqui_age_verified", "true");
-
+describe("AgeGate — logged-out short-circuit", () => {
+  it("renders children when no accessToken (pre-login screens are not gated)", async () => {
+    // The structural change: a logged-out visitor sees the
+    // marketing/sign-in screens behind us, never the DOB form.
+    mockedUseAuth.mockReturnValue({ accessToken: null, user: null, logout: mockedLogout });
     await act(async () => {
       renderAgeGate();
     });
+    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    expect(screen.queryByText("Verify age")).not.toBeInTheDocument();
+  });
+});
 
+describe("AgeGate — already-verified pass-through", () => {
+  it("renders children when user.ageVerifiedAt is set", async () => {
+    mockedUseAuth.mockReturnValue({
+      accessToken: "token",
+      user: { ageVerifiedAt: "2026-01-01T00:00:00Z" },
+      logout: mockedLogout,
+    });
+    await act(async () => {
+      renderAgeGate();
+    });
     expect(screen.getByTestId("protected-content")).toBeInTheDocument();
   });
+});
 
-  it("does NOT render children when storage value is not exactly 'true'", async () => {
-    localStorage.setItem("toqui_age_verified", "yes");
-
-    await act(async () => {
-      renderAgeGate();
+describe("AgeGate — form submission", () => {
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue({
+      accessToken: "token",
+      user: { ageVerifiedAt: null },
+      logout: mockedLogout,
     });
-
-    // Should show the age gate form, not the children
-    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-    expect(screen.getByText("Age Verification")).toBeInTheDocument();
   });
 
-  it("shows verification form when not yet verified", async () => {
+  it("shows the form with the new contextual copy", async () => {
     await act(async () => {
       renderAgeGate();
     });
-
-    expect(screen.getByText("Age Verification")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("MM")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("DD")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("YYYY")).toBeInTheDocument();
-    expect(screen.getByText("Verify Age")).toBeInTheDocument();
+    expect(screen.getByText("Quick check before we plan your trip")).toBeInTheDocument();
+    expect(
+      screen.getByText("We don't store the date itself — only that you've verified."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Verify age")).toBeInTheDocument();
   });
 
-  // ------ Successful verification ------
+  it("posts DOB to /auth/verify-age and tracks success on 200", async () => {
+    mockedAuthFetch.mockResolvedValue({ ok: true, status: 200 });
 
-  it("renders children after valid 18+ DOB is submitted", async () => {
     await act(async () => {
       renderAgeGate();
     });
-
     const { month, day, year } = dobForAge(25);
     await act(async () => {
       enterDOB(month, day, year);
     });
 
-    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    expect(mockedAuthFetch).toHaveBeenCalledWith(
+      "https://api.test/auth/verify-age",
+      "token",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const call = mockedAuthFetch.mock.calls[0];
+    const body = JSON.parse((call[2] as RequestInit).body as string);
+    expect(body.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(mockedTrack).toHaveBeenCalledWith("age_gate_passed");
   });
 
-  it("persists verification to localStorage after success", async () => {
+  it("does NOT short-circuit under-18 client-side — sends DOB to backend", async () => {
+    // The old component blocked under-18 in the client. The new design
+    // is "the backend is the single enforcement point" — under-18 must
+    // still hit /auth/verify-age so the deletion + block-list write
+    // happens server-side. Pin: an under-18 DOB triggers a fetch.
+    mockedAuthFetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "under_age", message: "deleted" }),
+    });
+
     await act(async () => {
       renderAgeGate();
     });
-
-    const { month, day, year } = dobForAge(30);
-    await act(async () => {
-      enterDOB(month, day, year);
-    });
-
-    expect(localStorage.getItem("toqui_age_verified")).toBe("true");
-  });
-
-  // ------ Exact 18th birthday edge case ------
-
-  it("allows entry on exact 18th birthday (today - 18 years exactly)", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    const { month, day, year } = dobForAge(18);
-    await act(async () => {
-      enterDOB(month, day, year);
-    });
-
-    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
-  });
-
-  it("denies entry one day before 18th birthday", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    // Person born tomorrow, 18 years ago -- they turn 18 tomorrow
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const year = String(tomorrow.getFullYear() - 18);
-    const month = String(tomorrow.getMonth() + 1);
-    const day = String(tomorrow.getDate());
-
-    await act(async () => {
-      enterDOB(month, day, year);
-    });
-
-    expect(screen.getByText("Access Denied")).toBeInTheDocument();
-    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-  });
-
-  // ------ Underage denial ------
-
-  it("shows denial screen for 17-year-old", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    const { month, day, year } = dobForAge(17);
-    await act(async () => {
-      enterDOB(month, day, year);
-    });
-
-    expect(screen.getByText("Access Denied")).toBeInTheDocument();
-    expect(screen.getByText(/must be at least 18 years old/)).toBeInTheDocument();
-    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-  });
-
-  it("shows denial screen for a 5-year-old", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    const { month, day, year } = dobForAge(5);
-    await act(async () => {
-      enterDOB(month, day, year);
-    });
-
-    expect(screen.getByText("Access Denied")).toBeInTheDocument();
-  });
-
-  it("does NOT persist verification when underage", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
     const { month, day, year } = dobForAge(15);
     await act(async () => {
       enterDOB(month, day, year);
     });
 
-    expect(localStorage.getItem("toqui_age_verified")).toBeNull();
+    expect(mockedAuthFetch).toHaveBeenCalled();
   });
 
-  // ------ Denial is permanent (no retry) ------
+  it("shows the deletion-confirmation screen on 403 under_age + clears auth", async () => {
+    mockedAuthFetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "under_age", message: "deleted" }),
+    });
 
-  it("denial screen has no verify button to retry", async () => {
     await act(async () => {
       renderAgeGate();
     });
-
-    const { month, day, year } = dobForAge(10);
+    const { month, day, year } = dobForAge(15);
     await act(async () => {
       enterDOB(month, day, year);
     });
 
-    expect(screen.getByText("Access Denied")).toBeInTheDocument();
-    expect(screen.queryByText("Verify Age")).not.toBeInTheDocument();
+    expect(screen.getByText("Account deleted")).toBeInTheDocument();
+    expect(mockedTrack).toHaveBeenCalledWith("age_gate_under_age_refused");
+    expect(mockedLogout).toHaveBeenCalledTimes(1);
+    // The form is gone — user can't keep poking at it.
+    expect(screen.queryByText("Verify age")).not.toBeInTheDocument();
   });
 
-  // ------ Round-trip date validation ------
+  it("shows tryAgain on a non-403 backend error (no deletion claim)", async () => {
+    mockedAuthFetch.mockResolvedValue({ ok: false, status: 500 });
 
-  it("rejects February 30 (invalid day for month)", async () => {
     await act(async () => {
       renderAgeGate();
     });
-
-    await act(async () => {
-      enterDOB("2", "30", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-    expect(screen.queryByText("Access Denied")).not.toBeInTheDocument();
-  });
-
-  it("rejects February 29 in a non-leap year (e.g. 2001)", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("2", "29", "2001");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("accepts February 29 in a leap year (e.g. 2000)", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("2", "29", "2000");
-    });
-
-    // Should NOT show error -- person is old enough
-    expect(screen.queryByText("Please enter a valid date of birth.")).not.toBeInTheDocument();
-  });
-
-  it("rejects April 31 (April has 30 days)", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("4", "31", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects September 31", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("9", "31", "1985");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  // ------ Boundary validation ------
-
-  it("rejects month 0", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("0", "15", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects month 13", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("13", "15", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects day 0", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("6", "0", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects day 32", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("1", "32", "1990");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects year before 1900", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("6", "15", "1899");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects year in the future", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    const futureYear = String(new Date().getFullYear() + 1);
-    await act(async () => {
-      enterDOB("6", "15", futureYear);
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  // ------ Non-numeric / empty input ------
-
-  it("rejects non-numeric input", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("ab", "cd", "efgh");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  it("rejects empty fields", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    await act(async () => {
-      enterDOB("", "", "");
-    });
-
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-  });
-
-  // ------ Error is cleared on next valid attempt ------
-
-  it("clears error message when submitting a valid date after an invalid one", async () => {
-    await act(async () => {
-      renderAgeGate();
-    });
-
-    // First: invalid date
-    await act(async () => {
-      enterDOB("2", "30", "1990");
-    });
-    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
-
-    // Second: valid date of an adult
     const { month, day, year } = dobForAge(25);
     await act(async () => {
       enterDOB(month, day, year);
     });
 
-    // Error should be gone, children should render
-    expect(screen.queryByText("Please enter a valid date of birth.")).not.toBeInTheDocument();
-    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    expect(screen.getByText("Something went wrong. Please try again.")).toBeInTheDocument();
+    // CRITICAL: a 500 must NOT show the deletion screen, because the
+    // backend may not have actually deleted anything.
+    expect(screen.queryByText("Account deleted")).not.toBeInTheDocument();
+    expect(mockedLogout).not.toHaveBeenCalled();
   });
 
-  // ------ Server-side age_verified_at skips the gate ------
-
-  describe("backend age_verified_at (issue #371)", () => {
-    it("skips the gate when user.ageVerifiedAt is set, even with no localStorage", async () => {
-      mockedUseAuth.mockReturnValue({
-        accessToken: "token",
-        user: {
-          ageVerifiedAt: new Date("2026-04-20T12:00:00Z").toISOString(),
-        },
-      });
-
-      await act(async () => {
-        renderAgeGate();
-      });
-
-      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
-      expect(screen.queryByText("Age Verification")).not.toBeInTheDocument();
+  it("shows tryAgain on a 403 without an under_age error code", async () => {
+    // A 403 from some OTHER error path (e.g., consent gate, age
+    // interceptor on a non-verify endpoint) must not be misread as the
+    // deletion confirmation. Pin the error-body match.
+    mockedAuthFetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "consent_required" }),
     });
 
-    it("still shows the gate when user.ageVerifiedAt is null", async () => {
-      mockedUseAuth.mockReturnValue({
-        accessToken: "token",
-        user: { ageVerifiedAt: null },
-      });
-
-      await act(async () => {
-        renderAgeGate();
-      });
-
-      expect(screen.getByText("Age Verification")).toBeInTheDocument();
-      expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-    });
-
-    it("falls back to localStorage when user.ageVerifiedAt is null but local flag set", async () => {
-      localStorage.setItem("toqui_age_verified", "true");
-      mockedUseAuth.mockReturnValue({
-        accessToken: "token",
-        user: { ageVerifiedAt: null },
-      });
-
-      await act(async () => {
-        renderAgeGate();
-      });
-
-      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
-    });
-
-    it("skips the gate when user.ageVerifiedAt is set and no accessToken (offline-first boot)", async () => {
-      mockedUseAuth.mockReturnValue({
-        accessToken: null,
-        user: {
-          ageVerifiedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
-        },
-      });
-
-      await act(async () => {
-        renderAgeGate();
-      });
-
-      expect(screen.getByTestId("protected-content")).toBeInTheDocument();
-    });
-  });
-
-  // ------ Very old people ------
-
-  it("accepts year 1900 (126-year-old)", async () => {
     await act(async () => {
       renderAgeGate();
     });
-
+    const { month, day, year } = dobForAge(25);
     await act(async () => {
-      enterDOB("1", "1", "1900");
+      enterDOB(month, day, year);
     });
 
-    // Should not show error (date is valid, person is definitely 18+)
-    expect(screen.queryByText("Please enter a valid date of birth.")).not.toBeInTheDocument();
-    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    expect(screen.getByText("Something went wrong. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Account deleted")).not.toBeInTheDocument();
+    expect(mockedLogout).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed dates client-side (no fetch fired)", async () => {
+    await act(async () => {
+      renderAgeGate();
+    });
+    await act(async () => {
+      enterDOB("13", "32", "1990"); // month 13, day 32 — invalid
+    });
+
+    expect(screen.getByText("Please enter a valid date of birth.")).toBeInTheDocument();
+    expect(mockedAuthFetch).not.toHaveBeenCalled();
+  });
+
+  it("survives a fetch network error with tryAgain (not deletion)", async () => {
+    mockedAuthFetch.mockRejectedValue(new Error("network down"));
+
+    await act(async () => {
+      renderAgeGate();
+    });
+    const { month, day, year } = dobForAge(25);
+    await act(async () => {
+      enterDOB(month, day, year);
+    });
+
+    expect(screen.getByText("Something went wrong. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Account deleted")).not.toBeInTheDocument();
+    expect(mockedLogout).not.toHaveBeenCalled();
   });
 });
