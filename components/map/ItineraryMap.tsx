@@ -1,26 +1,33 @@
-import { View, Text, StyleSheet, Platform } from "react-native";
-import { useMemo } from "react";
+/**
+ * Itinerary map — public entry point.
+ *
+ * Gates the heavy `@maplibre/maplibre-react-native` dependency behind a
+ * `React.lazy` + `<Suspense>` boundary so that the maplibre module is:
+ *
+ *   - kept out of the web bundle entirely. Metro resolves the lazy import to
+ *     `ItineraryMapNative.web.tsx` (a noop stub) on web. The parent also
+ *     short-circuits to a placeholder before the <Suspense> boundary on web,
+ *     so the stub chunk is never even fetched.
+ *   - only evaluated on iOS/Android the first time a trip with at least one
+ *     mappable location is opened, instead of when the trip detail screen
+ *     module is first imported (which is the cost paid by a top-level
+ *     `require`).
+ *
+ * On web the user sees a small "Available on iOS and Android" placeholder.
+ * MapLibre GL JS is not currently wired up for web — see toqui#205.
+ */
+
+import { lazy, Suspense, useMemo } from "react";
+import { View, Text, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import { useTheme } from "@/lib/theme";
 import { getDayColor } from "./colors";
-import type { Itinerary, ItineraryDay, ItineraryItem } from "@gen/toqui/v1/trip_pb";
+import type { Itinerary } from "@gen/toqui/v1/trip_pb";
 
-// MapLibre is only available on native platforms.
-// On web, we show a placeholder (MapLibre GL JS could be added separately).
-let MapView: React.ComponentType<any> | null = null;
-let Camera: React.ComponentType<any> | null = null;
-let PointAnnotation: React.ComponentType<any> | null = null;
-
-if (Platform.OS !== "web") {
-  try {
-    const MapLibre = require("@maplibre/maplibre-react-native");
-    MapLibre.setAccessToken(null); // MapLibre is free, no token needed
-    MapView = MapLibre.MapView;
-    Camera = MapLibre.Camera;
-    PointAnnotation = MapLibre.PointAnnotation;
-  } catch {
-    // MapLibre not available — show placeholder
-  }
-}
+// `React.lazy` defers this import until the component is rendered. On web,
+// the parent short-circuits to the placeholder before mounting <Suspense>, so
+// this dynamic import is never triggered and Metro never reaches into the
+// maplibre module graph for web bundles.
+const ItineraryMapNative = lazy(() => import("./ItineraryMapNative"));
 
 interface MarkerData {
   id: string;
@@ -67,7 +74,7 @@ interface ItineraryMapProps {
 }
 
 export function ItineraryMap({ itinerary, height = 300 }: ItineraryMapProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const markers = useMemo(() => extractMarkers(itinerary), [itinerary]);
   const bounds = useMemo(() => computeBounds(markers), [markers]);
 
@@ -81,8 +88,10 @@ export function ItineraryMap({ itinerary, height = 300 }: ItineraryMapProps) {
     );
   }
 
-  // Web fallback — MapLibre GL JS would need a separate implementation
-  if (Platform.OS === "web" || !MapView || !Camera || !PointAnnotation) {
+  // Web fallback — MapLibre GL JS web rendering is not yet wired up. We
+  // short-circuit BEFORE the Suspense/lazy boundary so the maplibre module
+  // is never reached by the web bundler.
+  if (Platform.OS === "web") {
     return (
       <View style={[styles.placeholder, { height, backgroundColor: colors.surfaceTertiary }]}>
         <Text style={[styles.placeholderText, { color: colors.textTertiary }]}>
@@ -95,51 +104,22 @@ export function ItineraryMap({ itinerary, height = 300 }: ItineraryMapProps) {
     );
   }
 
-  const styleUrl = isDark
-    ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-    : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
-
+  // Native: lazy-load the maplibre-using renderer. The Suspense fallback
+  // is sized to the final map so layout doesn't shift when the chunk loads.
   return (
-    <View style={[styles.container, { height }]}>
-      <MapView
-        style={styles.map}
-        styleURL={styleUrl}
-        attributionEnabled={false}
-        logoEnabled={false}
-      >
-        {bounds && (
-          <Camera
-            bounds={{
-              sw: bounds.sw,
-              ne: bounds.ne,
-              paddingLeft: 40,
-              paddingRight: 40,
-              paddingTop: 40,
-              paddingBottom: 40,
-            }}
-            animationDuration={0}
-          />
-        )}
-        {markers.map((marker) => (
-          <PointAnnotation
-            key={marker.id}
-            id={marker.id}
-            coordinate={marker.coordinate}
-            title={marker.title}
-          >
-            <View style={[styles.marker, { backgroundColor: marker.color, borderColor: colors.surface }]}>
-              <Text style={[styles.markerText, { color: colors.surface }]}>{marker.dayNumber}</Text>
-            </View>
-          </PointAnnotation>
-        ))}
-      </MapView>
-    </View>
+    <Suspense
+      fallback={
+        <View style={[styles.placeholder, { height, backgroundColor: colors.surfaceTertiary }]}>
+          <ActivityIndicator color={colors.textTertiary} />
+        </View>
+      }
+    >
+      <ItineraryMapNative markers={markers} bounds={bounds} height={height} />
+    </Suspense>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { borderRadius: 12, overflow: "hidden", marginBottom: 16 },
-  map: { flex: 1 },
   placeholder: {
     borderRadius: 12,
     justifyContent: "center",
@@ -148,13 +128,4 @@ const styles = StyleSheet.create({
   },
   placeholderText: { fontSize: 14 },
   placeholderSubtext: { fontSize: 12, marginTop: 4 },
-  marker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-  },
-  markerText: { fontSize: 12, fontWeight: "700" },
 });
