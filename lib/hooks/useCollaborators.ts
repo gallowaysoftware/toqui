@@ -45,12 +45,24 @@ export function useCollaborators(tripId: string) {
   return { collaborators, isLoading, error, isError, refetch };
 }
 
+export interface InviteResult {
+  collaborator: Collaborator;
+  /**
+   * Whether the backend successfully delivered the invite email. When false,
+   * `acceptUrl` is set so the inviter can share the link manually as a
+   * fallback (e.g. Resend rejected the send because the sender domain isn't
+   * verified, or no email service is configured).
+   */
+  emailSent: boolean;
+  acceptUrl?: string;
+}
+
 export function useInviteCollaborator() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ tripId, email, role }: { tripId: string; email: string; role: "editor" | "viewer" }) => {
+  return useMutation<InviteResult, Error, { tripId: string; email: string; role: "editor" | "viewer" }>({
+    mutationFn: async ({ tripId, email, role }) => {
       const res = await authFetch(
         `${getConfig().apiUrl}/api/trips/${tripId}/invite`,
         accessToken,
@@ -63,8 +75,26 @@ export function useInviteCollaborator() {
         const body = await res.text().catch(() => "");
         throw new Error(body || `Failed to invite collaborator: ${res.status}`);
       }
-      const json = (await res.json()) as { collaborator: Collaborator };
-      return json.collaborator;
+      const json = (await res.json()) as {
+        id: string;
+        email: string;
+        role: "owner" | "editor" | "viewer";
+        invited_at: string;
+        email_sent?: boolean;
+        accept_url?: string;
+      };
+      return {
+        collaborator: {
+          id: json.id,
+          email: json.email,
+          role: json.role,
+          invitedAt: json.invited_at,
+          acceptedAt: null,
+          userId: null,
+        },
+        emailSent: json.email_sent ?? true,
+        acceptUrl: json.accept_url,
+      };
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["collaborators", variables.tripId] });
