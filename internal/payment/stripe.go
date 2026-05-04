@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v82"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
@@ -26,22 +25,54 @@ import (
 // the other gated writes (#361 P1 #3 fix).
 var ErrNotTripOwner = trip.ErrNotOwnerOrEditor
 
+// paymentQueries is the slice of dbgen.Queries this package uses.
+// Defining a tiny interface here (instead of taking the concrete
+// *dbgen.Queries) lets unit tests inject a recording stub instead of
+// standing up a real Postgres or pulling in pgxmock. *dbgen.Queries
+// satisfies this interface naturally, so production call sites keep
+// working without changes. Mirrors the analyticsTracker pattern in
+// internal/handlers/tool_recommend_booking.go.
+type paymentQueries interface {
+	GetTripByID(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error)
+	IsTripUnlocked(ctx context.Context, arg dbgen.IsTripUnlockedParams) (bool, error)
+	CreateCheckoutSession(ctx context.Context, arg dbgen.CreateCheckoutSessionParams) (dbgen.CheckoutSession, error)
+	CreatePayment(ctx context.Context, arg dbgen.CreatePaymentParams) (dbgen.Payment, error)
+	CreateTripUnlock(ctx context.Context, arg dbgen.CreateTripUnlockParams) (dbgen.TripUnlock, error)
+	MarkCheckoutSessionComplete(ctx context.Context, checkoutToken string) error
+}
+
+// Compile-time guard: *dbgen.Queries must satisfy paymentQueries so the
+// production NewService call site keeps working. If sqlc regenerates with
+// a signature drift, this fails at build time rather than at the failing
+// production call.
+var _ paymentQueries = (*dbgen.Queries)(nil)
+
+// analyticsTracker is the slice of *analytics.Client this package uses.
+// Tiny interface lets tests inject a recording stub to assert privacy
+// invariants on `trip_pro_purchased` (e.g. amount_cents/currency present,
+// trip_id NEVER present per CLAUDE.md GDPR Article 9 rule).
+type analyticsTracker interface {
+	Track(userID, event string, properties map[string]any)
+}
+
 // Service handles Stripe payment operations for Trip Pro one-time purchases.
 type Service struct {
 	client          *stripe.Client
 	productID       string // Stripe Product ID for Trip Pro one-time purchase
 	priceCents      int
-	queries         *dbgen.Queries
+	queries         paymentQueries
 	alwaysUnlocked  bool
 	frontendURL     string
 	enabled         bool
-	analyticsClient *analytics.Client
+	analyticsClient analyticsTracker
 }
 
 // WithAnalytics attaches a PostHog client so successful Trip Pro
 // purchases fire the `trip_pro_purchased` revenue event. Optional —
-// the service is fully functional without it.
-func (s *Service) WithAnalytics(client *analytics.Client) *Service {
+// the service is fully functional without it. Accepts the
+// analyticsTracker interface so tests can inject a recording stub;
+// *analytics.Client satisfies it.
+func (s *Service) WithAnalytics(client analyticsTracker) *Service {
 	s.analyticsClient = client
 	return s
 }
