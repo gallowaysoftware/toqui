@@ -7,36 +7,26 @@ import (
 	"time"
 )
 
-// AlertChecker monitors key health indicators and logs warnings when
-// thresholds are breached. The warnings are picked up by Cloud Logging
-// alerting policies in production.
+// AlertChecker logs warnings when the rolling-window error rate exceeds a
+// threshold. Picked up by Cloud Logging alerting policies in production.
 //
-// This is intentionally simple — no external dependencies, no state
-// beyond atomic counters. The goal is to catch obvious problems early
-// (error rate spikes, usage drops) without building a full monitoring system.
+// Usage-idle alerts (no chat messages / no signups recently) lived here too
+// but were noise at our scale — at small N they fire every 5 minutes from
+// process boot and drown out signal in incident triage. Bring them back when
+// idle gaps actually mean something we'd page on.
 type AlertChecker struct {
 	requestCount atomic.Int64
 	errorCount   atomic.Int64
-	lastMessage  atomic.Int64 // Unix timestamp of last chat message
-	lastSignup   atomic.Int64 // Unix timestamp of last signup
 
-	// Thresholds (configurable for testing).
-	ErrorRateThreshold float64 // default: 0.05 (5%)
-	IdleMessageHours   int     // default: 6
-	IdleSignupHours    int     // default: 24
+	// ErrorRateThreshold is the fraction of failed requests above which the
+	// alert fires. Default: 0.05 (5%). Only evaluated once a minimum of 100
+	// requests have been observed in the current window.
+	ErrorRateThreshold float64
 }
 
 // NewAlertChecker creates a new alert checker with default thresholds.
 func NewAlertChecker() *AlertChecker {
-	now := time.Now().Unix()
-	ac := &AlertChecker{
-		ErrorRateThreshold: 0.05,
-		IdleMessageHours:   6,
-		IdleSignupHours:    24,
-	}
-	ac.lastMessage.Store(now)
-	ac.lastSignup.Store(now)
-	return ac
+	return &AlertChecker{ErrorRateThreshold: 0.05}
 }
 
 // RecordRequest increments the request counter.
@@ -49,59 +39,36 @@ func (ac *AlertChecker) RecordError() {
 	ac.errorCount.Add(1)
 }
 
-// RecordMessage records that a chat message was sent.
-func (ac *AlertChecker) RecordMessage() {
-	ac.lastMessage.Store(time.Now().Unix())
-}
+// RecordMessage is retained as a no-op so existing chat handler call sites
+// keep compiling. The "idle messages" alert it used to feed was removed (see
+// the type comment); call sites can be deleted in a follow-up sweep.
+func (ac *AlertChecker) RecordMessage() {}
 
-// RecordSignup records that a user signed up.
-func (ac *AlertChecker) RecordSignup() {
-	ac.lastSignup.Store(time.Now().Unix())
-}
+// RecordSignup is retained as a no-op for the same reason as RecordMessage.
+func (ac *AlertChecker) RecordSignup() {}
 
 // Check evaluates all alert conditions and logs warnings for any that
 // are breached. Should be called periodically (e.g., every 5 minutes
 // via a background goroutine).
-func (ac *AlertChecker) Check(ctx context.Context) {
-	// Error rate check.
+func (ac *AlertChecker) Check(_ context.Context) {
 	requests := ac.requestCount.Load()
 	errors := ac.errorCount.Load()
-	if requests >= 100 {
-		errorRate := float64(errors) / float64(requests)
-		if errorRate > ac.ErrorRateThreshold {
-			slog.Warn("ALERT: error rate exceeds threshold",
-				"error_rate", errorRate,
-				"threshold", ac.ErrorRateThreshold,
-				"requests", requests,
-				"errors", errors,
-			)
-		}
-		// Reset counters for next window.
-		ac.requestCount.Store(0)
-		ac.errorCount.Store(0)
+	if requests < 100 {
+		return
 	}
 
-	now := time.Now().Unix()
-
-	// Message idle check.
-	lastMsg := ac.lastMessage.Load()
-	msgIdleHours := float64(now-lastMsg) / 3600
-	if msgIdleHours > float64(ac.IdleMessageHours) {
-		slog.Warn("ALERT: no chat messages sent recently",
-			"idle_hours", msgIdleHours,
-			"threshold_hours", ac.IdleMessageHours,
+	errorRate := float64(errors) / float64(requests)
+	if errorRate > ac.ErrorRateThreshold {
+		slog.Warn("ALERT: error rate exceeds threshold",
+			"error_rate", errorRate,
+			"threshold", ac.ErrorRateThreshold,
+			"requests", requests,
+			"errors", errors,
 		)
 	}
-
-	// Signup idle check.
-	lastSignup := ac.lastSignup.Load()
-	signupIdleHours := float64(now-lastSignup) / 3600
-	if signupIdleHours > float64(ac.IdleSignupHours) {
-		slog.Warn("ALERT: no signups recently",
-			"idle_hours", signupIdleHours,
-			"threshold_hours", ac.IdleSignupHours,
-		)
-	}
+	// Reset counters for next window.
+	ac.requestCount.Store(0)
+	ac.errorCount.Store(0)
 }
 
 // StartPeriodicCheck runs Check every interval in a background goroutine.

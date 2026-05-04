@@ -139,9 +139,14 @@ func (h *CollaborateHandler) HandleInvite(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Send invite email
-	if h.emailSvc != nil {
-		// Get inviter name and trip title for the email
+	// Send invite email synchronously so the caller learns whether delivery
+	// succeeded. The previous fire-and-forget goroutine returned 201 even
+	// when Resend rejected the send (e.g. unverified sender domain), leaving
+	// the inviter convinced the email had gone out.
+	acceptURL := h.appURL + "/trips/invite?token=" + token
+	emailSent := false
+	emailAttempted := h.emailSvc != nil
+	if emailAttempted {
 		inviter, _ := h.queries.GetUserByID(ctx, userID)
 		trip, _ := h.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{ID: tripID, UserID: userID})
 
@@ -157,12 +162,11 @@ func (h *CollaborateHandler) HandleInvite(w http.ResponseWriter, r *http.Request
 			tripTitle = trip.Title
 		}
 
-		acceptURL := h.appURL + "/trips/invite?token=" + token
-		go func() {
-			if err := h.emailSvc.SendCollabInvite(req.Email, inviterName, tripTitle, acceptURL); err != nil {
-				slog.Error("collab invite email failed", "error", err, "to", maskEmail(req.Email))
-			}
-		}()
+		if err := h.emailSvc.SendCollabInvite(req.Email, inviterName, tripTitle, acceptURL); err != nil {
+			slog.Error("collab invite email failed", "error", err, "to", maskEmail(req.Email))
+		} else {
+			emailSent = true
+		}
 	}
 
 	audit.Log(audit.EventTripInvite,
@@ -170,16 +174,26 @@ func (h *CollaborateHandler) HandleInvite(w http.ResponseWriter, r *http.Request
 		"invited_by", userID.String(),
 		"invited_email", maskEmail(req.Email),
 		"role", req.Role,
+		"email_sent", emailSent,
 	)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]any{
+	resp := map[string]any{
 		"id":         collab.ID.String(),
 		"email":      collab.Email,
 		"role":       collab.Role,
 		"invited_at": collab.InvitedAt,
-	})
+		"email_sent": emailSent,
+	}
+	// When the email failed (or was skipped because no email service is
+	// configured), return the accept URL so the inviter can share it
+	// manually as a fallback.
+	if emailAttempted && !emailSent {
+		resp["accept_url"] = acceptURL
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // HandleAcceptInvite handles POST /api/trips/accept-invite — accept a collaboration invite.
