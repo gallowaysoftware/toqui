@@ -1,9 +1,10 @@
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, StyleSheet, Pressable, Platform, ScrollView, Alert, ActivityIndicator } from "react-native";
 import { useState, useEffect } from "react";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, RefreshCw, CheckCircle, Clock, X, Users, Send } from "lucide-react-native";
+import { AlertCircle, RefreshCw, CheckCircle, Clock, Copy, X, Users, Send } from "lucide-react-native";
 import { useTrip, useUpdateTrip, useDeleteTrip } from "@/lib/hooks/useTrips";
 import { useCollaborators, useInviteCollaborator, useRemoveCollaborator } from "@/lib/hooks/useCollaborators";
 import { DatePicker } from "@/components/DatePicker";
@@ -36,6 +37,23 @@ export default function TripSettingsScreen() {
   const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [emailFallbackUrl, setEmailFallbackUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyFallbackLink = async () => {
+    if (!emailFallbackUrl) return;
+    try {
+      if (Platform.OS === "web") {
+        await navigator.clipboard.writeText(emailFallbackUrl);
+      } else {
+        await Clipboard.setStringAsync(emailFallbackUrl);
+      }
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // best-effort; the URL stays selectable in the UI as a fallback
+    }
+  };
 
   const MAX_COLLABORATORS = 10;
   const isOwner = user != null && trip?.userId === user.id;
@@ -107,6 +125,36 @@ export default function TripSettingsScreen() {
     feedbackText: { fontSize: 14, fontWeight: "500", flex: 1 },
     successText: { color: colors.success },
     errorText: { color: colors.error },
+    fallback: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.warningBg,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+      gap: 8,
+    },
+    fallbackHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    fallbackText: { fontSize: 13, color: colors.textPrimary, flex: 1 },
+    fallbackUrl: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }),
+      backgroundColor: colors.surface,
+      padding: 8,
+      borderRadius: 6,
+    },
+    copyButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      alignSelf: "flex-start",
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 6,
+      backgroundColor: colors.accentSoft,
+    },
+    copyButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
     errorContainer: {
       flex: 1,
       justifyContent: "center",
@@ -408,15 +456,24 @@ export default function TripSettingsScreen() {
                     onPress={async () => {
                       setInviteError(null);
                       setInviteSuccess(false);
+                      setEmailFallbackUrl(null);
+                      setLinkCopied(false);
                       try {
-                        await inviteCollaborator.mutateAsync({
+                        const result = await inviteCollaborator.mutateAsync({
                           tripId: tripId!,
                           email: inviteEmail.trim(),
                           role: inviteRole,
                         });
                         setInviteEmail("");
-                        setInviteSuccess(true);
-                        setTimeout(() => setInviteSuccess(false), 3000);
+                        if (result.emailSent) {
+                          setInviteSuccess(true);
+                          setTimeout(() => setInviteSuccess(false), 3000);
+                        } else if (result.acceptUrl) {
+                          setEmailFallbackUrl(result.acceptUrl);
+                        } else {
+                          setInviteSuccess(true);
+                          setTimeout(() => setInviteSuccess(false), 3000);
+                        }
                       } catch (err) {
                         setInviteError(err instanceof Error ? err.message : t("collaborators.inviteError"));
                       }
@@ -438,6 +495,30 @@ export default function TripSettingsScreen() {
                   <View style={[styles.feedbackBanner, styles.errorBanner]}>
                     <AlertCircle color={colors.error} size={14} />
                     <Text style={[styles.feedbackText, styles.errorText]}>{inviteError}</Text>
+                  </View>
+                )}
+                {emailFallbackUrl && (
+                  <View style={styles.fallback}>
+                    <View style={styles.fallbackHeader}>
+                      <AlertCircle size={16} color={colors.warning} />
+                      <Text style={styles.fallbackText}>
+                        {t("collaborators.inviteEmailFallback")}
+                      </Text>
+                    </View>
+                    <Text style={styles.fallbackUrl} selectable numberOfLines={2}>
+                      {emailFallbackUrl}
+                    </Text>
+                    <Pressable
+                      onPress={() => void handleCopyFallbackLink()}
+                      style={styles.copyButton}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("collaborators.copyLink")}
+                    >
+                      <Copy size={14} color={colors.accent} />
+                      <Text style={styles.copyButtonText}>
+                        {linkCopied ? t("collaborators.linkCopied") : t("collaborators.copyLink")}
+                      </Text>
+                    </Pressable>
                   </View>
                 )}
               </View>

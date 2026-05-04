@@ -134,21 +134,39 @@ describe("useInviteCollaborator", () => {
     mockAuth.accessToken = "test-token";
   });
 
-  it("calls the correct API endpoint with email and role", async () => {
-    const collaborator = { id: "c3", email: "carol@example.com", role: "viewer", invitedAt: "2025-02-01", acceptedAt: null, userId: null };
-    mockAuthFetch.mockResolvedValue(mockJsonResponse({ collaborator }));
+  it("calls the correct API endpoint and parses email_sent=true response", async () => {
+    mockAuthFetch.mockResolvedValue(
+      mockJsonResponse({
+        id: "c3",
+        email: "carol@example.com",
+        role: "viewer",
+        invited_at: "2025-02-01",
+        email_sent: true,
+      }),
+    );
     const { wrapper } = createWrapper();
 
     const { result } = renderHook(() => useInviteCollaborator(), { wrapper });
 
+    let returned: Awaited<ReturnType<typeof result.current.mutateAsync>> | undefined;
     await act(async () => {
-      const returned = await result.current.mutateAsync({
+      returned = await result.current.mutateAsync({
         tripId: "trip-1",
         email: "carol@example.com",
         role: "viewer",
       });
-      expect(returned).toEqual(collaborator);
     });
+
+    expect(returned?.collaborator).toEqual({
+      id: "c3",
+      email: "carol@example.com",
+      role: "viewer",
+      invitedAt: "2025-02-01",
+      acceptedAt: null,
+      userId: null,
+    });
+    expect(returned?.emailSent).toBe(true);
+    expect(returned?.acceptUrl).toBeUndefined();
 
     expect(mockAuthFetch).toHaveBeenCalledWith(
       "http://localhost:8090/api/trips/trip-1/invite",
@@ -158,6 +176,34 @@ describe("useInviteCollaborator", () => {
         body: JSON.stringify({ email: "carol@example.com", role: "viewer" }),
       },
     );
+  });
+
+  it("surfaces email_sent=false with accept_url when delivery fails", async () => {
+    mockAuthFetch.mockResolvedValue(
+      mockJsonResponse({
+        id: "c4",
+        email: "dave@example.com",
+        role: "editor",
+        invited_at: "2025-02-02",
+        email_sent: false,
+        accept_url: "https://app.toqui.travel/trips/invite?token=abc123",
+      }),
+    );
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useInviteCollaborator(), { wrapper });
+
+    let returned: Awaited<ReturnType<typeof result.current.mutateAsync>> | undefined;
+    await act(async () => {
+      returned = await result.current.mutateAsync({
+        tripId: "trip-1",
+        email: "dave@example.com",
+        role: "editor",
+      });
+    });
+
+    expect(returned?.emailSent).toBe(false);
+    expect(returned?.acceptUrl).toBe("https://app.toqui.travel/trips/invite?token=abc123");
   });
 
   it("throws when API returns non-ok response", async () => {

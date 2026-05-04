@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,9 +10,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, CheckCircle, Clock, Crown, Send, Users, X } from "lucide-react-native";
+import { AlertCircle, CheckCircle, Clock, Copy, Crown, Send, Users, X } from "lucide-react-native";
 import { useTrip } from "@/lib/hooks/useTrips";
 import {
   Collaborator,
@@ -43,6 +45,8 @@ export default function TripMembersScreen() {
   const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [emailFallbackUrl, setEmailFallbackUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const isOwner = user != null && trip?.userId === user.id;
   const canInvite = isOwner && collaborators.length < MAX_COLLABORATORS;
@@ -69,24 +73,50 @@ export default function TripMembersScreen() {
   const handleInvite = async () => {
     setInviteError(null);
     setInviteSuccess(false);
+    setEmailFallbackUrl(null);
+    setLinkCopied(false);
     if (!inviteEmail || !isValidEmail(inviteEmail)) {
       setInviteError(t("collaborators.inviteError"));
       return;
     }
     try {
-      await inviteCollaborator.mutateAsync({
+      const result = await inviteCollaborator.mutateAsync({
         tripId: tripId!,
         email: inviteEmail.trim(),
         role: inviteRole,
       });
       setInviteEmail("");
-      setInviteSuccess(true);
       void refetch();
-      setTimeout(() => setInviteSuccess(false), 3000);
+      if (result.emailSent) {
+        setInviteSuccess(true);
+        setTimeout(() => setInviteSuccess(false), 3000);
+      } else if (result.acceptUrl) {
+        // Email delivery failed — show the accept link so the inviter can
+        // share it manually (e.g. via Signal, SMS) as a fallback.
+        setEmailFallbackUrl(result.acceptUrl);
+      } else {
+        setInviteSuccess(true);
+        setTimeout(() => setInviteSuccess(false), 3000);
+      }
     } catch (err) {
       setInviteError(
         err instanceof Error ? err.message : t("collaborators.inviteError"),
       );
+    }
+  };
+
+  const handleCopyFallbackLink = async () => {
+    if (!emailFallbackUrl) return;
+    try {
+      if (Platform.OS === "web") {
+        await navigator.clipboard.writeText(emailFallbackUrl);
+      } else {
+        await Clipboard.setStringAsync(emailFallbackUrl);
+      }
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // best-effort; if clipboard fails the URL is still visible in the UI
     }
   };
 
@@ -263,6 +293,36 @@ export default function TripMembersScreen() {
     feedbackText: { fontSize: 13, flex: 1 },
     feedbackTextError: { color: colors.error },
     feedbackTextSuccess: { color: colors.success },
+    fallback: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.warningBg,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+      gap: 8,
+    },
+    fallbackHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    fallbackText: { fontSize: 13, color: colors.textPrimary, flex: 1 },
+    fallbackUrl: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }),
+      backgroundColor: colors.surface,
+      padding: 8,
+      borderRadius: 6,
+    },
+    copyButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      alignSelf: "flex-start",
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 6,
+      backgroundColor: colors.accentSoft,
+    },
+    copyButtonText: { fontSize: 13, color: colors.accent, fontWeight: "600" },
     maxNotice: { fontSize: 12, color: colors.textTertiary, marginTop: 10, textAlign: "center" },
     emptyText: {
       fontSize: 14,
@@ -438,6 +498,30 @@ export default function TripMembersScreen() {
               <Text style={[styles.feedbackText, styles.feedbackTextSuccess]}>
                 {t("collaborators.inviteSent")}
               </Text>
+            </View>
+          )}
+          {emailFallbackUrl && (
+            <View style={styles.fallback}>
+              <View style={styles.fallbackHeader}>
+                <AlertCircle size={16} color={colors.warning} />
+                <Text style={styles.fallbackText}>
+                  {t("collaborators.inviteEmailFallback")}
+                </Text>
+              </View>
+              <Text style={styles.fallbackUrl} selectable numberOfLines={2}>
+                {emailFallbackUrl}
+              </Text>
+              <Pressable
+                onPress={() => void handleCopyFallbackLink()}
+                style={styles.copyButton}
+                accessibilityRole="button"
+                accessibilityLabel={t("collaborators.copyLink")}
+              >
+                <Copy size={14} color={colors.accent} />
+                <Text style={styles.copyButtonText}>
+                  {linkCopied ? t("collaborators.linkCopied") : t("collaborators.copyLink")}
+                </Text>
+              </Pressable>
             </View>
           )}
           {!canInvite && (
