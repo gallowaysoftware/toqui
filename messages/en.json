@@ -412,15 +412,18 @@
     "error": "Failed to send feedback. Please try again."
   },
   "ageGate": {
-    "title": "Age Verification",
-    "subtitle": "You must be at least 18 years old to use Toqui. Please enter your date of birth.",
-    "deniedTitle": "Access Denied",
-    "deniedSubtitle": "You must be at least 18 years old to use Toqui. Please come back when you're old enough.",
+    "title": "Quick check before we plan your trip",
+    "subtitle": "Toqui is for travelers 18 and over. We ask for your birthdate once, store the verification, and never ask again.",
+    "privacyNote": "We don't store the date itself — only that you've verified.",
+    "deletedTitle": "Account deleted",
+    "deletedSubtitle": "Toqui is for travelers 18 and over. Your account has been deleted in line with our terms — no chat, trip, or booking data has been retained.",
     "invalidDate": "Please enter a valid date of birth.",
+    "tryAgain": "Something went wrong. Please try again.",
     "month": "Month",
     "day": "Day",
     "year": "Year",
-    "verifyAge": "Verify Age"
+    "verifyAge": "Verify age",
+    "verifying": "Verifying…"
   },
   "consentGate": {
     "title": "One more thing",
