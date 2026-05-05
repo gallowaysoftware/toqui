@@ -38,6 +38,16 @@ func NewGuidesHandler(appURL string) *GuidesHandler {
 	return &GuidesHandler{guides: guides, bySlug: bySlug}
 }
 
+// Guides returns a copy of the loaded guide slice. Used by tooling
+// (cmd/genguides --diff) that needs to inspect the static set without
+// going through the HTTP path. Runtime callers should use the HTTP
+// handlers below.
+func (h *GuidesHandler) Guides() []Guide {
+	out := make([]Guide, len(h.guides))
+	copy(out, h.guides)
+	return out
+}
+
 // HandleListGuides handles GET /api/guides — returns all guides (without full content).
 func (h *GuidesHandler) HandleListGuides(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

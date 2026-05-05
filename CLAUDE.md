@@ -75,6 +75,7 @@ graph TB
 | ----------------------- | ----------------------------------------------------------------------------------------- |
 | `cmd/server`            | Main API server entry point                                                               |
 | `cmd/migrate`           | Database migration runner                                                                 |
+| `cmd/genguides`         | Dev-machine CLI that regenerates the curated 25-slug destination guide set from the persona system. See "Destination Guides Generator" below. |
 | `internal/handlers/`    | ConnectRPC service handlers (auth, trip, chat, booking, location, persona)                |
 | `internal/chat/`        | Chat service — AI streaming, tool execution, persona resolution                           |
 | `internal/persona/`     | Persona composition — 43 locations × 23 themes = 989 expert combos                        |
@@ -747,6 +748,14 @@ HTTP routes (outside ConnectRPC):
 - `POST /api/feedback` — Authenticated. Submit user feedback.
 - `GET /api/guides` — Public. Lists all destination guides (slug, title, destination).
 - `GET /api/guides/{slug}` — Public. Returns full destination guide content.
+
+#### Destination Guides Generator (`cmd/genguides`)
+
+Dev-machine CLI that regenerates the curated 25-slug guide set from the persona system instead of the hand-authored prose currently shipped in `internal/handlers/guides.go::staticGuides()`. Single source of truth: the same run produces both the backend artefact (`internal/handlers/guides_data.gen.json`, gitignored) and the toqui-site artefact (`../toqui-site/src/data/guides.gen.ts`). Today the backend ships 25 guides and the site ships 55 — they have drifted; this CLI is how we re-converge.
+
+The generator pulls each composed expert's `name` + `specialty` via `persona.Composer.Compose(...)` and feeds that into `internal/persona/guideprompt.go::BuildGuidePrompt`, which enforces three hard rules: no specific business names, no visa/health/safety claims, neighborhoods and categories only.
+
+**This is PR 1 of toqui-backend#30 — tooling only, no runtime behaviour change.** `GuidesHandler` continues to read `staticGuides()`. PR 2 reviews quality and commits the JSON; PR 3 flips the read path to load the JSON at startup. Run via `make genguides` on a dev machine with `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` set; the CLI is never invoked in CI (no API keys there).
 
 ### Trip sharing & collaboration
 - `POST /api/trips/share` — Authenticated. Enables trip sharing, returns share token.

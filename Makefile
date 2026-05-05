@@ -1,7 +1,8 @@
 .PHONY: proto proto-lint build test run run-staging run-prod lint sqlc \
 	migrate-up migrate-down migrate-create \
 	docker-up docker-down integration-test \
-	agentic-test agentic-persona agentic-diff agentic-baseline agentic-validate
+	agentic-test agentic-persona agentic-diff agentic-baseline agentic-validate \
+	genguides
 
 # Environment — override with TARGET_ENV=staging or TARGET_ENV=prod
 TARGET_ENV ?= local
@@ -117,3 +118,17 @@ agentic-baseline:
 agentic-validate:
 	@test -n "$(FILE)" || (echo "FILE is required" && exit 1)
 	@go run ./cmd/testctl validate-report --file "$(FILE)"
+
+# Regenerate the curated 25-slug destination guide set from the persona
+# system. PR 1 of toqui-backend#30 ships the tooling only — the live
+# GuidesHandler still serves staticGuides() until PR 2 reviews the
+# generated artefact and PR 3 flips the read path. Requires either
+# ANTHROPIC_API_KEY or GEMINI_API_KEY in the environment. Writes the
+# backend artefact (gitignored) and the toqui-site artefact (in the
+# adjacent toqui-site checkout — committed separately, not in this PR).
+#
+#   make genguides
+genguides:
+	go run ./cmd/genguides \
+		--output internal/handlers/guides_data.gen.json \
+		--site-output ../toqui-site/src/data/guides.gen.ts
