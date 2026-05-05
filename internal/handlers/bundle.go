@@ -223,7 +223,7 @@ func (h *BundleHandler) HandleBundle(w http.ResponseWriter, r *http.Request) {
 		if len(countries) == 0 && t.DestinationCountry.Valid && t.DestinationCountry.String != "" {
 			countries = []string{t.DestinationCountry.String}
 		}
-		guides = h.matchGuides(countries)
+		guides = h.matchGuides(t, countries)
 	}
 
 	resp := bundleResponse{
@@ -293,9 +293,39 @@ func (h *BundleHandler) fetchRecentChatMessages(ctx context.Context, userID uuid
 	return result
 }
 
-// matchGuides returns guides whose country code matches any of the trip's
-// destination countries.
-func (h *BundleHandler) matchGuides(countries []string) []bundleGuide {
+// matchGuides returns destination guides relevant to the given trip.
+//
+// Matching is two-stage:
+//
+//  1. Country gate. The guide's Country must be in the trip's
+//     `destination_countries` set. This is the cheap filter and the
+//     same constraint as before.
+//
+//  2. Destination overlap. The guide's `Destination` string (e.g.
+//     "London", "Scotland", "Tokyo") must appear, case-insensitively,
+//     in the trip's Title or Description. This is the new
+//     specificity check — without it a Scotland-bound trip whose
+//     country code is "GB" matched the London guide alongside the
+//     scotland-distilleries guide, surfacing a wildly off-topic guide
+//     to the user (the bug Kyle saw 2026-05-05 on
+//     `Scotland Bike & Whisky Road Trip 2026`, which the bundle
+//     dutifully tagged with a London History guide).
+//
+// Trade-off acknowledged: a trip whose Title is just "Summer trip"
+// with country=US will no longer match the New York guide. That's
+// the right behaviour — if the trip metadata doesn't mention the
+// city, the guide is a guess at best, and a guess wrong (Boston?
+// Miami?) is worse than no guide. Users who later edit the trip
+// title to mention a city will get the matching guide on the next
+// bundle fetch.
+//
+// Single-guide-per-country case: if there's only ONE guide for a
+// matched country (today: Iceland, Greece, Peru, etc.), we keep
+// the country-only match — there's no ambiguity and the guide is
+// definitionally about that country. Skipping the destination check
+// in this case avoids over-strictness for countries we don't have
+// city-specific guides for.
+func (h *BundleHandler) matchGuides(t *dbgen.Trip, countries []string) []bundleGuide {
 	if len(countries) == 0 {
 		return nil
 	}
@@ -305,19 +335,50 @@ func (h *BundleHandler) matchGuides(countries []string) []bundleGuide {
 		countrySet[strings.ToUpper(c)] = true
 	}
 
-	var matched []bundleGuide
+	// Build a single lowercased haystack from trip metadata for the
+	// destination-overlap check. Title + Description is what the user
+	// actively typed; we deliberately skip itinerary item names because
+	// those can mention adjacent cities (e.g. "Layover in London") that
+	// would re-introduce the same bug.
+	haystack := strings.ToLower(t.Title)
+	if t.Description.Valid {
+		haystack += " " + strings.ToLower(t.Description.String)
+	}
+
+	// Pre-compute how many guides exist for each country so we can
+	// fall back to country-only matching when there's no ambiguity.
+	guidesPerCountry := make(map[string]int)
 	for _, g := range h.guides.guides {
 		if countrySet[strings.ToUpper(g.Country)] {
-			matched = append(matched, bundleGuide{
-				Slug:        g.Slug,
-				Title:       g.Title,
-				PersonaName: g.PersonaName,
-				Destination: g.Destination,
-				Country:     g.Country,
-				Theme:       g.Theme,
-				Content:     g.Content,
-			})
+			guidesPerCountry[strings.ToUpper(g.Country)]++
 		}
+	}
+
+	var matched []bundleGuide
+	for _, g := range h.guides.guides {
+		country := strings.ToUpper(g.Country)
+		if !countrySet[country] {
+			continue
+		}
+
+		// Multi-guide country → require destination overlap. Single-
+		// guide country → fall through (no ambiguity to disambiguate).
+		if guidesPerCountry[country] > 1 {
+			dest := strings.ToLower(strings.TrimSpace(g.Destination))
+			if dest == "" || !strings.Contains(haystack, dest) {
+				continue
+			}
+		}
+
+		matched = append(matched, bundleGuide{
+			Slug:        g.Slug,
+			Title:       g.Title,
+			PersonaName: g.PersonaName,
+			Destination: g.Destination,
+			Country:     g.Country,
+			Theme:       g.Theme,
+			Content:     g.Content,
+		})
 	}
 	return matched
 }

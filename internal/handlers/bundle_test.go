@@ -337,15 +337,28 @@ func TestBuildBundleBookings_Empty(t *testing.T) {
 	}
 }
 
+// tripWithTitle is a tiny test helper. matchGuides reads `Trip.Title`
+// + `Trip.Description` to disambiguate multi-guide-per-country matches,
+// so most tests in this file want to construct a Trip with a specific
+// title or description and otherwise leave the model fields zero.
+func tripWithTitle(title, description string) *dbgen.Trip {
+	return &dbgen.Trip{
+		Title:       title,
+		Description: pgtype.Text{String: description, Valid: description != ""},
+	}
+}
+
 func TestMatchGuides(t *testing.T) {
 	handler := &BundleHandler{
 		guides: NewGuidesHandler("https://app.toqui.travel"),
 	}
 
-	// Japan should match tokyo-food and japan-adventure
-	guides := handler.matchGuides([]string{"JP"})
+	// Japan with both Tokyo and Japan in the title: should match both
+	// guides because the destination-overlap check passes for each.
+	jpTrip := tripWithTitle("Tokyo Foodie + Japan Adventure", "")
+	guides := handler.matchGuides(jpTrip, []string{"JP"})
 	if len(guides) != 2 {
-		t.Fatalf("expected 2 guides for JP, got %d", len(guides))
+		t.Fatalf("expected 2 guides for JP with both destinations in title, got %d", len(guides))
 	}
 	slugs := make(map[string]bool)
 	for _, g := range guides {
@@ -358,27 +371,28 @@ func TestMatchGuides(t *testing.T) {
 		t.Error("expected japan-adventure guide for JP")
 	}
 
-	// Multi-country
-	guides = handler.matchGuides([]string{"GR", "TR"})
+	// Multi-country: Greece and Turkey each have a single guide today, so
+	// the destination-overlap check is bypassed. Country match alone wins.
+	guides = handler.matchGuides(tripWithTitle("Med vacation", ""), []string{"GR", "TR"})
 	slugs = make(map[string]bool)
 	for _, g := range guides {
 		slugs[g.Slug] = true
 	}
 	if !slugs["greece-romance"] {
-		t.Error("expected greece-romance guide for GR")
+		t.Error("expected greece-romance guide for GR (single-guide country fallback)")
 	}
 	if !slugs["istanbul-culture"] {
-		t.Error("expected istanbul-culture guide for TR")
+		t.Error("expected istanbul-culture guide for TR (single-guide country fallback)")
 	}
 
 	// No country
-	guides = handler.matchGuides(nil)
+	guides = handler.matchGuides(tripWithTitle("Anywhere", ""), nil)
 	if len(guides) != 0 {
 		t.Errorf("expected 0 guides for nil countries, got %d", len(guides))
 	}
 
 	// Unknown country
-	guides = handler.matchGuides([]string{"XX"})
+	guides = handler.matchGuides(tripWithTitle("Mystery", ""), []string{"XX"})
 	if len(guides) != 0 {
 		t.Errorf("expected 0 guides for unknown country XX, got %d", len(guides))
 	}
@@ -389,11 +403,129 @@ func TestMatchGuides_CaseInsensitive(t *testing.T) {
 		guides: NewGuidesHandler("https://app.toqui.travel"),
 	}
 
-	// Lowercase country code should still match
-	guides := handler.matchGuides([]string{"jp"})
+	// Lowercase country code should still match. Title contains both
+	// destinations so both JP guides surface.
+	guides := handler.matchGuides(tripWithTitle("Tokyo + Japan", ""), []string{"jp"})
 	if len(guides) != 2 {
 		t.Errorf("expected 2 guides for lowercase jp, got %d", len(guides))
 	}
+}
+
+// TestMatchGuides_ScotlandTripDoesNotGetLondonGuide is the regression
+// test for the bug Kyle reported on 2026-05-05: a "Scotland Bike &
+// Whisky Road Trip 2026" surfaced the London History Guide because
+// London and Scotland-Distilleries both have country=GB and the old
+// matcher only checked the country code. The fix requires the guide's
+// Destination to appear in the trip's Title or Description for
+// multi-guide countries.
+func TestMatchGuides_ScotlandTripDoesNotGetLondonGuide(t *testing.T) {
+	handler := &BundleHandler{
+		guides: NewGuidesHandler("https://app.toqui.travel"),
+	}
+
+	// Reproduce Kyle's trip metadata as faithfully as the test harness
+	// allows. Title and description mention Scotland but never London.
+	trip := tripWithTitle(
+		"Scotland Bike & Whisky Road Trip 2026",
+		"Week-long bike trip from Balloch to Inverness, then a whisky road trip by rental car from Inverness through Speyside, Oban, Islay, Tarbert, and Edinburgh.",
+	)
+
+	guides := handler.matchGuides(trip, []string{"GB"})
+
+	// Must include scotland-distilleries (description-mentioned).
+	// Must NOT include london-history.
+	var hasScotland, hasLondon bool
+	for _, g := range guides {
+		switch g.Slug {
+		case "scotland-distilleries":
+			hasScotland = true
+		case "london-history":
+			hasLondon = true
+		}
+	}
+	if !hasScotland {
+		t.Errorf("expected scotland-distilleries guide for a Scotland trip, got slugs: %v", slugsOf(guides))
+	}
+	if hasLondon {
+		t.Errorf("MUST NOT include london-history for a Scotland trip — bug Kyle saw 2026-05-05; got slugs: %v", slugsOf(guides))
+	}
+}
+
+// TestMatchGuides_LondonTripGetsLondonGuide is the inverse of the
+// Scotland regression: a London-named trip should still get the London
+// guide and NOT scotland-distilleries.
+func TestMatchGuides_LondonTripGetsLondonGuide(t *testing.T) {
+	handler := &BundleHandler{
+		guides: NewGuidesHandler("https://app.toqui.travel"),
+	}
+
+	trip := tripWithTitle("Long Weekend in London", "Museums, walks, theatre.")
+	guides := handler.matchGuides(trip, []string{"GB"})
+
+	var hasLondon, hasScotland bool
+	for _, g := range guides {
+		switch g.Slug {
+		case "london-history":
+			hasLondon = true
+		case "scotland-distilleries":
+			hasScotland = true
+		}
+	}
+	if !hasLondon {
+		t.Errorf("expected london-history guide for a London trip, got slugs: %v", slugsOf(guides))
+	}
+	if hasScotland {
+		t.Errorf("MUST NOT include scotland-distilleries for a London trip; got slugs: %v", slugsOf(guides))
+	}
+}
+
+// TestMatchGuides_GBTripWithNeitherCityMatchesNothing pins the
+// conservative behaviour: a generic UK trip whose title doesn't name
+// London or Scotland gets NO guide rather than a wrong one. The user
+// can edit the trip title later and the next bundle fetch will pick
+// up the matching guide.
+func TestMatchGuides_GBTripWithNeitherCityMatchesNothing(t *testing.T) {
+	handler := &BundleHandler{
+		guides: NewGuidesHandler("https://app.toqui.travel"),
+	}
+
+	trip := tripWithTitle("UK trip", "Various places.")
+	guides := handler.matchGuides(trip, []string{"GB"})
+
+	if len(guides) != 0 {
+		t.Errorf("multi-guide country with no destination overlap should return 0 guides (a wrong guess is worse than no guide), got: %v", slugsOf(guides))
+	}
+}
+
+// TestMatchGuides_DescriptionMentionMatches confirms that the haystack
+// includes the description, not just the title. A Scotland trip with a
+// generic title but Scotland in the description should still match.
+func TestMatchGuides_DescriptionMentionMatches(t *testing.T) {
+	handler := &BundleHandler{
+		guides: NewGuidesHandler("https://app.toqui.travel"),
+	}
+
+	trip := tripWithTitle("Whisky tour 2026", "Touring the Scotland highlands.")
+	guides := handler.matchGuides(trip, []string{"GB"})
+
+	var hasScotland bool
+	for _, g := range guides {
+		if g.Slug == "scotland-distilleries" {
+			hasScotland = true
+		}
+	}
+	if !hasScotland {
+		t.Errorf("Scotland in description should match scotland-distilleries, got: %v", slugsOf(guides))
+	}
+}
+
+// slugsOf is a tiny helper for the error messages above.
+func slugsOf(guides []bundleGuide) []string {
+	out := make([]string, 0, len(guides))
+	for _, g := range guides {
+		out = append(out, g.Slug)
+	}
+	return out
 }
 
 func TestBundleResponseJSON(t *testing.T) {
