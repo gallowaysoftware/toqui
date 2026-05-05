@@ -7,6 +7,8 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const isEmailUnderAgeBlocked = `-- name: IsEmailUnderAgeBlocked :one
@@ -17,7 +19,7 @@ SELECT EXISTS (
 
 // Returns true iff the given email hash was previously refused.
 // Called from the OAuth login handlers BEFORE the user upsert, so a
-// refused person can't simply retry by signing in again with the same
+// refused person can't simply sign in again with the same
 // Google/Facebook/Apple identity.
 func (q *Queries) IsEmailUnderAgeBlocked(ctx context.Context, emailSha256 string) (bool, error) {
 	row := q.db.QueryRow(ctx, isEmailUnderAgeBlocked, emailSha256)
@@ -26,10 +28,11 @@ func (q *Queries) IsEmailUnderAgeBlocked(ctx context.Context, emailSha256 string
 	return exists, err
 }
 
-const recordUnderAgeBlock = `-- name: RecordUnderAgeBlock :exec
+const recordUnderAgeBlock = `-- name: RecordUnderAgeBlock :one
 INSERT INTO under_age_blocks (email_sha256, oauth_provider)
 VALUES ($1, $2)
 ON CONFLICT (email_sha256) DO NOTHING
+RETURNING id
 `
 
 type RecordUnderAgeBlockParams struct {
@@ -38,9 +41,27 @@ type RecordUnderAgeBlockParams struct {
 }
 
 // Record that an OAuth identity was refused due to the under-18 age gate.
-// ON CONFLICT DO NOTHING so re-attempts are idempotent — the table tracks
-// "this email was refused", not "how many times it tried to retry".
-func (q *Queries) RecordUnderAgeBlock(ctx context.Context, arg RecordUnderAgeBlockParams) error {
-	_, err := q.db.Exec(ctx, recordUnderAgeBlock, arg.EmailSha256, arg.OauthProvider)
-	return err
+//
+// The `RETURNING id` is what makes this query the serialization point for
+// concurrent verify-age requests from the same user (W1 race window
+// closed). When two requests race:
+//
+//   - The first INSERT acquires the row, RETURNING returns its id, and
+//     the handler proceeds with lifecycle.DeleteUser + audit.
+//   - The second INSERT hits ON CONFLICT, RETURNING returns NO rows,
+//     and sqlc surfaces this as `pgx.ErrNoRows`. The handler treats
+//     that as "another concurrent request already handled this user"
+//     and short-circuits without firing a duplicate audit event or a
+//     redundant DeleteUser call.
+//
+// This relies on the `email_sha256 UNIQUE` constraint, so the
+// serialization is per-email — the right granularity, since two
+// distinct under-18 users with the same email is impossible (the
+// users.email column is itself UNIQUE at insert time and the email
+// never changes after creation).
+func (q *Queries) RecordUnderAgeBlock(ctx context.Context, arg RecordUnderAgeBlockParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, recordUnderAgeBlock, arg.EmailSha256, arg.OauthProvider)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }

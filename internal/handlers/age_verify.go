@@ -156,17 +156,13 @@ func (h *AgeVerifyHandler) HandleVerifyAge(w http.ResponseWriter, r *http.Reques
 // identity. The block record is the durable refusal; the deletion is
 // the (best-effort but highly reliable) data cleanup that pairs with it.
 //
-// Known concurrency window. If the same authenticated user submits two
-// verify-age requests simultaneously (double-click, retry-on-network-blip),
-// both requests can observe the user as "exists" via GetUserByID before
-// either deletion lands, leading to double audit events for the same
-// user_id and a parallel Firestore purge. Postgres CASCADE handles the
-// duplicate row delete idempotently and the under_age_blocks insert is
-// ON CONFLICT DO NOTHING, so the *outcome* is correct, but compliance
-// reports may double-count the refusal. A SELECT FOR UPDATE on the
-// users row would close this — filed as a follow-up rather than a
-// blocker since the failure mode is "two log lines instead of one"
-// not "wrong policy decision". (W1 from the PR #420 adversarial review.)
+// Concurrency. The under_age_blocks INSERT is the serialization point
+// for concurrent requests against the same email — see the inline
+// comment on the RecordUnderAgeBlock call below for the full mechanism.
+// The previous version of this function had a known double-audit
+// window when the same user double-clicked verify-age; the
+// RETURNING-id-on-conflict approach closes it without needing
+// SELECT FOR UPDATE.
 //
 // Known UX hazard. The brief explicitly accepts that a typo'd birth year
 // (e.g. user enters 2008 meaning 1988) will trigger account deletion.
@@ -197,18 +193,42 @@ func (h *AgeVerifyHandler) handleUnderAge(ctx context.Context, w http.ResponseWr
 	emailHash := sha256OfEmail(user.Email)
 	provider := oauthProviderForUser(user)
 
-	// Best-effort block record. Failure here is logged but not fatal —
-	// the under-18 user must be deleted regardless. The block record is
-	// an anti-evasion convenience, not a correctness requirement: the
-	// deletion itself enforces the policy.
-	if blockErr := h.queries.RecordUnderAgeBlock(ctx, dbgen.RecordUnderAgeBlockParams{
+	// Race-tolerant insert. The query uses INSERT ... ON CONFLICT DO
+	// NOTHING RETURNING id, which means:
+	//
+	//   - We're the FIRST concurrent request for this email → INSERT
+	//     succeeds, id is returned, we proceed with deletion + audit.
+	//   - We LOST the race → INSERT hits the conflict, RETURNING returns
+	//     no rows, sqlc surfaces it as pgx.ErrNoRows. Another goroutine
+	//     already deleted this user (or is in the process of doing so).
+	//     Short-circuit to the 403 response without firing a second
+	//     audit event — the outcome the user sees is identical, and the
+	//     compliance log no longer double-counts. (Closes W1 from the
+	//     PR #420 adversarial review.)
+	//
+	// A non-conflict DB error is genuinely fatal: we can't tell if the
+	// user is still here. Surface 500 rather than risk a half-deleted
+	// state — the user can retry, and the block row will either be in
+	// place (we won the race silently) or our retry will create it.
+	_, blockErr := h.queries.RecordUnderAgeBlock(ctx, dbgen.RecordUnderAgeBlockParams{
 		EmailSha256:   emailHash,
 		OauthProvider: provider,
-	}); blockErr != nil {
+	})
+	if blockErr != nil {
+		if errors.Is(blockErr, pgx.ErrNoRows) {
+			slog.Info("under-age verification: another request already handled this user",
+				"user_id", userID.String(),
+				"oauth_provider", provider,
+			)
+			respondUnderAge(w)
+			return
+		}
 		slog.Error("failed to record under_age_blocks row",
 			"user_id", userID.String(),
 			"error", blockErr,
 		)
+		http.Error(w, "internal error during account cleanup, please try again", http.StatusInternalServerError)
+		return
 	}
 
 	// Synchronous hard delete. Returns only after Postgres CASCADE +

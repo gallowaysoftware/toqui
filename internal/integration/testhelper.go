@@ -73,6 +73,11 @@ func (e *TestEnv) CleanDB(t *testing.T) {
 	tables := []string{
 		"export_requests", "deletion_requests",
 		"trip_collaborators", "trip_themes", "bookings", "itinerary_items", "trips", "users",
+		// under_age_blocks survives user deletion (no FK to users) so it
+		// must be truncated explicitly between tests, otherwise the
+		// per-email UNIQUE constraint will fail tests that reuse a
+		// fixture email.
+		"under_age_blocks",
 	}
 	for _, table := range tables {
 		if _, err := e.Pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)); err != nil {
