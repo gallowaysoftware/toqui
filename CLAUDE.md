@@ -297,6 +297,7 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
 | `OTEL_SERVICE_NAME` | (none) | OpenTelemetry service name |
+| `OTEL_TRACES_SAMPLER_ARG` | (none = AlwaysSample) | Trace head-sampling ratio. Float `0.0`–`1.0`. `0.1` = sample 10% of traces (recommended for prod). Always wrapped in `ParentBased` so an upstream traceparent's sampling decision is honoured. Out-of-range values clamp; unparseable falls back to AlwaysSample. |
 | `GCS_EXPORT_BUCKET` | (none) | GCS bucket for GDPR data exports (empty = local filesystem fallback) |
 | `EXPORT_LOCAL_DIR` | `/tmp/toqui-exports` | Local directory for exports when GCS is not configured |
 | `AI_DAILY_BUDGET_CENTS` | `0` (unlimited) | Daily AI cost hard limit in cents (e.g. 50000 = $500/day). DB-backed via ai_usage table |

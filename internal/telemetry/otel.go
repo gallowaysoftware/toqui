@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -22,6 +23,61 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/config"
 )
+
+// resolveTraceSampler returns the OTel sampler to use, derived from the
+// OTEL_TRACES_SAMPLER_ARG environment variable.
+//
+// Why a sampler at all: the SDK's default tracer provider samples 100% of
+// traces (AlwaysSample). At any meaningful traffic volume this saturates
+// the OTel collector cardinality budget and inflates spend on whatever
+// downstream backend is collecting (Grafana Cloud, Honeycomb, etc).
+// 10% head-based sampling is the industry standard starting point — it
+// preserves enough fidelity for debugging while making the cost story
+// linear with traffic instead of explosive.
+//
+// Why ParentBased over plain TraceIDRatioBased: parent-based ensures
+// that if an upstream service (e.g. a load balancer or a frontend) has
+// already made a sampling decision and propagated it via traceparent,
+// we honour it. Without ParentBased, a 10% local sampler would drop 90%
+// of the traces an upstream tool decided to keep — fragmenting traces
+// in collateral.
+//
+// Why env-configurable: the cardinality budget differs by environment
+// (dev wants 100%, staging wants 100%, prod wants 1-10% depending on
+// traffic). Using OTEL_TRACES_SAMPLER_ARG (the OTel-standard env var
+// for sampler ratios) keeps this aligned with the rest of the OTLP
+// configuration which is also env-driven.
+//
+// Values:
+//   - empty / unparseable → ParentBased(AlwaysSample) — preserves the
+//     pre-this-change behaviour so a deploy without setting the env var
+//     doesn't suddenly drop 90% of traces.
+//   - "0.0" through "1.0" → ParentBased(TraceIDRatioBased(rate)).
+//   - "0" → effectively NeverSample (still ParentBased so explicit
+//     traceparent headers from clients are honoured).
+//
+// Out-of-range values (negative, > 1) clamp to the nearest valid value
+// rather than erroring — bad env config shouldn't crash the boot path.
+func resolveTraceSampler() (sdktrace.Sampler, string) {
+	raw := strings.TrimSpace(os.Getenv("OTEL_TRACES_SAMPLER_ARG"))
+	if raw == "" {
+		return sdktrace.ParentBased(sdktrace.AlwaysSample()), "always"
+	}
+	rate, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		slog.Warn("OTEL_TRACES_SAMPLER_ARG is not a valid float, falling back to AlwaysSample",
+			"value", raw, "error", err)
+		return sdktrace.ParentBased(sdktrace.AlwaysSample()), "always"
+	}
+	switch {
+	case rate <= 0:
+		return sdktrace.ParentBased(sdktrace.NeverSample()), "never"
+	case rate >= 1:
+		return sdktrace.ParentBased(sdktrace.AlwaysSample()), "always"
+	default:
+		return sdktrace.ParentBased(sdktrace.TraceIDRatioBased(rate)), strconv.FormatFloat(rate, 'f', -1, 64)
+	}
+}
 
 // Init initializes OpenTelemetry tracing and metrics with OTLP HTTP exporters.
 //
@@ -66,9 +122,11 @@ func Init(ctx context.Context, serviceName, projectID string) (shutdown func(con
 		return noop, fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
 
+	sampler, samplerLabel := resolveTraceSampler()
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sampler),
 	)
 
 	otel.SetTracerProvider(tp)
@@ -99,6 +157,7 @@ func Init(ctx context.Context, serviceName, projectID string) (shutdown func(con
 		"service", serviceName,
 		"traces", true,
 		"metrics", mp != nil,
+		"trace_sampler", samplerLabel,
 	)
 
 	// Combined shutdown flushes both traces and metrics.
