@@ -61,11 +61,35 @@ type Subscription struct {
 	StripeSubscriptionID string        `json:"-"`
 }
 
+// subscriptionQueries is the slice of *dbgen.Queries that Service depends
+// on. Defining a small interface here (instead of taking the concrete
+// type) lets unit tests inject a hand-rolled stub without spinning up
+// Postgres. Mirrors the `paymentQueries` pattern in
+// internal/payment/stripe.go and the `analyticsTracker` pattern in
+// internal/handlers/tool_recommend_booking.go.
+//
+// *dbgen.Queries satisfies this interface naturally; the compile-time
+// guard below catches sqlc method-signature drift.
+type subscriptionQueries interface {
+	GetSubscriptionByUserID(ctx context.Context, userID uuid.UUID) (dbgen.Subscription, error)
+	GetSubscriptionByStripeSubscriptionID(ctx context.Context, stripeSubscriptionID pgtype.Text) (dbgen.Subscription, error)
+	GetUserSubscriptionTier(ctx context.Context, id uuid.UUID) (string, error)
+	CreateSubscription(ctx context.Context, arg dbgen.CreateSubscriptionParams) (dbgen.Subscription, error)
+	UpdateSubscriptionStatus(ctx context.Context, arg dbgen.UpdateSubscriptionStatusParams) error
+	UpdateSubscriptionPeriod(ctx context.Context, arg dbgen.UpdateSubscriptionPeriodParams) error
+	UpdateSubscriptionBillingPeriod(ctx context.Context, arg dbgen.UpdateSubscriptionBillingPeriodParams) error
+	UpdateSubscriptionTier(ctx context.Context, arg dbgen.UpdateSubscriptionTierParams) error
+	SetSubscriptionCancelAtPeriodEnd(ctx context.Context, arg dbgen.SetSubscriptionCancelAtPeriodEndParams) error
+	SetUserSubscriptionTierByID(ctx context.Context, arg dbgen.SetUserSubscriptionTierByIDParams) error
+}
+
+var _ subscriptionQueries = (*dbgen.Queries)(nil)
+
 // Service manages Stripe subscriptions. All methods gracefully return zero
 // values or no-op when the Stripe key is empty (disabled mode).
 type Service struct {
 	client  *stripe.Client
-	queries *dbgen.Queries
+	queries subscriptionQueries
 	prices  ProductConfig
 	enabled bool
 
