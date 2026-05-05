@@ -32,7 +32,3 @@ buf.lock
 # Built binaries (build via `go build -o /tmp/testctl ./cmd/testctl` instead)
 /testctl
 /server
-
-# Generated destination guides (cmd/genguides). PR 1 of toqui-backend#30
-# ships the CLI; PR 2 commits the artefact once quality is reviewed.
-internal/handlers/guides_data.gen.json

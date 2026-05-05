@@ -80,7 +80,7 @@ var curatedSeeds = []guideSeed{
 	{Slug: "peru-adventure", RegionCode: "PE", ThemeSlug: "adventure", Destination: "Peru", Country: "PE"},
 	{Slug: "amsterdam-art", RegionCode: "NL", ThemeSlug: "art", Destination: "Amsterdam", Country: "NL"},
 	{Slug: "india-food", RegionCode: "IN", ThemeSlug: "food", Destination: "India", Country: "IN"},
-	{Slug: "argentina-wine", RegionCode: "AR", ThemeSlug: "wine", Destination: "Mendoza", Country: "AR"},
+	{Slug: "mendoza-wine", RegionCode: "AR", ThemeSlug: "wine", Destination: "Mendoza", Country: "AR"},
 	{Slug: "new-zealand-adventure", RegionCode: "NZ", ThemeSlug: "adventure", Destination: "New Zealand", Country: "NZ"},
 	{Slug: "prague-history", RegionCode: "CZ", ThemeSlug: "history", Destination: "Prague", Country: "CZ"},
 	{Slug: "japan-adventure", RegionCode: "JP", ThemeSlug: "adventure", Destination: "Japan", Country: "JP"},
@@ -244,14 +244,24 @@ func generate(ctx context.Context, provider ai.Provider, composer *persona.Compo
 	prompt := persona.BuildGuidePrompt(loc, theme, persona.GuidePromptOptions{
 		PersonaName:      composed.Name,
 		PersonaSpecialty: composed.Description,
+		// Pass the per-slug city so the title is destination-specific
+		// ("...in Tokyo") rather than country-default ("...Across
+		// Japan"). The persona's LocationProfile is country-level.
+		Destination: seed.Destination,
 	})
 
 	aiReq := &ai.ChatRequest{
 		SystemPrompt: "You write factual, neighborhood-level destination guides. You follow output format instructions exactly and never invent specific business names.",
 		Messages:     []ai.Message{{Role: "user", Content: prompt}},
-		MaxTokens:    2048,
-		Temperature:  0.6,
-		ModelTier:    ai.ModelTierSmart,
+		// 8192 is well within the smart-tier model's per-request output
+		// budget (gemini-3-flash-preview supports it). The target guide
+		// is ~1500 tokens of prose but front-matter + 4 named sections
+		// + reasoning overhead consistently pushed past 4096 in
+		// practice (finish_reason=MAX_TOKENS observed on bangkok and
+		// tokyo during the initial generation pass).
+		MaxTokens:   8192,
+		Temperature: 0.6,
+		ModelTier:   ai.ModelTierSmart,
 	}
 	body, err := streamToString(ctx, provider, aiReq)
 	if err != nil {

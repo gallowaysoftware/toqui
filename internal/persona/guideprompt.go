@@ -14,6 +14,13 @@ type GuidePromptOptions struct {
 	// PersonaSpecialty is the one-line "Expert in ..." subtitle from the
 	// composed identity. Used to keep voice continuity with the chat persona.
 	PersonaSpecialty string
+	// Destination is the specific city / region the guide is for (e.g.
+	// "Tokyo" rather than "Japan"). LocationProfile is keyed by country,
+	// so without this field the prompt defaults to country-level —
+	// which produced country-titled guides ("...Across Japan") instead
+	// of the destination-specific titles SEO actually targets ("...in
+	// Tokyo"). When empty, falls back to the LocationProfile's name.
+	Destination string
 }
 
 // BuildGuidePrompt returns the user prompt sent to the AI when generating
@@ -41,6 +48,11 @@ func BuildGuidePrompt(loc *LocationProfile, theme *ThemeProfile, opts GuidePromp
 	if loc != nil {
 		locationName = loc.Name
 		regionCode = loc.RegionCode
+	}
+	// Prefer the per-call Destination (city-level) over the country-level
+	// LocationProfile.Name. See GuidePromptOptions.Destination for why.
+	if opts.Destination != "" {
+		locationName = opts.Destination
 	}
 
 	themeName := "travel"
@@ -80,7 +92,7 @@ func BuildGuidePrompt(loc *LocationProfile, theme *ThemeProfile, opts GuidePromp
 
 	b.WriteString("Output format — return EXACTLY this structure with no preamble or trailer:\n\n")
 	b.WriteString("---\n")
-	b.WriteString("title: <a roughly 60-character title that names the destination and theme>\n")
+	fmt.Fprintf(&b, "title: <a roughly 60-character title that MUST include the literal string %q (the destination) and the theme. Do NOT substitute the country name for the destination.>\n", locationName)
 	b.WriteString("excerpt: <a roughly 200-character single-sentence hook for the guide>\n")
 	b.WriteString("---\n\n")
 	b.WriteString("## Why visit\n\n")
