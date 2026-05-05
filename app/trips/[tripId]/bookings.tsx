@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput } from "react-native";
+import { confirmDestructive } from "@/lib/confirm";
 import { useState, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -101,12 +102,16 @@ export default function BookingsScreen() {
     setShowAdd(false);
   }, [rawText, tripId, ingestBooking]);
 
-  const handleDelete = useCallback((id: string) => {
-    Alert.alert(t("bookings.deleteTitle"), t("bookings.deleteConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
-      { text: t("common.delete"), style: "destructive", onPress: () => deleteBooking.mutate({ id, tripId: tripId! }) },
-    ]);
-  }, [tripId, deleteBooking]);
+  const handleDelete = useCallback(async (id: string) => {
+    const confirmed = await confirmDestructive({
+      title: t("bookings.deleteTitle"),
+      message: t("bookings.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!confirmed) return;
+    deleteBooking.mutate({ id, tripId: tripId! });
+  }, [t, tripId, deleteBooking]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },

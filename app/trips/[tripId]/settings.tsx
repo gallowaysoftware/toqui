@@ -1,4 +1,5 @@
-import { View, Text, TextInput, StyleSheet, Pressable, Platform, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator } from "react-native";
+import { alertNotice, confirmDestructive } from "@/lib/confirm";
 import { useState, useEffect } from "react";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -291,26 +292,20 @@ export default function TripSettingsScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      t("tripSettings.deleteTrip"),
-      t("tripSettings.deleteWarning"),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("tripSettings.deleteConfirm"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteTrip.mutateAsync(tripId!);
-              router.replace("/(tabs)" as never);
-            } catch {
-              Alert.alert(t("common.error"), t("tripSettings.deleteError"));
-            }
-          },
-        },
-      ],
-    );
+  const handleDelete = async () => {
+    const confirmed = await confirmDestructive({
+      title: t("tripSettings.deleteTrip"),
+      message: t("tripSettings.deleteWarning"),
+      confirmLabel: t("tripSettings.deleteConfirm"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!confirmed) return;
+    try {
+      await deleteTrip.mutateAsync(tripId!);
+      router.replace("/(tabs)" as never);
+    } catch {
+      alertNotice({ title: t("common.error"), message: t("tripSettings.deleteError") });
+    }
   };
 
   return (
@@ -397,21 +392,15 @@ export default function TripSettingsScreen() {
                 {isOwner && collab.role !== "owner" && (
                   <Pressable
                     style={styles.removeButton}
-                    onPress={() => {
-                      Alert.alert(
-                        t("collaborators.removeTitle"),
-                        t("collaborators.removeConfirm", { email: collab.email }),
-                        [
-                          { text: t("common.cancel"), style: "cancel" },
-                          {
-                            text: t("common.delete"),
-                            style: "destructive",
-                            onPress: () => {
-                              void removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
-                            },
-                          },
-                        ],
-                      );
+                    onPress={async () => {
+                      const confirmed = await confirmDestructive({
+                        title: t("collaborators.removeTitle"),
+                        message: t("collaborators.removeConfirm", { email: collab.email }),
+                        confirmLabel: t("common.delete"),
+                        cancelLabel: t("common.cancel"),
+                      });
+                      if (!confirmed) return;
+                      void removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
                     }}
                     accessibilityLabel={`Remove ${collab.email}`}
                     accessibilityRole="button"

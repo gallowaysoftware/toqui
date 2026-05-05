@@ -165,3 +165,138 @@ describe("confirmDestructive on native", () => {
     expect(labels).toContain("Confirm");
   });
 });
+
+// ---------------------------------------------------------------------------
+// alertNotice — single-OK informational alert (sibling of confirmDestructive)
+// ---------------------------------------------------------------------------
+
+describe("alertNotice on web", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doMock("react-native", () => ({
+      Platform: { OS: "web" },
+      Alert: { alert: vi.fn() }, // Not used on web; included so the import resolves.
+    }));
+  });
+
+  it("calls window.alert with title + message concatenated", () => {
+    const original = window.alert;
+    window.alert = vi.fn();
+
+    return import("../confirm").then(({ alertNotice }) => {
+      alertNotice({ title: "Error", message: "Could not share this trip." });
+
+      expect(window.alert).toHaveBeenCalledTimes(1);
+      // Single string argument with both title and message — same
+      // shape as confirmDestructive's window.confirm path, since
+      // window.alert has no separate title slot.
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining("Error"));
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining("Could not share this trip."));
+
+      window.alert = original;
+    });
+  });
+
+  it("calls window.alert with title only when message is omitted", () => {
+    // Most error-toast call sites in the sweep pass title only —
+    // e.g. `Alert.alert(t("common.error"))`. The helper must
+    // degrade to a title-only dialog without crashing on the
+    // missing message.
+    const original = window.alert;
+    window.alert = vi.fn();
+
+    return import("../confirm").then(({ alertNotice }) => {
+      alertNotice({ title: "Error" });
+
+      expect(window.alert).toHaveBeenCalledTimes(1);
+      expect(window.alert).toHaveBeenCalledWith("Error");
+
+      window.alert = original;
+    });
+  });
+
+  it("does not throw when window.alert is unavailable (SSR / weird env)", async () => {
+    // Mirrors the confirmDestructive SSR guard. Error toasts are
+    // best-effort UX — swallowing is the right posture in non-browser
+    // web envs rather than crashing the app.
+    const original = window.alert;
+    // @ts-expect-error — deliberate runtime delete to simulate the SSR shape
+    delete window.alert;
+
+    const { alertNotice } = await import("../confirm");
+    expect(() => alertNotice({ title: "X", message: "Y" })).not.toThrow();
+
+    window.alert = original;
+  });
+});
+
+describe("alertNotice on native", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("calls Alert.alert with a single OK button", async () => {
+    type AlertButton = { text: string; style?: string; onPress?: () => void };
+    let capturedTitle = "";
+    let capturedMessage: string | undefined;
+    let capturedButtons: AlertButton[] = [];
+    vi.doMock("react-native", () => ({
+      Platform: { OS: "ios" },
+      Alert: {
+        alert: (title: string, message: string | undefined, buttons: AlertButton[]) => {
+          capturedTitle = title;
+          capturedMessage = message;
+          capturedButtons = buttons;
+        },
+      },
+    }));
+
+    const { alertNotice } = await import("../confirm");
+    alertNotice({ title: "Error", message: "Something failed." });
+
+    expect(capturedTitle).toBe("Error");
+    expect(capturedMessage).toBe("Something failed.");
+    // Single button — no Cancel/Confirm pair, this is informational.
+    expect(capturedButtons).toHaveLength(1);
+    expect(capturedButtons[0].text).toBe("OK");
+  });
+
+  it("forwards undefined message to Alert.alert when omitted", async () => {
+    // Title-only call sites (Alert.alert(t("common.error"))) used
+    // to pass undefined as the second arg to RN's Alert.alert. The
+    // helper must preserve that — RN renders title-only correctly
+    // when message is undefined.
+    let capturedMessage: string | undefined = "sentinel";
+    vi.doMock("react-native", () => ({
+      Platform: { OS: "android" },
+      Alert: {
+        alert: (_t: string, message: string | undefined) => {
+          capturedMessage = message;
+        },
+      },
+    }));
+
+    const { alertNotice } = await import("../confirm");
+    alertNotice({ title: "Error" });
+
+    expect(capturedMessage).toBeUndefined();
+  });
+
+  it("respects a custom okLabel on native", async () => {
+    type AlertButton = { text: string };
+    let capturedButtons: AlertButton[] = [];
+    vi.doMock("react-native", () => ({
+      Platform: { OS: "ios" },
+      Alert: {
+        alert: (_t: string, _m: string | undefined, buttons: AlertButton[]) => {
+          capturedButtons = buttons;
+        },
+      },
+    }));
+
+    const { alertNotice } = await import("../confirm");
+    alertNotice({ title: "X", okLabel: "Got it" });
+
+    expect(capturedButtons[0].text).toBe("Got it");
+  });
+});
