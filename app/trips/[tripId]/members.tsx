@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { confirmDestructive } from "@/lib/confirm";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -120,26 +120,28 @@ export default function TripMembersScreen() {
     }
   };
 
-  const handleRemove = (collab: Collaborator) => {
-    Alert.alert(
-      t("collaborators.removeTitle"),
-      t("collaborators.removeConfirm", { email: collab.email }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.remove"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
-              void refetch();
-            } catch {
-              // Silently ignore — UI will refetch on next mount
-            }
-          },
-        },
-      ],
-    );
+  const handleRemove = async (collab: Collaborator) => {
+    // Was previously Alert.alert, which is a silent no-op on web —
+    // the X button click registered, no dialog appeared, the remove
+    // call never fired. Bug Kyle reported 2026-05-05 (the X button
+    // on a pending invite did nothing). confirmDestructive uses
+    // window.confirm on web and Alert.alert on native, both
+    // returning a Promise<bool> so the destructive logic stays at
+    // top level rather than buried in an Alert callback.
+    const confirmed = await confirmDestructive({
+      title: t("collaborators.removeTitle"),
+      message: t("collaborators.removeConfirm", { email: collab.email }),
+      confirmLabel: t("common.remove"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!confirmed) return;
+
+    try {
+      await removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
+      void refetch();
+    } catch {
+      // Silently ignore — UI will refetch on next mount
+    }
   };
 
   const styles = StyleSheet.create({
