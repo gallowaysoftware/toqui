@@ -755,7 +755,7 @@ Dev-machine CLI that regenerates the curated 25-slug guide set from the persona 
 
 The generator pulls each composed expert's `name` + `specialty` via `persona.Composer.Compose(...)` and feeds that into `internal/persona/guideprompt.go::BuildGuidePrompt`, which enforces three hard rules: no specific business names, no visa/health/safety claims, neighborhoods and categories only.
 
-**This is PR 1 of toqui-backend#30 — tooling only, no runtime behaviour change.** `GuidesHandler` continues to read `staticGuides()`. PR 2 reviews quality and commits the JSON; PR 3 flips the read path to load the JSON at startup. Run via `make genguides` on a dev machine with `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` set; the CLI is never invoked in CI (no API keys there).
+**Status (post PR 3 of #30):** `GuidesHandler` now embeds `internal/handlers/guides_data.gen.json` via `//go:embed` and serves the generated set in production. CTAText is derived at load time via `deriveCTAText(destination, persona)` ("Plan your <destination> trip with <persona>"). CTAURL is the runtime `appURL`. `staticGuides()` is preserved as a defensive fallback for local dev without a generated file (the binary logs `guides loaded source=static` in that case vs. `source=generated` in prod). A malformed embed logs `slog.Error` and falls back rather than serving nothing — operator-visible. Run `make genguides` on a dev machine with `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` set; the CLI is never invoked in CI (no API keys there).
 
 ### Trip sharing & collaboration
 - `POST /api/trips/share` — Authenticated. Enables trip sharing, returns share token.
@@ -940,7 +940,7 @@ Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POS
 **Referral Rewards**: When a referred user signs up and creates their first trip, both the referrer and referee receive a free trip unlock (Trip Pro). The reward is granted automatically via the referral redemption flow. Rewards are capped at 10 per user.
 
 ### Destination Guides API
-Static destination guide content served at `/api/guides` (list) and `/api/guides/{slug}` (detail). Used by the marketing site's guide pages. Public endpoints — no auth required.
+Destination guide content served at `/api/guides` (list) and `/api/guides/{slug}` (detail). Used by the marketing site's guide pages. Public endpoints — no auth required. Backed by an embedded JSON artefact regenerated via `make genguides` (see "Destination Guides Generator" above for the CLI). `staticGuides()` survives as a fallback for local dev without a generated file.
 
 ### Trip Sharing
 Users can share a trip publicly via `POST /api/trips/share`, which generates a share token. The public view is accessible at `/shared/{token}` without authentication. Sharing can be revoked via `POST /api/trips/unshare`.
