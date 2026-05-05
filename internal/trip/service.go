@@ -12,11 +12,58 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
+
+// tripQueries is the slice of *dbgen.Queries that the trip Service depends on.
+// Defining a small interface here (instead of taking the concrete type) lets
+// unit tests inject a hand-rolled stub without spinning up Postgres. Mirrors
+// the `paymentQueries` (internal/payment/stripe.go) and `subscriptionQueries`
+// (internal/subscription/service.go) patterns.
+//
+// *dbgen.Queries satisfies this interface naturally; the compile-time guard
+// below catches sqlc method-signature drift.
+//
+// WithTx is included so the existing in-package transaction call sites
+// (CreateWithStatus, CloneTrip, ReplaceItineraryForOwnerOrEditor) keep
+// compiling against the wider field type. The returned *dbgen.Queries is the
+// concrete type — tx-using paths require a real *pgxpool.Pool and live in
+// integration tests, not these unit tests.
+type tripQueries interface {
+	CreateTrip(ctx context.Context, arg dbgen.CreateTripParams) (dbgen.Trip, error)
+	GetTripByID(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error)
+	GetTripByIDOrCollaborator(ctx context.Context, arg dbgen.GetTripByIDOrCollaboratorParams) (dbgen.Trip, error)
+	GetTripByShareToken(ctx context.Context, shareToken pgtype.Text) (dbgen.Trip, error)
+	ListSharedTrips(ctx context.Context, userID pgtype.UUID) ([]dbgen.Trip, error)
+	ListTripsByUser(ctx context.Context, arg dbgen.ListTripsByUserParams) ([]dbgen.Trip, error)
+	ListTripsByUserAndStatus(ctx context.Context, arg dbgen.ListTripsByUserAndStatusParams) ([]dbgen.Trip, error)
+	CountTripsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountTripsByUserAndStatus(ctx context.Context, arg dbgen.CountTripsByUserAndStatusParams) (int64, error)
+	SearchTripsByUser(ctx context.Context, arg dbgen.SearchTripsByUserParams) ([]dbgen.Trip, error)
+	SearchTripsByUserILIKE(ctx context.Context, arg dbgen.SearchTripsByUserILIKEParams) ([]dbgen.Trip, error)
+	UpdateTrip(ctx context.Context, arg dbgen.UpdateTripParams) (dbgen.Trip, error)
+	UpdateTripDestination(ctx context.Context, arg dbgen.UpdateTripDestinationParams) (pgconn.CommandTag, error)
+	UpdateTripDestinations(ctx context.Context, arg dbgen.UpdateTripDestinationsParams) (pgconn.CommandTag, error)
+	DeleteTrip(ctx context.Context, arg dbgen.DeleteTripParams) error
+	EnableTripSharing(ctx context.Context, arg dbgen.EnableTripSharingParams) (dbgen.Trip, error)
+	DisableTripSharing(ctx context.Context, arg dbgen.DisableTripSharingParams) (dbgen.Trip, error)
+	ListTripTemplates(ctx context.Context, arg dbgen.ListTripTemplatesParams) ([]dbgen.Trip, error)
+	CountTripTemplates(ctx context.Context) (int64, error)
+	IsAcceptedCollaboratorWithRole(ctx context.Context, arg dbgen.IsAcceptedCollaboratorWithRoleParams) (bool, error)
+	ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error)
+	CreateItineraryItem(ctx context.Context, arg dbgen.CreateItineraryItemParams) (dbgen.ItineraryItem, error)
+	CreateItineraryItemForOwnerOrEditor(ctx context.Context, arg dbgen.CreateItineraryItemForOwnerOrEditorParams) (dbgen.ItineraryItem, error)
+	DeleteItineraryItem(ctx context.Context, arg dbgen.DeleteItineraryItemParams) (int64, error)
+	DeleteItineraryItemByOwnerOrEditor(ctx context.Context, arg dbgen.DeleteItineraryItemByOwnerOrEditorParams) (int64, error)
+	MoveItineraryItemForOwnerOrEditor(ctx context.Context, arg dbgen.MoveItineraryItemForOwnerOrEditorParams) (dbgen.ItineraryItem, error)
+	WithTx(tx pgx.Tx) *dbgen.Queries
+}
+
+var _ tripQueries = (*dbgen.Queries)(nil)
 
 // ErrInvalidStatusTransition is returned by Update and CreateWithStatus when
 // the requested status change is not allowed by the trip state machine.
@@ -43,7 +90,7 @@ const shareTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 const shareTokenLength = 22
 
 type Service struct {
-	queries *dbgen.Queries
+	queries tripQueries
 	pool    *pgxpool.Pool
 }
 
