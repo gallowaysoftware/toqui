@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Pressable,
   Share,
-  Alert,
 } from "react-native";
+import { alertNotice } from "@/lib/confirm";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -207,7 +207,7 @@ export default function ChatScreen() {
       }
     } catch (err) {
       if (err instanceof Error && (err.message.includes("User did not share") || err.name === "AbortError")) return;
-      Alert.alert(t("common.error"));
+      alertNotice({ title: t("common.error") });
     } finally {
       setIsSharePromptSharing(false);
       setShowSharePrompt(false);

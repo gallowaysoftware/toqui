@@ -76,3 +76,66 @@ export function confirmDestructive(opts: ConfirmOptions): Promise<boolean> {
     ]);
   });
 }
+
+/**
+ * Options for `alertNotice` — a single-OK-button informational dialog,
+ * the cross-platform replacement for `Alert.alert(title)` and
+ * `Alert.alert(title, message)`.
+ */
+export interface NoticeOptions {
+  /** Dialog title — short, e.g. "Error". */
+  title: string;
+  /**
+   * Optional body text. Many error-toast call sites pass title only
+   * (e.g. `Alert.alert(t("common.error"))`); the helper degrades to
+   * a title-only dialog when this is omitted.
+   */
+  message?: string;
+  /** Label on the dismiss button. Defaults to "OK". Native-only — `window.alert` has no customizable button. */
+  okLabel?: string;
+}
+
+/**
+ * Cross-platform informational alert.
+ *
+ * Sibling of `confirmDestructive` for the no-confirmation, single-OK
+ * use case (error toasts, "could not share this trip", etc). On web
+ * `Alert.alert` is a silent no-op — same root cause as the X-button
+ * bug — so this helper routes through `window.alert` on web and
+ * `Alert.alert` (single OK button) on native.
+ *
+ * Returns `void` to match both backends: `window.alert` is
+ * synchronous-blocking and returns `undefined`, `Alert.alert` is
+ * fire-and-forget. There's nothing meaningful to await — call sites
+ * that previously did `Alert.alert(t("common.error"))` should swap
+ * one for one without an `await`.
+ *
+ * Usage:
+ *
+ *   alertNotice({ title: t("common.error") });
+ *   alertNotice({ title: "Error", message: "Could not share this trip." });
+ */
+export function alertNotice(opts: NoticeOptions): void {
+  const okLabel = opts.okLabel ?? "OK";
+
+  if (Platform.OS === "web") {
+    // Same SSR / jsdom guard as confirmDestructive — silently degrade
+    // to a no-op rather than throw if window.alert isn't there. The
+    // call site already treats this as best-effort UX (it's an error
+    // toast, not load-bearing logic), so swallowing in non-browser
+    // web envs is the right posture.
+    if (typeof window === "undefined" || typeof window.alert !== "function") {
+      return;
+    }
+    // window.alert has no separate title slot; concatenate when a
+    // message is provided, otherwise show the title alone.
+    const text = opts.message ? `${opts.title}\n\n${opts.message}` : opts.title;
+    window.alert(text);
+    return;
+  }
+
+  // Native: Alert.alert with a single OK button. Passing `undefined`
+  // for message matches the title-only call sites (Alert.alert(title)
+  // with no second arg).
+  Alert.alert(opts.title, opts.message, [{ text: okLabel }]);
+}

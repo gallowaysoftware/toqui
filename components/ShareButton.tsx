@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Share,
   Platform,
-  Alert,
   ActivityIndicator,
 } from "react-native";
+import { alertNotice } from "@/lib/confirm";
 import { Share2 } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
@@ -84,7 +84,7 @@ export function ShareButton({
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      Alert.alert("Error", "Could not share this trip. Please try again.");
+      alertNotice({ title: "Error", message: "Could not share this trip. Please try again." });
     } finally {
       setIsSharing(false);
     }

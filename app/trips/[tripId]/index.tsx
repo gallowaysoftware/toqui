@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share } from "react-native";
+import { alertNotice } from "@/lib/confirm";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Crown, Navigation } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -479,7 +480,7 @@ export default function TripDetailScreen() {
         // User cancelled the share sheet — not an error
         return;
       }
-      Alert.alert(t("common.error"));
+      alertNotice({ title: t("common.error") });
     } finally {
       setIsSharing(false);
     }

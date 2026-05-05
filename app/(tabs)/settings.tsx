@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Linking } from "react-native";
+import { confirmDestructive } from "@/lib/confirm";
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -43,20 +44,16 @@ export default function SettingsScreen() {
     },
   });
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteConfirm !== "DELETE") return;
-    Alert.alert(
-      t("settings.deleteAccount"),
-      t("settings.deleteWarning"),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("settings.deleteConfirm"),
-          style: "destructive",
-          onPress: () => deleteAccount.mutate(),
-        },
-      ],
-    );
+    const confirmed = await confirmDestructive({
+      title: t("settings.deleteAccount"),
+      message: t("settings.deleteWarning"),
+      confirmLabel: t("settings.deleteConfirm"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!confirmed) return;
+    deleteAccount.mutate();
   };
 
   const styles = StyleSheet.create({
