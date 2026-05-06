@@ -16,11 +16,56 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/exportstorage"
 )
 
+// lifecycleQueries is the slice of *dbgen.Queries that Service depends
+// on. Defining a small interface here lets unit tests inject a stub
+// without spinning up Postgres. Mirrors the `paymentQueries` /
+// `subscriptionQueries` / `tripQueries` patterns in their respective
+// packages — same fail-loud test-double philosophy. *dbgen.Queries
+// satisfies this interface naturally; the compile-time guard below
+// catches sqlc method-signature drift.
+type lifecycleQueries interface {
+	GetAllTripIDsForUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	DeleteTripByUser(ctx context.Context, arg dbgen.DeleteTripByUserParams) error
+	GetTripsToArchive(ctx context.Context) ([]dbgen.GetTripsToArchiveRow, error)
+	ArchiveTrip(ctx context.Context, arg dbgen.ArchiveTripParams) error
+	CreateDeletionRequest(ctx context.Context, userID uuid.UUID) (dbgen.DeletionRequest, error)
+	SetDeletionRequestProcessing(ctx context.Context, id uuid.UUID) error
+	CompleteDeletionRequest(ctx context.Context, id uuid.UUID) error
+	GetStaleDeletionRequests(ctx context.Context) ([]dbgen.GetStaleDeletionRequestsRow, error)
+	IncrementDeletionRetryCount(ctx context.Context, id uuid.UUID) error
+	FailDeletionRequest(ctx context.Context, id uuid.UUID) error
+	GetUserByID(ctx context.Context, id uuid.UUID) (dbgen.User, error)
+	ListTripsByUser(ctx context.Context, arg dbgen.ListTripsByUserParams) ([]dbgen.Trip, error)
+	ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error)
+	GetTripThemes(ctx context.Context, tripID uuid.UUID) ([]dbgen.GetTripThemesRow, error)
+	ListBookingsByUser(ctx context.Context, arg dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error)
+	ListReferralsByUser(ctx context.Context, userID uuid.UUID) ([]dbgen.Referral, error)
+	ListUserPayments(ctx context.Context, arg dbgen.ListUserPaymentsParams) ([]dbgen.ListUserPaymentsRow, error)
+	GetPreferences(ctx context.Context, userID uuid.UUID) ([]dbgen.UserPreference, error)
+	GetActiveConsents(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error)
+	CreateExportRequest(ctx context.Context, userID uuid.UUID) (dbgen.ExportRequest, error)
+	CompleteExportRequest(ctx context.Context, arg dbgen.CompleteExportRequestParams) error
+}
+
+var _ lifecycleQueries = (*dbgen.Queries)(nil)
+
+// lifecycleChatStore is the slice of *chatstore.Store that Service
+// depends on. Same rationale as lifecycleQueries — unit tests inject
+// a stub instead of standing up the Firestore emulator.
+type lifecycleChatStore interface {
+	DeleteAllForTrip(ctx context.Context, userID, tripID string) error
+	SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error
+	ExportChatData(ctx context.Context, userID string, tripIDs []string) (map[string][]chatstore.ExportedSession, error)
+}
+
+var _ lifecycleChatStore = (*chatstore.Store)(nil)
+
 // Service handles data lifecycle operations: deletion, archival, export.
 type Service struct {
-	queries     *dbgen.Queries
+	queries     lifecycleQueries
 	pool        *pgxpool.Pool
-	chatStore   *chatstore.Store
+	chatStore   lifecycleChatStore
 	exportStore exportstorage.Store
 }
 
