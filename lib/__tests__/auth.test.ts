@@ -254,6 +254,10 @@ describe("AuthProvider", () => {
     expect(mockGoogleLogin).toHaveBeenCalledWith({
       code: "the-code",
       redirectUri: "https://app.toqui.travel/callback",
+      // attribution is sent on every login (empty string when no
+      // launch-campaign cookie is present). The backend treats empty
+      // input as "no attribution" — see internal/attribution/Parse().
+      attribution: "",
     });
   });
 
@@ -273,7 +277,39 @@ describe("AuthProvider", () => {
     expect(mockGoogleLogin).toHaveBeenCalledWith({
       code: "code-only",
       redirectUri: "",
+      attribution: "",
     });
+  });
+
+  // ── Attribution forwarding ────────────────────────────────────────────
+
+  it("login forwards captured attribution from localStorage and clears it", async () => {
+    // Marketing site stores attribution as raw JSON in localStorage; the
+    // app reads the cookie first, falls back to localStorage and re-encodes.
+    const payload = JSON.stringify({
+      utm_source: "producthunt",
+      utm_medium: "launch",
+      captured_at: "2026-05-06T00:00:00.000Z",
+    });
+    localStorage.setItem("toqui_attribution", payload);
+
+    mockGoogleLogin.mockResolvedValueOnce({
+      accessToken: "at",
+      refreshToken: "rt",
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.login("code");
+    });
+
+    const call = mockGoogleLogin.mock.calls[0][0];
+    expect(call.attribution).toBe(btoa(payload));
+    // One-shot semantics: localStorage cleared so a returning user
+    // doesn't get re-attributed to the original campaign.
+    expect(localStorage.getItem("toqui_attribution")).toBeNull();
   });
 
   // ── Logout flow ───────────────────────────────────────────────────────

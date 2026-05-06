@@ -14,6 +14,7 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 import { getConfig } from "./config";
+import { readAttributionEncoded, clearAttribution } from "./attribution";
 
 // Token storage: SecureStore on native (Keychain/Keystore), localStorage on web.
 // localStorage persists across browser sessions so users stay logged in between
@@ -140,12 +141,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (googleAuthCode: string, redirectUri?: string) => {
     const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
     const client = createClient(AuthService, transport);
+    // Attribution is best-effort metadata for the launch funnel — never
+    // throw login over a missing or malformed cookie. Fire the read in
+    // parallel with the no-op proto-construction work above.
+    const attributionEncoded = await readAttributionEncoded();
     const res = await client.googleLogin({
       code: googleAuthCode,
       redirectUri: redirectUri ?? "",
+      attribution: attributionEncoded,
     });
     setAccessToken(res.accessToken);
     setRefreshToken(res.refreshToken);
+    // One-shot: clear attribution storage so a returning user's later
+    // sign-in doesn't get re-attributed to the original launch campaign.
+    if (attributionEncoded) {
+      void clearAttribution();
+    }
     if (res.user) {
       const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
       const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
