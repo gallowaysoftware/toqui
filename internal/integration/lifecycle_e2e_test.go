@@ -414,13 +414,11 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	if len(export.Referrals) != 1 {
 		t.Errorf("expected 1 referral in export, got %d", len(export.Referrals))
 	}
-	// Feedback is collected separately by the admin handlers, but the
-	// `ExportUserData` API as currently implemented (see service.go,
-	// "GDPR Article 20") does not include it in `export.Feedback`. We
-	// pin the current behaviour rather than the policy promise so a
-	// future fix to fold feedback into the export makes this test loud.
-	if len(export.Feedback) != 0 {
-		t.Logf("note: export.Feedback is now populated (was empty in the wired implementation at the time these tests were written) — len=%d. If this is intentional, tighten the assertion.", len(export.Feedback))
+	// Feedback the user submitted IS their own personal data and per
+	// GDPR Art. 20 must appear in their export. Wired in #438 — the
+	// fixture writes one feedback row, the export must include it.
+	if len(export.Feedback) != 1 {
+		t.Errorf("expected 1 feedback row in export.Feedback (Art. 20 includes user-submitted feedback), got %d", len(export.Feedback))
 	}
 	if len(export.Consents) != 1 {
 		t.Errorf("expected 1 consent in export, got %d", len(export.Consents))
@@ -448,10 +446,9 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	}
 
 	// JSON round-trip: the export must marshal cleanly and parse back to
-	// a generic map. This catches `interface{}`-typed fields that would
-	// fail on json.Marshal (the dbgen models cover their own json tags
-	// but the chatstore types only carry firestore tags — see the
-	// wire-shape note in the PR description).
+	// a generic map. The chatstore types now carry json: tags alongside
+	// their firestore: tags (#438), so the chat slice serialises in the
+	// same snake_case shape as the rest of the export.
 	raw, err := json.Marshal(export)
 	if err != nil {
 		t.Fatalf("json.Marshal export: %v", err)
@@ -463,10 +460,21 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	if err := json.Unmarshal(raw, &parsed); err != nil {
 		t.Fatalf("json.Unmarshal export: %v", err)
 	}
-	for _, key := range []string{"exported_at", "user", "trips", "bookings", "referrals", "consents", "preferences", "chat_data"} {
+	for _, key := range []string{"exported_at", "user", "trips", "bookings", "referrals", "feedback", "consents", "preferences", "chat_data"} {
 		if _, ok := parsed[key]; !ok {
 			t.Errorf("parsed export missing top-level key %q (have: %v)", key, keysOf(parsed))
 		}
+	}
+
+	// Wire-shape regression check: chat data must serialise with
+	// snake_case keys (json: tags on chatstore.ChatSession /
+	// chatstore.ChatMessage), not Go's default PascalCase. Before #438
+	// these types only had firestore: tags so the export contained
+	// `"ID"`, `"TripID"`, `"Content"` — inconsistent with the rest of
+	// the export. Now they should match.
+	rawStr := string(raw)
+	if strings.Contains(rawStr, `"TripID"`) || strings.Contains(rawStr, `"SessionID"`) {
+		t.Errorf("export contains PascalCase chat field names — chatstore.ChatMessage / ChatSession json: tags missing. Sample: %.200s", rawStr)
 	}
 }
 

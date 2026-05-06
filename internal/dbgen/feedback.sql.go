@@ -177,3 +177,43 @@ func (q *Queries) ListFeedbackByType(ctx context.Context, arg ListFeedbackByType
 	}
 	return items, nil
 }
+
+const listFeedbackByUser = `-- name: ListFeedbackByUser :many
+SELECT id, user_id, type, message, context, page, trip_id, created_at
+FROM feedback
+WHERE user_id = $1
+ORDER BY created_at DESC
+`
+
+// Returns the feedback rows belonging to a single user, used by the GDPR
+// Article 20 export (lifecycle.Service.ExportUserData). Joining users
+// isn't needed here — the export already includes the user profile, and
+// the requester knows their own email/name.
+func (q *Queries) ListFeedbackByUser(ctx context.Context, userID uuid.UUID) ([]Feedback, error) {
+	rows, err := q.db.Query(ctx, listFeedbackByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Feedback{}
+	for rows.Next() {
+		var i Feedback
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.Message,
+			&i.Context,
+			&i.Page,
+			&i.TripID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

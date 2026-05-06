@@ -12,59 +12,64 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+// ChatSession carries both `firestore:` and `json:` struct tags so the
+// type round-trips losslessly through both Firestore (operational) and
+// JSON (GDPR Art. 20 export). Without explicit json tags, Go's default
+// PascalCase field-name serialisation would leak through ExportedSession
+// and break the export's snake_case wire-shape contract.
 type ChatSession struct {
-	ID            string     `firestore:"id"`
-	TripID        string     `firestore:"tripId"`
-	Mode          string     `firestore:"mode"` // planning, companion
-	CreatedAt     time.Time  `firestore:"createdAt"`
-	LastMessageAt time.Time  `firestore:"lastMessageAt"`
-	MessageCount  int        `firestore:"messageCount"`
-	ExpireAt      *time.Time `firestore:"expireAt,omitempty"`
+	ID            string     `firestore:"id" json:"id"`
+	TripID        string     `firestore:"tripId" json:"trip_id"`
+	Mode          string     `firestore:"mode" json:"mode"` // planning, companion
+	CreatedAt     time.Time  `firestore:"createdAt" json:"created_at"`
+	LastMessageAt time.Time  `firestore:"lastMessageAt" json:"last_message_at"`
+	MessageCount  int        `firestore:"messageCount" json:"message_count"`
+	ExpireAt      *time.Time `firestore:"expireAt,omitempty" json:"expire_at,omitempty"`
 
 	// Summary holds an AI-generated summary of older messages that fall
 	// outside the 50-message recent window. Injected into the system prompt
 	// so the AI retains context from earlier in the conversation.
-	Summary string `firestore:"summary,omitempty"`
+	Summary string `firestore:"summary,omitempty" json:"summary,omitempty"`
 
 	// SummaryMessageCount records the session's MessageCount at the time the
 	// summary was last generated. A new summary is triggered when
 	// MessageCount - SummaryMessageCount > SummaryRefreshThreshold.
-	SummaryMessageCount int `firestore:"summaryMessageCount,omitempty"`
+	SummaryMessageCount int `firestore:"summaryMessageCount,omitempty" json:"summary_message_count,omitempty"`
 }
 
 type ChatMessage struct {
-	ID        string            `firestore:"id"`
-	SessionID string            `firestore:"sessionId"`
-	Role      string            `firestore:"role"` // user, assistant, system
-	Content   string            `firestore:"content"`
-	Metadata  map[string]string `firestore:"metadata"`
-	CreatedAt time.Time         `firestore:"createdAt"`
-	ExpireAt  *time.Time        `firestore:"expireAt,omitempty"`
+	ID        string            `firestore:"id" json:"id"`
+	SessionID string            `firestore:"sessionId" json:"session_id"`
+	Role      string            `firestore:"role" json:"role"` // user, assistant, system
+	Content   string            `firestore:"content" json:"content"`
+	Metadata  map[string]string `firestore:"metadata" json:"metadata"`
+	CreatedAt time.Time         `firestore:"createdAt" json:"created_at"`
+	ExpireAt  *time.Time        `firestore:"expireAt,omitempty" json:"expire_at,omitempty"`
 
 	// ToolCalls stores tool calls made by the assistant in this message.
 	// Each entry has ID, Name, and Arguments (JSON string).
-	ToolCalls []StoredToolCall `firestore:"toolCalls,omitempty"`
+	ToolCalls []StoredToolCall `firestore:"toolCalls,omitempty" json:"tool_calls,omitempty"`
 
 	// ToolResults stores tool execution results returned to the AI.
 	// Each entry has ToolCallID, Name, and Content (JSON string).
-	ToolResults []StoredToolResult `firestore:"toolResults,omitempty"`
+	ToolResults []StoredToolResult `firestore:"toolResults,omitempty" json:"tool_results,omitempty"`
 }
 
 // StoredToolCall is a Firestore-friendly representation of an AI tool call.
 type StoredToolCall struct {
-	ID        string `firestore:"id"`
-	Name      string `firestore:"name"`
-	Arguments string `firestore:"arguments"` // JSON string
+	ID        string `firestore:"id" json:"id"`
+	Name      string `firestore:"name" json:"name"`
+	Arguments string `firestore:"arguments" json:"arguments"` // JSON string
 	// ThoughtSignature is a Gemini 3 opaque token for reasoning continuity
 	// across tool-call turns. Empty for Gemini 2.5 and Claude.
-	ThoughtSignature string `firestore:"thoughtSignature,omitempty"`
+	ThoughtSignature string `firestore:"thoughtSignature,omitempty" json:"thought_signature,omitempty"`
 }
 
 // StoredToolResult is a Firestore-friendly representation of a tool execution result.
 type StoredToolResult struct {
-	ToolCallID string `firestore:"toolCallId"`
-	Name       string `firestore:"name"`
-	Content    string `firestore:"content"` // JSON string
+	ToolCallID string `firestore:"toolCallId" json:"tool_call_id"`
+	Name       string `firestore:"name" json:"name"`
+	Content    string `firestore:"content" json:"content"` // JSON string
 }
 
 type Store struct {

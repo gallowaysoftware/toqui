@@ -44,6 +44,7 @@ type stubQueries struct {
 	getTripThemesFn                func(ctx context.Context, tripID uuid.UUID) ([]dbgen.GetTripThemesRow, error)
 	listBookingsByUserFn           func(ctx context.Context, arg dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error)
 	listReferralsByUserFn          func(ctx context.Context, userID uuid.UUID) ([]dbgen.Referral, error)
+	listFeedbackByUserFn           func(ctx context.Context, userID uuid.UUID) ([]dbgen.Feedback, error)
 	listUserPaymentsFn             func(ctx context.Context, arg dbgen.ListUserPaymentsParams) ([]dbgen.ListUserPaymentsRow, error)
 	getPreferencesFn               func(ctx context.Context, userID uuid.UUID) ([]dbgen.UserPreference, error)
 	getActiveConsentsFn            func(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error)
@@ -201,6 +202,14 @@ func (s *stubQueries) ListReferralsByUser(ctx context.Context, userID uuid.UUID)
 		return s.listReferralsByUserFn(ctx, userID)
 	}
 	s.tb.Fatalf("unexpected stubQueries.ListReferralsByUser(%s) — set listReferralsByUserFn", userID)
+	return nil, nil
+}
+
+func (s *stubQueries) ListFeedbackByUser(ctx context.Context, userID uuid.UUID) ([]dbgen.Feedback, error) {
+	if s.listFeedbackByUserFn != nil {
+		return s.listFeedbackByUserFn(ctx, userID)
+	}
+	s.tb.Fatalf("unexpected stubQueries.ListFeedbackByUser(%s) — set listFeedbackByUserFn", userID)
 	return nil, nil
 }
 
@@ -788,6 +797,7 @@ func TestExportUserData_ReturnsExportShape(t *testing.T) {
 		getTripThemesFn:            func(_ context.Context, _ uuid.UUID) ([]dbgen.GetTripThemesRow, error) { return nil, nil },
 		listBookingsByUserFn:       func(_ context.Context, _ dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error) { return nil, nil },
 		listReferralsByUserFn:      func(_ context.Context, _ uuid.UUID) ([]dbgen.Referral, error) { return nil, nil },
+		listFeedbackByUserFn:       func(_ context.Context, _ uuid.UUID) ([]dbgen.Feedback, error) { return nil, nil },
 		listUserPaymentsFn: func(_ context.Context, _ dbgen.ListUserPaymentsParams) ([]dbgen.ListUserPaymentsRow, error) {
 			return nil, nil
 		},
@@ -863,6 +873,7 @@ func TestRequestExport_CreatesRequestAndKicksOffBackgroundExport(t *testing.T) {
 		listTripsByUserFn:     func(_ context.Context, _ dbgen.ListTripsByUserParams) ([]dbgen.Trip, error) { return nil, nil },
 		listBookingsByUserFn:  func(_ context.Context, _ dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error) { return nil, nil },
 		listReferralsByUserFn: func(_ context.Context, _ uuid.UUID) ([]dbgen.Referral, error) { return nil, nil },
+		listFeedbackByUserFn:  func(_ context.Context, _ uuid.UUID) ([]dbgen.Feedback, error) { return nil, nil },
 		listUserPaymentsFn: func(_ context.Context, _ dbgen.ListUserPaymentsParams) ([]dbgen.ListUserPaymentsRow, error) {
 			return nil, nil
 		},
