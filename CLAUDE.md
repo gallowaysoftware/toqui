@@ -96,6 +96,7 @@ graph TB
 | `internal/csrf/`        | CSRF protection middleware (Origin/Referer validation for state-changing requests)        |
 | `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
 | `internal/analytics/`   | Server-side PostHog event ingestion + funnel/alert helpers (pseudonymized, EU-hosted)     |
+| `internal/attribution/` | UTM/ref attribution parser — base64-decode + whitelist + sanitize for `signup_completed` |
 | `internal/telemetry/`   | OpenTelemetry initialization + HTTP metrics middleware (OTLP exporter, Cloud Monitoring)  |
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
@@ -950,7 +951,7 @@ Users can share a trip publicly via `POST /api/trips/share`, which generates a s
 Server-side event tracking via PostHog (EU-hosted, `eu.i.posthog.com`). User IDs are SHA-256 hashed before sending. The events listed below are **backend-only** ground-truth fires — the frontend separately tracks UI/funnel events (see toqui CLAUDE.md analytics list).
 
 **Acquisition / lifecycle:**
-- `signup_completed` — new account created (Google or Facebook OAuth, fired only on first-ever login per user)
+- `signup_completed` — new account created (Google, Facebook, or Apple OAuth, fired only on first-ever login per user). Properties: `auth_provider` ("google" | "facebook" | "apple"), plus optional `attribution_*` props (`source`, `medium`, `campaign`, `ref`) when the marketing site captured UTM/ref params on the visit that produced the signup. Web flow: fired from `HandleExchange` so the frontend's `?attribution=<base64-json>` query param can be attached. Native flow: fired from each gRPC `*Login` handler reading `req.Msg.Attribution`. Parsing/sanitization lives in `internal/attribution/` — bad attribution input is logged warn and dropped, never fails login. See audit issue #39 A-2.
 
 **Engagement:**
 - `chat_message_sent` — user sent a chat turn (count + tier only, no content)

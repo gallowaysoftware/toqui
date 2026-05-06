@@ -23,6 +23,14 @@ message GoogleLoginRequest {
   string code = 1 [(buf.validate.field).string.min_len = 1];
   string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
   string code_verifier = 3;  // PKCE code verifier (optional, for S256 challenge)
+  // Optional. Base64-encoded JSON with whitelisted UTM/ref attribution captured
+  // by the marketing site (toqui-site/AttributionCapture.astro) on first
+  // visit. Forwarded as PostHog `signup_completed` event properties on
+  // first-ever login per user, then discarded. The whitelist is enforced
+  // server-side: anything outside {ref, utm_source, utm_medium,
+  // utm_campaign} is dropped. Bad input is logged and ignored — login
+  // never fails over a malformed attribution string. See audit issue #39 A-2.
+  string attribution = 4;
 }
 
 message GoogleLoginResponse {
@@ -41,6 +49,8 @@ message GoogleLoginResponse {
 
 message FacebookLoginRequest {
   string access_token = 1 [(buf.validate.field).string.min_len = 1];
+  // Optional attribution payload — see GoogleLoginRequest.attribution.
+  string attribution = 2;
 }
 
 message FacebookLoginResponse {
@@ -62,6 +72,8 @@ message AppleLoginRequest {
   // initial authorization request. Apple verifies this against the value it
   // saw client-side, so it must match exactly.
   string redirect_uri = 3;
+  // Optional attribution payload — see GoogleLoginRequest.attribution.
+  string attribution = 4;
 }
 
 message AppleLoginResponse {

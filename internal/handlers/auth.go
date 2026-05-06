@@ -16,6 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
+	"github.com/gallowaysoftware/toqui-backend/internal/attribution"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -38,6 +40,11 @@ type AuthHandler struct {
 	// Facebook/Meta OAuth config
 	facebookClientID     string
 	facebookClientSecret string
+
+	// Analytics for native-app signup tracking. Optional — when nil, the
+	// handler skips PostHog calls (matches OAuthHandler's pattern).
+	analyticsClient *analytics.Client
+	alertChecker    *analytics.AlertChecker
 }
 
 func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lifecycle.Service, allowedDomains []string, authLimiter *ratelimit.AuthLimiter) *AuthHandler {
@@ -63,6 +70,48 @@ func (h *AuthHandler) WithFacebookCredentials(clientID, clientSecret string) *Au
 	h.facebookClientID = clientID
 	h.facebookClientSecret = clientSecret
 	return h
+}
+
+// WithAnalytics wires the PostHog client used to fire `signup_completed`
+// when a native-app gRPC login produces a brand-new user. Optional.
+func (h *AuthHandler) WithAnalytics(client *analytics.Client) *AuthHandler {
+	h.analyticsClient = client
+	return h
+}
+
+// WithAlertChecker wires the in-process AlertChecker so each native-app
+// signup also resets the idle-signup timer. Optional.
+func (h *AuthHandler) WithAlertChecker(checker *analytics.AlertChecker) *AuthHandler {
+	h.alertChecker = checker
+	return h
+}
+
+// trackNativeSignup centralizes the `signup_completed` fire for native-app
+// gRPC logins. Called from GoogleLogin, FacebookLogin, and AppleLogin after
+// the user is upserted/created. Safe to call when analyticsClient is nil.
+//
+// `isNewUser` should be true only when this RPC produced a brand-new user
+// row; the caller decides this via either `time.Since(user.CreatedAt) <
+// time.Minute` or a richer signal from findOrCreateAppleUser.
+func (h *AuthHandler) trackNativeSignup(userID, provider, encodedAttribution string, isNewUser bool) {
+	if !isNewUser {
+		return
+	}
+	if h.alertChecker != nil {
+		h.alertChecker.RecordSignup()
+	}
+	if h.analyticsClient == nil {
+		return
+	}
+	props := map[string]any{
+		"auth_provider": provider,
+	}
+	if attr := attribution.Parse(encodedAttribution); !attr.Empty() {
+		for k, v := range attr.Properties() {
+			props[k] = v
+		}
+	}
+	h.analyticsClient.Track(userID, "signup_completed", props)
 }
 
 func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toquiv1.GoogleLoginRequest]) (*connect.Response[toquiv1.GoogleLoginResponse], error) {
@@ -98,6 +147,13 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	if err != nil {
 		return nil, internalError(ctx, "upsert user", err)
 	}
+
+	// New-user heuristic matches the OAuth web flow: a user created
+	// within the last minute is treated as a fresh signup. Same caveat —
+	// extreme clock drift could misclassify, but the analytics event is
+	// fire-and-forget so the cost of a false positive is one extra event.
+	isNewUser := time.Since(user.CreatedAt) < time.Minute
+	h.trackNativeSignup(user.ID.String(), "google", req.Msg.Attribution, isNewUser)
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
@@ -183,6 +239,10 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 		}
 		return nil, internalError(ctx, "facebook user upsert", err)
 	}
+
+	// See trackNativeSignup comment in GoogleLogin for the isNewUser heuristic.
+	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
+	h.trackNativeSignup(user.ID.String(), "facebook", req.Msg.Attribution, fbIsNewUser)
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {

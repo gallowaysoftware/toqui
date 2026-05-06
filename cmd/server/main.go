@@ -401,7 +401,9 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
-		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
+		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret).
+		WithAnalytics(posthogClient).
+		WithAlertChecker(alertChecker)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool)).
 		WithAnalytics(posthogClient)
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).

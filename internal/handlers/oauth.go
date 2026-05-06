@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
+	"github.com/gallowaysoftware/toqui-backend/internal/attribution"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -158,6 +159,14 @@ type oauthResult struct {
 	AvatarURL      string `json:"avatar_url,omitempty"`
 	ExpiresAt      int64  `json:"expires_at"`
 	ConsentPending bool   `json:"consent_pending,omitempty"`
+	// IsNewUser is set by HandleCallback when this is the user's first-ever
+	// login (created within the last minute). HandleExchange uses this to
+	// decide whether to fire `signup_completed` so the event can carry the
+	// attribution payload supplied by the frontend at exchange time.
+	IsNewUser bool `json:"is_new_user,omitempty"`
+	// AuthProvider is "google" or "facebook" — propagated to the
+	// `signup_completed` event when IsNewUser is true.
+	AuthProvider string `json:"auth_provider,omitempty"`
 }
 
 // exchangeResponse is the JSON response from POST /auth/exchange.
@@ -277,12 +286,11 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	// Track new signup (async, non-blocking, no PII)
-	if h.analyticsClient != nil && isNewUser {
-		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
-			"auth_provider": "google",
-		})
-	}
+	// `signup_completed` is fired in HandleExchange (not here) so that the
+	// attribution payload supplied by the frontend at exchange-time can be
+	// attached as event properties. The alert-checker still ticks here —
+	// it's a server-side health signal (idle-signup detection) that doesn't
+	// depend on attribution.
 	if h.alertChecker != nil && isNewUser {
 		h.alertChecker.RecordSignup()
 	}
@@ -319,6 +327,8 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		UserID:         user.ID.String(),
 		Email:          user.Email,
 		ConsentPending: consentPending,
+		IsNewUser:      isNewUser,
+		AuthProvider:   "google",
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String
@@ -396,6 +406,24 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 
 	// Set persistent HttpOnly auth cookies for web browser sessions.
 	auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
+
+	// Fire `signup_completed` here (not in HandleCallback) so the
+	// attribution payload supplied by the frontend can be attached as
+	// event properties. The IsNewUser + AuthProvider flags are stamped
+	// into the OAuth result cookie by HandleCallback / HandleFacebookCallback.
+	// `?attribution=` is base64-encoded JSON; bad values are logged and
+	// dropped — never failing exchange over malformed attribution.
+	if h.analyticsClient != nil && result.IsNewUser {
+		props := map[string]any{
+			"auth_provider": result.AuthProvider,
+		}
+		if attr := attribution.Parse(r.URL.Query().Get("attribution")); !attr.Empty() {
+			for k, v := range attr.Properties() {
+				props[k] = v
+			}
+		}
+		h.analyticsClient.Track(result.UserID, "signup_completed", props)
+	}
 
 	// Return user info + expiry only — tokens are in HttpOnly cookies.
 	resp := exchangeResponse{
@@ -780,12 +808,9 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 		}()
 	}
 
-	// Track new signup (async, non-blocking, no PII)
-	if h.analyticsClient != nil && fbIsNewUser {
-		h.analyticsClient.Track(user.ID.String(), "signup_completed", map[string]any{
-			"auth_provider": "facebook",
-		})
-	}
+	// `signup_completed` is fired in HandleExchange (not here) so the
+	// frontend-supplied attribution payload can be attached. See the
+	// matching comment in HandleCallback (Google) above.
 	if h.alertChecker != nil && fbIsNewUser {
 		h.alertChecker.RecordSignup()
 	}
@@ -819,6 +844,8 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 		UserID:         user.ID.String(),
 		Email:          user.Email,
 		ConsentPending: fbConsentPending,
+		IsNewUser:      fbIsNewUser,
+		AuthProvider:   "facebook",
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String

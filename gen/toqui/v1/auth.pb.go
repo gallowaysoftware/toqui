@@ -24,10 +24,18 @@ const (
 )
 
 type GoogleLoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	RedirectUri   string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
-	CodeVerifier  string                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"` // PKCE code verifier (optional, for S256 challenge)
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Code         string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	RedirectUri  string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	CodeVerifier string                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"` // PKCE code verifier (optional, for S256 challenge)
+	// Optional. Base64-encoded JSON with whitelisted UTM/ref attribution captured
+	// by the marketing site (toqui-site/AttributionCapture.astro) on first
+	// visit. Forwarded as PostHog `signup_completed` event properties on
+	// first-ever login per user, then discarded. The whitelist is enforced
+	// server-side: anything outside {ref, utm_source, utm_medium,
+	// utm_campaign} is dropped. Bad input is logged and ignored — login
+	// never fails over a malformed attribution string. See audit issue #39 A-2.
+	Attribution   string `protobuf:"bytes,4,opt,name=attribution,proto3" json:"attribution,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,6 +87,13 @@ func (x *GoogleLoginRequest) GetRedirectUri() string {
 func (x *GoogleLoginRequest) GetCodeVerifier() string {
 	if x != nil {
 		return x.CodeVerifier
+	}
+	return ""
+}
+
+func (x *GoogleLoginRequest) GetAttribution() string {
+	if x != nil {
+		return x.Attribution
 	}
 	return ""
 }
@@ -166,8 +181,10 @@ func (x *GoogleLoginResponse) GetAgeVerificationRequired() bool {
 }
 
 type FacebookLoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	// Optional attribution payload — see GoogleLoginRequest.attribution.
+	Attribution   string `protobuf:"bytes,2,opt,name=attribution,proto3" json:"attribution,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -205,6 +222,13 @@ func (*FacebookLoginRequest) Descriptor() ([]byte, []int) {
 func (x *FacebookLoginRequest) GetAccessToken() string {
 	if x != nil {
 		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *FacebookLoginRequest) GetAttribution() string {
+	if x != nil {
+		return x.Attribution
 	}
 	return ""
 }
@@ -296,7 +320,9 @@ type AppleLoginRequest struct {
 	// Optional. The Services-ID redirect URI the frontend supplied during the
 	// initial authorization request. Apple verifies this against the value it
 	// saw client-side, so it must match exactly.
-	RedirectUri   string `protobuf:"bytes,3,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	RedirectUri string `protobuf:"bytes,3,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	// Optional attribution payload — see GoogleLoginRequest.attribution.
+	Attribution   string `protobuf:"bytes,4,opt,name=attribution,proto3" json:"attribution,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -348,6 +374,13 @@ func (x *AppleLoginRequest) GetIdToken() string {
 func (x *AppleLoginRequest) GetRedirectUri() string {
 	if x != nil {
 		return x.RedirectUri
+	}
+	return ""
+}
+
+func (x *AppleLoginRequest) GetAttribution() string {
+	if x != nil {
+		return x.Attribution
 	}
 	return ""
 }
@@ -906,29 +939,32 @@ var File_toqui_v1_auth_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x01\n" +
+	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa4\x01\n" +
 	"\x12GoogleLoginRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
-	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\"\xe6\x01\n" +
+	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\x12 \n" +
+	"\vattribution\x18\x04 \x01(\tR\vattribution\"\xe6\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
 	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
-	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"B\n" +
+	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"d\n" +
 	"\x14FacebookLoginRequest\x12*\n" +
-	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\"\xe8\x01\n" +
+	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\x12 \n" +
+	"\vattribution\x18\x02 \x01(\tR\vattribution\"\xe8\x01\n" +
 	"\x15FacebookLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
 	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
-	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"\x92\x01\n" +
+	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"\xb4\x01\n" +
 	"\x11AppleLoginRequest\x126\n" +
 	"\x12authorization_code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x11authorizationCode\x12\"\n" +
 	"\bid_token\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aidToken\x12!\n" +
-	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\"\xa0\x02\n" +
+	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\x12 \n" +
+	"\vattribution\x18\x04 \x01(\tR\vattribution\"\xa0\x02\n" +
 	"\x12AppleLoginResponse\x12\"\n" +
 	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12!\n" +
 	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +

@@ -89,6 +89,12 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 		return nil, internalError(ctx, "apple user upsert", err)
 	}
 
+	// Apple uses an explicit isNew bool from findOrCreateAppleUser rather
+	// than the time-since-CreatedAt heuristic the Google/Facebook flows use,
+	// because Apple's "link existing email account" branch returns isNew=false
+	// even when the row was modified.
+	h.trackNativeSignup(user.ID.String(), "apple", req.Msg.Attribution, isNew)
+
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
 		return nil, internalError(ctx, "generate access token", err)
