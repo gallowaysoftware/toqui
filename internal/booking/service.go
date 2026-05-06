@@ -18,8 +18,26 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
+// bookingQueries is the slice of *dbgen.Queries that Service uses.
+// Defining a small interface here lets unit tests inject a stub
+// without spinning up Postgres. Mirrors paymentQueries (#418),
+// subscriptionQueries (#424), tripQueries (#427), lifecycleQueries
+// (#431). Same fail-loud test-double philosophy.
+type bookingQueries interface {
+	FindBookingByConfirmationCode(ctx context.Context, arg dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error)
+	CreateBookingForOwnerOrEditor(ctx context.Context, arg dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error)
+	UpdateBooking(ctx context.Context, arg dbgen.UpdateBookingParams) (dbgen.Booking, error)
+	GetTripCostSummary(ctx context.Context, arg dbgen.GetTripCostSummaryParams) ([]dbgen.GetTripCostSummaryRow, error)
+	ListBookingsByTrip(ctx context.Context, arg dbgen.ListBookingsByTripParams) ([]dbgen.Booking, error)
+	GetBookingByID(ctx context.Context, arg dbgen.GetBookingByIDParams) (dbgen.Booking, error)
+	DeleteBooking(ctx context.Context, arg dbgen.DeleteBookingParams) (int64, error)
+	LinkBookingToTripForOwnerOrEditor(ctx context.Context, arg dbgen.LinkBookingToTripForOwnerOrEditorParams) (dbgen.Booking, error)
+}
+
+var _ bookingQueries = (*dbgen.Queries)(nil)
+
 type Service struct {
-	queries    *dbgen.Queries
+	queries    bookingQueries
 	aiProvider ai.Provider
 }
 
