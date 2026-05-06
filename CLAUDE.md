@@ -118,6 +118,7 @@ lib/                          Shared utilities
   theme.tsx                   Light/dark/system theme with ThemeColors interface
   google-auth.ts              useGoogleAuth() hook — expo-auth-session PKCE wrapper
   authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
+  attribution.ts              Read UTM/ref attribution cookie/AsyncStorage on signup; clears after
   analytics.tsx               PostHog privacy-first analytics provider
   config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
