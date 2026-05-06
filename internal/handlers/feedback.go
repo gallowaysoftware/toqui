@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -13,10 +14,21 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 )
 
+// feedbackQueries is the slice of *dbgen.Queries that FeedbackHandler
+// depends on. Defining a small interface here lets unit tests inject
+// a stub without spinning up Postgres. Mirrors the pattern in
+// internal/booking, internal/lifecycle, internal/trip.
+type feedbackQueries interface {
+	GetTripByIDOrCollaborator(ctx context.Context, arg dbgen.GetTripByIDOrCollaboratorParams) (dbgen.Trip, error)
+	CreateFeedback(ctx context.Context, arg dbgen.CreateFeedbackParams) (dbgen.Feedback, error)
+}
+
+var _ feedbackQueries = (*dbgen.Queries)(nil)
+
 // FeedbackHandler handles user feedback submission.
 type FeedbackHandler struct {
 	authSvc *auth.Service
-	queries *dbgen.Queries
+	queries feedbackQueries
 }
 
 // NewFeedbackHandler creates a new FeedbackHandler.
