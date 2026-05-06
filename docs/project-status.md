@@ -152,3 +152,43 @@ third_party/    -- Vendored proto dependencies
 | `buf generate`      | Generates Go + TS from proto definitions                        |
 | `sqlc generate`     | Generates Go from SQL queries                                   |
 | `docker compose up` | Starts full local stack (backend, Postgres, Firestore emulator) |
+
+## Feedback Intake & Triage
+
+User feedback flows in through two channels:
+
+- **`POST /api/feedback`** (`internal/handlers/feedback.go`) — In-app submissions
+  from the React Native app. Persisted to the `feedback` table with `user_id`,
+  `type` (one of `bug`, `feature`, `general`, `chat_quality`), `message`,
+  optional `trip_id` (verified against owner-or-collaborator before storage so a
+  user can't attach feedback to someone else's trip — #361 P3), and a JSON
+  `context` blob (app version, OS, screen, etc.). Listed at `/admin/feedback`
+  and queryable via the admin handler in `internal/handlers/admin.go`.
+- **`feedback@toqui.travel`** — Email channel for off-app reports. Forwarded to
+  Kyle's inbox; not currently routed through the SendGrid inbound webhook
+  pipeline (`/webhooks/email/inbound` is reserved for booking-confirmation
+  forwards).
+
+### Triage SLA
+
+- **Owner**: Kyle Galloway (founder). Until headcount or community moderators
+  are added, every submission is triaged by the founder.
+- **Cadence**: Weekly review of `/admin/feedback` plus daily inbox check on
+  `feedback@toqui.travel`. Bug reports tagged `type=bug` and items marked
+  `chat_quality` get same-week response; feature requests are queued and
+  acknowledged-only.
+- **Response targets** (best-effort, not contractual):
+  - P0/P1 bugs (data loss, payment, auth): same-day acknowledgement, fix or
+    workaround within 72 hours.
+  - General feedback / feature requests: 7-day acknowledgement.
+- **Escalation**: any feedback that mentions privacy, deletion, export, or
+  GDPR rights is forwarded to `privacy@toqui.travel` and handled per the GDPR
+  DSAR runbook (`docs/runbooks/gdpr-dsar-fulfillment.md`).
+- **Dropped fields**: feedback bodies and context blobs are stored as plain
+  text in Postgres and visible to the operator. Do not paste credentials,
+  tokens, or third-party PII into the admin dashboard. Customers occasionally
+  paste booking confirmation numbers — treat as PII per the privacy policy.
+
+This section is the single source of truth for "who reads /api/feedback".
+Updates to the triage cadence or owner should land here first, then propagate
+to any external runbook.
