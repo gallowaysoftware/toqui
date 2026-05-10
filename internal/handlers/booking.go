@@ -42,7 +42,7 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 	if req.Msg.Type != toquiv1.BookingType_BOOKING_TYPE_UNSPECIFIED {
 		typeHint = req.Msg.Type.String()
 	}
-	b, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
+	result, err := h.bookingSvc.IngestText(ctx, userID, req.Msg.TripId, typeHint, req.Msg.RawText)
 	if err != nil {
 		// Authz failure on the trip_id → 403 (#361). Anything else
 		// runs through the existing aiAwareError helper (Anthropic
@@ -53,19 +53,24 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 		return nil, aiAwareError(ctx, "booking ingest", err)
 	}
 
+	b := result.Booking
+
 	// Auto-link: create an itinerary item for the booking so it appears
 	// in the day-by-day view. This is best-effort — failure does not
-	// block the booking response. Pass the caller userID so the
-	// SQL-gated insert re-checks authz (defence-in-depth; the service
-	// already verified it during CreateBookingForOwnerOrEditor, but any
-	// future code path that reaches autoLinkBookingToItinerary with a
-	// mismatched pair should still be safe).
-	if h.queries != nil && b.TripID.Valid {
+	// block the booking response. Skip on merges: the itinerary item
+	// is already linked to the existing booking.
+	// Pass the caller userID so the SQL-gated insert re-checks authz
+	// (defence-in-depth; the service already verified it during
+	// CreateBookingForOwnerOrEditor, but any future code path that reaches
+	// autoLinkBookingToItinerary with a mismatched pair should still be safe).
+	if h.queries != nil && b.TripID.Valid && !result.WasUpdated {
 		h.autoLinkBookingToItinerary(ctx, userID, uuid.UUID(b.TripID.Bytes), b)
 	}
 
 	return connect.NewResponse(&toquiv1.IngestBookingResponse{
-		Booking: bookingToProto(b),
+		Booking:           bookingToProto(b),
+		WasUpdated:        result.WasUpdated,
+		PreviousBookingId: result.PreviousID,
 	}), nil
 }
 

@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -25,6 +27,8 @@ import (
 // (#431). Same fail-loud test-double philosophy.
 type bookingQueries interface {
 	FindBookingByConfirmationCode(ctx context.Context, arg dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error)
+	FindBookingFuzzy(ctx context.Context, arg dbgen.FindBookingFuzzyParams) (dbgen.Booking, error)
+	MergeBooking(ctx context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error)
 	CreateBookingForOwnerOrEditor(ctx context.Context, arg dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error)
 	UpdateBooking(ctx context.Context, arg dbgen.UpdateBookingParams) (dbgen.Booking, error)
 	GetTripCostSummary(ctx context.Context, arg dbgen.GetTripCostSummaryParams) ([]dbgen.GetTripCostSummaryRow, error)
@@ -48,6 +52,19 @@ func NewService(pool *pgxpool.Pool, aiProvider ai.Provider) *Service {
 	}
 }
 
+// IngestResult is the result of an IngestText or IngestEmail call.
+// WasUpdated is true when an existing booking was merged rather than a
+// new one created. WasUpdated is false when (a) a brand-new booking was
+// created, or (b) a duplicate was found but the merge was skipped
+// because the user has manually edited the existing record (we never
+// silently overwrite user edits). PreviousID is set in both merge cases
+// — either the merged-into row's ID or the user-edited row's ID.
+type IngestResult struct {
+	Booking    *dbgen.Booking
+	WasUpdated bool
+	PreviousID string
+}
+
 type ParsedBooking struct {
 	Type              string          `json:"type"`
 	ConfirmationCode  string          `json:"confirmation_code"`
@@ -65,16 +82,16 @@ type ParsedBooking struct {
 	Details           json.RawMessage `json:"details"`
 }
 
-func (s *Service) IngestText(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*dbgen.Booking, error) {
+func (s *Service) IngestText(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*IngestResult, error) {
 	return s.ingest(ctx, userID, tripID, typeHint, rawText, "paste")
 }
 
 // IngestEmail parses raw email text with AI and creates a booking record with source="email".
-func (s *Service) IngestEmail(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*dbgen.Booking, error) {
+func (s *Service) IngestEmail(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string) (*IngestResult, error) {
 	return s.ingest(ctx, userID, tripID, typeHint, rawText, "email")
 }
 
-func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string, source string) (*dbgen.Booking, error) {
+func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, typeHint string, rawText string, source string) (*IngestResult, error) {
 	parsed, err := s.parseWithAI(ctx, rawText, typeHint)
 	if err != nil {
 		return nil, fmt.Errorf("parse booking: %w", err)
@@ -88,7 +105,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		}
 	}
 
-	// Duplicate detection: if same user + same trip + same confirmation code, return existing booking.
+	// Step 1 — exact confirmation code match: same user + trip + code → merge.
 	if parsed.ConfirmationCode != "" && tripUUID.Valid {
 		existing, err := s.queries.FindBookingByConfirmationCode(ctx, dbgen.FindBookingByConfirmationCodeParams{
 			UserID:           userID,
@@ -96,16 +113,36 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 			ConfirmationCode: pgtype.Text{String: parsed.ConfirmationCode, Valid: true},
 		})
 		if err == nil {
-			slog.InfoContext(ctx, "duplicate booking detected, returning existing",
-				"booking_id", existing.ID,
-			)
-			return &existing, nil
+			// Found an exact match — merge the new data in and return.
+			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "confirmation code")
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("check duplicate booking: %w", err)
 		}
 	}
 
+	// Step 2 — fuzzy match fallback: same type + trip + date within 7 days + provider similarity.
+	if tripUUID.Valid {
+		candidate, found, err := s.findFuzzyMatch(ctx, userID, tripUUID, parsed)
+		if err != nil {
+			// Non-ErrNoRows error — propagate so the caller sees a real failure
+			// instead of silently dropping into create-and-duplicate.
+			return nil, fmt.Errorf("fuzzy match lookup: %w", err)
+		}
+		if found {
+			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, candidate, parsed, rawText, "fuzzy match")
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
+		}
+	}
+
+	// Step 3 — no match found, create a new booking.
 	// Authz-gated insert: when a trip_id is supplied, the WHERE clause
 	// re-checks the caller can edit that trip. A predicate miss (i.e.
 	// the caller doesn't own the trip and isn't an accepted editor)
@@ -114,6 +151,14 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 	// booking onto any victim trip UUID by passing it in IngestBooking.
 	// For unattached bookings (tripUUID.Valid == false) the gate is
 	// a no-op — unattached bookings are self-scoped.
+	var startTime, endTime pgtype.Timestamptz
+	if t, err := time.Parse(time.RFC3339, parsed.StartTime); err == nil {
+		startTime = pgtype.Timestamptz{Time: t, Valid: true}
+	}
+	if t, err := time.Parse(time.RFC3339, parsed.EndTime); err == nil {
+		endTime = pgtype.Timestamptz{Time: t, Valid: true}
+	}
+
 	booking, err := s.queries.CreateBookingForOwnerOrEditor(ctx, dbgen.CreateBookingForOwnerOrEditorParams{
 		UserID:            userID,
 		TripID:            tripUUID,
@@ -121,6 +166,8 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		ConfirmationCode:  pgtype.Text{String: parsed.ConfirmationCode, Valid: parsed.ConfirmationCode != ""},
 		Provider:          pgtype.Text{String: parsed.Provider, Valid: parsed.Provider != ""},
 		Title:             parsed.Title,
+		StartTime:         startTime,
+		EndTime:           endTime,
 		DetailsJson:       parsed.Details,
 		RawSource:         pgtype.Text{String: rawText, Valid: true},
 		Source:            source,
@@ -135,10 +182,176 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, trip.ErrNotOwnerOrEditor
 		}
+		// Race recovery: a unique-constraint violation on
+		// (user_id, trip_id, confirmation_code) means a concurrent
+		// request inserted a matching booking between our SELECT in
+		// step 1 and our INSERT here. Re-fetch and merge so the second
+		// caller still sees the de-duplicated outcome rather than
+		// surfacing an opaque DB error.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" &&
+			parsed.ConfirmationCode != "" && tripUUID.Valid {
+			existing, ferr := s.queries.FindBookingByConfirmationCode(ctx, dbgen.FindBookingByConfirmationCodeParams{
+				UserID:           userID,
+				TripID:           tripUUID,
+				ConfirmationCode: pgtype.Text{String: parsed.ConfirmationCode, Valid: true},
+			})
+			if ferr != nil {
+				return nil, fmt.Errorf("create booking unique violation, refetch failed: %w", ferr)
+			}
+			slog.InfoContext(ctx, "booking ingest race recovered via unique constraint",
+				"user_id", userID,
+				"booking_id", existing.ID,
+				"type", existing.Type,
+			)
+			return s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "race recovery")
+		}
 		return nil, fmt.Errorf("create booking: %w", err)
 	}
 
-	return &booking, nil
+	return &IngestResult{Booking: &booking}, nil
+}
+
+// tryMergeOrPreserve runs MergeBooking against an existing record. The
+// SQL WHERE clause refuses to overwrite a booking the user has touched
+// (updated_at > created_at + 1s), so a pgx.ErrNoRows return here means
+// "user-edited, leave it alone" — we surface the existing record with
+// WasUpdated=false. Real DB errors are wrapped and returned. The
+// `viaPath` argument is for log tagging only.
+func (s *Service) tryMergeOrPreserve(
+	ctx context.Context,
+	userID uuid.UUID,
+	tripUUID pgtype.UUID,
+	existing dbgen.Booking,
+	parsed *ParsedBooking,
+	rawText string,
+	viaPath string,
+) (*IngestResult, error) {
+	merged, err := s.mergeIntoExisting(ctx, userID, tripUUID, existing.ID, parsed, rawText)
+	if err == nil {
+		slog.InfoContext(ctx, "booking merged",
+			"user_id", userID,
+			"booking_id", merged.ID,
+			"type", merged.Type,
+			"via", viaPath,
+		)
+		return &IngestResult{Booking: merged, WasUpdated: true, PreviousID: existing.ID.String()}, nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		// User has edited this booking since creation (or trip_id
+		// guard rejected it). Preserve their work — return the
+		// existing record without modification.
+		preserved := existing
+		slog.InfoContext(ctx, "booking re-import preserved user edits",
+			"user_id", userID,
+			"booking_id", existing.ID,
+			"type", existing.Type,
+			"via", viaPath,
+		)
+		return &IngestResult{Booking: &preserved, WasUpdated: false, PreviousID: existing.ID.String()}, nil
+	}
+	return nil, err
+}
+
+// mergeIntoExisting updates an existing booking with the parsed fields from
+// a re-import. Non-empty values from the new import win; existing values are
+// preserved when the new import has nothing (COALESCE pattern in SQL).
+//
+// The MergeBooking SQL WHERE clause includes trip_id (defense-in-depth)
+// and an updated_at <= created_at + 1s guard that prevents clobbering
+// user edits — see db/queries/bookings.sql for the rationale. A
+// predicate miss returns pgx.ErrNoRows; the caller (tryMergeOrPreserve)
+// is responsible for distinguishing that from a true error.
+func (s *Service) mergeIntoExisting(ctx context.Context, userID uuid.UUID, tripUUID pgtype.UUID, bookingID uuid.UUID, parsed *ParsedBooking, rawText string) (*dbgen.Booking, error) {
+	var startTime, endTime pgtype.Timestamptz
+	if t, err := time.Parse(time.RFC3339, parsed.StartTime); err == nil {
+		startTime = pgtype.Timestamptz{Time: t, Valid: true}
+	}
+	if t, err := time.Parse(time.RFC3339, parsed.EndTime); err == nil {
+		endTime = pgtype.Timestamptz{Time: t, Valid: true}
+	}
+
+	merged, err := s.queries.MergeBooking(ctx, dbgen.MergeBookingParams{
+		ID:                bookingID,
+		UserID:            userID,
+		TripID:            tripUUID,
+		Type:              parsed.Type,
+		ConfirmationCode:  parsed.ConfirmationCode,
+		Provider:          parsed.Provider,
+		Title:             parsed.Title,
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Address:           parsed.Address,
+		DepartureLocation: parsed.DepartureLocation,
+		ArrivalLocation:   parsed.ArrivalLocation,
+		NumGuests:         pgtype.Int4{Int32: parsed.NumGuests, Valid: parsed.NumGuests > 0},
+		PriceCents:        pgtype.Int8{Int64: parsed.PriceCents, Valid: parsed.PriceCents > 0},
+		Currency:          parsed.Currency,
+		Timezone:          parsed.Timezone,
+		DetailsJson:       parsed.Details,
+		RawSource:         rawText,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Caller distinguishes user-edited from real error via
+			// errors.Is — propagate the sentinel unwrapped.
+			return nil, err
+		}
+		return nil, fmt.Errorf("merge booking: %w", err)
+	}
+	return &merged, nil
+}
+
+// findFuzzyMatch checks whether a fuzzy candidate exists for parsed and, if
+// so, applies a provider name similarity filter. Returns
+// (candidate, found, error). `found` is true only on a real match;
+// (zero, false, nil) means no candidate exists or a candidate was rejected
+// by the provider-similarity filter; a non-nil error means the lookup
+// itself failed and the caller should propagate it rather than silently
+// falling through to create-and-duplicate.
+//
+// Provider similarity: one provider string must contain the other
+// (case-insensitive). This handles minor variations like "BC Ferries" vs
+// "BC Ferries Ltd" while blocking cross-carrier false positives (e.g.
+// "Delta" vs "United").
+//
+// When either provider string is empty the provider check is skipped so that
+// bookings with no provider field can still be fuzzy-matched by date alone.
+func (s *Service) findFuzzyMatch(ctx context.Context, userID uuid.UUID, tripUUID pgtype.UUID, parsed *ParsedBooking) (dbgen.Booking, bool, error) {
+	startTime, err := time.Parse(time.RFC3339, parsed.StartTime)
+	if err != nil {
+		// Can't fuzzy-match without a parseable start time. Not an
+		// error — many legitimate bookings have no start time (manual
+		// paste, partial confirmations); the caller proceeds to create.
+		return dbgen.Booking{}, false, nil //nolint:nilerr // missing start_time is a no-fuzzy signal, not a failure
+	}
+
+	candidate, err := s.queries.FindBookingFuzzy(ctx, dbgen.FindBookingFuzzyParams{
+		UserID:    userID,
+		TripID:    tripUUID,
+		Type:      parsed.Type,
+		StartTime: pgtype.Timestamptz{Time: startTime, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dbgen.Booking{}, false, nil
+		}
+		// Real DB error — propagate. Previously this path silently
+		// fell through and created a duplicate booking, defeating the
+		// dedup feature on flaky-DB conditions.
+		return dbgen.Booking{}, false, err
+	}
+
+	// Provider name similarity check: skip when either is empty.
+	if parsed.Provider != "" && candidate.Provider.Valid && candidate.Provider.String != "" {
+		a := strings.ToLower(parsed.Provider)
+		b := strings.ToLower(candidate.Provider.String)
+		if !strings.Contains(a, b) && !strings.Contains(b, a) {
+			return dbgen.Booking{}, false, nil
+		}
+	}
+
+	return candidate, true, nil
 }
 
 func (s *Service) parseWithAI(ctx context.Context, rawText string, typeHint string) (*ParsedBooking, error) {

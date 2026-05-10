@@ -109,6 +109,63 @@ WHERE user_id = sqlc.arg(user_id) AND trip_id = sqlc.arg(trip_id)
   AND confirmation_code != ''
 LIMIT 1;
 
+-- name: FindBookingFuzzy :one
+-- Fuzzy duplicate detection: same user + trip + type + start_time within 7 days.
+-- Used as a fallback when confirmation_code is absent or didn't match.
+-- Ordered by closest time delta so the nearest match wins on ties.
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id)
+  AND trip_id = sqlc.arg(trip_id)
+  AND type = sqlc.arg(type)
+  AND start_time IS NOT NULL
+  AND ABS(EXTRACT(EPOCH FROM (start_time - sqlc.arg(start_time)))) <= 7 * 86400
+ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - sqlc.arg(start_time))))
+LIMIT 1;
+
+-- name: MergeBooking :one
+-- Merge a re-imported booking into an existing record. All non-empty/non-null
+-- values from the new import overwrite the stored values; existing data is
+-- preserved when the new import omits a field (COALESCE pattern).
+--
+-- The WHERE clause locks the merge to four invariants:
+--   id + user_id  — base ownership check;
+--   trip_id       — defense-in-depth so a future caller cannot merge a
+--                   booking from one trip into a booking on another even
+--                   if the SELECT phase is bypassed;
+--   updated_at <= created_at + interval '1 second'  — preserves user
+--                   edits. If the user has touched the booking via
+--                   UpdateBooking after creation, updated_at moves and
+--                   this predicate fails, the merge no-ops, the service
+--                   returns the existing record unchanged. Stops a
+--                   re-imported confirmation from silently clobbering a
+--                   user's manual edits to title / address / details_json
+--                   / etc.
+--
+-- Predicate miss → pgx.ErrNoRows. Callers must distinguish "user-edited
+-- or trip mismatch" (preserve existing) from "row vanished" (real error).
+UPDATE bookings SET
+  type              = COALESCE(NULLIF(sqlc.arg(type), ''), type),
+  confirmation_code = COALESCE(NULLIF(sqlc.arg(confirmation_code), ''), confirmation_code),
+  provider          = COALESCE(NULLIF(sqlc.arg(provider), ''), provider),
+  title             = COALESCE(NULLIF(sqlc.arg(title), ''), title),
+  start_time        = COALESCE(sqlc.arg(start_time), start_time),
+  end_time          = COALESCE(sqlc.arg(end_time), end_time),
+  address           = COALESCE(NULLIF(sqlc.arg(address), ''), address),
+  departure_location = COALESCE(NULLIF(sqlc.arg(departure_location), ''), departure_location),
+  arrival_location  = COALESCE(NULLIF(sqlc.arg(arrival_location), ''), arrival_location),
+  num_guests        = COALESCE(sqlc.arg(num_guests), num_guests),
+  price_cents       = COALESCE(sqlc.arg(price_cents), price_cents),
+  currency          = COALESCE(NULLIF(sqlc.arg(currency), ''), currency),
+  timezone          = COALESCE(NULLIF(sqlc.arg(timezone), ''), timezone),
+  details_json      = COALESCE(sqlc.arg(details_json), details_json),
+  raw_source        = COALESCE(NULLIF(sqlc.arg(raw_source), ''), raw_source),
+  updated_at        = NOW()
+WHERE id = sqlc.arg(id)
+  AND user_id = sqlc.arg(user_id)
+  AND trip_id = sqlc.arg(trip_id)
+  AND updated_at <= created_at + interval '1 second'
+RETURNING *;
+
 -- name: DeleteBooking :execrows
 DELETE FROM bookings WHERE id = $1 AND user_id = $2;
 

@@ -244,6 +244,13 @@ message IngestBookingRequest {
 
 message IngestBookingResponse {
   Booking booking = 1;
+  // was_updated is true when an existing booking was merged rather than a
+  // new booking created. Clients can use this to show a "Booking updated"
+  // toast instead of "Booking added".
+  bool was_updated = 3;
+  // previous_booking_id is the ID of the booking that was merged into.
+  // Equal to booking.id after a merge. Empty when was_updated is false.
+  string previous_booking_id = 4;
 }
 
 message IngestEmailRequest {

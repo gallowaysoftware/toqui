@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
@@ -26,6 +27,8 @@ type stubQueries struct {
 	tb testing.TB
 
 	findBookingByConfirmationCodeFn     func(ctx context.Context, arg dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error)
+	findBookingFuzzyFn                  func(ctx context.Context, arg dbgen.FindBookingFuzzyParams) (dbgen.Booking, error)
+	mergeBookingFn                      func(ctx context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error)
 	createBookingForOwnerOrEditorFn     func(ctx context.Context, arg dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error)
 	updateBookingFn                     func(ctx context.Context, arg dbgen.UpdateBookingParams) (dbgen.Booking, error)
 	getTripCostSummaryFn                func(ctx context.Context, arg dbgen.GetTripCostSummaryParams) ([]dbgen.GetTripCostSummaryRow, error)
@@ -43,6 +46,23 @@ func (s *stubQueries) FindBookingByConfirmationCode(ctx context.Context, arg dbg
 		return s.findBookingByConfirmationCodeFn(ctx, arg)
 	}
 	s.tb.Fatalf("unexpected stubQueries.FindBookingByConfirmationCode(%+v) — set findBookingByConfirmationCodeFn", arg)
+	return dbgen.Booking{}, nil
+}
+
+func (s *stubQueries) FindBookingFuzzy(ctx context.Context, arg dbgen.FindBookingFuzzyParams) (dbgen.Booking, error) {
+	if s.findBookingFuzzyFn != nil {
+		return s.findBookingFuzzyFn(ctx, arg)
+	}
+	// Default: no fuzzy match found. This keeps existing tests passing without
+	// requiring every test to opt into fuzzy lookup.
+	return dbgen.Booking{}, pgx.ErrNoRows
+}
+
+func (s *stubQueries) MergeBooking(ctx context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error) {
+	if s.mergeBookingFn != nil {
+		return s.mergeBookingFn(ctx, arg)
+	}
+	s.tb.Fatalf("unexpected stubQueries.MergeBooking(%+v) — set mergeBookingFn", arg)
 	return dbgen.Booking{}, nil
 }
 
@@ -250,8 +270,8 @@ func TestIngestText_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.ID != resultID {
-		t.Errorf("expected returned booking id=%s, got %s", resultID, got.ID)
+	if got.Booking.ID != resultID {
+		t.Errorf("expected returned booking id=%s, got %s", resultID, got.Booking.ID)
 	}
 }
 
@@ -287,6 +307,12 @@ func TestIngest_DuplicateConfirmationCodeReturnsExisting(t *testing.T) {
 		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
 			return dbgen.Booking{ID: existingID, Type: "hotel"}, nil
 		},
+		mergeBookingFn: func(_ context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error) {
+			if arg.ID != existingID {
+				t.Errorf("MergeBooking called with id=%s, want %s", arg.ID, existingID)
+			}
+			return dbgen.Booking{ID: existingID, Type: "hotel"}, nil
+		},
 		// createBookingForOwnerOrEditorFn deliberately not set —
 		// triggers fail-loud if duplicate-detection is broken.
 	}
@@ -297,8 +323,14 @@ func TestIngest_DuplicateConfirmationCodeReturnsExisting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.ID != existingID {
-		t.Errorf("expected existing booking %s, got %s", existingID, got.ID)
+	if got.Booking.ID != existingID {
+		t.Errorf("expected existing booking %s, got %s", existingID, got.Booking.ID)
+	}
+	if !got.WasUpdated {
+		t.Errorf("expected WasUpdated=true on duplicate-code merge")
+	}
+	if got.PreviousID != existingID.String() {
+		t.Errorf("expected PreviousID=%s, got %q", existingID, got.PreviousID)
 	}
 	if len(q.createBookingCalls) != 0 {
 		t.Errorf("must not call CreateBooking on duplicate, got %d calls", len(q.createBookingCalls))
@@ -449,6 +481,250 @@ func TestIngest_FencedJSONResponseStripped(t *testing.T) {
 
 	if _, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestIngest_DifferentUserSameConfirmationCodeNoMerge regresses the
+// authorization invariant in FindBookingByConfirmationCode: the filter
+// is `user_id = $1 AND trip_id = $2 AND confirmation_code = $3`, so a
+// different user's matching code MUST return ErrNoRows (no cross-user
+// merge). This test pins the contract from the service side — if a
+// future schema migration drops the user_id predicate, this fails.
+func TestIngest_DifferentUserSameConfirmationCodeNoMerge(t *testing.T) {
+	parsedJSON := `{"type": "hotel", "confirmation_code": "SHARED-CODE"}`
+	var capturedFindParams dbgen.FindBookingByConfirmationCodeParams
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, arg dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			capturedFindParams = arg
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: uuid.New(), Type: "hotel"}, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	userA := uuid.New()
+	tripID := uuid.New()
+	if _, err := svc.IngestText(context.Background(), userA, tripID.String(), "", "raw"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if capturedFindParams.UserID != userA {
+		t.Errorf("FindBookingByConfirmationCode must filter on caller's UserID, got %s want %s", capturedFindParams.UserID, userA)
+	}
+	if capturedFindParams.TripID.Bytes != tripID || !capturedFindParams.TripID.Valid {
+		t.Errorf("FindBookingByConfirmationCode must filter on caller's TripID, got %+v want %s", capturedFindParams.TripID, tripID)
+	}
+}
+
+// TestIngest_FuzzyMatchSucceeds_MergesIntoCandidate exercises the fuzzy
+// path which the original test suite never set findBookingFuzzyFn for —
+// dead-code-tested before this regression added explicit coverage.
+func TestIngest_FuzzyMatchSucceeds_MergesIntoCandidate(t *testing.T) {
+	candidateID := uuid.New()
+	parsedJSON := `{"type": "hotel", "provider": "Hilton Tokyo", "start_time": "2026-06-15T14:00:00Z"}`
+	q := &stubQueries{tb: t,
+		// No exact code match → falls through to fuzzy path.
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		findBookingFuzzyFn: func(_ context.Context, _ dbgen.FindBookingFuzzyParams) (dbgen.Booking, error) {
+			return dbgen.Booking{
+				ID:       candidateID,
+				Type:     "hotel",
+				Provider: pgtype.Text{String: "Hilton", Valid: true},
+			}, nil
+		},
+		mergeBookingFn: func(_ context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error) {
+			if arg.ID != candidateID {
+				t.Errorf("fuzzy merge called for id=%s, want %s", arg.ID, candidateID)
+			}
+			return dbgen.Booking{ID: candidateID, Type: "hotel"}, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !got.WasUpdated || got.PreviousID != candidateID.String() {
+		t.Errorf("expected fuzzy merge result, got %+v", got)
+	}
+}
+
+// TestIngest_FuzzyMatchProviderMismatch_FallsThroughToCreate covers the
+// tightening branch in findFuzzyMatch where a candidate is rejected on
+// provider similarity. The flow must continue to the create path
+// rather than returning the wrong booking.
+func TestIngest_FuzzyMatchProviderMismatch_FallsThroughToCreate(t *testing.T) {
+	parsedJSON := `{"type": "flight", "provider": "Delta", "start_time": "2026-06-15T14:00:00Z"}`
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		findBookingFuzzyFn: func(_ context.Context, _ dbgen.FindBookingFuzzyParams) (dbgen.Booking, error) {
+			// Same date+type but a totally different carrier.
+			return dbgen.Booking{
+				ID:       uuid.New(),
+				Type:     "flight",
+				Provider: pgtype.Text{String: "United", Valid: true},
+			}, nil
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: uuid.New(), Type: "flight"}, nil
+		},
+		// mergeBookingFn deliberately unset — calling it would mean we
+		// merged across carriers, which would fail-loud.
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	if _, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestIngest_FuzzyMatchDBErrorPropagates regresses the original error-
+// swallow behaviour where ANY error from FindBookingFuzzy was treated
+// as no-match and the service silently created a duplicate. Now,
+// non-ErrNoRows errors must propagate to the caller.
+func TestIngest_FuzzyMatchDBErrorPropagates(t *testing.T) {
+	parsedJSON := `{"type": "hotel", "provider": "Hilton", "start_time": "2026-06-15T14:00:00Z"}`
+	wantErr := errors.New("connection reset")
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		findBookingFuzzyFn: func(_ context.Context, _ dbgen.FindBookingFuzzyParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, wantErr
+		},
+		// createBookingForOwnerOrEditorFn deliberately unset — fail-loud
+		// if the service falls through to create on a transient error.
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	_, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw")
+	if !errors.Is(err, wantErr) {
+		t.Errorf("expected fuzzy DB error to propagate, got %v", err)
+	}
+}
+
+// TestIngest_RaceRecoveryOnUniqueViolation regresses the TOCTOU window
+// between SELECT-by-code and INSERT. Two concurrent requests both saw
+// no row and both tried to INSERT; the unique partial index on
+// (user_id, trip_id, confirmation_code) makes one of them fail with
+// 23505. The service must catch that, re-fetch the row that won the
+// race, and merge into it instead of bubbling an opaque DB error.
+func TestIngest_RaceRecoveryOnUniqueViolation(t *testing.T) {
+	winnerID := uuid.New()
+	parsedJSON := `{"type": "hotel", "confirmation_code": "RACE-CODE"}`
+	findCalls := 0
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			findCalls++
+			if findCalls == 1 {
+				// First call (the dedup SELECT before INSERT) — no row yet.
+				return dbgen.Booking{}, pgx.ErrNoRows
+			}
+			// Second call (post-23505 re-fetch) — the winner is there.
+			return dbgen.Booking{ID: winnerID, Type: "hotel"}, nil
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, &pgconn.PgError{Code: "23505", ConstraintName: "bookings_user_trip_confirmation_unique"}
+		},
+		mergeBookingFn: func(_ context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error) {
+			if arg.ID != winnerID {
+				t.Errorf("race recovery merge id=%s, want %s", arg.ID, winnerID)
+			}
+			return dbgen.Booking{ID: winnerID, Type: "hotel"}, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw")
+	if err != nil {
+		t.Fatalf("expected race recovery to succeed, got error: %v", err)
+	}
+	if !got.WasUpdated || got.PreviousID != winnerID.String() {
+		t.Errorf("expected race recovery to surface winner via merge, got %+v", got)
+	}
+	if findCalls != 2 {
+		t.Errorf("expected exactly 2 FindBookingByConfirmationCode calls (SELECT + race recovery), got %d", findCalls)
+	}
+}
+
+// TestIngest_PreservesUserEditsOnMerge regresses the silent data-loss
+// bug where a re-imported confirmation email overwrote a user's
+// manual edits. The MergeBooking SQL WHERE clause refuses to update
+// rows whose updated_at has moved past created_at + 1s; pgx returns
+// ErrNoRows for that case and the service must surface the existing
+// (untouched) record with WasUpdated=false.
+func TestIngest_PreservesUserEditsOnMerge(t *testing.T) {
+	editedID := uuid.New()
+	editedTitle := "Hilton Tokyo - anniversary trip"
+	parsedJSON := `{"type": "hotel", "confirmation_code": "EDITED", "title": "Hilton Tokyo"}`
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: editedID, Type: "hotel", Title: editedTitle}, nil
+		},
+		mergeBookingFn: func(_ context.Context, _ dbgen.MergeBookingParams) (dbgen.Booking, error) {
+			// SQL guard rejects the update because updated_at >
+			// created_at + 1s — pgx returns ErrNoRows.
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		// createBookingForOwnerOrEditorFn deliberately unset — must NOT
+		// fall through to create when the dedup SELECT already found
+		// a (user-edited) row.
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), uuid.New(), uuid.New().String(), "", "raw")
+	if err != nil {
+		t.Fatalf("expected user-edit preservation to succeed, got error: %v", err)
+	}
+	if got.WasUpdated {
+		t.Errorf("expected WasUpdated=false when user-edit guard fires, got %+v", got)
+	}
+	if got.PreviousID != editedID.String() {
+		t.Errorf("expected PreviousID=%s, got %q", editedID, got.PreviousID)
+	}
+	if got.Booking.Title != editedTitle {
+		t.Errorf("expected user's edited title preserved (%q), got %q", editedTitle, got.Booking.Title)
+	}
+}
+
+// TestIngest_PassesTripIDToMerge confirms B5 defense-in-depth: the
+// service must pass the tripUUID through to MergeBookingParams.TripID
+// so the SQL WHERE clause can enforce trip_id parity even if a future
+// SELECT-phase change relaxed the trip_id filter.
+func TestIngest_PassesTripIDToMerge(t *testing.T) {
+	parsedJSON := `{"type": "hotel", "confirmation_code": "TID-CHECK"}`
+	tripID := uuid.New()
+	existingID := uuid.New()
+	var capturedMerge dbgen.MergeBookingParams
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: existingID, Type: "hotel"}, nil
+		},
+		mergeBookingFn: func(_ context.Context, arg dbgen.MergeBookingParams) (dbgen.Booking, error) {
+			capturedMerge = arg
+			return dbgen.Booking{ID: existingID, Type: "hotel"}, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	if _, err := svc.IngestText(context.Background(), uuid.New(), tripID.String(), "", "raw"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !capturedMerge.TripID.Valid || capturedMerge.TripID.Bytes != tripID {
+		t.Errorf("MergeBookingParams.TripID not propagated: got %+v want %s", capturedMerge.TripID, tripID)
 	}
 }
 

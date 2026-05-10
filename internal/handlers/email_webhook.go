@@ -144,7 +144,7 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Ingest via booking service with source="email".
-	b, err := h.bookingSvc.IngestEmail(r.Context(), user.ID, tripID, "", fullText)
+	result, err := h.bookingSvc.IngestEmail(r.Context(), user.ID, tripID, "", fullText)
 	if err != nil {
 		slog.Error("email webhook ingest failed",
 			"user_id", user.ID,
@@ -155,14 +155,17 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	b := result.Booking
+
 	// Do NOT log booking title — it contains travel content (hotel name,
 	// destination, etc). Type + ids are sufficient for operational
 	// debugging. See toqui-backend#369 P1 #10.
-	slog.Info("email webhook booking created",
+	slog.Info("email webhook booking ingested",
 		"booking_id", b.ID,
 		"user_id", user.ID,
 		"trip_id", tripID,
 		"type", b.Type,
+		"was_updated", result.WasUpdated,
 	)
 
 	w.WriteHeader(http.StatusOK)

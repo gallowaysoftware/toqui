@@ -1904,10 +1904,12 @@ func (x *IngestBookingRequest) GetRawText() string {
 }
 
 type IngestBookingResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Booking       *Booking               `protobuf:"bytes,1,opt,name=booking,proto3" json:"booking,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Booking           *Booking               `protobuf:"bytes,1,opt,name=booking,proto3" json:"booking,omitempty"`
+	WasUpdated        bool                   `protobuf:"varint,3,opt,name=was_updated,json=wasUpdated,proto3" json:"was_updated,omitempty"`
+	PreviousBookingId string                 `protobuf:"bytes,4,opt,name=previous_booking_id,json=previousBookingId,proto3" json:"previous_booking_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *IngestBookingResponse) Reset() {
@@ -1945,6 +1947,20 @@ func (x *IngestBookingResponse) GetBooking() *Booking {
 		return x.Booking
 	}
 	return nil
+}
+
+func (x *IngestBookingResponse) GetWasUpdated() bool {
+	if x != nil {
+		return x.WasUpdated
+	}
+	return false
+}
+
+func (x *IngestBookingResponse) GetPreviousBookingId() string {
+	if x != nil {
+		return x.PreviousBookingId
+	}
+	return ""
 }
 
 type IngestEmailRequest struct {

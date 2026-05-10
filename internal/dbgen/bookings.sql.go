@@ -198,6 +198,149 @@ func (q *Queries) CreateBookingForOwnerOrEditor(ctx context.Context, arg CreateB
 	return i, err
 }
 
+const findBookingFuzzy = `-- name: FindBookingFuzzy :one
+SELECT id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at FROM bookings
+WHERE user_id = $1
+  AND trip_id = $2
+  AND type = $3
+  AND start_time IS NOT NULL
+  AND ABS(EXTRACT(EPOCH FROM (start_time - $4))) <= 7 * 86400
+ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - $4)))
+LIMIT 1
+`
+
+type FindBookingFuzzyParams struct {
+	UserID    uuid.UUID          `json:"user_id"`
+	TripID    pgtype.UUID        `json:"trip_id"`
+	Type      string             `json:"type"`
+	StartTime pgtype.Timestamptz `json:"start_time"`
+}
+
+func (q *Queries) FindBookingFuzzy(ctx context.Context, arg FindBookingFuzzyParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, findBookingFuzzy, arg.UserID, arg.TripID, arg.Type, arg.StartTime)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const mergeBooking = `-- name: MergeBooking :one
+UPDATE bookings SET
+  type              = COALESCE(NULLIF($1, ''), type),
+  confirmation_code = COALESCE(NULLIF($2, ''), confirmation_code),
+  provider          = COALESCE(NULLIF($3, ''), provider),
+  title             = COALESCE(NULLIF($4, ''), title),
+  start_time        = COALESCE($5, start_time),
+  end_time          = COALESCE($6, end_time),
+  address           = COALESCE(NULLIF($7, ''), address),
+  departure_location = COALESCE(NULLIF($8, ''), departure_location),
+  arrival_location  = COALESCE(NULLIF($9, ''), arrival_location),
+  num_guests        = COALESCE($10, num_guests),
+  price_cents       = COALESCE($11, price_cents),
+  currency          = COALESCE(NULLIF($12, ''), currency),
+  timezone          = COALESCE(NULLIF($13, ''), timezone),
+  details_json      = COALESCE($14, details_json),
+  raw_source        = COALESCE(NULLIF($15, ''), raw_source),
+  updated_at        = NOW()
+WHERE id = $16
+  AND user_id = $17
+  AND trip_id = $18
+  AND updated_at <= created_at + interval '1 second'
+RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
+`
+
+type MergeBookingParams struct {
+	Type              string             `json:"type"`
+	ConfirmationCode  string             `json:"confirmation_code"`
+	Provider          string             `json:"provider"`
+	Title             string             `json:"title"`
+	StartTime         pgtype.Timestamptz `json:"start_time"`
+	EndTime           pgtype.Timestamptz `json:"end_time"`
+	Address           string             `json:"address"`
+	DepartureLocation string             `json:"departure_location"`
+	ArrivalLocation   string             `json:"arrival_location"`
+	NumGuests         pgtype.Int4        `json:"num_guests"`
+	PriceCents        pgtype.Int8        `json:"price_cents"`
+	Currency          string             `json:"currency"`
+	Timezone          string             `json:"timezone"`
+	DetailsJson       []byte             `json:"details_json"`
+	RawSource         string             `json:"raw_source"`
+	ID                uuid.UUID          `json:"id"`
+	UserID            uuid.UUID          `json:"user_id"`
+	TripID            pgtype.UUID        `json:"trip_id"`
+}
+
+func (q *Queries) MergeBooking(ctx context.Context, arg MergeBookingParams) (Booking, error) {
+	row := q.db.QueryRow(ctx, mergeBooking,
+		arg.Type,
+		arg.ConfirmationCode,
+		arg.Provider,
+		arg.Title,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Address,
+		arg.DepartureLocation,
+		arg.ArrivalLocation,
+		arg.NumGuests,
+		arg.PriceCents,
+		arg.Currency,
+		arg.Timezone,
+		arg.DetailsJson,
+		arg.RawSource,
+		arg.ID,
+		arg.UserID,
+		arg.TripID,
+	)
+	var i Booking
+	err := row.Scan(
+		&i.ID,
+		&i.TripID,
+		&i.UserID,
+		&i.Type,
+		&i.ConfirmationCode,
+		&i.Provider,
+		&i.Title,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.Address,
+		&i.DetailsJson,
+		&i.RawSource,
+		&i.Source,
+		&i.CreatedAt,
+		&i.DepartureLocation,
+		&i.ArrivalLocation,
+		&i.NumGuests,
+		&i.PriceCents,
+		&i.Currency,
+		&i.Timezone,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteBooking = `-- name: DeleteBooking :execrows
 DELETE FROM bookings WHERE id = $1 AND user_id = $2
 `
