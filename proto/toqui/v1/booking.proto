@@ -244,6 +244,12 @@ message IngestBookingRequest {
 
 message IngestBookingResponse {
   Booking booking = 1;
+  // Field 2 was briefly used during PR #441 development for an early
+  // dedup-status enum that was dropped before merge. Reserve it so a
+  // future contributor doesn't reuse the number and accidentally break
+  // wire compatibility for any client that ever shipped against an
+  // experimental build.
+  reserved 2;
   // was_updated is true when an existing booking was merged rather than a
   // new booking created. Clients can use this to show a "Booking updated"
   // toast instead of "Booking added".
@@ -251,6 +257,40 @@ message IngestBookingResponse {
   // previous_booking_id is the ID of the booking that was merged into.
   // Equal to booking.id after a merge. Empty when was_updated is false.
   string previous_booking_id = 4;
+  // Conflicts detected on the trip after this ingest (tight layovers,
+  // hotel-before-arrival, etc). Empty when there are no conflicts or when
+  // the booking was unattached. Best-effort — populated when computable.
+  repeated BookingConflict conflicts = 5;
+  // Single highest-priority gap in the trip plan that the AI / frontend
+  // should surface as a proactive suggestion. Null when nothing's missing
+  // or when the booking was unattached.
+  CoverageGap coverage_gap = 6;
+}
+
+// BookingConflict describes a scheduling problem detected between two or
+// more bookings on the same trip after an ingest. Severity is "warning"
+// or "error" per internal/booking/conflict.go.
+message BookingConflict {
+  // Stable type identifier, e.g. "tight_layover", "hotel_before_arrival".
+  string type = 1;
+  // "warning" or "error".
+  string severity = 2;
+  // Short human-readable summary safe to render as-is (no travel content).
+  string message = 3;
+  // IDs of the bookings involved.
+  repeated string booking_ids = 4;
+}
+
+// CoverageGap describes the single highest-priority piece missing from a
+// trip plan after an ingest, used by the AI / frontend to make ONE
+// proactive suggestion (not a wall of warnings).
+message CoverageGap {
+  // Stable type identifier, e.g. "no_accommodation", "no_return_transport".
+  string type = 1;
+  // 1 (highest) .. 4 (lowest).
+  int32 priority = 2;
+  // Short human-facing string; the AI typically paraphrases this.
+  string suggestion_hint = 3;
 }
 
 message IngestEmailRequest {

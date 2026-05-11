@@ -1904,12 +1904,25 @@ func (x *IngestBookingRequest) GetRawText() string {
 }
 
 type IngestBookingResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Booking           *Booking               `protobuf:"bytes,1,opt,name=booking,proto3" json:"booking,omitempty"`
-	WasUpdated        bool                   `protobuf:"varint,3,opt,name=was_updated,json=wasUpdated,proto3" json:"was_updated,omitempty"`
-	PreviousBookingId string                 `protobuf:"bytes,4,opt,name=previous_booking_id,json=previousBookingId,proto3" json:"previous_booking_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Booking *Booking               `protobuf:"bytes,1,opt,name=booking,proto3" json:"booking,omitempty"`
+	// was_updated is true when an existing booking was merged rather than a
+	// new booking created. Clients can use this to show a "Booking updated"
+	// toast instead of "Booking added".
+	WasUpdated bool `protobuf:"varint,3,opt,name=was_updated,json=wasUpdated,proto3" json:"was_updated,omitempty"`
+	// previous_booking_id is the ID of the booking that was merged into.
+	// Equal to booking.id after a merge. Empty when was_updated is false.
+	PreviousBookingId string `protobuf:"bytes,4,opt,name=previous_booking_id,json=previousBookingId,proto3" json:"previous_booking_id,omitempty"`
+	// Conflicts detected on the trip after this ingest (tight layovers,
+	// hotel-before-arrival, etc). Empty when there are no conflicts or when
+	// the booking was unattached. Best-effort — populated when computable.
+	Conflicts []*BookingConflict `protobuf:"bytes,5,rep,name=conflicts,proto3" json:"conflicts,omitempty"`
+	// Single highest-priority gap in the trip plan that the AI / frontend
+	// should surface as a proactive suggestion. Null when nothing's missing
+	// or when the booking was unattached.
+	CoverageGap   *CoverageGap `protobuf:"bytes,6,opt,name=coverage_gap,json=coverageGap,proto3" json:"coverage_gap,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *IngestBookingResponse) Reset() {
@@ -1963,6 +1976,161 @@ func (x *IngestBookingResponse) GetPreviousBookingId() string {
 	return ""
 }
 
+func (x *IngestBookingResponse) GetConflicts() []*BookingConflict {
+	if x != nil {
+		return x.Conflicts
+	}
+	return nil
+}
+
+func (x *IngestBookingResponse) GetCoverageGap() *CoverageGap {
+	if x != nil {
+		return x.CoverageGap
+	}
+	return nil
+}
+
+// BookingConflict describes a scheduling problem detected between two or
+// more bookings on the same trip after an ingest. Severity is "warning"
+// or "error" per internal/booking/conflict.go.
+type BookingConflict struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stable type identifier, e.g. "tight_layover", "hotel_before_arrival".
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// "warning" or "error".
+	Severity string `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty"`
+	// Short human-readable summary safe to render as-is (no travel content).
+	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// IDs of the bookings involved.
+	BookingIds    []string `protobuf:"bytes,4,rep,name=booking_ids,json=bookingIds,proto3" json:"booking_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BookingConflict) Reset() {
+	*x = BookingConflict{}
+	mi := &file_toqui_v1_booking_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BookingConflict) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BookingConflict) ProtoMessage() {}
+
+func (x *BookingConflict) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_booking_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BookingConflict.ProtoReflect.Descriptor instead.
+func (*BookingConflict) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *BookingConflict) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *BookingConflict) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+func (x *BookingConflict) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *BookingConflict) GetBookingIds() []string {
+	if x != nil {
+		return x.BookingIds
+	}
+	return nil
+}
+
+// CoverageGap describes the single highest-priority piece missing from a
+// trip plan after an ingest, used by the AI / frontend to make ONE
+// proactive suggestion (not a wall of warnings).
+type CoverageGap struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stable type identifier, e.g. "no_accommodation", "no_return_transport".
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// 1 (highest) .. 4 (lowest).
+	Priority int32 `protobuf:"varint,2,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Short human-facing string; the AI typically paraphrases this.
+	SuggestionHint string `protobuf:"bytes,3,opt,name=suggestion_hint,json=suggestionHint,proto3" json:"suggestion_hint,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CoverageGap) Reset() {
+	*x = CoverageGap{}
+	mi := &file_toqui_v1_booking_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoverageGap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoverageGap) ProtoMessage() {}
+
+func (x *CoverageGap) ProtoReflect() protoreflect.Message {
+	mi := &file_toqui_v1_booking_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CoverageGap.ProtoReflect.Descriptor instead.
+func (*CoverageGap) Descriptor() ([]byte, []int) {
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CoverageGap) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CoverageGap) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *CoverageGap) GetSuggestionHint() string {
+	if x != nil {
+		return x.SuggestionHint
+	}
+	return ""
+}
+
 type IngestEmailRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RawEmail      string                 `protobuf:"bytes,1,opt,name=raw_email,json=rawEmail,proto3" json:"raw_email,omitempty"`
@@ -1972,7 +2140,7 @@ type IngestEmailRequest struct {
 
 func (x *IngestEmailRequest) Reset() {
 	*x = IngestEmailRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[16]
+	mi := &file_toqui_v1_booking_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1984,7 +2152,7 @@ func (x *IngestEmailRequest) String() string {
 func (*IngestEmailRequest) ProtoMessage() {}
 
 func (x *IngestEmailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[16]
+	mi := &file_toqui_v1_booking_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1997,7 +2165,7 @@ func (x *IngestEmailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IngestEmailRequest.ProtoReflect.Descriptor instead.
 func (*IngestEmailRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{16}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *IngestEmailRequest) GetRawEmail() string {
@@ -2016,7 +2184,7 @@ type IngestEmailResponse struct {
 
 func (x *IngestEmailResponse) Reset() {
 	*x = IngestEmailResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[17]
+	mi := &file_toqui_v1_booking_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2028,7 +2196,7 @@ func (x *IngestEmailResponse) String() string {
 func (*IngestEmailResponse) ProtoMessage() {}
 
 func (x *IngestEmailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[17]
+	mi := &file_toqui_v1_booking_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2041,7 +2209,7 @@ func (x *IngestEmailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IngestEmailResponse.ProtoReflect.Descriptor instead.
 func (*IngestEmailResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{17}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *IngestEmailResponse) GetBookings() []*Booking {
@@ -2074,7 +2242,7 @@ type UpdateBookingRequest struct {
 
 func (x *UpdateBookingRequest) Reset() {
 	*x = UpdateBookingRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[18]
+	mi := &file_toqui_v1_booking_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2086,7 +2254,7 @@ func (x *UpdateBookingRequest) String() string {
 func (*UpdateBookingRequest) ProtoMessage() {}
 
 func (x *UpdateBookingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[18]
+	mi := &file_toqui_v1_booking_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2099,7 +2267,7 @@ func (x *UpdateBookingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateBookingRequest.ProtoReflect.Descriptor instead.
 func (*UpdateBookingRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{18}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *UpdateBookingRequest) GetId() string {
@@ -2209,7 +2377,7 @@ type UpdateBookingResponse struct {
 
 func (x *UpdateBookingResponse) Reset() {
 	*x = UpdateBookingResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[19]
+	mi := &file_toqui_v1_booking_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2221,7 +2389,7 @@ func (x *UpdateBookingResponse) String() string {
 func (*UpdateBookingResponse) ProtoMessage() {}
 
 func (x *UpdateBookingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[19]
+	mi := &file_toqui_v1_booking_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2234,7 +2402,7 @@ func (x *UpdateBookingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateBookingResponse.ProtoReflect.Descriptor instead.
 func (*UpdateBookingResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{19}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *UpdateBookingResponse) GetBooking() *Booking {
@@ -2254,7 +2422,7 @@ type ListBookingsRequest struct {
 
 func (x *ListBookingsRequest) Reset() {
 	*x = ListBookingsRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[20]
+	mi := &file_toqui_v1_booking_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2266,7 +2434,7 @@ func (x *ListBookingsRequest) String() string {
 func (*ListBookingsRequest) ProtoMessage() {}
 
 func (x *ListBookingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[20]
+	mi := &file_toqui_v1_booking_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2279,7 +2447,7 @@ func (x *ListBookingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBookingsRequest.ProtoReflect.Descriptor instead.
 func (*ListBookingsRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{20}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListBookingsRequest) GetTripId() string {
@@ -2306,7 +2474,7 @@ type ListBookingsResponse struct {
 
 func (x *ListBookingsResponse) Reset() {
 	*x = ListBookingsResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[21]
+	mi := &file_toqui_v1_booking_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2318,7 +2486,7 @@ func (x *ListBookingsResponse) String() string {
 func (*ListBookingsResponse) ProtoMessage() {}
 
 func (x *ListBookingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[21]
+	mi := &file_toqui_v1_booking_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2331,7 +2499,7 @@ func (x *ListBookingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBookingsResponse.ProtoReflect.Descriptor instead.
 func (*ListBookingsResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{21}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListBookingsResponse) GetBookings() []*Booking {
@@ -2357,7 +2525,7 @@ type GetBookingRequest struct {
 
 func (x *GetBookingRequest) Reset() {
 	*x = GetBookingRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[22]
+	mi := &file_toqui_v1_booking_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2369,7 +2537,7 @@ func (x *GetBookingRequest) String() string {
 func (*GetBookingRequest) ProtoMessage() {}
 
 func (x *GetBookingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[22]
+	mi := &file_toqui_v1_booking_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2382,7 +2550,7 @@ func (x *GetBookingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBookingRequest.ProtoReflect.Descriptor instead.
 func (*GetBookingRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{22}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetBookingRequest) GetId() string {
@@ -2401,7 +2569,7 @@ type GetBookingResponse struct {
 
 func (x *GetBookingResponse) Reset() {
 	*x = GetBookingResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[23]
+	mi := &file_toqui_v1_booking_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2413,7 +2581,7 @@ func (x *GetBookingResponse) String() string {
 func (*GetBookingResponse) ProtoMessage() {}
 
 func (x *GetBookingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[23]
+	mi := &file_toqui_v1_booking_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2426,7 +2594,7 @@ func (x *GetBookingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBookingResponse.ProtoReflect.Descriptor instead.
 func (*GetBookingResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{23}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetBookingResponse) GetBooking() *Booking {
@@ -2445,7 +2613,7 @@ type GetTripCostSummaryRequest struct {
 
 func (x *GetTripCostSummaryRequest) Reset() {
 	*x = GetTripCostSummaryRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[24]
+	mi := &file_toqui_v1_booking_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2457,7 +2625,7 @@ func (x *GetTripCostSummaryRequest) String() string {
 func (*GetTripCostSummaryRequest) ProtoMessage() {}
 
 func (x *GetTripCostSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[24]
+	mi := &file_toqui_v1_booking_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2470,7 +2638,7 @@ func (x *GetTripCostSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripCostSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetTripCostSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{24}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTripCostSummaryRequest) GetTripId() string {
@@ -2491,7 +2659,7 @@ type GetTripCostSummaryResponse struct {
 
 func (x *GetTripCostSummaryResponse) Reset() {
 	*x = GetTripCostSummaryResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[25]
+	mi := &file_toqui_v1_booking_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2503,7 +2671,7 @@ func (x *GetTripCostSummaryResponse) String() string {
 func (*GetTripCostSummaryResponse) ProtoMessage() {}
 
 func (x *GetTripCostSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[25]
+	mi := &file_toqui_v1_booking_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2516,7 +2684,7 @@ func (x *GetTripCostSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripCostSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetTripCostSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{25}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetTripCostSummaryResponse) GetTotals() []*CurrencyTotal {
@@ -2544,7 +2712,7 @@ type CurrencyTotal struct {
 
 func (x *CurrencyTotal) Reset() {
 	*x = CurrencyTotal{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[26]
+	mi := &file_toqui_v1_booking_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2556,7 +2724,7 @@ func (x *CurrencyTotal) String() string {
 func (*CurrencyTotal) ProtoMessage() {}
 
 func (x *CurrencyTotal) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[26]
+	mi := &file_toqui_v1_booking_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2569,7 +2737,7 @@ func (x *CurrencyTotal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrencyTotal.ProtoReflect.Descriptor instead.
 func (*CurrencyTotal) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{26}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CurrencyTotal) GetCurrency() string {
@@ -2603,7 +2771,7 @@ type LinkBookingToTripRequest struct {
 
 func (x *LinkBookingToTripRequest) Reset() {
 	*x = LinkBookingToTripRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[27]
+	mi := &file_toqui_v1_booking_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2615,7 +2783,7 @@ func (x *LinkBookingToTripRequest) String() string {
 func (*LinkBookingToTripRequest) ProtoMessage() {}
 
 func (x *LinkBookingToTripRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[27]
+	mi := &file_toqui_v1_booking_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2628,7 +2796,7 @@ func (x *LinkBookingToTripRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkBookingToTripRequest.ProtoReflect.Descriptor instead.
 func (*LinkBookingToTripRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{27}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *LinkBookingToTripRequest) GetBookingId() string {
@@ -2654,7 +2822,7 @@ type LinkBookingToTripResponse struct {
 
 func (x *LinkBookingToTripResponse) Reset() {
 	*x = LinkBookingToTripResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[28]
+	mi := &file_toqui_v1_booking_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2666,7 +2834,7 @@ func (x *LinkBookingToTripResponse) String() string {
 func (*LinkBookingToTripResponse) ProtoMessage() {}
 
 func (x *LinkBookingToTripResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[28]
+	mi := &file_toqui_v1_booking_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2679,7 +2847,7 @@ func (x *LinkBookingToTripResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkBookingToTripResponse.ProtoReflect.Descriptor instead.
 func (*LinkBookingToTripResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{28}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *LinkBookingToTripResponse) GetBooking() *Booking {
@@ -2698,7 +2866,7 @@ type DeleteBookingRequest struct {
 
 func (x *DeleteBookingRequest) Reset() {
 	*x = DeleteBookingRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[29]
+	mi := &file_toqui_v1_booking_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2710,7 +2878,7 @@ func (x *DeleteBookingRequest) String() string {
 func (*DeleteBookingRequest) ProtoMessage() {}
 
 func (x *DeleteBookingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[29]
+	mi := &file_toqui_v1_booking_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2723,7 +2891,7 @@ func (x *DeleteBookingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBookingRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBookingRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{29}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *DeleteBookingRequest) GetId() string {
@@ -2741,7 +2909,7 @@ type DeleteBookingResponse struct {
 
 func (x *DeleteBookingResponse) Reset() {
 	*x = DeleteBookingResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[30]
+	mi := &file_toqui_v1_booking_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2753,7 +2921,7 @@ func (x *DeleteBookingResponse) String() string {
 func (*DeleteBookingResponse) ProtoMessage() {}
 
 func (x *DeleteBookingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[30]
+	mi := &file_toqui_v1_booking_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2766,7 +2934,7 @@ func (x *DeleteBookingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBookingResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBookingResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{30}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{32}
 }
 
 type ExtractBookingFieldRequest struct {
@@ -2779,7 +2947,7 @@ type ExtractBookingFieldRequest struct {
 
 func (x *ExtractBookingFieldRequest) Reset() {
 	*x = ExtractBookingFieldRequest{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[31]
+	mi := &file_toqui_v1_booking_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2791,7 +2959,7 @@ func (x *ExtractBookingFieldRequest) String() string {
 func (*ExtractBookingFieldRequest) ProtoMessage() {}
 
 func (x *ExtractBookingFieldRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[31]
+	mi := &file_toqui_v1_booking_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2804,7 +2972,7 @@ func (x *ExtractBookingFieldRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtractBookingFieldRequest.ProtoReflect.Descriptor instead.
 func (*ExtractBookingFieldRequest) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{31}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ExtractBookingFieldRequest) GetBookingId() string {
@@ -2831,7 +2999,7 @@ type ExtractBookingFieldResponse struct {
 
 func (x *ExtractBookingFieldResponse) Reset() {
 	*x = ExtractBookingFieldResponse{}
-	mi := &file_toqui_v1_booking_proto_msgTypes[32]
+	mi := &file_toqui_v1_booking_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2843,7 +3011,7 @@ func (x *ExtractBookingFieldResponse) String() string {
 func (*ExtractBookingFieldResponse) ProtoMessage() {}
 
 func (x *ExtractBookingFieldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_toqui_v1_booking_proto_msgTypes[32]
+	mi := &file_toqui_v1_booking_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2856,7 +3024,7 @@ func (x *ExtractBookingFieldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtractBookingFieldResponse.ProtoReflect.Descriptor instead.
 func (*ExtractBookingFieldResponse) Descriptor() ([]byte, []int) {
-	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{32}
+	return file_toqui_v1_booking_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ExtractBookingFieldResponse) GetAnswer() string {
@@ -3061,9 +3229,24 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x14IngestBookingRequest\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.toqui.v1.BookingTypeR\x04type\x12&\n" +
-	"\braw_text\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x01\x18І\x03R\arawText\"D\n" +
+	"\braw_text\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x01\x18І\x03R\arawText\"\x88\x02\n" +
 	"\x15IngestBookingResponse\x12+\n" +
-	"\abooking\x18\x01 \x01(\v2\x11.toqui.v1.BookingR\abooking\">\n" +
+	"\abooking\x18\x01 \x01(\v2\x11.toqui.v1.BookingR\abooking\x12\x1f\n" +
+	"\vwas_updated\x18\x03 \x01(\bR\n" +
+	"wasUpdated\x12.\n" +
+	"\x13previous_booking_id\x18\x04 \x01(\tR\x11previousBookingId\x127\n" +
+	"\tconflicts\x18\x05 \x03(\v2\x19.toqui.v1.BookingConflictR\tconflicts\x128\n" +
+	"\fcoverage_gap\x18\x06 \x01(\v2\x15.toqui.v1.CoverageGapR\vcoverageGap\"|\n" +
+	"\x0fBookingConflict\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x1a\n" +
+	"\bseverity\x18\x02 \x01(\tR\bseverity\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1f\n" +
+	"\vbooking_ids\x18\x04 \x03(\tR\n" +
+	"bookingIds\"f\n" +
+	"\vCoverageGap\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x1a\n" +
+	"\bpriority\x18\x02 \x01(\x05R\bpriority\x12'\n" +
+	"\x0fsuggestion_hint\x18\x03 \x01(\tR\x0esuggestionHint\">\n" +
 	"\x12IngestEmailRequest\x12(\n" +
 	"\traw_email\x18\x01 \x01(\tB\v\xbaH\br\x06\x10\x01\x18\xa0\xc2\x1eR\brawEmail\"D\n" +
 	"\x13IngestEmailResponse\x12-\n" +
@@ -3179,7 +3362,7 @@ func file_toqui_v1_booking_proto_rawDescGZIP() []byte {
 }
 
 var file_toqui_v1_booking_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_toqui_v1_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_toqui_v1_booking_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_toqui_v1_booking_proto_goTypes = []any{
 	(BookingType)(0),                    // 0: toqui.v1.BookingType
 	(BookingSource)(0),                  // 1: toqui.v1.BookingSource
@@ -3199,36 +3382,38 @@ var file_toqui_v1_booking_proto_goTypes = []any{
 	(*TransferDetails)(nil),             // 15: toqui.v1.TransferDetails
 	(*IngestBookingRequest)(nil),        // 16: toqui.v1.IngestBookingRequest
 	(*IngestBookingResponse)(nil),       // 17: toqui.v1.IngestBookingResponse
-	(*IngestEmailRequest)(nil),          // 18: toqui.v1.IngestEmailRequest
-	(*IngestEmailResponse)(nil),         // 19: toqui.v1.IngestEmailResponse
-	(*UpdateBookingRequest)(nil),        // 20: toqui.v1.UpdateBookingRequest
-	(*UpdateBookingResponse)(nil),       // 21: toqui.v1.UpdateBookingResponse
-	(*ListBookingsRequest)(nil),         // 22: toqui.v1.ListBookingsRequest
-	(*ListBookingsResponse)(nil),        // 23: toqui.v1.ListBookingsResponse
-	(*GetBookingRequest)(nil),           // 24: toqui.v1.GetBookingRequest
-	(*GetBookingResponse)(nil),          // 25: toqui.v1.GetBookingResponse
-	(*GetTripCostSummaryRequest)(nil),   // 26: toqui.v1.GetTripCostSummaryRequest
-	(*GetTripCostSummaryResponse)(nil),  // 27: toqui.v1.GetTripCostSummaryResponse
-	(*CurrencyTotal)(nil),               // 28: toqui.v1.CurrencyTotal
-	(*LinkBookingToTripRequest)(nil),    // 29: toqui.v1.LinkBookingToTripRequest
-	(*LinkBookingToTripResponse)(nil),   // 30: toqui.v1.LinkBookingToTripResponse
-	(*DeleteBookingRequest)(nil),        // 31: toqui.v1.DeleteBookingRequest
-	(*DeleteBookingResponse)(nil),       // 32: toqui.v1.DeleteBookingResponse
-	(*ExtractBookingFieldRequest)(nil),  // 33: toqui.v1.ExtractBookingFieldRequest
-	(*ExtractBookingFieldResponse)(nil), // 34: toqui.v1.ExtractBookingFieldResponse
-	nil,                                 // 35: toqui.v1.ExtractBookingFieldResponse.ExtractedFieldsEntry
-	(*timestamppb.Timestamp)(nil),       // 36: google.protobuf.Timestamp
-	(*LatLng)(nil),                      // 37: toqui.v1.LatLng
-	(*PaginationRequest)(nil),           // 38: toqui.v1.PaginationRequest
-	(*PaginationResponse)(nil),          // 39: toqui.v1.PaginationResponse
+	(*BookingConflict)(nil),             // 18: toqui.v1.BookingConflict
+	(*CoverageGap)(nil),                 // 19: toqui.v1.CoverageGap
+	(*IngestEmailRequest)(nil),          // 20: toqui.v1.IngestEmailRequest
+	(*IngestEmailResponse)(nil),         // 21: toqui.v1.IngestEmailResponse
+	(*UpdateBookingRequest)(nil),        // 22: toqui.v1.UpdateBookingRequest
+	(*UpdateBookingResponse)(nil),       // 23: toqui.v1.UpdateBookingResponse
+	(*ListBookingsRequest)(nil),         // 24: toqui.v1.ListBookingsRequest
+	(*ListBookingsResponse)(nil),        // 25: toqui.v1.ListBookingsResponse
+	(*GetBookingRequest)(nil),           // 26: toqui.v1.GetBookingRequest
+	(*GetBookingResponse)(nil),          // 27: toqui.v1.GetBookingResponse
+	(*GetTripCostSummaryRequest)(nil),   // 28: toqui.v1.GetTripCostSummaryRequest
+	(*GetTripCostSummaryResponse)(nil),  // 29: toqui.v1.GetTripCostSummaryResponse
+	(*CurrencyTotal)(nil),               // 30: toqui.v1.CurrencyTotal
+	(*LinkBookingToTripRequest)(nil),    // 31: toqui.v1.LinkBookingToTripRequest
+	(*LinkBookingToTripResponse)(nil),   // 32: toqui.v1.LinkBookingToTripResponse
+	(*DeleteBookingRequest)(nil),        // 33: toqui.v1.DeleteBookingRequest
+	(*DeleteBookingResponse)(nil),       // 34: toqui.v1.DeleteBookingResponse
+	(*ExtractBookingFieldRequest)(nil),  // 35: toqui.v1.ExtractBookingFieldRequest
+	(*ExtractBookingFieldResponse)(nil), // 36: toqui.v1.ExtractBookingFieldResponse
+	nil,                                 // 37: toqui.v1.ExtractBookingFieldResponse.ExtractedFieldsEntry
+	(*timestamppb.Timestamp)(nil),       // 38: google.protobuf.Timestamp
+	(*LatLng)(nil),                      // 39: toqui.v1.LatLng
+	(*PaginationRequest)(nil),           // 40: toqui.v1.PaginationRequest
+	(*PaginationResponse)(nil),          // 41: toqui.v1.PaginationResponse
 }
 var file_toqui_v1_booking_proto_depIdxs = []int32{
 	0,  // 0: toqui.v1.Booking.type:type_name -> toqui.v1.BookingType
-	36, // 1: toqui.v1.Booking.start_time:type_name -> google.protobuf.Timestamp
-	36, // 2: toqui.v1.Booking.end_time:type_name -> google.protobuf.Timestamp
-	37, // 3: toqui.v1.Booking.location:type_name -> toqui.v1.LatLng
+	38, // 1: toqui.v1.Booking.start_time:type_name -> google.protobuf.Timestamp
+	38, // 2: toqui.v1.Booking.end_time:type_name -> google.protobuf.Timestamp
+	39, // 3: toqui.v1.Booking.location:type_name -> toqui.v1.LatLng
 	1,  // 4: toqui.v1.Booking.source:type_name -> toqui.v1.BookingSource
-	36, // 5: toqui.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
+	38, // 5: toqui.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
 	4,  // 6: toqui.v1.Booking.flight_details:type_name -> toqui.v1.FlightDetails
 	5,  // 7: toqui.v1.Booking.hotel_details:type_name -> toqui.v1.HotelDetails
 	6,  // 8: toqui.v1.Booking.car_rental_details:type_name -> toqui.v1.CarRentalDetails
@@ -3244,41 +3429,43 @@ var file_toqui_v1_booking_proto_depIdxs = []int32{
 	8,  // 18: toqui.v1.TourDetails.stops:type_name -> toqui.v1.TourStop
 	0,  // 19: toqui.v1.IngestBookingRequest.type:type_name -> toqui.v1.BookingType
 	2,  // 20: toqui.v1.IngestBookingResponse.booking:type_name -> toqui.v1.Booking
-	2,  // 21: toqui.v1.IngestEmailResponse.bookings:type_name -> toqui.v1.Booking
-	0,  // 22: toqui.v1.UpdateBookingRequest.type:type_name -> toqui.v1.BookingType
-	36, // 23: toqui.v1.UpdateBookingRequest.start_time:type_name -> google.protobuf.Timestamp
-	36, // 24: toqui.v1.UpdateBookingRequest.end_time:type_name -> google.protobuf.Timestamp
-	2,  // 25: toqui.v1.UpdateBookingResponse.booking:type_name -> toqui.v1.Booking
-	38, // 26: toqui.v1.ListBookingsRequest.pagination:type_name -> toqui.v1.PaginationRequest
-	2,  // 27: toqui.v1.ListBookingsResponse.bookings:type_name -> toqui.v1.Booking
-	39, // 28: toqui.v1.ListBookingsResponse.pagination:type_name -> toqui.v1.PaginationResponse
-	2,  // 29: toqui.v1.GetBookingResponse.booking:type_name -> toqui.v1.Booking
-	28, // 30: toqui.v1.GetTripCostSummaryResponse.totals:type_name -> toqui.v1.CurrencyTotal
-	2,  // 31: toqui.v1.LinkBookingToTripResponse.booking:type_name -> toqui.v1.Booking
-	35, // 32: toqui.v1.ExtractBookingFieldResponse.extracted_fields:type_name -> toqui.v1.ExtractBookingFieldResponse.ExtractedFieldsEntry
-	16, // 33: toqui.v1.BookingService.IngestBooking:input_type -> toqui.v1.IngestBookingRequest
-	18, // 34: toqui.v1.BookingService.IngestEmail:input_type -> toqui.v1.IngestEmailRequest
-	20, // 35: toqui.v1.BookingService.UpdateBooking:input_type -> toqui.v1.UpdateBookingRequest
-	22, // 36: toqui.v1.BookingService.ListBookings:input_type -> toqui.v1.ListBookingsRequest
-	24, // 37: toqui.v1.BookingService.GetBooking:input_type -> toqui.v1.GetBookingRequest
-	26, // 38: toqui.v1.BookingService.GetTripCostSummary:input_type -> toqui.v1.GetTripCostSummaryRequest
-	29, // 39: toqui.v1.BookingService.LinkBookingToTrip:input_type -> toqui.v1.LinkBookingToTripRequest
-	31, // 40: toqui.v1.BookingService.DeleteBooking:input_type -> toqui.v1.DeleteBookingRequest
-	33, // 41: toqui.v1.BookingService.ExtractBookingField:input_type -> toqui.v1.ExtractBookingFieldRequest
-	17, // 42: toqui.v1.BookingService.IngestBooking:output_type -> toqui.v1.IngestBookingResponse
-	19, // 43: toqui.v1.BookingService.IngestEmail:output_type -> toqui.v1.IngestEmailResponse
-	21, // 44: toqui.v1.BookingService.UpdateBooking:output_type -> toqui.v1.UpdateBookingResponse
-	23, // 45: toqui.v1.BookingService.ListBookings:output_type -> toqui.v1.ListBookingsResponse
-	25, // 46: toqui.v1.BookingService.GetBooking:output_type -> toqui.v1.GetBookingResponse
-	27, // 47: toqui.v1.BookingService.GetTripCostSummary:output_type -> toqui.v1.GetTripCostSummaryResponse
-	30, // 48: toqui.v1.BookingService.LinkBookingToTrip:output_type -> toqui.v1.LinkBookingToTripResponse
-	32, // 49: toqui.v1.BookingService.DeleteBooking:output_type -> toqui.v1.DeleteBookingResponse
-	34, // 50: toqui.v1.BookingService.ExtractBookingField:output_type -> toqui.v1.ExtractBookingFieldResponse
-	42, // [42:51] is the sub-list for method output_type
-	33, // [33:42] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	18, // 21: toqui.v1.IngestBookingResponse.conflicts:type_name -> toqui.v1.BookingConflict
+	19, // 22: toqui.v1.IngestBookingResponse.coverage_gap:type_name -> toqui.v1.CoverageGap
+	2,  // 23: toqui.v1.IngestEmailResponse.bookings:type_name -> toqui.v1.Booking
+	0,  // 24: toqui.v1.UpdateBookingRequest.type:type_name -> toqui.v1.BookingType
+	38, // 25: toqui.v1.UpdateBookingRequest.start_time:type_name -> google.protobuf.Timestamp
+	38, // 26: toqui.v1.UpdateBookingRequest.end_time:type_name -> google.protobuf.Timestamp
+	2,  // 27: toqui.v1.UpdateBookingResponse.booking:type_name -> toqui.v1.Booking
+	40, // 28: toqui.v1.ListBookingsRequest.pagination:type_name -> toqui.v1.PaginationRequest
+	2,  // 29: toqui.v1.ListBookingsResponse.bookings:type_name -> toqui.v1.Booking
+	41, // 30: toqui.v1.ListBookingsResponse.pagination:type_name -> toqui.v1.PaginationResponse
+	2,  // 31: toqui.v1.GetBookingResponse.booking:type_name -> toqui.v1.Booking
+	30, // 32: toqui.v1.GetTripCostSummaryResponse.totals:type_name -> toqui.v1.CurrencyTotal
+	2,  // 33: toqui.v1.LinkBookingToTripResponse.booking:type_name -> toqui.v1.Booking
+	37, // 34: toqui.v1.ExtractBookingFieldResponse.extracted_fields:type_name -> toqui.v1.ExtractBookingFieldResponse.ExtractedFieldsEntry
+	16, // 35: toqui.v1.BookingService.IngestBooking:input_type -> toqui.v1.IngestBookingRequest
+	20, // 36: toqui.v1.BookingService.IngestEmail:input_type -> toqui.v1.IngestEmailRequest
+	22, // 37: toqui.v1.BookingService.UpdateBooking:input_type -> toqui.v1.UpdateBookingRequest
+	24, // 38: toqui.v1.BookingService.ListBookings:input_type -> toqui.v1.ListBookingsRequest
+	26, // 39: toqui.v1.BookingService.GetBooking:input_type -> toqui.v1.GetBookingRequest
+	28, // 40: toqui.v1.BookingService.GetTripCostSummary:input_type -> toqui.v1.GetTripCostSummaryRequest
+	31, // 41: toqui.v1.BookingService.LinkBookingToTrip:input_type -> toqui.v1.LinkBookingToTripRequest
+	33, // 42: toqui.v1.BookingService.DeleteBooking:input_type -> toqui.v1.DeleteBookingRequest
+	35, // 43: toqui.v1.BookingService.ExtractBookingField:input_type -> toqui.v1.ExtractBookingFieldRequest
+	17, // 44: toqui.v1.BookingService.IngestBooking:output_type -> toqui.v1.IngestBookingResponse
+	21, // 45: toqui.v1.BookingService.IngestEmail:output_type -> toqui.v1.IngestEmailResponse
+	23, // 46: toqui.v1.BookingService.UpdateBooking:output_type -> toqui.v1.UpdateBookingResponse
+	25, // 47: toqui.v1.BookingService.ListBookings:output_type -> toqui.v1.ListBookingsResponse
+	27, // 48: toqui.v1.BookingService.GetBooking:output_type -> toqui.v1.GetBookingResponse
+	29, // 49: toqui.v1.BookingService.GetTripCostSummary:output_type -> toqui.v1.GetTripCostSummaryResponse
+	32, // 50: toqui.v1.BookingService.LinkBookingToTrip:output_type -> toqui.v1.LinkBookingToTripResponse
+	34, // 51: toqui.v1.BookingService.DeleteBooking:output_type -> toqui.v1.DeleteBookingResponse
+	36, // 52: toqui.v1.BookingService.ExtractBookingField:output_type -> toqui.v1.ExtractBookingFieldResponse
+	44, // [44:53] is the sub-list for method output_type
+	35, // [35:44] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_booking_proto_init() }
@@ -3306,7 +3493,7 @@ func file_toqui_v1_booking_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_toqui_v1_booking_proto_rawDesc), len(file_toqui_v1_booking_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   34,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

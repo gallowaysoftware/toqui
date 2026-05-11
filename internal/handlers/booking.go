@@ -71,7 +71,41 @@ func (h *BookingHandler) IngestBooking(ctx context.Context, req *connect.Request
 		Booking:           bookingToProto(b),
 		WasUpdated:        result.WasUpdated,
 		PreviousBookingId: result.PreviousID,
+		Conflicts:         conflictsToProto(result.Conflicts),
+		CoverageGap:       coverageGapToProto(result.CoverageGap),
 	}), nil
+}
+
+// conflictsToProto maps the service-layer Conflict slice to its proto
+// representation. Returns nil for an empty/nil input so the response field
+// is omitted on the wire when there are no conflicts.
+func conflictsToProto(conflicts []booking.Conflict) []*toquiv1.BookingConflict {
+	if len(conflicts) == 0 {
+		return nil
+	}
+	out := make([]*toquiv1.BookingConflict, 0, len(conflicts))
+	for _, c := range conflicts {
+		out = append(out, &toquiv1.BookingConflict{
+			Type:       c.Type,
+			Severity:   c.Severity,
+			Message:    c.Message,
+			BookingIds: c.BookingIDs,
+		})
+	}
+	return out
+}
+
+// coverageGapToProto maps the service-layer CoverageGap to its proto
+// representation. Returns nil when no gap was detected.
+func coverageGapToProto(gap *booking.CoverageGap) *toquiv1.CoverageGap {
+	if gap == nil {
+		return nil
+	}
+	return &toquiv1.CoverageGap{
+		Type:           gap.Type,
+		Priority:       int32(gap.Priority),
+		SuggestionHint: gap.SuggestionHint,
+	}
 }
 
 func (h *BookingHandler) IngestEmail(ctx context.Context, req *connect.Request[toquiv1.IngestEmailRequest]) (*connect.Response[toquiv1.IngestEmailResponse], error) {

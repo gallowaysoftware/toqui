@@ -3,8 +3,10 @@ package booking
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -36,6 +38,8 @@ type stubQueries struct {
 	getBookingByIDFn                    func(ctx context.Context, arg dbgen.GetBookingByIDParams) (dbgen.Booking, error)
 	deleteBookingFn                     func(ctx context.Context, arg dbgen.DeleteBookingParams) (int64, error)
 	linkBookingToTripForOwnerOrEditorFn func(ctx context.Context, arg dbgen.LinkBookingToTripForOwnerOrEditorParams) (dbgen.Booking, error)
+	getTripByIDFn                       func(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error)
+	listItineraryItemsByTripFn          func(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error)
 
 	createBookingCalls []dbgen.CreateBookingForOwnerOrEditorParams
 	deleteBookingCalls []dbgen.DeleteBookingParams
@@ -95,7 +99,12 @@ func (s *stubQueries) ListBookingsByTrip(ctx context.Context, arg dbgen.ListBook
 	if s.listBookingsByTripFn != nil {
 		return s.listBookingsByTripFn(ctx, arg)
 	}
-	s.tb.Fatalf("unexpected stubQueries.ListBookingsByTrip(%+v) — set listBookingsByTripFn", arg)
+	// Soft default: an empty list is correct for tests that don't care
+	// about post-ingest analysis. Originally fail-loud, but the post-ingest
+	// path (DetectConflicts + AnalyzeCoverage) now calls this after every
+	// successful ingest as a best-effort feedback fetch — making it
+	// fail-loud here would force every ingest test to opt in. Tests that
+	// want to assert on listing behavior set listBookingsByTripFn.
 	return nil, nil
 }
 
@@ -122,6 +131,24 @@ func (s *stubQueries) LinkBookingToTripForOwnerOrEditor(ctx context.Context, arg
 	}
 	s.tb.Fatalf("unexpected stubQueries.LinkBookingToTripForOwnerOrEditor(%+v) — set linkBookingToTripForOwnerOrEditorFn", arg)
 	return dbgen.Booking{}, nil
+}
+
+// GetTripByID and ListItineraryItemsByTrip back the post-ingest analysis
+// (DetectConflicts + AnalyzeCoverage). Both default to "no data" so
+// existing tests that don't care about post-ingest feedback don't have to
+// opt in. Tests that want to exercise the analysis can set the *Fn fields.
+func (s *stubQueries) GetTripByID(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error) {
+	if s.getTripByIDFn != nil {
+		return s.getTripByIDFn(ctx, arg)
+	}
+	return dbgen.Trip{ID: arg.ID, UserID: arg.UserID}, nil
+}
+
+func (s *stubQueries) ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error) {
+	if s.listItineraryItemsByTripFn != nil {
+		return s.listItineraryItemsByTripFn(ctx, tripID)
+	}
+	return nil, nil
 }
 
 // stubAIProvider satisfies ai.Provider. Each test injects a chatStream
@@ -1070,5 +1097,148 @@ func TestExtractField_NonJSONResponseUsedAsAnswer(t *testing.T) {
 	}
 	if got.Answer != "just a plain text answer" {
 		t.Errorf("expected raw text as Answer, got %q", got.Answer)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Post-ingest analysis (DetectConflicts + AnalyzeCoverage attached to the
+// IngestResult by attachPostIngestAnalysis).
+// ---------------------------------------------------------------------------
+
+func TestIngest_AttachesConflictsAndCoverage(t *testing.T) {
+	// After ingest, the service fetches the trip's bookings and runs the
+	// detectors. Here we set up a tight-layover scenario so DetectConflicts
+	// has something to flag, and a flight-without-hotel scenario for
+	// AnalyzeCoverage. Both should appear on the result.
+	userID := uuid.New()
+	tripUUID := uuid.New()
+
+	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	flightA := dbgen.Booking{
+		ID:                uuid.New(),
+		Type:              "flight",
+		DepartureLocation: pgtype.Text{String: "JFK", Valid: true},
+		ArrivalLocation:   pgtype.Text{String: "FRA", Valid: true},
+		StartTime:         pgtype.Timestamptz{Time: base.Add(-7 * time.Hour), Valid: true},
+		EndTime:           pgtype.Timestamptz{Time: base, Valid: true},
+	}
+	flightB := dbgen.Booking{
+		ID:                uuid.New(),
+		Type:              "flight",
+		DepartureLocation: pgtype.Text{String: "FRA", Valid: true},
+		ArrivalLocation:   pgtype.Text{String: "ATH", Valid: true},
+		StartTime:         pgtype.Timestamptz{Time: base.Add(45 * time.Minute), Valid: true},
+		EndTime:           pgtype.Timestamptz{Time: base.Add(45*time.Minute + 3*time.Hour), Valid: true},
+	}
+
+	parsedJSON := `{"type": "flight", "confirmation_code": "FX1"}`
+
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return flightA, nil
+		},
+		listBookingsByTripFn: func(_ context.Context, _ dbgen.ListBookingsByTripParams) ([]dbgen.Booking, error) {
+			// Return both flights so the tight_layover check fires AND
+			// no_accommodation fires (flights but no hotel).
+			return []dbgen.Booking{flightA, flightB}, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), userID, tripUUID.String(), "flight", "raw")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.Conflicts) == 0 {
+		t.Errorf("expected post-ingest conflicts, got none")
+	}
+	foundLayover := false
+	for _, c := range got.Conflicts {
+		if c.Type == ConflictTightLayover {
+			foundLayover = true
+		}
+	}
+	if !foundLayover {
+		t.Errorf("expected tight_layover conflict, got %+v", got.Conflicts)
+	}
+	if got.CoverageGap == nil {
+		t.Errorf("expected post-ingest coverage gap (no accommodation), got nil")
+	} else if got.CoverageGap.Type != GapNoAccommodation {
+		t.Errorf("expected no_accommodation gap, got %s", got.CoverageGap.Type)
+	}
+}
+
+func TestIngest_UnattachedBookingSkipsAnalysis(t *testing.T) {
+	// Bookings without a trip_id should not trigger the post-ingest
+	// analysis (nothing to analyze against). The list query must NOT be
+	// called for unattached bookings.
+	parsedJSON := `{"type": "flight", "confirmation_code": "FX2"}`
+
+	listCalled := false
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: uuid.New(), Type: "flight"}, nil
+		},
+		listBookingsByTripFn: func(_ context.Context, _ dbgen.ListBookingsByTripParams) ([]dbgen.Booking, error) {
+			listCalled = true
+			return nil, nil
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), uuid.New(), "" /* no trip */, "flight", "raw")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if listCalled {
+		t.Errorf("ListBookingsByTrip must not be called for unattached bookings")
+	}
+	if len(got.Conflicts) != 0 {
+		t.Errorf("expected no conflicts on unattached booking, got %+v", got.Conflicts)
+	}
+	if got.CoverageGap != nil {
+		t.Errorf("expected no coverage gap on unattached booking, got %+v", got.CoverageGap)
+	}
+}
+
+func TestIngest_ListBookingsErrorIsBestEffort(t *testing.T) {
+	// If ListBookingsByTrip fails, the ingest still succeeds — analysis is
+	// best-effort. The result has no conflicts/gap but the booking is
+	// returned successfully.
+	parsedJSON := `{"type": "flight", "confirmation_code": "FX3"}`
+	resultID := uuid.New()
+	tripUUID := uuid.New()
+
+	q := &stubQueries{tb: t,
+		findBookingByConfirmationCodeFn: func(_ context.Context, _ dbgen.FindBookingByConfirmationCodeParams) (dbgen.Booking, error) {
+			return dbgen.Booking{}, pgx.ErrNoRows
+		},
+		createBookingForOwnerOrEditorFn: func(_ context.Context, _ dbgen.CreateBookingForOwnerOrEditorParams) (dbgen.Booking, error) {
+			return dbgen.Booking{ID: resultID, Type: "flight"}, nil
+		},
+		listBookingsByTripFn: func(_ context.Context, _ dbgen.ListBookingsByTripParams) ([]dbgen.Booking, error) {
+			return nil, fmt.Errorf("simulated DB failure")
+		},
+	}
+	p := &stubAIProvider{tb: t, chatStream: streamingResponse(parsedJSON)}
+	svc := newTestService(q, p)
+
+	got, err := svc.IngestText(context.Background(), uuid.New(), tripUUID.String(), "flight", "raw")
+	if err != nil {
+		t.Fatalf("post-ingest analysis errors must not fail the ingest: %v", err)
+	}
+	if got.Booking == nil || got.Booking.ID != resultID {
+		t.Errorf("expected booking returned despite analysis failure")
+	}
+	if len(got.Conflicts) != 0 || got.CoverageGap != nil {
+		t.Errorf("expected empty analysis on DB failure, got conflicts=%d gap=%+v", len(got.Conflicts), got.CoverageGap)
 	}
 }

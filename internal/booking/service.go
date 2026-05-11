@@ -36,6 +36,12 @@ type bookingQueries interface {
 	GetBookingByID(ctx context.Context, arg dbgen.GetBookingByIDParams) (dbgen.Booking, error)
 	DeleteBooking(ctx context.Context, arg dbgen.DeleteBookingParams) (int64, error)
 	LinkBookingToTripForOwnerOrEditor(ctx context.Context, arg dbgen.LinkBookingToTripForOwnerOrEditorParams) (dbgen.Booking, error)
+
+	// Used by post-ingest analysis (DetectConflicts + AnalyzeCoverage). Both
+	// are best-effort — failures here log a warning but do not fail the
+	// ingest, since the booking has already been written.
+	GetTripByID(ctx context.Context, arg dbgen.GetTripByIDParams) (dbgen.Trip, error)
+	ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error)
 }
 
 var _ bookingQueries = (*dbgen.Queries)(nil)
@@ -59,10 +65,19 @@ func NewService(pool *pgxpool.Pool, aiProvider ai.Provider) *Service {
 // because the user has manually edited the existing record (we never
 // silently overwrite user edits). PreviousID is set in both merge cases
 // — either the merged-into row's ID or the user-edited row's ID.
+//
+// Conflicts and CoverageGap are best-effort post-ingest feedback for the
+// trip the booking belongs to. They surface scheduling problems
+// (DetectConflicts) and the single highest-priority missing piece of
+// the trip plan (AnalyzeCoverage) so the frontend / chat can prompt the
+// user. Both are nil when the booking is unattached (no trip), when the
+// trip lookup fails, or when no conflicts/gaps are detected.
 type IngestResult struct {
-	Booking    *dbgen.Booking
-	WasUpdated bool
-	PreviousID string
+	Booking     *dbgen.Booking
+	WasUpdated  bool
+	PreviousID  string
+	Conflicts   []Conflict
+	CoverageGap *CoverageGap
 }
 
 type ParsedBooking struct {
@@ -118,6 +133,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 			if err != nil {
 				return nil, err
 			}
+			s.attachPostIngestAnalysis(ctx, userID, tripUUID, result)
 			return result, nil
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
@@ -138,6 +154,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 			if err != nil {
 				return nil, err
 			}
+			s.attachPostIngestAnalysis(ctx, userID, tripUUID, result)
 			return result, nil
 		}
 	}
@@ -204,12 +221,101 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 				"booking_id", existing.ID,
 				"type", existing.Type,
 			)
-			return s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "race recovery")
+			result, mergeErr := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "race recovery")
+			if mergeErr != nil {
+				return nil, mergeErr
+			}
+			s.attachPostIngestAnalysis(ctx, userID, tripUUID, result)
+			return result, nil
 		}
 		return nil, fmt.Errorf("create booking: %w", err)
 	}
 
-	return &IngestResult{Booking: &booking}, nil
+	result := &IngestResult{Booking: &booking}
+	s.attachPostIngestAnalysis(ctx, userID, tripUUID, result)
+	return result, nil
+}
+
+// attachPostIngestAnalysis populates result.Conflicts and result.CoverageGap
+// using DetectConflicts and AnalyzeCoverage. Best-effort: any DB error here
+// is logged at warn but does not propagate — the booking has already been
+// written and should be returned regardless. When the booking is unattached
+// (no trip_id) we skip analysis entirely since both detectors are
+// trip-scoped.
+func (s *Service) attachPostIngestAnalysis(ctx context.Context, userID uuid.UUID, tripUUID pgtype.UUID, result *IngestResult) {
+	if !tripUUID.Valid {
+		return
+	}
+	tripID := uuid.UUID(tripUUID.Bytes)
+
+	bookings, err := s.queries.ListBookingsByTrip(ctx, dbgen.ListBookingsByTripParams{
+		TripID: tripUUID,
+		UserID: userID,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "post-ingest analysis: list bookings failed",
+			"user_id", userID,
+			"error", err,
+		)
+		return
+	}
+
+	conflicts := DetectConflicts(bookings)
+	if len(conflicts) > 0 {
+		result.Conflicts = conflicts
+		// Privacy: log type counts, never the messages or IDs of bookings.
+		// The conflict messages are user-facing and don't carry travel
+		// content, but we still keep operational logs minimal.
+		typeCounts := map[string]int{}
+		for _, c := range conflicts {
+			typeCounts[c.Type]++
+		}
+		slog.InfoContext(ctx, "post-ingest conflicts detected",
+			"user_id", userID,
+			"trip_id", tripID,
+			"type_counts", typeCounts,
+		)
+	}
+
+	trip, err := s.queries.GetTripByID(ctx, dbgen.GetTripByIDParams{
+		ID:     tripID,
+		UserID: userID,
+	})
+	if err != nil {
+		// Trip lookup failure is not fatal — we just skip coverage analysis.
+		// This typically means the booking is on a trip the user no longer
+		// owns (e.g. collaborator), in which case coverage suggestions are
+		// not the user's call to act on anyway.
+		slog.WarnContext(ctx, "post-ingest analysis: get trip failed",
+			"user_id", userID,
+			"trip_id", tripID,
+			"error", err,
+		)
+		return
+	}
+
+	itineraryItems, err := s.queries.ListItineraryItemsByTrip(ctx, tripID)
+	if err != nil {
+		slog.WarnContext(ctx, "post-ingest analysis: list itinerary failed",
+			"user_id", userID,
+			"trip_id", tripID,
+			"error", err,
+		)
+		// Don't return — AnalyzeCoverage tolerates 0 itinerary items, just
+		// won't fire the sparse_itinerary check. Better to surface
+		// no_accommodation than to bail entirely on a transient itinerary
+		// query failure.
+	}
+
+	if gap := AnalyzeCoverage(trip, bookings, len(itineraryItems)); gap != nil {
+		result.CoverageGap = gap
+		slog.InfoContext(ctx, "post-ingest coverage gap detected",
+			"user_id", userID,
+			"trip_id", tripID,
+			"gap_type", gap.Type,
+			"priority", gap.Priority,
+		)
+	}
 }
 
 // tryMergeOrPreserve runs MergeBooking against an existing record. The
