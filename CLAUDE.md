@@ -100,7 +100,7 @@ graph TB
 | `internal/telemetry/`   | OpenTelemetry initialization + HTTP metrics middleware (OTLP exporter, Cloud Monitoring)  |
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
-| `internal/email/`       | Transactional email via Resend API (waitlist verification, invite emails)                   |
+| `internal/email/`       | Resend API client. Outbound transactional email (waitlist verification, invite emails) plus inbound body fetch via `Inbound.FetchReceived` after `/webhooks/email/inbound` verifies the Svix signature. |
 | `internal/payment/`     | Stripe payment processing (Trip Pro checkout sessions, one-time purchases)                  |
 | `internal/subscription/` | Stripe subscription management (Explorer/Voyager tiers, checkout, webhooks, portal)        |
 | `internal/requestid/`   | HTTP middleware — generates unique request IDs, sets `X-Request-ID` response header         |
@@ -826,7 +826,7 @@ Request → recovery → requestID → requestLogging → securityHeaders → CO
 - **CORS**: Cross-origin resource sharing for frontend origins. `Access-Control-Allow-Credentials: true` on all routes (required for browsers to send HttpOnly cookies on cross-origin same-site requests). CSRF middleware prevents abuse.
 - **Cookie auth**: Reads `toqui_access` HttpOnly cookie and sets `Authorization: Bearer` header on the request. Passthrough if `Authorization` header already present (native apps). See `internal/middleware/cookieauth.go`.
 - **IP rate limit**: Per-IP request rate limiting (separate from per-user ConnectRPC rate limiting). Runs AFTER cookieAuth so the limiter can use the user identity set by cookieAuth for smarter rate limiting.
-- **CSRF**: Origin/Referer header validation for state-changing requests (POST/PUT/DELETE/PATCH). Exempt: webhooks (have their own ECDSA auth). Non-browser clients (no Origin/Referer) are allowed through.
+- **CSRF**: Origin/Referer header validation for state-changing requests (POST/PUT/DELETE/PATCH). Exempt: webhooks (each has its own HMAC-SHA256 signature scheme — Resend/Svix on `/webhooks/email/inbound`, Stripe on `/api/subscription/webhook`). Non-browser clients (no Origin/Referer) are allowed through.
 - **Request body limits**: All REST POST handlers use `http.MaxBytesReader(w, r.Body, 1<<20)` — 1MB max
 
 ### JWT Token Types
