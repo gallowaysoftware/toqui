@@ -690,7 +690,8 @@ func main() {
 	mux.HandleFunc("/admin/funnel", adminHandler.HandleFunnel)
 
 	// Email ingestion webhook (outside ConnectRPC)
-	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, cfg.SendGridWebhookKey)
+	emailInbound := email.NewInbound(cfg.ResendAPIKey)
+	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, emailInbound, cfg.EmailWebhookSecret)
 	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)
 
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))

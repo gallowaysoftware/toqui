@@ -1,126 +1,294 @@
 package handlers
 
 import (
-	"bytes"
-	"crypto/ecdsa"
+	"context"
+	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui-backend/internal/email"
 	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
-// maxEmailBodySize limits the multipart form data to 25 MB (SendGrid max attachment size).
-const maxEmailBodySize = 25 << 20
+// maxEmailBodySize bounds the inbound JSON payload to 1 MB. Resend's
+// webhook bodies are tiny (metadata only — a few kilobytes), and the
+// repo convention for every REST POST handler is 1 MB (CLAUDE.md
+// "Security Hardening — Request body limits"). The previous 25 MB
+// allowance was a DoS amplifier on a public, unauthenticated endpoint.
+const maxEmailBodySize = 1 << 20
 
-// EmailWebhookHandler handles inbound email webhooks from SendGrid Inbound Parse.
+// svixReplayWindow is the maximum allowed clock skew between Resend's
+// signing servers and this server. Anything older is rejected to
+// mitigate replay attacks. Svix's official guidance is "within your
+// tolerance"; 5 min matches what most receivers use.
+const svixReplayWindow = 5 * time.Minute
+
+// ResendInboundEvent is the JSON envelope Resend posts for inbound
+// (`email.received`) webhooks. The webhook delivers metadata only —
+// `data.email_id` is used to fetch the actual text/html body via the
+// Resend Received Emails API (see internal/email/inbound.go).
+//
+// Per Resend docs (resend.com/docs/dashboard/webhooks):
+//
+//	{
+//	  "type": "email.received",
+//	  "created_at": "2026-...",
+//	  "data": { "email_id": "...", "from": "...", "to": [...], ... }
+//	}
+//
+// Authentication is via Svix signing headers:
+//
+//   - svix-id: unique message ID
+//   - svix-timestamp: unix seconds (string)
+//   - svix-signature: space-separated list of "v1,<base64-sig>" entries
+//
+// Signature is HMAC-SHA256 over `${svix-id}.${svix-timestamp}.${raw-body}`,
+// keyed with the base64-decoded portion of the secret after the `whsec_`
+// prefix. Verifier accepts a match against any v1 signature in the header.
+type ResendInboundEvent struct {
+	Type      string            `json:"type"`
+	CreatedAt string            `json:"created_at"`
+	Data      ResendInboundData `json:"data"`
+}
+
+// ResendInboundData mirrors the relevant fields of Resend's
+// `data` object. We pull out only what we need for trip matching and
+// the body fetch — full attachments etc. are intentionally ignored.
+type ResendInboundData struct {
+	EmailID   string   `json:"email_id"`
+	From      string   `json:"from"`
+	To        []string `json:"to"`
+	Subject   string   `json:"subject"`
+	MessageID string   `json:"message_id"`
+}
+
+// ReceivedEmailFetcher fetches the body of a received email by ID. The
+// real implementation lives in internal/email; tests inject a fake.
+type ReceivedEmailFetcher interface {
+	FetchReceived(ctx context.Context, emailID string) (*email.ReceivedEmail, error)
+}
+
+// EmailWebhookHandler handles inbound email webhooks from Resend.
 type EmailWebhookHandler struct {
 	bookingSvc           *booking.Service
 	tripSvc              *trip.Service
 	paymentSvc           *payment.Service
 	queries              *dbgen.Queries
-	webhookKey           string // SendGrid Inbound Parse webhook verification public key (PEM)
+	inbound              ReceivedEmailFetcher
+	webhookSecret        string // Resend webhook signing secret (whsec_...)
 	skipSignatureForTest bool   // test-only: skip signature verification
+
+	// seenSvixIDs caches svix-id values within the replay window so that
+	// a duplicate delivery (Resend retry of an already-processed message,
+	// or an attacker replaying a captured-but-still-valid request)
+	// short-circuits before booking ingest. Per-instance only — Cloud
+	// Run scaleout means a request retried across instances inside the
+	// 5-min window can still slip through. The signature timestamp gate
+	// caps the residual exposure at 5 min; a full DB-backed dedup is the
+	// next harden if cross-instance replay becomes a real risk.
+	seenSvixIDs   map[string]time.Time
+	seenSvixIDsMu sync.Mutex
 }
 
-// NewEmailWebhookHandler creates a new handler for inbound email webhooks.
-func NewEmailWebhookHandler(bookingSvc *booking.Service, tripSvc *trip.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, webhookKey string) *EmailWebhookHandler {
+// NewEmailWebhookHandler creates the inbound webhook handler.
+//
+//   - webhookSecret is the Resend webhook signing secret in `whsec_...`
+//     form (loaded from EMAIL_WEBHOOK_SECRET in config).
+//   - inbound is the client used to retrieve the email body after a
+//     verified webhook arrives. Pass email.NewInbound(cfg.ResendAPIKey).
+func NewEmailWebhookHandler(
+	bookingSvc *booking.Service,
+	tripSvc *trip.Service,
+	paymentSvc *payment.Service,
+	pool *pgxpool.Pool,
+	inbound ReceivedEmailFetcher,
+	webhookSecret string,
+) *EmailWebhookHandler {
 	return &EmailWebhookHandler{
-		bookingSvc: bookingSvc,
-		tripSvc:    tripSvc,
-		paymentSvc: paymentSvc,
-		queries:    dbgen.New(pool),
-		webhookKey: webhookKey,
+		bookingSvc:    bookingSvc,
+		tripSvc:       tripSvc,
+		paymentSvc:    paymentSvc,
+		queries:       dbgen.New(pool),
+		inbound:       inbound,
+		webhookSecret: webhookSecret,
+		seenSvixIDs:   make(map[string]time.Time),
 	}
 }
 
-// HandleInbound processes inbound email webhooks from SendGrid Inbound Parse.
+// markAndCheckSvixID records the svix-id and returns true if this is the
+// first time we've seen it within the replay window. Returns false on a
+// duplicate (retry/replay). Old entries are evicted opportunistically.
+//
+// Safe to call on a handler built without NewEmailWebhookHandler — the
+// internal map is lazily initialised under the mutex so tests that
+// construct the struct directly don't panic.
+func (h *EmailWebhookHandler) markAndCheckSvixID(id string) bool {
+	if id == "" {
+		// Defensive: the signature path already rejects empty svix-id;
+		// treat empty-id callers as fresh so we don't accidentally
+		// dedup multiple legitimate-but-malformed requests onto each
+		// other.
+		return true
+	}
+	now := time.Now()
+	cutoff := now.Add(-svixReplayWindow)
+
+	h.seenSvixIDsMu.Lock()
+	defer h.seenSvixIDsMu.Unlock()
+
+	if h.seenSvixIDs == nil {
+		h.seenSvixIDs = make(map[string]time.Time)
+	}
+
+	// Opportunistic eviction — bounded by the small set of in-flight
+	// IDs in any 5-min window, so the linear scan is cheap.
+	for k, t := range h.seenSvixIDs {
+		if t.Before(cutoff) {
+			delete(h.seenSvixIDs, k)
+		}
+	}
+
+	if seen, ok := h.seenSvixIDs[id]; ok && !seen.Before(cutoff) {
+		return false
+	}
+	h.seenSvixIDs[id] = now
+	return true
+}
+
+// HandleInbound processes a Resend `email.received` webhook.
 // Route: POST /webhooks/email/inbound
 //
-// SendGrid sends multipart/form-data with fields:
-//   - from: sender email (e.g. "Jane Doe <jane@example.com>")
-//   - to: recipient email
-//   - subject: email subject line
-//   - text: plain text body
-//   - html: HTML body
-//   - envelope: JSON with "from" and "to" arrays
+// Pipeline:
+//  1. Verify Svix signature + timestamp window
+//  2. Decode the JSON envelope; ignore non-`email.received` events
+//  3. Fetch the body from Resend's Received Emails API using data.email_id
+//  4. Look up the user by sender email
+//  5. Match the email to a trip by subject (existing logic)
+//  6. Ingest as a booking
 func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Enforce body size limit to prevent memory exhaustion from oversized payloads (#240).
-	r.Body = http.MaxBytesReader(w, r.Body, maxEmailBodySize)
-
-	// Verify webhook signature. Reject unsigned requests if key is configured.
-	if h.webhookKey == "" {
-		slog.Warn("email webhook rejected: SENDGRID_WEBHOOK_KEY not configured")
+	if h.webhookSecret == "" {
+		slog.Warn("email webhook rejected: EMAIL_WEBHOOK_SECRET not configured")
 		http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
 		return
 	}
-	if !h.skipSignatureForTest {
-		if err := h.verifySignature(r); err != nil {
-			slog.Warn("email webhook signature verification failed", "error", err)
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-	}
 
-	// Parse multipart form data.
-	if err := r.ParseMultipartForm(maxEmailBodySize); err != nil {
-		slog.Error("email webhook parse form failed", "error", err)
+	r.Body = http.MaxBytesReader(w, r.Body, maxEmailBodySize)
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		slog.Warn("email webhook read body failed", "error", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	senderEmail := extractEmailAddress(r.FormValue("from"))
-	subject := r.FormValue("subject")
-	textBody := r.FormValue("text")
-	htmlBody := r.FormValue("html")
-
-	// Log metadata only. `from` is masked; `subject` and `trip_title` are
-	// excluded because booking confirmations routinely contain destination
-	// names (e.g. "Your flight to TEL AVIV confirmed") and CLAUDE.md bans
-	// travel content in logs. See toqui-backend#369 P1 #10.
-	slog.Info("email webhook received",
-		"from", maskEmail(senderEmail),
-		"text_len", len(textBody),
-		"html_len", len(htmlBody),
-	)
-
-	// Determine the email body to use (prefer plain text, fall back to HTML).
-	body := textBody
-	if body == "" {
-		body = stripHTMLTags(htmlBody)
+	if !h.skipSignatureForTest {
+		if err := h.verifySvixSignature(r, rawBody); err != nil {
+			slog.Warn("email webhook signature verification failed", "error", err)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		// Replay protection: a duplicate svix-id within the replay
+		// window means either a Resend retry of an already-processed
+		// message or an attacker replaying a captured request. Either
+		// way, ignore. Booking ingestion is NOT idempotent — without
+		// this gate a replay creates a duplicate booking each time.
+		if !h.markAndCheckSvixID(r.Header.Get("svix-id")) {
+			slog.Info("email webhook duplicate svix-id, ignoring",
+				"svix_id", r.Header.Get("svix-id"),
+			)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 	}
-	if body == "" {
-		slog.Warn("email webhook received empty body", "from", maskEmail(senderEmail))
-		// Return 200 so SendGrid does not retry.
+
+	var event ResendInboundEvent
+	if err := json.Unmarshal(rawBody, &event); err != nil {
+		slog.Warn("email webhook invalid JSON", "error", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	// Resend may deliver other event types over the same endpoint
+	// (delivered, bounced, etc.) if a misconfiguration ever occurs.
+	// Anything that's not an inbound event is a 200 no-op so Resend
+	// doesn't retry it.
+	if event.Type != "email.received" {
+		slog.Info("email webhook ignoring non-inbound event type", "type", event.Type)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// Look up the user by sender email.
+	if event.Data.EmailID == "" {
+		slog.Warn("email webhook missing data.email_id")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	senderEmail := extractEmailAddress(event.Data.From)
+	subject := event.Data.Subject
+
+	slog.Info("email webhook received",
+		"from", maskEmail(senderEmail),
+		"email_id", event.Data.EmailID,
+	)
+
+	// Look up the user by sender email FIRST — this is the cheapest
+	// gate and lets us 200-no-op on unknown senders without spending an
+	// API call to fetch the body of an email we'd discard anyway.
 	user, err := h.queries.GetUserByEmail(r.Context(), senderEmail)
 	if err != nil {
 		slog.Warn("email webhook unknown sender",
 			"email", maskEmail(senderEmail),
 			"error", err,
 		)
-		// Return 200 to prevent SendGrid from retrying for unknown senders.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Fetch the actual body from Resend. Resend webhooks intentionally
+	// omit the body to keep payloads small — see
+	// resend.com/docs/dashboard/webhooks/emails/received.
+	received, err := h.inbound.FetchReceived(r.Context(), event.Data.EmailID)
+	if err != nil {
+		slog.Error("email webhook fetch body failed",
+			"user_id", user.ID,
+			"email_id", event.Data.EmailID,
+			"error", err,
+		)
+		// Return 500 so Resend retries; transient API failures are
+		// recoverable on their next retry.
+		http.Error(w, "fetch body failed", http.StatusInternalServerError)
+		return
+	}
+
+	body := received.Text
+	if body == "" {
+		body = stripHTMLTags(received.HTML)
+	}
+	if body == "" {
+		slog.Warn("email webhook received empty body",
+			"user_id", user.ID,
+			"email_id", event.Data.EmailID,
+		)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -134,8 +302,8 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	tripID := h.matchTrip(r, user, subject)
 
 	// Email forwarding is available to all users (free and Pro).
-	// This is a key utility feature that creates lock-in — once bookings
-	// are in Toqui, the AI can build context around them.
+	// This is a key utility feature that creates lock-in — once
+	// bookings are in Toqui, the AI can build context around them.
 
 	// Include subject line as context for AI parsing.
 	fullText := body
@@ -150,16 +318,16 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 			"user_id", user.ID,
 			"error", err,
 		)
-		// Return 500 so SendGrid retries.
+		// Return 500 so Resend retries.
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	b := result.Booking
 
-	// Do NOT log booking title — it contains travel content (hotel name,
-	// destination, etc). Type + ids are sufficient for operational
-	// debugging. See toqui-backend#369 P1 #10.
+	// Do NOT log booking title — it contains travel content (hotel
+	// name, destination, etc). Type + ids are sufficient for
+	// operational debugging. See toqui-backend#369 P1 #10.
 	slog.Info("email webhook booking ingested",
 		"booking_id", b.ID,
 		"user_id", user.ID,
@@ -234,74 +402,79 @@ func (h *EmailWebhookHandler) matchTrip(r *http.Request, user dbgen.User, subjec
 	return tripID
 }
 
-// verifySignature validates the SendGrid Event Webhook ECDSA signature.
-// The signature is computed over: timestamp + raw_body.
+// verifySvixSignature implements Svix's webhook verification scheme as
+// documented at docs.svix.com/receiving/verifying-payloads/how-manual.
+// Resend uses Svix as its webhook delivery layer.
 //
-// This method reads the raw body for verification, then restores r.Body
-// so ParseMultipartForm can re-read it.
-//
-// Headers:
-//   - X-Twilio-Email-Event-Webhook-Signature: base64-encoded ECDSA signature
-//   - X-Twilio-Email-Event-Webhook-Timestamp: timestamp string
-func (h *EmailWebhookHandler) verifySignature(r *http.Request) error {
-	signature := r.Header.Get("X-Twilio-Email-Event-Webhook-Signature")
-	timestamp := r.Header.Get("X-Twilio-Email-Event-Webhook-Timestamp")
-
-	if signature == "" || timestamp == "" {
-		return fmt.Errorf("missing signature headers")
+// Steps:
+//  1. Read svix-id, svix-timestamp, svix-signature headers
+//  2. Reject if timestamp is outside ±svixReplayWindow
+//  3. Strip "whsec_" prefix from configured secret, base64-decode the
+//     remainder to get the HMAC key
+//  4. Compute HMAC-SHA256(key, svix_id + "." + svix_timestamp + "." +
+//     raw_body), base64-encode
+//  5. The svix-signature header is space-separated "v1,<sig>" entries;
+//     accept if any matches via constant-time compare
+func (h *EmailWebhookHandler) verifySvixSignature(r *http.Request, rawBody []byte) error {
+	svixID := r.Header.Get("svix-id")
+	svixTimestamp := r.Header.Get("svix-timestamp")
+	svixSignature := r.Header.Get("svix-signature")
+	if svixID == "" || svixTimestamp == "" || svixSignature == "" {
+		return errors.New("missing svix-id / svix-timestamp / svix-signature header")
 	}
 
-	// Read the raw body for signature verification (bounded to max size).
-	rawBody, err := io.ReadAll(io.LimitReader(r.Body, maxEmailBodySize))
+	tsSeconds, err := strconv.ParseInt(svixTimestamp, 10, 64)
 	if err != nil {
-		return fmt.Errorf("read body for verification: %w", err)
+		return fmt.Errorf("parse svix-timestamp: %w", err)
 	}
-	r.Body.Close()
-	// Restore body so ParseMultipartForm can re-read it.
-	r.Body = io.NopCloser(bytes.NewReader(rawBody))
-
-	// Decode the PEM public key.
-	block, _ := pem.Decode([]byte(h.webhookKey))
-	if block == nil {
-		return fmt.Errorf("invalid PEM public key")
+	skew := time.Since(time.Unix(tsSeconds, 0))
+	if skew < 0 {
+		skew = -skew
+	}
+	if skew > svixReplayWindow {
+		return fmt.Errorf("timestamp outside replay window: skew=%s", skew)
 	}
 
-	pubKeyInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	// Decode the secret. Resend secrets ship with a `whsec_` prefix
+	// followed by base64. The HMAC key is the decoded bytes.
+	secret := strings.TrimPrefix(h.webhookSecret, "whsec_")
+	key, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return fmt.Errorf("parse public key: %w", err)
+		return fmt.Errorf("decode webhook secret (expected whsec_<base64>): %w", err)
 	}
 
-	ecdsaKey, ok := pubKeyInterface.(*ecdsa.PublicKey)
-	if !ok {
-		return fmt.Errorf("public key is not ECDSA")
+	// Compute expected signature (raw HMAC bytes, NOT the base64 form —
+	// we compare in raw to keep both sides exactly 32 bytes for
+	// constant-time hmac.Equal).
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(svixID))
+	mac.Write([]byte("."))
+	mac.Write([]byte(svixTimestamp))
+	mac.Write([]byte("."))
+	mac.Write(rawBody)
+	expected := mac.Sum(nil)
+
+	// svix-signature is space-delimited "v1,<base64>" entries. Decode
+	// each entry's base64 portion and compare against `expected` in
+	// constant time. Comparing the raw 32-byte HMAC outputs (rather
+	// than their base64-encoded strings of attacker-controlled length)
+	// avoids the length-leak and malformed-input footguns that
+	// hmac.Equal does NOT protect against.
+	for _, entry := range strings.Fields(svixSignature) {
+		_, sigB64, ok := strings.Cut(entry, ",")
+		if !ok {
+			continue
+		}
+		sig, err := base64.StdEncoding.DecodeString(sigB64)
+		if err != nil {
+			// Skip malformed entries — Svix only emits valid base64.
+			continue
+		}
+		if hmac.Equal(sig, expected) {
+			return nil
+		}
 	}
-
-	// Decode the base64 signature.
-	sigBytes, err := base64.StdEncoding.DecodeString(signature)
-	if err != nil {
-		return fmt.Errorf("decode signature: %w", err)
-	}
-
-	// The signed payload is: timestamp + raw_body.
-	payload := make([]byte, 0, len(timestamp)+len(rawBody))
-	payload = append(payload, timestamp...)
-	payload = append(payload, rawBody...)
-	hash := sha256.Sum256(payload)
-
-	// Parse the ECDSA signature as r || s concatenated values.
-	keySize := (ecdsaKey.Params().BitSize + 7) / 8
-	if len(sigBytes) != 2*keySize {
-		return fmt.Errorf("unexpected signature length: got %d, expected %d", len(sigBytes), 2*keySize)
-	}
-
-	rVal := new(big.Int).SetBytes(sigBytes[:keySize])
-	sVal := new(big.Int).SetBytes(sigBytes[keySize:])
-
-	if !ecdsa.Verify(ecdsaKey, hash[:], rVal, sVal) {
-		return fmt.Errorf("ECDSA signature verification failed")
-	}
-
-	return nil
+	return errors.New("no svix-signature entry matched expected HMAC")
 }
 
 // extractEmailAddress extracts a bare email address from a "Name <email>" string.

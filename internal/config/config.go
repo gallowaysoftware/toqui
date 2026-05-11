@@ -90,8 +90,13 @@ type Config struct {
 	GoogleCustomSearchCX     string
 	GooglePlacesAPIKey       string
 
-	// Email ingestion
-	SendGridWebhookKey string
+	// Email ingestion. Resend webhook signing secret in `whsec_<base64>`
+	// form, used to verify the Svix signature headers (svix-id,
+	// svix-timestamp, svix-signature) on POST /webhooks/email/inbound.
+	// Resend posts metadata only — the email body is fetched separately
+	// via the Resend Received Emails API. See
+	// internal/handlers/email_webhook.go for the verification contract.
+	EmailWebhookSecret string
 
 	// Affiliate partners
 	SkyscannerAffiliateID   string
@@ -205,7 +210,7 @@ func Load() (*Config, error) {
 		GoogleCustomSearchAPIKey:       os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
 		GoogleCustomSearchCX:           os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:             os.Getenv("GOOGLE_PLACES_API_KEY"),
-		SendGridWebhookKey:             os.Getenv("SENDGRID_WEBHOOK_KEY"),
+		EmailWebhookSecret:             os.Getenv("EMAIL_WEBHOOK_SECRET"),
 		SkyscannerAffiliateID:          os.Getenv("SKYSCANNER_AFFILIATE_ID"),
 		BookingComAffiliateID:          os.Getenv("BOOKINGCOM_AFFILIATE_ID"),
 		GetYourGuidePartnerID:          os.Getenv("GETYOURGUIDE_PARTNER_ID"),

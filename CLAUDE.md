@@ -291,7 +291,7 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
 | `FIRESTORE_DATABASE_ID` | (none) | Firestore database ID (uses default if unset) |
-| `SENDGRID_WEBHOOK_KEY` | (none) | ECDSA public key for SendGrid webhook verification |
+| `EMAIL_WEBHOOK_SECRET` | (none) | Resend webhook signing secret in `whsec_<base64>` form. Used to verify Svix-style signatures on POST /webhooks/email/inbound. |
 | `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
 | `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
 | `POSTHOG_API_KEY` | (none) | PostHog project API key (EU instance, server-side events) |
@@ -800,7 +800,7 @@ The generator pulls each composed expert's `name` + `specialty` via `persona.Com
 - `POST /admin/set-admin` — Grant or revoke admin role (`{email, is_admin}`)
 
 ### Webhooks
-- `POST /webhooks/email/inbound` — SendGrid inbound email webhook (ECDSA signature verified). Processes forwarded booking emails.
+- `POST /webhooks/email/inbound` — Resend inbound email webhook. Accepts the standard Resend `email.received` envelope (metadata only); Svix signature verified against `EMAIL_WEBHOOK_SECRET` (whsec_<base64>) with a 5-minute replay window. After verification the handler fetches the email body via `GET /emails/receiving/{id}` (Resend Received Emails API) using `RESEND_API_KEY`, then runs the existing user-lookup → trip-match → booking-ingest pipeline.
 
 ### Health checks
 - `GET /livez` — Liveness probe (always 200 if server is running)
@@ -996,7 +996,15 @@ Apple App Site Association (AASA) and Android Asset Links are served at well-kno
 These enable deep linking from `toqui.travel` URLs directly into the native app.
 
 ### Inbound Email Webhook
-`POST /webhooks/email/inbound` processes emails forwarded to the platform (e.g., booking confirmations forwarded to the user's Toqui email address). Payload is ECDSA-signed by SendGrid and verified before processing.
+`POST /webhooks/email/inbound` processes booking-confirmation emails the user forwards to their Toqui address (e.g. `add@import.toqui.travel`). Backed by [Resend Inbound](https://resend.com/docs/dashboard/webhooks).
+
+**Transport**: Resend posts the standard `email.received` envelope (`{type, created_at, data}`) where `data` carries metadata only — `email_id`, `from`, `to`, `subject`, `message_id`. The actual `text`/`html` body is intentionally NOT in the webhook payload; we fetch it after signature verification.
+
+**Auth**: Svix-style. The webhook carries `svix-id`, `svix-timestamp`, and `svix-signature` headers. The signing secret is configured via `EMAIL_WEBHOOK_SECRET` in `whsec_<base64>` form. Signature is `HMAC-SHA256(decoded_key, "${svix-id}.${svix-timestamp}.${raw-body}")`, base64-encoded. The header is space-separated `v1,<sig>` entries; the handler accepts on any match. 5-minute replay window enforced on `svix-timestamp`.
+
+**Body fetch**: After verification, the handler calls `GET https://api.resend.com/emails/receiving/{email_id}` with `Authorization: Bearer ${RESEND_API_KEY}` and uses the returned `text` (preferred) or `html` (fallback) field. Implementation: `internal/email/inbound.go` (`Inbound.FetchReceived`).
+
+**Flow**: signature + replay check → ignore non-`email.received` events → look up user by sender email (cheap gate: skip body fetch on unknown senders) → fetch body from Resend API → match to a trip (subject keyword → most recent planning trip → most recent any-status trip) → ingest via the booking service with `source="email"`. Unknown sender → 200 no-op; empty body → 200 no-op; body fetch error → 500 (Resend retries); ingest error → 500.
 
 ## Daily Usage Limits
 
