@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
@@ -129,7 +130,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 		})
 		if err == nil {
 			// Found an exact match — merge the new data in and return.
-			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "confirmation code")
+			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "confirmation_code", source)
 			if err != nil {
 				return nil, err
 			}
@@ -150,7 +151,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 			return nil, fmt.Errorf("fuzzy match lookup: %w", err)
 		}
 		if found {
-			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, candidate, parsed, rawText, "fuzzy match")
+			result, err := s.tryMergeOrPreserve(ctx, userID, tripUUID, candidate, parsed, rawText, "fuzzy_match", source)
 			if err != nil {
 				return nil, err
 			}
@@ -221,7 +222,7 @@ func (s *Service) ingest(ctx context.Context, userID uuid.UUID, tripID string, t
 				"booking_id", existing.ID,
 				"type", existing.Type,
 			)
-			result, mergeErr := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "race recovery")
+			result, mergeErr := s.tryMergeOrPreserve(ctx, userID, tripUUID, existing, parsed, rawText, "race_recovery", source)
 			if mergeErr != nil {
 				return nil, mergeErr
 			}
@@ -322,8 +323,12 @@ func (s *Service) attachPostIngestAnalysis(ctx context.Context, userID uuid.UUID
 // SQL WHERE clause refuses to overwrite a booking the user has touched
 // (updated_at > created_at + 1s), so a pgx.ErrNoRows return here means
 // "user-edited, leave it alone" — we surface the existing record with
-// WasUpdated=false. Real DB errors are wrapped and returned. The
-// `viaPath` argument is for log tagging only.
+// WasUpdated=false. Real DB errors are wrapped and returned.
+//
+// `viaPath` is one of "confirmation_code", "fuzzy_match", or
+// "race_recovery"; `source` is "paste" or "email". Both feed the
+// booking.merge audit event so a security investigator can attribute
+// every merge to a specific ingest channel and dedup branch.
 func (s *Service) tryMergeOrPreserve(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -332,6 +337,7 @@ func (s *Service) tryMergeOrPreserve(
 	parsed *ParsedBooking,
 	rawText string,
 	viaPath string,
+	source string,
 ) (*IngestResult, error) {
 	merged, err := s.mergeIntoExisting(ctx, userID, tripUUID, existing.ID, parsed, rawText)
 	if err == nil {
@@ -340,6 +346,16 @@ func (s *Service) tryMergeOrPreserve(
 			"booking_id", merged.ID,
 			"type", merged.Type,
 			"via", viaPath,
+		)
+		// Audit trail for the mutation — inbound webhooks are public
+		// and merge updates an existing record, so a compliance
+		// investigator must be able to attribute the change.
+		audit.Log(audit.EventBookingMerge,
+			"user_id", userID,
+			"booking_id", merged.ID,
+			"source", source,
+			"via", viaPath,
+			"was_updated", true,
 		)
 		return &IngestResult{Booking: merged, WasUpdated: true, PreviousID: existing.ID.String()}, nil
 	}
@@ -377,11 +393,12 @@ func (s *Service) mergeIntoExisting(ctx context.Context, userID uuid.UUID, tripU
 		endTime = pgtype.Timestamptz{Time: t, Valid: true}
 	}
 
+	// Type intentionally NOT passed — the SQL no longer mutates type on
+	// merge (see db/queries/bookings.sql MergeBooking comment).
 	merged, err := s.queries.MergeBooking(ctx, dbgen.MergeBookingParams{
 		ID:                bookingID,
 		UserID:            userID,
 		TripID:            tripUUID,
-		Type:              parsed.Type,
 		ConfirmationCode:  parsed.ConfirmationCode,
 		Provider:          parsed.Provider,
 		Title:             parsed.Title,
@@ -416,10 +433,12 @@ func (s *Service) mergeIntoExisting(ctx context.Context, userID uuid.UUID, tripU
 // itself failed and the caller should propagate it rather than silently
 // falling through to create-and-duplicate.
 //
-// Provider similarity: one provider string must contain the other
-// (case-insensitive). This handles minor variations like "BC Ferries" vs
-// "BC Ferries Ltd" while blocking cross-carrier false positives (e.g.
-// "Delta" vs "United").
+// Provider similarity: see providerSimilar — the shorter token list must
+// be a prefix of the longer one after normalising case and stripping
+// non-alphanumerics. This allows "BC Ferries" / "BC Ferries Ltd" or
+// "Delta" / "Delta Air Lines" through while rejecting "Air" vs "AirBnB"
+// and "Hilton Tokyo" vs "Hilton Osaka". Replaces the earlier
+// strings.Contains check that matched any substring of either provider.
 //
 // When either provider string is empty the provider check is skipped so that
 // bookings with no provider field can still be fuzzy-matched by date alone.
@@ -450,14 +469,59 @@ func (s *Service) findFuzzyMatch(ctx context.Context, userID uuid.UUID, tripUUID
 
 	// Provider name similarity check: skip when either is empty.
 	if parsed.Provider != "" && candidate.Provider.Valid && candidate.Provider.String != "" {
-		a := strings.ToLower(parsed.Provider)
-		b := strings.ToLower(candidate.Provider.String)
-		if !strings.Contains(a, b) && !strings.Contains(b, a) {
+		if !providerSimilar(parsed.Provider, candidate.Provider.String) {
 			return dbgen.Booking{}, false, nil
 		}
 	}
 
 	return candidate, true, nil
+}
+
+// providerSimilar reports whether two provider strings refer to the
+// same brand for the purpose of fuzzy dedup. The rule: tokenise each
+// (lowercase, strip non-alphanumerics, split on whitespace) and accept
+// when the shorter token list is a prefix of the longer one. This
+// keeps natural extensions like "BC Ferries" / "BC Ferries Ltd" or
+// "Delta" / "Delta Air Lines" together, while rejecting embedded-
+// substring false positives like "Air" matching "AirBnB" and
+// branch-divergent names like "Hilton Tokyo" vs "Hilton Osaka".
+//
+// Returns true when either input has no tokens after normalisation;
+// the caller is responsible for not invoking us with empty providers.
+// Token comparison is byte-equal on ASCII-normalised runes; non-ASCII
+// alphabetic characters become whitespace, which is acceptable for
+// the predominantly-English provider names in practice. If multilingual
+// brand handling matters later, swap the normaliser for a Unicode-aware
+// folding pass.
+func providerSimilar(a, b string) bool {
+	ta := providerTokens(a)
+	tb := providerTokens(b)
+	if len(ta) == 0 || len(tb) == 0 {
+		return true
+	}
+	if len(ta) > len(tb) {
+		ta, tb = tb, ta
+	}
+	for i, t := range ta {
+		if tb[i] != t {
+			return false
+		}
+	}
+	return true
+}
+
+func providerTokens(s string) []string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var buf strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			buf.WriteRune(r)
+		default:
+			buf.WriteByte(' ')
+		}
+	}
+	return strings.Fields(buf.String())
 }
 
 func (s *Service) parseWithAI(ctx context.Context, rawText string, typeHint string) (*ParsedBooking, error) {

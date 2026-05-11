@@ -17,7 +17,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/html"
 
+	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/email"
@@ -203,6 +205,12 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 	if !h.skipSignatureForTest {
 		if err := h.verifySvixSignature(r, rawBody); err != nil {
 			slog.Warn("email webhook signature verification failed", "error", err)
+			audit.Log(audit.EventWebhookAuthFailed,
+				"reason", "signature_verification_failed",
+				"remote_addr", r.RemoteAddr,
+				"svix_id_present", r.Header.Get("svix-id") != "",
+				"error", err.Error(),
+			)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -214,6 +222,11 @@ func (h *EmailWebhookHandler) HandleInbound(w http.ResponseWriter, r *http.Reque
 		if !h.markAndCheckSvixID(r.Header.Get("svix-id")) {
 			slog.Info("email webhook duplicate svix-id, ignoring",
 				"svix_id", r.Header.Get("svix-id"),
+			)
+			audit.Log(audit.EventWebhookAuthFailed,
+				"reason", "replay_duplicate_svix_id",
+				"remote_addr", r.RemoteAddr,
+				"svix_id_present", true,
 			)
 			w.WriteHeader(http.StatusOK)
 			return
@@ -495,25 +508,68 @@ func extractEmailAddress(from string) string {
 	return from
 }
 
-// stripHTMLTags removes HTML tags from a string, providing a basic plain-text
-// extraction. This is a simple implementation for fallback when plain text is
-// not available; it does not handle all HTML edge cases.
-func stripHTMLTags(html string) string {
-	if html == "" {
+// stripHTMLTags extracts plain text from an HTML document. Used as a
+// fallback when an inbound email has no text/plain part. The input is
+// attacker-controlled (anyone can send the user an email), so the
+// previous char-by-char tag stripper had real gaps that flowed into
+// the AI parsing pipeline:
+//
+//   - <script>/<style> bodies were emitted as visible text, leaking
+//     attacker-controlled JS / CSS source into the AI prompt;
+//   - HTML entities (&amp;, &#x...;) were preserved verbatim instead
+//     of decoded, so confirmation codes and dates rendered wrong;
+//   - HTML comments (<!-- ... -->) were treated as tags rather than
+//     skipped, but their content leaked back out when a comment
+//     contained '>' chars.
+//
+// The tokenizer-based pass uses golang.org/x/net/html (already a
+// transitive dep). It honours entity decoding for free, suppresses
+// the content of script/style/head/title elements, and skips
+// comments cleanly. Whitespace runs between tokens are collapsed to
+// a single space so the resulting plain text is grep-friendly when
+// the AI parser searches for confirmation codes.
+func stripHTMLTags(htmlSrc string) string {
+	if htmlSrc == "" {
 		return ""
 	}
-
-	var result strings.Builder
-	inTag := false
-	for _, r := range html {
-		switch {
-		case r == '<':
-			inTag = true
-		case r == '>':
-			inTag = false
-		case !inTag:
-			result.WriteRune(r)
+	tok := html.NewTokenizer(strings.NewReader(htmlSrc))
+	var out strings.Builder
+	// Tags whose text content should NOT be emitted. Lowercase.
+	skipContent := map[string]bool{
+		"script": true,
+		"style":  true,
+		"head":   true,
+		"title":  true,
+	}
+	var skipDepth int
+loop:
+	for {
+		switch tok.Next() {
+		case html.ErrorToken:
+			break loop
+		case html.StartTagToken:
+			name, _ := tok.TagName()
+			if skipContent[string(name)] {
+				skipDepth++
+			}
+		case html.EndTagToken:
+			name, _ := tok.TagName()
+			if skipContent[string(name)] && skipDepth > 0 {
+				skipDepth--
+			}
+		case html.TextToken:
+			if skipDepth > 0 {
+				continue
+			}
+			// tok.Text() returns the decoded text — entities are
+			// already resolved (&amp; → &, &#x1F389; → 🎉, etc).
+			out.Write(tok.Text())
+			out.WriteByte(' ')
+		case html.SelfClosingTagToken, html.CommentToken, html.DoctypeToken:
+			// no-op
 		}
 	}
-	return strings.TrimSpace(result.String())
+	// Collapse repeated whitespace so the AI prompt isn't drowned
+	// in formatting artefacts.
+	return strings.Join(strings.Fields(out.String()), " ")
 }

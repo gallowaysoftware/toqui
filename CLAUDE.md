@@ -865,6 +865,8 @@ Structured audit events via `internal/audit/` package, written through `slog` fo
 - `payment.trip_pro_purchase`, `payment.validation_failed` — Stripe payment audit trail
 - `admin.invite`, `admin.trip_unlock`, `admin.grant_pro`, `admin.set_role`, `admin.seed_role` — Admin action audit trail
 - `referral.redeem` — Referral code redemption
+- `webhook.email.auth_failed` — Inbound email webhook signature verification failure or replay-duplicate svix-id (suspicious; suggests attacker probing or upstream misconfiguration)
+- `booking.merge` — Existing booking mutated via the dedup/merge path; attrs: `user_id`, `booking_id`, `source` ("paste"|"email"), `via` ("confirmation_code"|"fuzzy_match"|"race_recovery"), `was_updated`
 
 ### Cookie Encoding (OAuth)
 

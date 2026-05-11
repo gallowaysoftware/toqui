@@ -143,8 +143,14 @@ LIMIT 1;
 --
 -- Predicate miss → pgx.ErrNoRows. Callers must distinguish "user-edited
 -- or trip mismatch" (preserve existing) from "row vanished" (real error).
+--
+-- `type` is deliberately NOT COALESCE'd. The AI parser can reclassify
+-- the same confirmation as "hotel" one run and "vacation_rental" the
+-- next, and silently mutating it would break the frontend's type-keyed
+-- details renderer for that booking (the oneof in proto's Booking
+-- message would point to a payload that doesn't match the new type).
+-- Type can only change via explicit UpdateBooking from a user action.
 UPDATE bookings SET
-  type              = COALESCE(NULLIF(sqlc.arg(type), ''), type),
   confirmation_code = COALESCE(NULLIF(sqlc.arg(confirmation_code), ''), confirmation_code),
   provider          = COALESCE(NULLIF(sqlc.arg(provider), ''), provider),
   title             = COALESCE(NULLIF(sqlc.arg(title), ''), title),

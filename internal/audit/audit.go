@@ -42,6 +42,18 @@ const (
 	EventAppleLink           = "auth.apple_link"
 	EventAdminSeedRole       = "admin.seed_role"
 	EventAdminSetRole        = "admin.set_role"
+
+	// EventWebhookAuthFailed fires when an inbound webhook fails Svix
+	// signature verification (missing headers, expired timestamp, bad
+	// signature, or replay of an already-seen svix-id). Compliance
+	// dashboards filter on `webhook.*` to see signature-failure rates.
+	EventWebhookAuthFailed = "webhook.email.auth_failed"
+
+	// EventBookingMerge fires when an existing booking is updated via
+	// the dedup/merge path (confirmation-code match, fuzzy match, or
+	// 23505 race recovery). The public inbound-email webhook can
+	// mutate existing booking data via merge, so we audit it.
+	EventBookingMerge = "booking.merge"
 )
 
 // severityForEvent returns the appropriate slog level for an audit event.
@@ -55,7 +67,7 @@ func severityForEvent(event string) slog.Level {
 
 	// Suspicious / denied: failed auth attempts, payment validation failures.
 	case EventLoginDeniedDomain, EventLoginDeniedCapacity, EventLoginDeniedUnderAge,
-		EventTokenRefreshDenied, EventPaymentValidation:
+		EventTokenRefreshDenied, EventPaymentValidation, EventWebhookAuthFailed:
 		return slog.LevelWarn
 
 	// Everything else: normal operational events.

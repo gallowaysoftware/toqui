@@ -755,6 +755,54 @@ func TestIngest_PassesTripIDToMerge(t *testing.T) {
 	}
 }
 
+// TestProviderSimilar covers the dedup-gate matcher. Most of these cases
+// were previous false positives from the strings.Contains era — "Air"
+// matching "AirBnB" silently merged a hotel into a flight; "Hilton Tokyo"
+// matching "Hilton Osaka" silently merged two hotels on a multi-city trip.
+func TestProviderSimilar(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b string
+		want bool
+	}{
+		// Allowed: natural extensions of the same brand.
+		{"identical", "Delta", "Delta", true},
+		{"prefix extension", "BC Ferries", "BC Ferries Ltd", true},
+		{"reverse prefix extension", "BC Ferries Ltd", "BC Ferries", true},
+		{"short vs long airline", "Delta", "Delta Air Lines", true},
+		{"case difference", "delta", "Delta", true},
+		{"punctuation difference", "BC Ferries, Inc.", "BC Ferries", true},
+		{"hyphen vs space", "Air-Canada", "Air Canada", true},
+
+		// Rejected: substring matches across different brands.
+		{"air vs airbnb", "Air", "AirBnB", false},
+		{"airbnb vs air canada", "AirBnB", "Air Canada", false},
+
+		// Rejected: same first token but divergent rest (multi-city
+		// false positives).
+		{"hilton tokyo vs hilton osaka", "Hilton Tokyo", "Hilton Osaka", false},
+		{"hotel arts vs hotel indigo", "Hotel Arts", "Hotel Indigo", false},
+
+		// Rejected: totally different carriers.
+		{"delta vs united", "Delta", "United", false},
+
+		// Edge case: empty / non-alphanumeric-only inputs are treated
+		// as "no opinion" so callers can rely on their own emptiness
+		// gating without us flipping the answer back to false.
+		{"empty a", "", "Delta", true},
+		{"empty b", "Delta", "", true},
+		{"both empty", "", "", true},
+		{"non-alphanumeric only", "***", "Delta", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := providerSimilar(tc.a, tc.b); got != tc.want {
+				t.Errorf("providerSimilar(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // CRUD methods
 // ---------------------------------------------------------------------------

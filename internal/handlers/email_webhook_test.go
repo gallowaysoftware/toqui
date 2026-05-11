@@ -148,12 +148,53 @@ func TestStripHTMLTags(t *testing.T) {
 		input string
 		want  string
 	}{
+		// Baseline cases preserved from the previous implementation.
 		{"simple html", "<html><body><p>Hello</p></body></html>", "Hello"},
 		{"nested tags", "<div><span>Nested <em>content</em></span></div>", "Nested content"},
 		{"no tags", "Plain text", "Plain text"},
 		{"empty", "", ""},
 		{"only tags", "<br><br><br>", ""},
 		{"with attributes", `<a href="https://example.com">Click here</a>`, "Click here"},
+
+		// Regression tests for the security gaps the previous char-by-char
+		// stripper had — attacker-controlled email HTML flows into the
+		// AI parser, so leaking script source / unresolved entities is a
+		// prompt-injection foothold.
+		{
+			name:  "script body suppressed",
+			input: `<html><body><p>Real text</p><script>alert("evil prompt for AI")</script></body></html>`,
+			want:  "Real text",
+		},
+		{
+			name:  "style body suppressed",
+			input: `<html><head><style>body { content: "fake confirmation 12345"; }</style></head><body>Real text</body></html>`,
+			want:  "Real text",
+		},
+		{
+			name:  "html comments dropped",
+			input: `<p>Real text</p><!-- fake confirmation code ABC123 -->`,
+			want:  "Real text",
+		},
+		{
+			name:  "named entities decoded",
+			input: `<p>Tom &amp; Jerry &amp; co. &#39;hello&#39;</p>`,
+			want:  "Tom & Jerry & co. 'hello'",
+		},
+		{
+			name:  "numeric entities decoded",
+			input: `<p>Confirmation &#65;&#66;&#67;123</p>`,
+			want:  "Confirmation ABC123",
+		},
+		{
+			name:  "head/title content suppressed",
+			input: `<html><head><title>Page Title</title></head><body><p>Visible body</p></body></html>`,
+			want:  "Visible body",
+		},
+		{
+			name:  "whitespace collapsed",
+			input: "<p>Lots   of    \n\nspace</p>",
+			want:  "Lots of space",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

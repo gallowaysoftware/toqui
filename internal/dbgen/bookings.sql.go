@@ -248,31 +248,29 @@ func (q *Queries) FindBookingFuzzy(ctx context.Context, arg FindBookingFuzzyPara
 
 const mergeBooking = `-- name: MergeBooking :one
 UPDATE bookings SET
-  type              = COALESCE(NULLIF($1, ''), type),
-  confirmation_code = COALESCE(NULLIF($2, ''), confirmation_code),
-  provider          = COALESCE(NULLIF($3, ''), provider),
-  title             = COALESCE(NULLIF($4, ''), title),
-  start_time        = COALESCE($5, start_time),
-  end_time          = COALESCE($6, end_time),
-  address           = COALESCE(NULLIF($7, ''), address),
-  departure_location = COALESCE(NULLIF($8, ''), departure_location),
-  arrival_location  = COALESCE(NULLIF($9, ''), arrival_location),
-  num_guests        = COALESCE($10, num_guests),
-  price_cents       = COALESCE($11, price_cents),
-  currency          = COALESCE(NULLIF($12, ''), currency),
-  timezone          = COALESCE(NULLIF($13, ''), timezone),
-  details_json      = COALESCE($14, details_json),
-  raw_source        = COALESCE(NULLIF($15, ''), raw_source),
+  confirmation_code = COALESCE(NULLIF($1, ''), confirmation_code),
+  provider          = COALESCE(NULLIF($2, ''), provider),
+  title             = COALESCE(NULLIF($3, ''), title),
+  start_time        = COALESCE($4, start_time),
+  end_time          = COALESCE($5, end_time),
+  address           = COALESCE(NULLIF($6, ''), address),
+  departure_location = COALESCE(NULLIF($7, ''), departure_location),
+  arrival_location  = COALESCE(NULLIF($8, ''), arrival_location),
+  num_guests        = COALESCE($9, num_guests),
+  price_cents       = COALESCE($10, price_cents),
+  currency          = COALESCE(NULLIF($11, ''), currency),
+  timezone          = COALESCE(NULLIF($12, ''), timezone),
+  details_json      = COALESCE($13, details_json),
+  raw_source        = COALESCE(NULLIF($14, ''), raw_source),
   updated_at        = NOW()
-WHERE id = $16
-  AND user_id = $17
-  AND trip_id = $18
+WHERE id = $15
+  AND user_id = $16
+  AND trip_id = $17
   AND updated_at <= created_at + interval '1 second'
 RETURNING id, trip_id, user_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, created_at, departure_location, arrival_location, num_guests, price_cents, currency, timezone, updated_at
 `
 
 type MergeBookingParams struct {
-	Type              string             `json:"type"`
 	ConfirmationCode  string             `json:"confirmation_code"`
 	Provider          string             `json:"provider"`
 	Title             string             `json:"title"`
@@ -294,7 +292,6 @@ type MergeBookingParams struct {
 
 func (q *Queries) MergeBooking(ctx context.Context, arg MergeBookingParams) (Booking, error) {
 	row := q.db.QueryRow(ctx, mergeBooking,
-		arg.Type,
 		arg.ConfirmationCode,
 		arg.Provider,
 		arg.Title,
