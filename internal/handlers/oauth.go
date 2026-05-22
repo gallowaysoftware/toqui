@@ -20,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
-	"github.com/gallowaysoftware/toqui-backend/internal/attribution"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -151,18 +150,16 @@ func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // oauthResult is the JSON payload stored in the temporary cookie
 // and returned by HandleExchange.
 type oauthResult struct {
-	AccessToken    string `json:"access_token"`
-	RefreshToken   string `json:"refresh_token"`
-	UserID         string `json:"user_id"`
-	Email          string `json:"email"`
-	Name           string `json:"name,omitempty"`
-	AvatarURL      string `json:"avatar_url,omitempty"`
-	ExpiresAt      int64  `json:"expires_at"`
-	ConsentPending bool   `json:"consent_pending,omitempty"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	UserID       string `json:"user_id"`
+	Email        string `json:"email"`
+	Name         string `json:"name,omitempty"`
+	AvatarURL    string `json:"avatar_url,omitempty"`
+	ExpiresAt    int64  `json:"expires_at"`
 	// IsNewUser is set by HandleCallback when this is the user's first-ever
 	// login (created within the last minute). HandleExchange uses this to
-	// decide whether to fire `signup_completed` so the event can carry the
-	// attribution payload supplied by the frontend at exchange time.
+	// decide whether to fire `signup_completed`.
 	IsNewUser bool `json:"is_new_user,omitempty"`
 	// AuthProvider is "google" or "facebook" — propagated to the
 	// `signup_completed` event when IsNewUser is true.
@@ -172,12 +169,11 @@ type oauthResult struct {
 // exchangeResponse is the JSON response from POST /auth/exchange.
 // Tokens are in HttpOnly cookies — the body only contains user info and expiry.
 type exchangeResponse struct {
-	UserID         string `json:"user_id"`
-	Email          string `json:"email"`
-	Name           string `json:"name,omitempty"`
-	AvatarURL      string `json:"avatar_url,omitempty"`
-	ExpiresAt      int64  `json:"expires_at"`
-	ConsentPending bool   `json:"consent_pending,omitempty"`
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 // refreshResponse is the JSON response from POST /auth/refresh.
@@ -263,16 +259,6 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	isNewUser := time.Since(user.CreatedAt) < time.Minute
 
-	// Check if user has accepted required consents (terms + privacy_policy).
-	// For new users this will always be true (no consent rows yet). For returning
-	// users who somehow had consents withdrawn, the frontend re-prompts.
-	consentPending := true
-	if hasRequired, cErr := h.queries.HasRequiredConsents(r.Context(), user.ID); cErr != nil {
-		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
-	} else {
-		consentPending = !hasRequired
-	}
-
 	// Send welcome email for new users.
 	if h.emailSvc != nil && isNewUser {
 		name := ""
@@ -286,11 +272,9 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	// `signup_completed` is fired in HandleExchange (not here) so that the
-	// attribution payload supplied by the frontend at exchange-time can be
-	// attached as event properties. The alert-checker still ticks here —
-	// it's a server-side health signal (idle-signup detection) that doesn't
-	// depend on attribution.
+	// `signup_completed` is fired in HandleExchange (not here) so callsites
+	// remain symmetric with the native gRPC flow. The alert-checker still
+	// ticks here — it's a server-side health signal (idle-signup detection).
 	if h.alertChecker != nil && isNewUser {
 		h.alertChecker.RecordSignup()
 	}
@@ -322,13 +306,12 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Store auth result in a short-lived HttpOnly cookie instead of URL params.
 	result := oauthResult{
-		AccessToken:    accessToken,
-		RefreshToken:   refreshResult.Token,
-		UserID:         user.ID.String(),
-		Email:          user.Email,
-		ConsentPending: consentPending,
-		IsNewUser:      isNewUser,
-		AuthProvider:   "google",
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		UserID:       user.ID.String(),
+		Email:        user.Email,
+		IsNewUser:    isNewUser,
+		AuthProvider: "google",
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String
@@ -407,32 +390,23 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 	// Set persistent HttpOnly auth cookies for web browser sessions.
 	auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
 
-	// Fire `signup_completed` here (not in HandleCallback) so the
-	// attribution payload supplied by the frontend can be attached as
-	// event properties. The IsNewUser + AuthProvider flags are stamped
-	// into the OAuth result cookie by HandleCallback / HandleFacebookCallback.
-	// `?attribution=` is base64-encoded JSON; bad values are logged and
-	// dropped — never failing exchange over malformed attribution.
+	// Fire `signup_completed` here (not in HandleCallback) so callsites
+	// remain symmetric with the native gRPC flow. The IsNewUser +
+	// AuthProvider flags are stamped into the OAuth result cookie by
+	// HandleCallback / HandleFacebookCallback.
 	if h.analyticsClient != nil && result.IsNewUser {
-		props := map[string]any{
+		h.analyticsClient.Track(result.UserID, "signup_completed", map[string]any{
 			"auth_provider": result.AuthProvider,
-		}
-		if attr := attribution.Parse(r.URL.Query().Get("attribution")); !attr.Empty() {
-			for k, v := range attr.Properties() {
-				props[k] = v
-			}
-		}
-		h.analyticsClient.Track(result.UserID, "signup_completed", props)
+		})
 	}
 
 	// Return user info + expiry only — tokens are in HttpOnly cookies.
 	resp := exchangeResponse{
-		UserID:         result.UserID,
-		Email:          result.Email,
-		Name:           result.Name,
-		AvatarURL:      result.AvatarURL,
-		ExpiresAt:      time.Now().Add(time.Hour).Unix(),
-		ConsentPending: result.ConsentPending,
+		UserID:    result.UserID,
+		Email:     result.Email,
+		Name:      result.Name,
+		AvatarURL: result.AvatarURL,
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -787,14 +761,6 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 	// New user detection: created within the last minute means this is a signup, not a returning login.
 	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
 
-	// Check if user has accepted required consents (terms + privacy_policy).
-	fbConsentPending := true
-	if hasRequired, cErr := h.queries.HasRequiredConsents(r.Context(), user.ID); cErr != nil {
-		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
-	} else {
-		fbConsentPending = !hasRequired
-	}
-
 	// Send welcome email for new users.
 	if h.emailSvc != nil && fbIsNewUser {
 		name := ""
@@ -808,9 +774,9 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 		}()
 	}
 
-	// `signup_completed` is fired in HandleExchange (not here) so the
-	// frontend-supplied attribution payload can be attached. See the
-	// matching comment in HandleCallback (Google) above.
+	// `signup_completed` is fired in HandleExchange (not here) so callsites
+	// remain symmetric with the native gRPC flow. See the matching comment
+	// in HandleCallback (Google) above.
 	if h.alertChecker != nil && fbIsNewUser {
 		h.alertChecker.RecordSignup()
 	}
@@ -839,13 +805,12 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 	}
 
 	result := oauthResult{
-		AccessToken:    accessToken,
-		RefreshToken:   refreshResult.Token,
-		UserID:         user.ID.String(),
-		Email:          user.Email,
-		ConsentPending: fbConsentPending,
-		IsNewUser:      fbIsNewUser,
-		AuthProvider:   "facebook",
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		UserID:       user.ID.String(),
+		Email:        user.Email,
+		IsNewUser:    fbIsNewUser,
+		AuthProvider: "facebook",
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String

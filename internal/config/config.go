@@ -116,14 +116,6 @@ type Config struct {
 	// GDPR export storage
 	GCSExportBucket string // GCS bucket for GDPR data exports (empty = local filesystem fallback)
 	ExportLocalDir  string // Local directory for exports when GCS is not configured
-
-	// Consent enforcement (#369 P1 #3). When true, the ConsentInterceptor
-	// refuses non-exempt RPCs for users without recorded 'terms' +
-	// 'privacy_policy' consents. Defaults to false so rollout can be
-	// staged: deploy the code, verify the frontend handles the
-	// FailedPrecondition("consent_required") sentinel in staging, then
-	// flip to true in prod.
-	ConsentEnforcementEnabled bool
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -174,7 +166,6 @@ func Load() (*Config, error) {
 		AllowedEmailDomains:       parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		AllowedEmails:             parseCSVEnv("ALLOWED_EMAILS"),
 		AdminEmails:               parseCSVEnv("ADMIN_EMAILS"),
-		ConsentEnforcementEnabled: getEnvBool("CONSENT_ENFORCEMENT_ENABLED", false),
 		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                 getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		CORSAllowedOrigins:        parseCSVEnv("CORS_ALLOWED_ORIGINS"),

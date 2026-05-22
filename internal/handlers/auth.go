@@ -14,10 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
-	"github.com/gallowaysoftware/toqui-backend/internal/attribution"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -93,7 +91,7 @@ func (h *AuthHandler) WithAlertChecker(checker *analytics.AlertChecker) *AuthHan
 // `isNewUser` should be true only when this RPC produced a brand-new user
 // row; the caller decides this via either `time.Since(user.CreatedAt) <
 // time.Minute` or a richer signal from findOrCreateAppleUser.
-func (h *AuthHandler) trackNativeSignup(userID, provider, encodedAttribution string, isNewUser bool) {
+func (h *AuthHandler) trackNativeSignup(userID, provider string, isNewUser bool) {
 	if !isNewUser {
 		return
 	}
@@ -103,15 +101,9 @@ func (h *AuthHandler) trackNativeSignup(userID, provider, encodedAttribution str
 	if h.analyticsClient == nil {
 		return
 	}
-	props := map[string]any{
+	h.analyticsClient.Track(userID, "signup_completed", map[string]any{
 		"auth_provider": provider,
-	}
-	if attr := attribution.Parse(encodedAttribution); !attr.Empty() {
-		for k, v := range attr.Properties() {
-			props[k] = v
-		}
-	}
-	h.analyticsClient.Track(userID, "signup_completed", props)
+	})
 }
 
 func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toquiv1.GoogleLoginRequest]) (*connect.Response[toquiv1.GoogleLoginResponse], error) {
@@ -129,15 +121,6 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
-	// Under-age refusal cache: if this email previously failed the 18+
-	// gate at /auth/verify-age, refuse the OAuth exchange entirely
-	// rather than upserting a new user row that we'd just delete on
-	// the next verify-age call. Keeps the deletion+block paired and
-	// closes the "log out, log back in to retry" loophole.
-	if err := checkUnderAgeBlock(ctx, h.queries, info.Email, "google"); err != nil {
-		return nil, err
-	}
-
 	user, err := h.queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
 		GoogleID:  pgtype.Text{String: info.ID, Valid: info.ID != ""},
 		Email:     info.Email,
@@ -153,7 +136,7 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	// extreme clock drift could misclassify, but the analytics event is
 	// fire-and-forget so the cost of a false positive is one extra event.
 	isNewUser := time.Since(user.CreatedAt) < time.Minute
-	h.trackNativeSignup(user.ID.String(), "google", req.Msg.Attribution, isNewUser)
+	h.trackNativeSignup(user.ID.String(), "google", isNewUser)
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
@@ -178,20 +161,10 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
-	// Check if the user has accepted required consents (terms + privacy_policy).
-	consentPending := true
-	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
-		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", err)
-	} else {
-		consentPending = !hasRequired
-	}
-
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
-		AccessToken:             accessToken,
-		RefreshToken:            refreshResult.Token,
-		User:                    userToProto(&user),
-		ConsentPending:          consentPending,
-		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		User:         userToProto(&user),
 	}), nil
 }
 
@@ -217,11 +190,6 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 	}
 
-	// Under-age refusal cache (see comment on the Google flow).
-	if err := checkUnderAgeBlock(ctx, h.queries, fbUser.Email, "facebook"); err != nil {
-		return nil, err
-	}
-
 	// Use the shared findOrCreateFacebookUser logic via an inline OAuthHandler.
 	// This avoids duplicating the user creation/linking logic.
 	oauthH := &OAuthHandler{
@@ -240,7 +208,7 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 
 	// See trackNativeSignup comment in GoogleLogin for the isNewUser heuristic.
 	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
-	h.trackNativeSignup(user.ID.String(), "facebook", req.Msg.Attribution, fbIsNewUser)
+	h.trackNativeSignup(user.ID.String(), "facebook", fbIsNewUser)
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
@@ -263,20 +231,10 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 
 	audit.Log(audit.EventFacebookLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
-	// Check if the user has accepted required consents (terms + privacy_policy).
-	consentPending := true
-	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
-		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", err)
-	} else {
-		consentPending = !hasRequired
-	}
-
 	return connect.NewResponse(&toquiv1.FacebookLoginResponse{
-		AccessToken:             accessToken,
-		RefreshToken:            refreshResult.Token,
-		User:                    userToProto(user),
-		ConsentPending:          consentPending,
-		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		User:         userToProto(user),
 	}), nil
 }
 
@@ -559,11 +517,6 @@ func userToProto(u *dbgen.User) *toquiv1.User {
 	}
 	if u.AvatarUrl.Valid {
 		user.AvatarUrl = u.AvatarUrl.String
-	}
-	// Expose age verification timestamp so the frontend can skip the AgeGate
-	// modal for returning users who verified on a prior device/session.
-	if u.AgeVerifiedAt.Valid {
-		user.AgeVerifiedAt = timestamppb.New(u.AgeVerifiedAt.Time)
 	}
 	return user
 }

@@ -45,7 +45,6 @@ type stubQueries struct {
 	listBookingsByUserFn           func(ctx context.Context, arg dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error)
 	listFeedbackByUserFn           func(ctx context.Context, userID uuid.UUID) ([]dbgen.Feedback, error)
 	getPreferencesFn               func(ctx context.Context, userID uuid.UUID) ([]dbgen.UserPreference, error)
-	getActiveConsentsFn            func(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error)
 	createExportRequestFn          func(ctx context.Context, userID uuid.UUID) (dbgen.ExportRequest, error)
 	completeExportRequestFn        func(ctx context.Context, arg dbgen.CompleteExportRequestParams) error
 
@@ -208,14 +207,6 @@ func (s *stubQueries) GetPreferences(ctx context.Context, userID uuid.UUID) ([]d
 		return s.getPreferencesFn(ctx, userID)
 	}
 	s.tb.Fatalf("unexpected stubQueries.GetPreferences(%s) — set getPreferencesFn", userID)
-	return nil, nil
-}
-
-func (s *stubQueries) GetActiveConsents(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error) {
-	if s.getActiveConsentsFn != nil {
-		return s.getActiveConsentsFn(ctx, userID)
-	}
-	s.tb.Fatalf("unexpected stubQueries.GetActiveConsents(%s) — set getActiveConsentsFn", userID)
 	return nil, nil
 }
 
@@ -780,7 +771,6 @@ func TestExportUserData_ReturnsExportShape(t *testing.T) {
 		listBookingsByUserFn:       func(_ context.Context, _ dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error) { return nil, nil },
 		listFeedbackByUserFn:       func(_ context.Context, _ uuid.UUID) ([]dbgen.Feedback, error) { return nil, nil },
 		getPreferencesFn:           func(_ context.Context, _ uuid.UUID) ([]dbgen.UserPreference, error) { return nil, nil },
-		getActiveConsentsFn:        func(_ context.Context, _ uuid.UUID) ([]dbgen.UserConsent, error) { return nil, nil },
 	}
 	c := &stubChatStore{tb: t,
 		exportChatDataFn: func(_ context.Context, _ string, _ []string) (map[string][]chatstore.ExportedSession, error) {
@@ -852,7 +842,6 @@ func TestRequestExport_CreatesRequestAndKicksOffBackgroundExport(t *testing.T) {
 		listBookingsByUserFn: func(_ context.Context, _ dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error) { return nil, nil },
 		listFeedbackByUserFn: func(_ context.Context, _ uuid.UUID) ([]dbgen.Feedback, error) { return nil, nil },
 		getPreferencesFn:     func(_ context.Context, _ uuid.UUID) ([]dbgen.UserPreference, error) { return nil, nil },
-		getActiveConsentsFn:  func(_ context.Context, _ uuid.UUID) ([]dbgen.UserConsent, error) { return nil, nil },
 		completeExportRequestFn: func(_ context.Context, arg dbgen.CompleteExportRequestParams) error {
 			// Pin the wire shape: download_url is a REST endpoint
 			// when no exportStore is configured.

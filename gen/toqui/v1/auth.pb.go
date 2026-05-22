@@ -24,18 +24,10 @@ const (
 )
 
 type GoogleLoginRequest struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Code         string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	RedirectUri  string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
-	CodeVerifier string                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"` // PKCE code verifier (optional, for S256 challenge)
-	// Optional. Base64-encoded JSON with whitelisted UTM/ref attribution captured
-	// by the marketing site (toqui-site/AttributionCapture.astro) on first
-	// visit. Forwarded as PostHog `signup_completed` event properties on
-	// first-ever login per user, then discarded. The whitelist is enforced
-	// server-side: anything outside {ref, utm_source, utm_medium,
-	// utm_campaign} is dropped. Bad input is logged and ignored — login
-	// never fails over a malformed attribution string. See audit issue #39 A-2.
-	Attribution   string `protobuf:"bytes,4,opt,name=attribution,proto3" json:"attribution,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	RedirectUri   string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	CodeVerifier  string                 `protobuf:"bytes,3,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"` // PKCE code verifier (optional, for S256 challenge)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,28 +83,13 @@ func (x *GoogleLoginRequest) GetCodeVerifier() string {
 	return ""
 }
 
-func (x *GoogleLoginRequest) GetAttribution() string {
-	if x != nil {
-		return x.Attribution
-	}
-	return ""
-}
-
 type GoogleLoginResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken    string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken   string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	User           *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	ConsentPending bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"` // True when the user has not yet accepted terms/privacy
-	// True when the user has not yet completed the 18+ age gate
-	// (POST /auth/verify-age). The frontend mounts the age form
-	// immediately after login when this is set. The check is also
-	// enforced server-side by the age interceptor on every gated RPC,
-	// so this flag is purely a UX hint — bypassing it doesn't bypass
-	// the gate. Mirrors the consent_pending pattern.
-	AgeVerificationRequired bool `protobuf:"varint,5,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GoogleLoginResponse) Reset() {
@@ -166,25 +143,9 @@ func (x *GoogleLoginResponse) GetUser() *User {
 	return nil
 }
 
-func (x *GoogleLoginResponse) GetConsentPending() bool {
-	if x != nil {
-		return x.ConsentPending
-	}
-	return false
-}
-
-func (x *GoogleLoginResponse) GetAgeVerificationRequired() bool {
-	if x != nil {
-		return x.AgeVerificationRequired
-	}
-	return false
-}
-
 type FacebookLoginRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	// Optional attribution payload — see GoogleLoginRequest.attribution.
-	Attribution   string `protobuf:"bytes,2,opt,name=attribution,proto3" json:"attribution,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,22 +187,13 @@ func (x *FacebookLoginRequest) GetAccessToken() string {
 	return ""
 }
 
-func (x *FacebookLoginRequest) GetAttribution() string {
-	if x != nil {
-		return x.Attribution
-	}
-	return ""
-}
-
 type FacebookLoginResponse struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken             string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken            string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	User                    *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	ConsentPending          bool                   `protobuf:"varint,4,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"`                              // True when the user has not yet accepted terms/privacy
-	AgeVerificationRequired bool                   `protobuf:"varint,5,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"` // see GoogleLoginResponse
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FacebookLoginResponse) Reset() {
@@ -295,20 +247,6 @@ func (x *FacebookLoginResponse) GetUser() *User {
 	return nil
 }
 
-func (x *FacebookLoginResponse) GetConsentPending() bool {
-	if x != nil {
-		return x.ConsentPending
-	}
-	return false
-}
-
-func (x *FacebookLoginResponse) GetAgeVerificationRequired() bool {
-	if x != nil {
-		return x.AgeVerificationRequired
-	}
-	return false
-}
-
 // Apple Sign-In: the frontend (expo-apple-authentication) returns an
 // authorization_code + id_token after the user taps "Sign in with Apple."
 // The backend exchanges the code with Apple, verifies the signed ID token,
@@ -320,9 +258,7 @@ type AppleLoginRequest struct {
 	// Optional. The Services-ID redirect URI the frontend supplied during the
 	// initial authorization request. Apple verifies this against the value it
 	// saw client-side, so it must match exactly.
-	RedirectUri string `protobuf:"bytes,3,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
-	// Optional attribution payload — see GoogleLoginRequest.attribution.
-	Attribution   string `protobuf:"bytes,4,opt,name=attribution,proto3" json:"attribution,omitempty"`
+	RedirectUri   string `protobuf:"bytes,3,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -378,23 +314,14 @@ func (x *AppleLoginRequest) GetRedirectUri() string {
 	return ""
 }
 
-func (x *AppleLoginRequest) GetAttribution() string {
-	if x != nil {
-		return x.Attribution
-	}
-	return ""
-}
-
 type AppleLoginResponse struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	User                    *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	AccessToken             string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken            string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	ExpiresAt               *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	ConsentPending          bool                   `protobuf:"varint,5,opt,name=consent_pending,json=consentPending,proto3" json:"consent_pending,omitempty"`                              // True when the user has not yet accepted terms/privacy
-	AgeVerificationRequired bool                   `protobuf:"varint,6,opt,name=age_verification_required,json=ageVerificationRequired,proto3" json:"age_verification_required,omitempty"` // see GoogleLoginResponse
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken   string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AppleLoginResponse) Reset() {
@@ -453,20 +380,6 @@ func (x *AppleLoginResponse) GetExpiresAt() *timestamppb.Timestamp {
 		return x.ExpiresAt
 	}
 	return nil
-}
-
-func (x *AppleLoginResponse) GetConsentPending() bool {
-	if x != nil {
-		return x.ConsentPending
-	}
-	return false
-}
-
-func (x *AppleLoginResponse) GetAgeVerificationRequired() bool {
-	if x != nil {
-		return x.AgeVerificationRequired
-	}
-	return false
 }
 
 type RefreshTokenRequest struct {
@@ -654,16 +567,12 @@ func (x *GetCurrentUserResponse) GetUser() *User {
 }
 
 type User struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Email     string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	AvatarUrl string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// When the user completed age verification (POST /auth/verify-age).
-	// Unset for users who have not yet verified. Used by the frontend
-	// to skip the AgeGate modal for returning users.
-	AgeVerifiedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=age_verified_at,json=ageVerifiedAt,proto3" json:"age_verified_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	AvatarUrl     string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -729,13 +638,6 @@ func (x *User) GetAvatarUrl() string {
 func (x *User) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
-	}
-	return nil
-}
-
-func (x *User) GetAgeVerifiedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.AgeVerifiedAt
 	}
 	return nil
 }
@@ -931,40 +833,31 @@ var File_toqui_v1_auth_proto protoreflect.FileDescriptor
 
 const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa4\x01\n" +
+	"\x13toqui/v1/auth.proto\x12\btoqui.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x95\x01\n" +
 	"\x12GoogleLoginRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12#\n" +
-	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifier\x12 \n" +
-	"\vattribution\x18\x04 \x01(\tR\vattribution\"\xe6\x01\n" +
+	"\rcode_verifier\x18\x03 \x01(\tR\fcodeVerifierJ\x04\b\x04\x10\x05R\vattribution\"\xb9\x01\n" +
 	"\x13GoogleLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
-	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
-	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
-	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"d\n" +
+	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04userJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x0fconsent_pendingR\x19age_verification_required\"U\n" +
 	"\x14FacebookLoginRequest\x12*\n" +
-	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessToken\x12 \n" +
-	"\vattribution\x18\x02 \x01(\tR\vattribution\"\xe8\x01\n" +
+	"\faccess_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaccessTokenJ\x04\b\x02\x10\x03R\vattribution\"\xbb\x01\n" +
 	"\x15FacebookLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\"\n" +
-	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12'\n" +
-	"\x0fconsent_pending\x18\x04 \x01(\bR\x0econsentPending\x12:\n" +
-	"\x19age_verification_required\x18\x05 \x01(\bR\x17ageVerificationRequired\"\xb4\x01\n" +
+	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04userJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x0fconsent_pendingR\x19age_verification_required\"\xa5\x01\n" +
 	"\x11AppleLoginRequest\x126\n" +
 	"\x12authorization_code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x11authorizationCode\x12\"\n" +
 	"\bid_token\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aidToken\x12!\n" +
-	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\x12 \n" +
-	"\vattribution\x18\x04 \x01(\tR\vattribution\"\xa0\x02\n" +
+	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUriJ\x04\b\x04\x10\x05R\vattribution\"\xf3\x01\n" +
 	"\x12AppleLoginResponse\x12\"\n" +
 	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\x12!\n" +
 	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\x129\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12'\n" +
-	"\x0fconsent_pending\x18\x05 \x01(\bR\x0econsentPending\x12:\n" +
-	"\x19age_verification_required\x18\x06 \x01(\bR\x17ageVerificationRequired\"C\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x0fconsent_pendingR\x19age_verification_required\"C\n" +
 	"\x13RefreshTokenRequest\x12,\n" +
 	"\rrefresh_token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\frefreshToken\"\x82\x01\n" +
 	"\x14RefreshTokenResponse\x12!\n" +
@@ -973,7 +866,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x17\n" +
 	"\x15GetCurrentUserRequest\"<\n" +
 	"\x16GetCurrentUserResponse\x12\"\n" +
-	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\xde\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\xb1\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -981,8 +874,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12B\n" +
-	"\x0fage_verified_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\rageVerifiedAt\"9\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtJ\x04\b\a\x10\bR\x0fage_verified_at\"9\n" +
 	"\x14DeleteAccountRequest\x12!\n" +
 	"\aconfirm\x18\x01 \x01(\bB\a\xbaH\x04j\x02\b\x01R\aconfirm\"P\n" +
 	"\x15DeleteAccountResponse\x12\x1d\n" +
@@ -1044,26 +936,25 @@ var file_toqui_v1_auth_proto_depIdxs = []int32{
 	10, // 4: toqui.v1.RefreshTokenResponse.user:type_name -> toqui.v1.User
 	10, // 5: toqui.v1.GetCurrentUserResponse.user:type_name -> toqui.v1.User
 	15, // 6: toqui.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	15, // 7: toqui.v1.User.age_verified_at:type_name -> google.protobuf.Timestamp
-	0,  // 8: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
-	2,  // 9: toqui.v1.AuthService.FacebookLogin:input_type -> toqui.v1.FacebookLoginRequest
-	4,  // 10: toqui.v1.AuthService.AppleLogin:input_type -> toqui.v1.AppleLoginRequest
-	6,  // 11: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
-	8,  // 12: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
-	11, // 13: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
-	13, // 14: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
-	1,  // 15: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
-	3,  // 16: toqui.v1.AuthService.FacebookLogin:output_type -> toqui.v1.FacebookLoginResponse
-	5,  // 17: toqui.v1.AuthService.AppleLogin:output_type -> toqui.v1.AppleLoginResponse
-	7,  // 18: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
-	9,  // 19: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
-	12, // 20: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
-	14, // 21: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
-	15, // [15:22] is the sub-list for method output_type
-	8,  // [8:15] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 7: toqui.v1.AuthService.GoogleLogin:input_type -> toqui.v1.GoogleLoginRequest
+	2,  // 8: toqui.v1.AuthService.FacebookLogin:input_type -> toqui.v1.FacebookLoginRequest
+	4,  // 9: toqui.v1.AuthService.AppleLogin:input_type -> toqui.v1.AppleLoginRequest
+	6,  // 10: toqui.v1.AuthService.RefreshToken:input_type -> toqui.v1.RefreshTokenRequest
+	8,  // 11: toqui.v1.AuthService.GetCurrentUser:input_type -> toqui.v1.GetCurrentUserRequest
+	11, // 12: toqui.v1.AuthService.DeleteAccount:input_type -> toqui.v1.DeleteAccountRequest
+	13, // 13: toqui.v1.AuthService.ExportData:input_type -> toqui.v1.ExportDataRequest
+	1,  // 14: toqui.v1.AuthService.GoogleLogin:output_type -> toqui.v1.GoogleLoginResponse
+	3,  // 15: toqui.v1.AuthService.FacebookLogin:output_type -> toqui.v1.FacebookLoginResponse
+	5,  // 16: toqui.v1.AuthService.AppleLogin:output_type -> toqui.v1.AppleLoginResponse
+	7,  // 17: toqui.v1.AuthService.RefreshToken:output_type -> toqui.v1.RefreshTokenResponse
+	9,  // 18: toqui.v1.AuthService.GetCurrentUser:output_type -> toqui.v1.GetCurrentUserResponse
+	12, // 19: toqui.v1.AuthService.DeleteAccount:output_type -> toqui.v1.DeleteAccountResponse
+	14, // 20: toqui.v1.AuthService.ExportData:output_type -> toqui.v1.ExportDataResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_toqui_v1_auth_proto_init() }

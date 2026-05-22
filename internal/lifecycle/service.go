@@ -42,7 +42,6 @@ type lifecycleQueries interface {
 	ListBookingsByUser(ctx context.Context, arg dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error)
 	ListFeedbackByUser(ctx context.Context, userID uuid.UUID) ([]dbgen.Feedback, error)
 	GetPreferences(ctx context.Context, userID uuid.UUID) ([]dbgen.UserPreference, error)
-	GetActiveConsents(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error)
 	CreateExportRequest(ctx context.Context, userID uuid.UUID) (dbgen.ExportRequest, error)
 	CompleteExportRequest(ctx context.Context, arg dbgen.CompleteExportRequestParams) error
 }
@@ -324,7 +323,6 @@ type UserExport struct {
 	Feedback    []any          `json:"feedback"`
 	Payments    []any          `json:"payments"`
 	Preferences []any          `json:"preferences"`
-	Consents    []any          `json:"consents"`
 	ChatData    map[string]any `json:"chat_data"`
 }
 
@@ -428,15 +426,6 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 	}
 	for _, p := range preferences {
 		export.Preferences = append(export.Preferences, p)
-	}
-
-	// Consents (GDPR Article 20 — must include consent records)
-	consents, err := s.queries.GetActiveConsents(ctx, userID)
-	if err != nil {
-		slog.Warn("export: failed to list consents", "error", err)
-	}
-	for _, c := range consents {
-		export.Consents = append(export.Consents, c)
 	}
 
 	return export, nil

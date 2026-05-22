@@ -71,13 +71,6 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 			audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(email))
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("email domain not allowed"))
 		}
-
-		// Under-age refusal cache (first-sign-in only — the helper
-		// short-circuits on empty email anyway, but the gate is most
-		// effective on the first time Apple ships us the email).
-		if err := checkUnderAgeBlock(ctx, h.queries, email, "apple"); err != nil {
-			return nil, err
-		}
 	}
 
 	user, isNew, err := h.findOrCreateAppleUser(ctx, claims.Subject, email)
@@ -93,7 +86,7 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 	// than the time-since-CreatedAt heuristic the Google/Facebook flows use,
 	// because Apple's "link existing email account" branch returns isNew=false
 	// even when the row was modified.
-	h.trackNativeSignup(user.ID.String(), "apple", req.Msg.Attribution, isNew)
+	h.trackNativeSignup(user.ID.String(), "apple", isNew)
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
@@ -120,20 +113,11 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 		audit.Log(audit.EventAppleLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 	}
 
-	consentPending := true
-	if hasRequired, cErr := h.queries.HasRequiredConsents(ctx, user.ID); cErr != nil {
-		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
-	} else {
-		consentPending = !hasRequired
-	}
-
 	return connect.NewResponse(&toquiv1.AppleLoginResponse{
-		User:                    userToProto(user),
-		AccessToken:             accessToken,
-		RefreshToken:            refreshResult.Token,
-		ExpiresAt:               timestamppb.New(refreshResult.ExpiresAt),
-		ConsentPending:          consentPending,
-		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
+		User:         userToProto(user),
+		AccessToken:  accessToken,
+		RefreshToken: refreshResult.Token,
+		ExpiresAt:    timestamppb.New(refreshResult.ExpiresAt),
 	}), nil
 }
 

@@ -17,7 +17,6 @@ import (
 	gcstorage "cloud.google.com/go/storage"
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
-	"github.com/google/uuid"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -297,39 +296,11 @@ func main() {
 
 	queries := dbgen.New(pool)
 
-	ageCheckFn := auth.AgeCheckFunc(func(ctx context.Context, userID uuid.UUID) (bool, error) {
-		return queries.IsAgeVerified(ctx, userID)
-	})
-
-	// Consent gate: refuses non-exempt RPCs until the user has recorded
-	// both `terms` and `privacy_policy` consents (see db/queries/consents.sql
-	// `HasRequiredConsents`). The login response already carries a
-	// `consent_pending` hint for the frontend; this interceptor enforces
-	// it server-side so a client that skips the consent modal can't just
-	// keep calling API methods. Finding: #369 P1 #3.
-	//
-	// Enforcement is gated behind CONSENT_ENFORCEMENT_ENABLED so the
-	// code can ship dark, be verified against the frontend in staging,
-	// then flipped on in prod. Merging the interceptor without the
-	// frontend handler would brick every existing user who hadn't
-	// recorded consent.
-	consentCheckFn := auth.ConsentCheckFunc(func(ctx context.Context, userID uuid.UUID) (bool, error) {
-		return queries.HasRequiredConsents(ctx, userID)
-	})
-
-	interceptorList := []connect.Interceptor{
+	interceptors := connect.WithInterceptors(
 		validate.NewInterceptor(),
 		auth.NewAuthInterceptor(authSvc),
-		auth.NewAgeInterceptor(ageCheckFn),
-	}
-	if cfg.ConsentEnforcementEnabled {
-		slog.Info("consent enforcement interceptor enabled")
-		interceptorList = append(interceptorList, auth.NewConsentInterceptor(consentCheckFn))
-	} else {
-		slog.Warn("consent enforcement interceptor is DISABLED — set CONSENT_ENFORCEMENT_ENABLED=true to enforce")
-	}
-	interceptorList = append(interceptorList, rateLimiter)
-	interceptors := connect.WithInterceptors(interceptorList...)
+		rateLimiter,
+	)
 
 	// Register handlers
 	mux := http.NewServeMux()
@@ -468,10 +439,6 @@ func main() {
 	mux.HandleFunc("/auth/refresh", oauthHandler.HandleRefresh)
 	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)
 
-	// Age verification route (authenticated)
-	ageVerifyHandler := handlers.NewAgeVerifyHandler(authSvc, queries, lifecycleSvc)
-	mux.HandleFunc("/auth/verify-age", ageVerifyHandler.HandleVerifyAge)
-
 	// Health checks (public, no auth — for load balancer probes)
 	healthHandler := handlers.NewHealthHandler(pool, startTime)
 	mux.HandleFunc("/health", healthHandler.HandleHealth)
@@ -501,21 +468,6 @@ func main() {
 
 	// Data export download (GDPR Article 20)
 	mux.HandleFunc("/api/export/", authHandler.HandleExportDownload)
-
-	// Privacy consent management (GDPR/PIPEDA compliance)
-	consentHandler := handlers.NewConsentHandler(authSvc, pool)
-	mux.HandleFunc("/auth/consent", consentHandler.HandleBatchConsent)
-	mux.HandleFunc("/api/privacy/consents", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			consentHandler.HandleGetConsents(w, r)
-		case http.MethodPost:
-			consentHandler.HandleRecordConsent(w, r)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-	mux.HandleFunc("/api/privacy/consents/", consentHandler.HandleWithdrawConsent)
 
 	// User preferences (authenticated)
 	preferencesHandler := handlers.NewPreferencesHandler(authSvc, pool)

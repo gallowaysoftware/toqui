@@ -23,42 +23,30 @@ message GoogleLoginRequest {
   string code = 1 [(buf.validate.field).string.min_len = 1];
   string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
   string code_verifier = 3;  // PKCE code verifier (optional, for S256 challenge)
-  // Optional. Base64-encoded JSON with whitelisted UTM/ref attribution captured
-  // by the marketing site (toqui-site/AttributionCapture.astro) on first
-  // visit. Forwarded as PostHog `signup_completed` event properties on
-  // first-ever login per user, then discarded. The whitelist is enforced
-  // server-side: anything outside {ref, utm_source, utm_medium,
-  // utm_campaign} is dropped. Bad input is logged and ignored — login
-  // never fails over a malformed attribution string. See audit issue #39 A-2.
-  string attribution = 4;
+  reserved 4;
+  reserved "attribution";
 }
 
 message GoogleLoginResponse {
   string access_token = 1;
   string refresh_token = 2;
   User user = 3;
-  bool consent_pending = 4;  // True when the user has not yet accepted terms/privacy
-  // True when the user has not yet completed the 18+ age gate
-  // (POST /auth/verify-age). The frontend mounts the age form
-  // immediately after login when this is set. The check is also
-  // enforced server-side by the age interceptor on every gated RPC,
-  // so this flag is purely a UX hint — bypassing it doesn't bypass
-  // the gate. Mirrors the consent_pending pattern.
-  bool age_verification_required = 5;
+  reserved 4, 5;
+  reserved "consent_pending", "age_verification_required";
 }
 
 message FacebookLoginRequest {
   string access_token = 1 [(buf.validate.field).string.min_len = 1];
-  // Optional attribution payload — see GoogleLoginRequest.attribution.
-  string attribution = 2;
+  reserved 2;
+  reserved "attribution";
 }
 
 message FacebookLoginResponse {
   string access_token = 1;
   string refresh_token = 2;
   User user = 3;
-  bool consent_pending = 4;  // True when the user has not yet accepted terms/privacy
-  bool age_verification_required = 5;  // see GoogleLoginResponse
+  reserved 4, 5;
+  reserved "consent_pending", "age_verification_required";
 }
 
 // Apple Sign-In: the frontend (expo-apple-authentication) returns an
@@ -72,8 +60,8 @@ message AppleLoginRequest {
   // initial authorization request. Apple verifies this against the value it
   // saw client-side, so it must match exactly.
   string redirect_uri = 3;
-  // Optional attribution payload — see GoogleLoginRequest.attribution.
-  string attribution = 4;
+  reserved 4;
+  reserved "attribution";
 }
 
 message AppleLoginResponse {
@@ -81,8 +69,8 @@ message AppleLoginResponse {
   string access_token = 2;
   string refresh_token = 3;
   google.protobuf.Timestamp expires_at = 4;
-  bool consent_pending = 5;  // True when the user has not yet accepted terms/privacy
-  bool age_verification_required = 6;  // see GoogleLoginResponse
+  reserved 5, 6;
+  reserved "consent_pending", "age_verification_required";
 }
 
 message RefreshTokenRequest {
@@ -107,10 +95,8 @@ message User {
   string name = 3;
   string avatar_url = 4;
   google.protobuf.Timestamp created_at = 5;
-  // When the user completed age verification (POST /auth/verify-age).
-  // Unset for users who have not yet verified. Used by the frontend
-  // to skip the AgeGate modal for returning users.
-  google.protobuf.Timestamp age_verified_at = 7;
+  reserved 7;
+  reserved "age_verified_at";
 }
 
 // Account deletion — GDPR Article 17 (Right to Erasure)
