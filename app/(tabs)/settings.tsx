@@ -1,20 +1,16 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator } from "react-native";
 import { confirmDestructive } from "@/lib/confirm";
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, CreditCard, ExternalLink, Gift, MessageSquare, BarChart2, Crown } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, MessageSquare } from "lucide-react-native";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
-import ReferralCard from "@/components/referral/ReferralCard";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
 import { useTheme } from "@/lib/theme";
-import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
-
-const COLOR_WARNING = "#f59e0b";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -25,11 +21,6 @@ export default function SettingsScreen() {
   const client = useMemo(() => createClient(AuthService, transport), [transport]);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [feedbackVisible, setFeedbackVisible] = useState(false);
-  const isPro = user?.tier === "pro";
-  const { used, limit, resetsAt } = useUsage();
-  // Subscription tiers (Explorer / Voyager) are off the menu for launch —
-  // free + Trip Pro one-time only. The hook + components stay in the
-  // codebase but unrendered; revisit at $1K MRR.
 
   const exportData = useMutation({
     mutationFn: async () => {
@@ -125,37 +116,6 @@ export default function SettingsScreen() {
       borderWidth: 1,
     },
     themeLabel: { fontSize: 13, fontWeight: "500" },
-    billingPlanRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-    },
-    billingLabel: { fontSize: 14, color: colors.textSecondary },
-    planBadge: {
-      backgroundColor: colors.surfaceTertiary,
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    planBadgePro: { backgroundColor: colors.accent },
-    planBadgeText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-    planBadgeTextPro: { color: "#fff" },
-    billingDescription: { fontSize: 14, color: colors.textTertiary, lineHeight: 20 },
-    learnMoreRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 10,
-      paddingVertical: 4,
-    },
-    learnMoreText: { fontSize: 14, fontWeight: "500", color: colors.accent },
-    usageRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-    usageLabel: { fontSize: 14, color: colors.textSecondary },
-    usageCount: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
-    progressTrack: { height: 4, borderRadius: 2, backgroundColor: colors.surfaceTertiary, marginBottom: 6 },
-    progressFill: { height: 4, borderRadius: 2 },
-    usageResetText: { fontSize: 12, color: colors.textTertiary },
   });
 
   if (!accessToken) {
@@ -184,69 +144,6 @@ export default function SettingsScreen() {
           <LogOut color={colors.accent} size={18} />
           <Text style={styles.actionText}>{t("common.signOut")}</Text>
         </Pressable>
-      </View>
-
-      {/* Plan & Billing */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <CreditCard color={colors.textSecondary} size={20} />
-          <Text style={styles.sectionTitle}>{t("settings.billing.title")}</Text>
-        </View>
-        <View style={styles.billingPlanRow}>
-          <Text style={styles.billingLabel}>{t("settings.billing.currentPlan")}</Text>
-          <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
-            <Text style={[styles.planBadgeText, isPro && styles.planBadgeTextPro]}>
-              {isPro ? t("settings.billing.pro") : t("settings.billing.free")}
-            </Text>
-          </View>
-        </View>
-        {isPro ? (
-          <Text style={styles.billingDescription}>{t("settings.billing.proDescription")}</Text>
-        ) : (
-          <Text style={styles.billingDescription}>{t("settings.billing.freeDescription")}</Text>
-        )}
-      </View>
-
-      {/* Usage */}
-      {limit > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <BarChart2 color={colors.textSecondary} size={20} />
-            <Text style={styles.sectionTitle}>Usage</Text>
-          </View>
-          <View style={styles.usageRow}>
-            <Text style={styles.usageLabel}>Messages today</Text>
-            <Text style={styles.usageCount}>{used} / {limit}</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.min(100, (used / limit) * 100)}%` as `${number}%`,
-                  backgroundColor:
-                    used / limit >= 0.9
-                      ? colors.error
-                      : used / limit >= 0.75
-                        ? COLOR_WARNING
-                        : colors.success,
-                },
-              ]}
-            />
-          </View>
-          {resetsAt && (
-            <Text style={styles.usageResetText}>Resets {formatTimeUntilReset(resetsAt)}</Text>
-          )}
-        </View>
-      )}
-
-      {/* Refer a Friend */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Gift color={colors.accent} size={20} />
-          <Text style={styles.sectionTitle}>{t("referral.title")}</Text>
-        </View>
-        <ReferralCard />
       </View>
 
       {/* Data */}
@@ -311,10 +208,6 @@ export default function SettingsScreen() {
         <Pressable style={styles.actionRow} onPress={() => router.push("/terms" as never)}>
           <FileText color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Terms of Service</Text>
-        </Pressable>
-        <Pressable style={styles.actionRow} onPress={() => Linking.openURL("https://toqui.travel/affiliate-disclosure")}>
-          <ExternalLink color={colors.textSecondary} size={16} />
-          <Text style={styles.linkText}>Affiliate Disclosure</Text>
         </Pressable>
       </View>
 

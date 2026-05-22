@@ -100,7 +100,7 @@ describe("AuthProvider", () => {
 
     expect(result.current.accessToken).toBe("at-123");
     expect(result.current.refreshToken).toBe("rt-456");
-    expect(result.current.user).toEqual({ ...user, tier: "free", ageVerifiedAt: null });
+    expect(result.current.user).toEqual({ ...user, ageVerifiedAt: null });
   });
 
   it("restores ageVerifiedAt from localStorage on mount when present", async () => {
@@ -155,7 +155,6 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
-      tier: "free",
       ageVerifiedAt: null,
     });
 
@@ -166,7 +165,6 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
-      tier: "free",
       ageVerifiedAt: null,
     });
   });
@@ -409,7 +407,7 @@ describe("AuthProvider", () => {
     // Seed prior user without age verification
     localStorage.setItem(
       "toqui_user",
-      JSON.stringify({ id: "u5", email: "e@f.com", name: "Eve", tier: "free", ageVerifiedAt: null }),
+      JSON.stringify({ id: "u5", email: "e@f.com", name: "Eve", ageVerifiedAt: null }),
     );
 
     const verifiedDate = new Date("2026-04-24T10:00:00.000Z");
@@ -420,7 +418,6 @@ describe("AuthProvider", () => {
         id: "u5",
         email: "e@f.com",
         name: "Eve",
-        subscriptionTier: "free",
         ageVerifiedAt: { toDate: () => verifiedDate },
       },
     });

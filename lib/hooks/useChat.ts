@@ -10,16 +10,6 @@ import { ChatService, ChatMode } from "@gen/toqui/v1/chat_pb";
 import type { ChatMessage as ProtoChatMessage } from "@gen/toqui/v1/chat_pb";
 import type { Persona } from "@gen/toqui/v1/persona_pb";
 
-export interface Recommendation {
-  partner: string;
-  category: string;
-  title: string;
-  description: string;
-  url: string;
-  price?: string;
-  disclosure?: string;
-}
-
 export interface PersonaIntroData {
   name: string;
   specialties: string[];
@@ -37,7 +27,6 @@ export interface ChatMessage {
   personaName?: string;
   personaAvatar?: string;
   personaAccentColor?: string;
-  recommendation?: Recommendation;
   personaIntro?: PersonaIntroData;
   // Optional sender metadata for shared (multi-user) chat sessions on group
   // trips. When unset, the message is attributed to the current authenticated
@@ -137,7 +126,6 @@ async function persistSessionId(tripId: string | undefined, id: string): Promise
 
 interface UseChatOptions {
   onResourceExhausted?: () => void;
-  onExpertLimitReached?: () => void;
 }
 
 export function useChat(
@@ -178,11 +166,9 @@ export function useChat(
   const geocodeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const toolActivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onResourceExhaustedRef = useRef(options?.onResourceExhausted);
-  const onExpertLimitReachedRef = useRef(options?.onExpertLimitReached);
   useEffect(() => {
     onResourceExhaustedRef.current = options?.onResourceExhausted;
-    onExpertLimitReachedRef.current = options?.onExpertLimitReached;
-  }, [options?.onResourceExhausted, options?.onExpertLimitReached]);
+  }, [options?.onResourceExhausted]);
 
   // Reset state when tripId changes
   useEffect(() => {
@@ -443,39 +429,6 @@ export function useChat(
                   );
                 }
                 geocodeTimersRef.current = timers;
-              }
-              if (toolResult.toolName === "suggest_expert" && toolResult.resultJson) {
-                try {
-                  const parsed = JSON.parse(toolResult.resultJson);
-                  if (parsed.error === "trip_pro_required") {
-                    onExpertLimitReachedRef.current?.();
-                  }
-                } catch { /* ignore malformed JSON */ }
-              }
-              if (toolResult.toolName === "recommend_booking" && toolResult.resultJson) {
-                try {
-                  const parsed = JSON.parse(toolResult.resultJson);
-                  const rec = parsed.recommendation;
-                  if (rec?.url && rec?.title) {
-                    setMessages((prev) => [
-                      ...prev,
-                      {
-                        id: uuid(),
-                        role: "assistant",
-                        content: "",
-                        recommendation: {
-                          partner: rec.partner ?? "",
-                          category: rec.category ?? "",
-                          title: rec.title,
-                          description: rec.description ?? "",
-                          url: rec.url,
-                          price: rec.price,
-                          disclosure: rec.disclosure,
-                        },
-                      },
-                    ]);
-                  }
-                } catch { /* ignore malformed JSON */ }
               }
               break;
             }
