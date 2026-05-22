@@ -100,23 +100,7 @@ describe("AuthProvider", () => {
 
     expect(result.current.accessToken).toBe("at-123");
     expect(result.current.refreshToken).toBe("rt-456");
-    expect(result.current.user).toEqual({ ...user, ageVerifiedAt: null });
-  });
-
-  it("restores ageVerifiedAt from localStorage on mount when present", async () => {
-    const user = {
-      id: "u1",
-      email: "a@b.com",
-      name: "Alice",
-      ageVerifiedAt: "2026-04-20T12:00:00.000Z",
-    };
-    localStorage.setItem("toqui_user", JSON.stringify(user));
-
-    const { result } = renderHook(() => useAuth(), { wrapper });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.user?.ageVerifiedAt).toBe("2026-04-20T12:00:00.000Z");
+    expect(result.current.user).toEqual(user);
   });
 
   it("handles corrupt user JSON gracefully on hydration", async () => {
@@ -155,7 +139,6 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
-      ageVerifiedAt: null,
     });
 
     // Verify persistence
@@ -165,55 +148,7 @@ describe("AuthProvider", () => {
       id: "u2",
       email: "b@c.com",
       name: "Bob",
-      ageVerifiedAt: null,
     });
-  });
-
-  it("login maps ageVerifiedAt from Timestamp proto to ISO string", async () => {
-    const verifiedDate = new Date("2026-04-20T12:30:00.000Z");
-    mockGoogleLogin.mockResolvedValueOnce({
-      accessToken: "at",
-      refreshToken: "rt",
-      user: {
-        id: "u3",
-        email: "c@d.com",
-        name: "Carol",
-        ageVerifiedAt: { toDate: () => verifiedDate },
-      },
-    });
-
-    const { result } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await act(async () => {
-      await result.current.login("code");
-    });
-
-    expect(result.current.user?.ageVerifiedAt).toBe(verifiedDate.toISOString());
-    const stored = JSON.parse(localStorage.getItem("toqui_user")!);
-    expect(stored.ageVerifiedAt).toBe(verifiedDate.toISOString());
-  });
-
-  it("login maps missing ageVerifiedAt to null", async () => {
-    mockGoogleLogin.mockResolvedValueOnce({
-      accessToken: "at",
-      refreshToken: "rt",
-      user: {
-        id: "u4",
-        email: "d@e.com",
-        name: "Dave",
-        // ageVerifiedAt absent
-      },
-    });
-
-    const { result } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await act(async () => {
-      await result.current.login("code");
-    });
-
-    expect(result.current.user?.ageVerifiedAt).toBeNull();
   });
 
   it("login with no user in response does not crash and does not store user", async () => {
@@ -252,10 +187,6 @@ describe("AuthProvider", () => {
     expect(mockGoogleLogin).toHaveBeenCalledWith({
       code: "the-code",
       redirectUri: "https://app.toqui.travel/callback",
-      // attribution is sent on every login (empty string when no
-      // launch-campaign cookie is present). The backend treats empty
-      // input as "no attribution" — see internal/attribution/Parse().
-      attribution: "",
     });
   });
 
@@ -275,39 +206,7 @@ describe("AuthProvider", () => {
     expect(mockGoogleLogin).toHaveBeenCalledWith({
       code: "code-only",
       redirectUri: "",
-      attribution: "",
     });
-  });
-
-  // ── Attribution forwarding ────────────────────────────────────────────
-
-  it("login forwards captured attribution from localStorage and clears it", async () => {
-    // Marketing site stores attribution as raw JSON in localStorage; the
-    // app reads the cookie first, falls back to localStorage and re-encodes.
-    const payload = JSON.stringify({
-      utm_source: "producthunt",
-      utm_medium: "launch",
-      captured_at: "2026-05-06T00:00:00.000Z",
-    });
-    localStorage.setItem("toqui_attribution", payload);
-
-    mockGoogleLogin.mockResolvedValueOnce({
-      accessToken: "at",
-      refreshToken: "rt",
-    });
-
-    const { result } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await act(async () => {
-      await result.current.login("code");
-    });
-
-    const call = mockGoogleLogin.mock.calls[0][0];
-    expect(call.attribution).toBe(btoa(payload));
-    // One-shot semantics: localStorage cleared so a returning user
-    // doesn't get re-attributed to the original campaign.
-    expect(localStorage.getItem("toqui_attribution")).toBeNull();
   });
 
   // ── Logout flow ───────────────────────────────────────────────────────
@@ -402,23 +301,20 @@ describe("AuthProvider", () => {
     expect(mockRefreshToken).not.toHaveBeenCalled();
   });
 
-  it("refreshTokens updates user.ageVerifiedAt from the response", async () => {
+  it("refreshTokens syncs the user snapshot from the response", async () => {
     localStorage.setItem("toqui_refresh_token", "old-rt");
-    // Seed prior user without age verification
     localStorage.setItem(
       "toqui_user",
-      JSON.stringify({ id: "u5", email: "e@f.com", name: "Eve", ageVerifiedAt: null }),
+      JSON.stringify({ id: "u5", email: "e@f.com", name: "Eve" }),
     );
 
-    const verifiedDate = new Date("2026-04-24T10:00:00.000Z");
     mockRefreshToken.mockResolvedValueOnce({
       accessToken: "fresh-at",
       refreshToken: "fresh-rt",
       user: {
         id: "u5",
         email: "e@f.com",
-        name: "Eve",
-        ageVerifiedAt: { toDate: () => verifiedDate },
+        name: "Eve Renamed",
       },
     });
 
@@ -429,9 +325,9 @@ describe("AuthProvider", () => {
       await result.current.refreshTokens();
     });
 
-    expect(result.current.user?.ageVerifiedAt).toBe(verifiedDate.toISOString());
+    expect(result.current.user?.name).toBe("Eve Renamed");
     const stored = JSON.parse(localStorage.getItem("toqui_user")!);
-    expect(stored.ageVerifiedAt).toBe(verifiedDate.toISOString());
+    expect(stored.name).toBe("Eve Renamed");
   });
 
   it("refreshTokens clears all tokens on RPC failure", async () => {

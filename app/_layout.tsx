@@ -9,8 +9,6 @@ import { AnalyticsProvider, useAnalytics } from "@/lib/analytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
-import { AgeGate } from "@/components/auth/AgeGate";
-import { ConsentGate } from "@/components/auth/ConsentGate";
 import { AIDisclaimerGate } from "@/components/auth/AIDisclaimerGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { loadConfig, getConfig } from "@/lib/config";
@@ -231,19 +229,15 @@ export default Sentry.wrap(function RootLayout() {
           <AuthProvider>
             <AnalyticsProvider>
               <TransportProvider>
-                <AgeGate>
-                  <ConsentGate>
-                    <AIDisclaimerGate>
-                      <AnalyticsErrorBoundary>
-                        <AnalyticsBootstrap />
-                        <View style={layoutStyles.root}>
-                          <OfflineBanner />
-                          <ThemedStack />
-                        </View>
-                      </AnalyticsErrorBoundary>
-                    </AIDisclaimerGate>
-                  </ConsentGate>
-                </AgeGate>
+                <AIDisclaimerGate>
+                  <AnalyticsErrorBoundary>
+                    <AnalyticsBootstrap />
+                    <View style={layoutStyles.root}>
+                      <OfflineBanner />
+                      <ThemedStack />
+                    </View>
+                  </AnalyticsErrorBoundary>
+                </AIDisclaimerGate>
               </TransportProvider>
             </AnalyticsProvider>
           </AuthProvider>

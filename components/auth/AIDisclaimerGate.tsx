@@ -26,10 +26,9 @@ import { useTheme } from "@/lib/theme";
 // Acceptance is stored locally (expo-secure-store on native, localStorage
 // on web) AND tracked via PostHog with the user's pseudonymised ID so we
 // have a server-side log of who acknowledged when. Legal-grade evidence
-// would require a backend consent record (mirroring ConsentGate's
-// /auth/consent flow with an "ai_disclaimer" consent type) — that's a
-// follow-up that adds backend work; for now PostHog is sufficient
-// signal that the prompt was seen and acknowledged at a specific time.
+// would require a backend consent record — that's a follow-up that adds
+// backend work; for now PostHog is sufficient signal that the prompt was
+// seen and acknowledged at a specific time.
 //
 // Storage key includes a version suffix so we can re-prompt every user
 // after material wording changes without writing a migration.

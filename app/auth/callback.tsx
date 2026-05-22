@@ -4,7 +4,6 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "@/lib/auth";
-import { useAnalytics } from "@/lib/analytics";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 
@@ -16,7 +15,6 @@ WebBrowser.maybeCompleteAuthSession();
 export default function AuthCallbackScreen() {
   const { login } = useAuth();
   const router = useRouter();
-  const { track, identify } = useAnalytics();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,14 +33,10 @@ export default function AuthCallbackScreen() {
     const redirectUri = `${window.location.origin}/auth/callback`;
 
     login(code, redirectUri)
-      .then(({ consentPending }) => {
-        // Distinguish new vs returning. consent_pending=true means the
-        // user has never accepted terms/privacy, which is true on the
-        // first-ever sign-in and only on the first-ever sign-in (the
-        // ConsentGate immediately records consent on first session).
-        // Pre-fix, signup_completed fired on every sign-in (toqui#190
-        // LB-8) which polluted the launch-day conversion funnel.
-        track(consentPending ? "signup_completed" : "signin_completed", { method: "google" });
+      .then(() => {
+        // signup_completed / signin_completed analytics events removed —
+        // the backend's trackNativeSignup fires signup_completed server-side
+        // with auth_provider so the frontend duplicate isn't necessary.
         const pendingRef = sessionStorage.getItem("toqui_pending_ref");
         if (pendingRef) {
           sessionStorage.removeItem("toqui_pending_ref");
@@ -65,7 +59,7 @@ export default function AuthCallbackScreen() {
         console.error("OAuth callback login failed:", err);
         setError("Sign-in failed. Please try again.");
       });
-  }, [login, router, track]);
+  }, [login, router]);
 
   if (error) {
     return (
