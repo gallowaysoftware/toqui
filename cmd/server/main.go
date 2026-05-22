@@ -24,7 +24,6 @@ import (
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth/apple"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
@@ -89,19 +88,6 @@ func main() {
 			Level: slog.LevelInfo,
 		})))
 	}
-
-	// Analytics (PostHog) — no-op client when API key is empty
-	posthogClient := analytics.NewClient(cfg.PostHogAPIKey)
-	if posthogClient.Enabled() {
-		slog.Info("PostHog analytics enabled", "endpoint", "eu.i.posthog.com")
-	}
-
-	// In-process health AlertChecker — emits Cloud Logging warnings when
-	// chat/signup traffic stalls (early-detection of upstream breakage
-	// where the API stays up but no traffic flows). The goroutine lives
-	// for the whole server lifetime; stops on ctx cancel.
-	alertChecker := analytics.NewAlertChecker()
-	alertChecker.StartPeriodicCheck(ctx, 5*time.Minute)
 
 	// Database
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
@@ -310,15 +296,10 @@ func main() {
 	defer authLimiter.Stop()
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
-		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret).
-		WithAnalytics(posthogClient).
-		WithAlertChecker(alertChecker)
-	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool)).
-		WithAnalytics(posthogClient)
+		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
+	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, pool).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
-		WithAnalytics(posthogClient).
-		WithAlertChecker(alertChecker).
 		WithAIProvider(aiProvider)
 	bookingHandler := handlers.NewBookingHandler(bookingSvc, queries)
 	locationHandler := handlers.NewLocationHandler(locationSvc, locationCache)
@@ -335,14 +316,11 @@ func main() {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, authLimiter, emailSender).
-		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
-		WithAnalytics(posthogClient).
-		WithAlertChecker(alertChecker)
+		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI)
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).
-		WithBookingService(bookingSvc).
-		WithAnalytics(posthogClient)
+		WithBookingService(bookingSvc)
 
 	// Liveness probe (no auth, no external checks).
 	// Used by Cloud Run to verify the process is alive — never killed due to transient DB issues.
@@ -578,10 +556,6 @@ func main() {
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			slog.Error("server shutdown error", "error", err)
 		}
-
-		// Drain PostHog event queue after server stops accepting new requests.
-		slog.Info("draining PostHog event queue")
-		posthogClient.Close()
 	}()
 
 	slog.Info("server starting", "port", cfg.Port, "env", cfg.TargetEnv)

@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
@@ -26,22 +25,14 @@ import (
 )
 
 type TripHandler struct {
-	tripSvc         *trip.Service
-	lifecycleSvc    *lifecycle.Service
-	themeSvc        *theme.Service
-	queries         *dbgen.Queries
-	analyticsClient *analytics.Client
+	tripSvc      *trip.Service
+	lifecycleSvc *lifecycle.Service
+	themeSvc     *theme.Service
+	queries      *dbgen.Queries
 }
 
 func NewTripHandler(tripSvc *trip.Service, lifecycleSvc *lifecycle.Service, themeSvc *theme.Service, queries *dbgen.Queries) *TripHandler {
 	return &TripHandler{tripSvc: tripSvc, lifecycleSvc: lifecycleSvc, themeSvc: themeSvc, queries: queries}
-}
-
-// WithAnalytics attaches a PostHog client so successful trip lifecycle events
-// (trip_created, etc.) are reported. Optional — handler works without it.
-func (h *TripHandler) WithAnalytics(client *analytics.Client) *TripHandler {
-	h.analyticsClient = client
-	return h
 }
 
 func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toquiv1.CreateTripRequest]) (*connect.Response[toquiv1.CreateTripResponse], error) {
@@ -99,31 +90,14 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 	}
 
 	// Auto-grant 3-day Pro trial on first trip creation
-	isFirstTrip := false
 	if h.queries != nil {
 		if count, err := h.queries.CountTripsByUser(ctx, userID); err == nil && count == 1 {
-			isFirstTrip = true
 			if err := h.queries.StartTripTrial(ctx, t.ID); err != nil {
 				slog.Warn("failed to start trip trial", "error", err, "trip_id", t.ID)
 			} else {
 				slog.Info("first-trip trial started", "user_id", userID, "trip_id", t.ID)
 			}
 		}
-	}
-
-	// Funnel event — backend-side ground truth that survives ad-blockers.
-	// `is_first_trip` separates first-trip-conversion from repeat-engagement
-	// in the funnel chart (a returning user creating their 5th trip is a
-	// different signal than a new user creating their first).
-	// Note: NEVER include destination, title, or description here — trip
-	// content is sensitive (CLAUDE.md "Privacy" — Article 9 categories).
-	if h.analyticsClient != nil {
-		h.analyticsClient.Track(userID.String(), "trip_created", map[string]any{
-			"is_first_trip":  isFirstTrip,
-			"has_dates":      startDate != nil || endDate != nil,
-			"has_budget":     req.Msg.BudgetCents != nil,
-			"initial_status": initialStatus,
-		})
 	}
 
 	return connect.NewResponse(&toquiv1.CreateTripResponse{Trip: tripToProto(t)}), nil

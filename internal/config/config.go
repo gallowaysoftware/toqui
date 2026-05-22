@@ -102,9 +102,6 @@ type Config struct {
 	ResendAPIKey string
 	EmailFrom    string
 
-	// Analytics (PostHog)
-	PostHogAPIKey string // Empty = analytics disabled
-
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
 
@@ -156,7 +153,6 @@ func Load() (*Config, error) {
 		AIProvider:                getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:           getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:               getEnvDuration("LLM_CACHE_TTL", time.Hour),
-		PostHogAPIKey:             os.Getenv("POSTHOG_API_KEY"),
 		AllowedEmailDomains:       parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
 		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                 getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),

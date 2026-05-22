@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
@@ -44,15 +43,13 @@ type itineraryItemWithLocation struct {
 // and the tool returns a clean "forbidden" error rather than silently
 // writing to someone else's trip.
 type CreateItineraryTool struct {
-	tripSvc         *trip.Service
-	tripID          uuid.UUID
-	tripIDProvider  func() (uuid.UUID, bool)
-	callerID        uuid.UUID // authz subject for per-insert SQL gate (#353)
-	userID          string    // for analytics only (hashed before sending)
-	onCreated       func(items []dbgen.ItineraryItem)
-	pool            *pgxpool.Pool
-	placesAPIKey    string
-	analyticsClient *analytics.Client
+	tripSvc        *trip.Service
+	tripID         uuid.UUID
+	tripIDProvider func() (uuid.UUID, bool)
+	callerID       uuid.UUID // authz subject for per-insert SQL gate (#353)
+	onCreated      func(items []dbgen.ItineraryItem)
+	pool           *pgxpool.Pool
+	placesAPIKey   string
 }
 
 type createItineraryArgs struct {
@@ -94,14 +91,6 @@ func (t *CreateItineraryTool) WithGeocoding(pool *pgxpool.Pool, placesAPIKey str
 	cp := *t
 	cp.pool = pool
 	cp.placesAPIKey = placesAPIKey
-	return &cp
-}
-
-// WithAnalytics returns a copy of the tool configured to send events to PostHog.
-func (t *CreateItineraryTool) WithAnalytics(client *analytics.Client, userID string) *CreateItineraryTool {
-	cp := *t
-	cp.analyticsClient = client
-	cp.userID = userID
 	return &cp
 }
 
@@ -302,20 +291,6 @@ func (t *CreateItineraryTool) Execute(ctx context.Context, args json.RawMessage)
 
 	if t.onCreated != nil {
 		t.onCreated(dbItems)
-	}
-
-	// Track itinerary generation (async, non-blocking, no content — just counts)
-	if t.analyticsClient != nil {
-		daySet := make(map[int]struct{})
-		for _, c := range created {
-			if c.item.DayNumber.Valid {
-				daySet[int(c.item.DayNumber.Int32)] = struct{}{}
-			}
-		}
-		t.analyticsClient.Track(t.userID, "itinerary_generated", map[string]any{
-			"item_count": len(created),
-			"day_count":  len(daySet),
-		})
 	}
 
 	// Fire-and-forget background geocoding so it never delays the streaming response.

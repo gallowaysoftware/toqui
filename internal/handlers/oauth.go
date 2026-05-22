@@ -19,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
@@ -41,9 +40,6 @@ type OAuthHandler struct {
 	facebookClientID     string
 	facebookClientSecret string
 	facebookRedirectURI  string
-
-	analyticsClient *analytics.Client
-	alertChecker    *analytics.AlertChecker
 }
 
 func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
@@ -57,22 +53,6 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 		allowedDomains: allowedDomains,
 		authLimiter:    authLimiter,
 	}
-}
-
-// WithAnalytics configures the OAuth handler to send events to PostHog.
-func (h *OAuthHandler) WithAnalytics(client *analytics.Client) *OAuthHandler {
-	h.analyticsClient = client
-	return h
-}
-
-// WithAlertChecker wires the in-process AlertChecker so each successful
-// signup_completed Track call also resets the idle-signup timer. The
-// AlertChecker's idle-signup threshold (default 24h) fires a Cloud
-// Logging warning when no signups happen — early detection of e.g. a
-// broken Google OAuth callback. Optional.
-func (h *OAuthHandler) WithAlertChecker(checker *analytics.AlertChecker) *OAuthHandler {
-	h.alertChecker = checker
-	return h
 }
 
 // WithFacebookOAuth configures Facebook/Meta OAuth credentials on the handler.
@@ -257,13 +237,6 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	// `signup_completed` is fired in HandleExchange (not here) so callsites
-	// remain symmetric with the native gRPC flow. The alert-checker still
-	// ticks here — it's a server-side health signal (idle-signup detection).
-	if h.alertChecker != nil && isNewUser {
-		h.alertChecker.RecordSignup()
-	}
-
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
 	if err != nil {
 		http.Redirect(w, r, h.frontendURL+"/?error=token_error", http.StatusTemporaryRedirect)
@@ -374,16 +347,6 @@ func (h *OAuthHandler) HandleExchange(w http.ResponseWriter, r *http.Request) {
 
 	// Set persistent HttpOnly auth cookies for web browser sessions.
 	auth.SetAuthCookies(w, result.AccessToken, result.RefreshToken, h.secureCookies)
-
-	// Fire `signup_completed` here (not in HandleCallback) so callsites
-	// remain symmetric with the native gRPC flow. The IsNewUser +
-	// AuthProvider flags are stamped into the OAuth result cookie by
-	// HandleCallback / HandleFacebookCallback.
-	if h.analyticsClient != nil && result.IsNewUser {
-		h.analyticsClient.Track(result.UserID, "signup_completed", map[string]any{
-			"auth_provider": result.AuthProvider,
-		})
-	}
 
 	// Return user info + expiry only — tokens are in HttpOnly cookies.
 	resp := exchangeResponse{
@@ -757,13 +720,6 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 				slog.Error("welcome email failed", "error", err, "user_id", user.ID)
 			}
 		}()
-	}
-
-	// `signup_completed` is fired in HandleExchange (not here) so callsites
-	// remain symmetric with the native gRPC flow. See the matching comment
-	// in HandleCallback (Google) above.
-	if h.alertChecker != nil && fbIsNewUser {
-		h.alertChecker.RecordSignup()
 	}
 
 	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)

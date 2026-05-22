@@ -11,13 +11,6 @@
 //   - The under_age_blocks anti-evasion preservation invariant.
 //   - The export round-trip and multi-tenant isolation.
 //
-// They do NOT cover PostHog person-deletion or Sentry scrubbing because
-// neither is wired into lifecycle.Service.DeleteUser today — see the
-// TODO(privacy-fanout) block in internal/lifecycle/service.go (the
-// DeleteUser doc-comment names the two prerequisites: frontend
-// Sentry.setUser and the PostHog two-step delete API). Coverage for
-// that path lands in a follow-up PR after the fan-out itself ships.
-//
 // Running:
 //
 //	make docker-up

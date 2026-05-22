@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
 	"github.com/gallowaysoftware/toqui-backend/internal/audit"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
@@ -21,11 +20,10 @@ import (
 // SharedHandler serves the public shared trip endpoint and authenticated
 // enable/disable sharing endpoints.
 type SharedHandler struct {
-	tripSvc         *trip.Service
-	bookingSvc      *booking.Service
-	authSvc         *auth.Service
-	frontendURL     string
-	analyticsClient *analytics.Client
+	tripSvc     *trip.Service
+	bookingSvc  *booking.Service
+	authSvc     *auth.Service
+	frontendURL string
 }
 
 // NewSharedHandler creates a new SharedHandler.
@@ -40,12 +38,6 @@ func NewSharedHandler(tripSvc *trip.Service, authSvc *auth.Service, frontendURL 
 // WithBookingService configures the shared handler to include bookings in shared views.
 func (h *SharedHandler) WithBookingService(svc *booking.Service) *SharedHandler {
 	h.bookingSvc = svc
-	return h
-}
-
-// WithAnalytics configures the shared handler to send events to PostHog.
-func (h *SharedHandler) WithAnalytics(client *analytics.Client) *SharedHandler {
-	h.analyticsClient = client
 	return h
 }
 
@@ -146,11 +138,6 @@ func (h *SharedHandler) HandlePublicView(w http.ResponseWriter, r *http.Request)
 		} else {
 			sharedBookings = buildSharedBookings(bookings)
 		}
-	}
-
-	// Track shared trip view (async, non-blocking, no PII)
-	if h.analyticsClient != nil {
-		h.analyticsClient.Track("anonymous", "shared_trip_viewed", nil)
 	}
 
 	resp := sharedTripResponse{

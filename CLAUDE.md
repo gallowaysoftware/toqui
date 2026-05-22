@@ -28,10 +28,7 @@ Toqui exists to help travelers, not to exploit them. These rules are absolute an
 - Sponsored/promoted placements, if ever introduced, must be clearly labeled and must not degrade recommendation quality.
 
 **Analytics:**
-- Session replay must mask all text inputs, chat content, and itinerary details.
-- Analytics events track behavior patterns (user created a trip), never content (user planned a trip to Mecca).
-- Self-hosted or EU-hosted analytics only. Google Analytics is explicitly prohibited (ruled non-compliant by multiple EU DPAs).
-- Users must be informed about analytics in the privacy policy with a clear opt-out mechanism for EU users.
+- The server emits no analytics or telemetry. Errors are logged to stdout/stderr only.
 
 **Data Lifecycle:**
 - GDPR Article 17 (right to deletion) and Article 20 (data portability) are implemented and must remain functional.
@@ -95,8 +92,6 @@ graph TB
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
 | `internal/csrf/`        | CSRF protection middleware (Origin/Referer validation for state-changing requests)        |
 | `internal/audit/`       | Structured audit logging for security-relevant events (via slog → Cloud Logging)         |
-| `internal/analytics/`   | Server-side PostHog event ingestion + funnel/alert helpers (pseudonymized, EU-hosted)     |
-| `internal/attribution/` | UTM/ref attribution parser — base64-decode + whitelist + sanitize for `signup_completed` |
 | `internal/telemetry/`   | OpenTelemetry initialization + HTTP metrics middleware (OTLP exporter, Cloud Monitoring)  |
 | `internal/middleware/`   | HTTP middleware (cookie-to-header auth bridge for web browser sessions)                   |
 | `internal/ratelimit/`   | Per-user rate limiting interceptor + per-IP auth lockout (AuthLimiter)                    |
@@ -294,7 +289,6 @@ Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `V
 | `EMAIL_WEBHOOK_SECRET` | (none) | Resend webhook signing secret in `whsec_<base64>` form. Used to verify Svix-style signatures on POST /webhooks/email/inbound. |
 | `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
 | `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
-| `POSTHOG_API_KEY` | (none) | PostHog project API key (EU instance, server-side events) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | (none) | OpenTelemetry collector endpoint |
 | `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
@@ -947,35 +941,6 @@ Destination guide content served at `/api/guides` (list) and `/api/guides/{slug}
 
 ### Trip Sharing
 Users can share a trip publicly via `POST /api/trips/share`, which generates a share token. The public view is accessible at `/shared/{token}` without authentication. Sharing can be revoked via `POST /api/trips/unshare`.
-
-### PostHog Analytics (Server-Side)
-
-Server-side event tracking via PostHog (EU-hosted, `eu.i.posthog.com`). User IDs are SHA-256 hashed before sending. The events listed below are **backend-only** ground-truth fires — the frontend separately tracks UI/funnel events (see toqui CLAUDE.md analytics list).
-
-**Acquisition / lifecycle:**
-- `signup_completed` — new account created (Google, Facebook, or Apple OAuth, fired only on first-ever login per user). Properties: `auth_provider` ("google" | "facebook" | "apple"), plus optional `attribution_*` props (`source`, `medium`, `campaign`, `ref`) when the marketing site captured UTM/ref params on the visit that produced the signup. Web flow: fired from `HandleExchange` so the frontend's `?attribution=<base64-json>` query param can be attached. Native flow: fired from each gRPC `*Login` handler reading `req.Msg.Attribution`. Parsing/sanitization lives in `internal/attribution/` — bad attribution input is logged warn and dropped, never fails login. See audit issue #39 A-2.
-
-**Engagement:**
-- `chat_message_sent` — user sent a chat turn (count + tier only, no content)
-- `trip_created` — REST `CreateTrip` succeeded; properties: `is_first_trip`, `has_dates`, `has_budget`, `initial_status` (no destination/title/description)
-- `itinerary_generated` — AI-driven itinerary item batch created via the chat tool
-- `shared_trip_viewed` — anonymous user viewed `/shared/{token}` (anonymous distinct ID)
-- `affiliate_link_generated` — booking recommendation included an affiliate link
-- `affiliate_link_clicked` — outbound affiliate click via `/api/affiliate/redirect`
-
-**Monetization:**
-- `checkout_initiated` — REST `POST /api/checkout` succeeded (Trip Pro)
-- `trip_pro_purchased` — Stripe webhook confirmed payment + unlock created (revenue ground truth, backend-side; properties: `amount_cents`, `currency`)
-- `subscription_checkout_initiated` — Explorer/Voyager checkout session created
-- `subscription_canceled` — REST `POST /api/subscription/cancel` succeeded
-- `referral_redeemed` — `POST /api/referral/redeem` succeeded; property: `referrer_capped` (so the cap-vs-growth tradeoff is measurable)
-
-**Privacy guardrails enforced in code:**
-- User IDs are sent as the bare UUID; PostHog is told to project them via `process_person_profile=identified_only` so anonymized rollups are still possible.
-- Travel content (destination, dates, hotel names, chat message text, itinerary items) is NEVER sent — only counts, categories, and booleans.
-- Referral codes are NOT sent (they're pseudo-PII because they identify the referrer).
-
-Requires `POSTHOG_API_KEY` env var. Events are fire-and-forget (non-blocking). When the API key is empty, `Track` is a no-op so local development doesn't pollute the project.
 
 ### AI Prompt Engineering
 

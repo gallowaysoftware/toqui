@@ -87,19 +87,6 @@ func (s *Service) SetExportStore(store exportstorage.Store) {
 //  1. Get all trip IDs for the user
 //  2. Delete all Firestore chat data for each trip
 //  3. Delete user from Postgres (CASCADE handles trips, bookings, itinerary, themes)
-//
-// Note: PostHog and Sentry deletion (the "no shadow profiles, no retained
-// analytics" privacy-policy promise) is NOT yet wired up in this path.
-// Two prerequisites need to land first:
-//   - Frontend Sentry.setUser({id: hashedUserID}) so Sentry records are
-//     keyed to a stable identifier the backend can target on delete
-//     (today they're anonymous, so a delete call would 404).
-//   - PostHog person-deletion via the documented two-step API
-//     (resolve distinct_id → numeric person_id, then DELETE).
-//
-// Until that follow-up PR ships, account deletion is complete on the
-// primary stores but operators must run a periodic Sentry/PostHog scrub
-// out of band. Tracked at TODO(privacy-fanout).
 func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	userIDStr := userID.String()
 
