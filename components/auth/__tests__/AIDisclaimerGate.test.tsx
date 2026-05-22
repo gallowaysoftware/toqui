@@ -25,16 +25,6 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => mockedUseAuth(),
 }));
 
-const mockedTrack = vi.fn();
-vi.mock("@/lib/analytics", () => ({
-  useAnalytics: () => ({
-    track: mockedTrack,
-    identify: vi.fn(),
-    reset: vi.fn(),
-    getFeatureFlag: vi.fn(),
-  }),
-}));
-
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -72,7 +62,6 @@ const STORAGE_KEY = (id: string) => `toqui_ai_disclaimer_acked_v1_${id}`;
 beforeEach(() => {
   localStorage.clear();
   mockedUseAuth.mockReturnValue({ accessToken: null, user: null });
-  mockedTrack.mockReset();
 });
 
 afterEach(() => {
@@ -125,7 +114,7 @@ describe("AIDisclaimerGate", () => {
     expect(screen.queryByTestId("ai-disclaimer-gate")).not.toBeInTheDocument();
   });
 
-  it("acknowledges, persists per-user, and tracks the event", async () => {
+  it("acknowledges and persists per-user", async () => {
     mockedUseAuth.mockReturnValue({
       accessToken: "token",
       user: { id: "user-1" },
@@ -144,14 +133,13 @@ describe("AIDisclaimerGate", () => {
     });
 
     // Behavioural contract: clicking acknowledge writes the per-user
-    // storage flag and fires the analytics event. We deliberately don't
-    // assert the modal unmounts in the DOM here because react-native-web
-    // keeps Modal children in the tree with display:none when visible
-    // flips, which makes a "not in the document" check brittle.
+    // storage flag. We deliberately don't assert the modal unmounts in
+    // the DOM here because react-native-web keeps Modal children in the
+    // tree with display:none when visible flips, which makes a "not in
+    // the document" check brittle.
     await waitFor(() => {
       expect(localStorage.getItem(STORAGE_KEY("user-1"))).toBe("true");
     });
-    expect(mockedTrack).toHaveBeenCalledWith("ai_disclaimer_acknowledged");
   });
 
   it("re-prompts a different user on the same device", async () => {
@@ -210,11 +198,11 @@ describe("AIDisclaimerGate", () => {
   });
 
   it("does NOT trap user on the modal when localStorage.setItem throws on acknowledge", async () => {
-    // The legal audit trail is the PostHog event, not the local flag.
-    // If the storage write fails we still want to: (1) fire the event
-    // (so the trail captures the click), and (2) dismiss the modal so
-    // the user isn't stuck. They'll re-see the modal on next session,
-    // which is acceptable.
+    // If the storage write fails (quota, private mode, etc.) the click
+    // handler must still resolve and dismiss the modal — the user will
+    // re-see it on next session, which is acceptable. Pre-fix, a
+    // thrown setItemAsync would leave the user stuck on the modal
+    // forever (issue #198).
     mockedUseAuth.mockReturnValue({
       accessToken: "token",
       user: { id: "user-1" },
@@ -238,15 +226,13 @@ describe("AIDisclaimerGate", () => {
         return realSetItem.call(this, key, value);
       });
 
+    // Click should not throw despite setItem rejecting.
     await act(async () => {
       fireEvent.click(screen.getByTestId("ai-disclaimer-acknowledge"));
     });
 
-    // The PostHog event MUST fire even when storage fails — the
-    // event is the actual audit trail.
-    await waitFor(() => {
-      expect(mockedTrack).toHaveBeenCalledWith("ai_disclaimer_acknowledged");
-    });
+    // Storage write failed, so the per-user flag is NOT persisted.
+    expect(localStorage.getItem(STORAGE_KEY("user-1"))).toBeNull();
 
     setItemSpy.mockRestore();
   });

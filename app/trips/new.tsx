@@ -3,11 +3,10 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Sparkles, ChevronDown, ChevronUp } from "lucide-react-native";
-import { useCreateTrip, useTrips } from "@/lib/hooks/useTrips";
+import { useCreateTrip } from "@/lib/hooks/useTrips";
 import { DatePicker } from "@/components/DatePicker";
 import { useTheme } from "@/lib/theme";
 import { getTemplateById } from "@/lib/data/tripTemplates";
-import { useAnalytics } from "@/lib/analytics";
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -25,8 +24,6 @@ export default function NewTripScreen() {
     template?: string;
   }>();
   const createTrip = useCreateTrip();
-  const { trips } = useTrips();
-  const { track } = useAnalytics();
 
   const template = useMemo(
     () => (templateId ? getTemplateById(templateId) : undefined),
@@ -88,10 +85,6 @@ export default function NewTripScreen() {
         endDate: formatDate(end),
       });
       if (trip) {
-        const tripCount = trips.length + 1; // includes the just-created trip
-        track("trip_created", { has_dates: true, from_template: false, count: tripCount });
-        if (tripCount === 1) track("first_trip_created");
-        if (tripCount === 2) track("second_trip_created");
         router.replace(`/trips/${trip.id}/chat` as never);
       }
     } catch {
@@ -117,14 +110,6 @@ export default function NewTripScreen() {
         endDate: endDate || undefined,
       });
       if (trip) {
-        const tripCount = trips.length + 1;
-        track("trip_created", {
-          has_dates: !!(startDate && endDate),
-          from_template: !!template,
-          count: tripCount,
-        });
-        if (tripCount === 1) track("first_trip_created");
-        if (tripCount === 2) track("second_trip_created");
         if (template) {
           router.replace({
             pathname: `/trips/${trip.id}/chat` as never,

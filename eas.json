@@ -28,9 +28,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.toqui.travel",
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "194088718926-1rdk2kkmgl72t9kae73e9oq84aobtv2h.apps.googleusercontent.com",
-        "EXPO_PUBLIC_POSTHOG_KEY": "phc_smecxjpA2Cw4oMxfoBiJzwQryoNXcBGPpC5U3ANegbRX",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://9a4287e61882165484eb43ee7e4b100f@o4511157132001280.ingest.de.sentry.io/4511157139013712"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "194088718926-1rdk2kkmgl72t9kae73e9oq84aobtv2h.apps.googleusercontent.com"
       }
     }
   },

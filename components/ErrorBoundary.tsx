@@ -1,7 +1,6 @@
 import { Component } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import type { ReactNode, ErrorInfo } from "react";
-import * as Sentry from "@sentry/react-native";
 
 interface Props {
   children: ReactNode;
@@ -14,8 +13,8 @@ interface State {
 }
 
 /**
- * Catches unhandled React errors, reports them via the onError callback
- * (used for analytics), and shows a minimal recovery UI.
+ * Catches unhandled React errors, reports them via the optional onError
+ * callback, logs to the console, and shows a minimal recovery UI.
  */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
@@ -25,7 +24,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    // eslint-disable-next-line no-console
+    console.error("ErrorBoundary caught error:", error, errorInfo.componentStack);
     this.props.onError?.(error, errorInfo);
   }
 

@@ -136,23 +136,10 @@ export default function PrivacyScreen() {
 
       <Text style={styles.subsectionTitle}>Analytics</Text>
       <Text style={styles.text}>
-        We use PostHog for product analytics, hosted in the European Union. We
-        collect information about how you use the app — which features you use,
-        how often you visit, and general interaction patterns — to improve the
-        Service.
-      </Text>
-      <Text style={styles.text}>
-        Here is what we do NOT track through analytics:
-      </Text>
-      <Bullet>
-        Your trip content (destinations, dates, chat messages, booking details)
-      </Bullet>
-      <Bullet>Your activity across other apps or websites</Bullet>
-      <Text style={styles.text}>
-        Your user ID is pseudonymized (hashed) before being sent to our
-        analytics provider. We do not use cookies for analytics. You can opt out
-        of analytics at any time in your account settings, or by contacting us
-        at privacy@toqui.travel.
+        Toqui does not run product analytics. We do not collect behavioural
+        metrics, session recordings, or any third-party analytics signal. The
+        only telemetry the app emits is the standard request/response traffic
+        required to call the backend API.
       </Text>
 
       <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
@@ -204,8 +191,7 @@ export default function PrivacyScreen() {
       <Bullet>
         Service providers: Helcim (payments), SendGrid (email forwarding),
         Resend (transactional emails), Google Cloud Platform (hosting and
-        storage), Anthropic and Google (AI processing), PostHog (analytics,
-        EU-hosted)
+        storage), Anthropic and Google (AI processing)
       </Bullet>
       <Bullet>
         Shared trips: If you share a trip via a public link, the trip details
@@ -289,9 +275,9 @@ export default function PrivacyScreen() {
       </Text>
       <Text style={styles.text}>
         Toqui does not use cookies for authentication or tracking. On the web
-        version, authentication tokens are stored in browser local storage. Our
-        analytics provider (PostHog) does not use cookies. We do not use
-        third-party tracking cookies or advertising pixels.
+        version, authentication tokens are stored in browser local storage. We
+        do not run analytics and do not use third-party tracking cookies or
+        advertising pixels.
       </Text>
 
       <Text style={styles.sectionTitle}>

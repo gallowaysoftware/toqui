@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
-import { useAnalytics } from "@/lib/analytics";
 import { useTheme } from "@/lib/theme";
 
 // ---------------------------------------------------------------------------
@@ -19,16 +18,10 @@ import { useTheme } from "@/lib/theme";
 // One-time blocking modal that fires after a user signs in for the first
 // time on this device, before they use any AI feature. Surfaces the
 // "AI may be wrong, especially on visa/health/safety; verify before
-// booking" disclaimer that's the legal complement to Trip Pro's $19
-// charge — without it, every AI-hallucinated visa rule that costs a
-// user a flight is a liability surface for a sole proprietor.
+// booking" disclaimer.
 //
 // Acceptance is stored locally (expo-secure-store on native, localStorage
-// on web) AND tracked via PostHog with the user's pseudonymised ID so we
-// have a server-side log of who acknowledged when. Legal-grade evidence
-// would require a backend consent record — that's a follow-up that adds
-// backend work; for now PostHog is sufficient signal that the prompt was
-// seen and acknowledged at a specific time.
+// on web). The local flag is the sole record of acknowledgement.
 //
 // Storage key includes a version suffix so we can re-prompt every user
 // after material wording changes without writing a migration.
@@ -41,8 +34,7 @@ const STORAGE_KEY_PREFIX = "toqui_ai_disclaimer_acked_v1_";
 // read" — see useEffect below for the fail-CLOSED policy. Write errors
 // rethrow so the caller can decide whether to surface them; in this
 // component we swallow them in handleAcknowledge to avoid trapping the
-// user on the modal (the audit trail is the PostHog event, not the
-// local flag — see issue #198).
+// user on the modal (see issue #198).
 async function getStorageItem(key: string): Promise<string | null> {
   try {
     if (Platform.OS === "web") {
@@ -72,7 +64,6 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { track } = useAnalytics();
 
   // tri-state: null = loading (don't render modal yet), true = show modal,
   // false = already acknowledged or no user
@@ -99,21 +90,18 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
 
   const handleAcknowledge = useCallback(async () => {
     if (!user?.id) return;
-    // Track FIRST — PostHog is the audit trail; the local storage write
-    // is just a "don't re-prompt" UX nicety. If the storage write throws
-    // (quota, private mode, etc.) we still want the audit-trail event
-    // to land and we still want the user to proceed past the modal —
-    // they'll see it again on next session, which is acceptable.
-    // Pre-fix, a thrown setItemAsync would leave the user stuck on the
-    // modal forever (issue #198).
-    track("ai_disclaimer_acknowledged");
+    // If the storage write throws (quota, private mode, etc.) we still
+    // dismiss the modal so the user isn't trapped — they'll see it
+    // again on next session, which is acceptable. Pre-fix, a thrown
+    // setItemAsync would leave the user stuck on the modal forever
+    // (issue #198).
     try {
       await setStorageItem(STORAGE_KEY_PREFIX + user.id, "true");
     } catch {
       // intentionally swallow — see comment above
     }
     setNeedsAck(false);
-  }, [user?.id, track]);
+  }, [user?.id]);
 
   return (
     <>

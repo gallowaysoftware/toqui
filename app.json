@@ -62,15 +62,7 @@
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker",
       "expo-document-picker",
-      "./plugins/xcode16-compat",
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "toqui",
-          "organization": "galloway-software-solutions-in"
-        }
-      ]
+      "./plugins/xcode16-compat"
     ]
   }
 }
