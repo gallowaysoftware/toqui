@@ -3,7 +3,6 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "./auth";
-import { useAnalytics } from "./analytics";
 import { getConfig } from "./config";
 
 // Complete the auth session for native popup flows.
@@ -18,7 +17,6 @@ const discovery: AuthSession.DiscoveryDocument = {
 
 export function useGoogleAuth() {
   const { login } = useAuth();
-  const { track } = useAnalytics();
   const { googleClientId } = getConfig();
 
   // On web, use the explicit origin to match Google Console's authorized redirect URIs.
@@ -42,8 +40,6 @@ export function useGoogleAuth() {
   );
 
   const signIn = useCallback(async () => {
-    track("signup_started", { method: "google", platform: Platform.OS });
-
     if (Platform.OS === "web") {
       // Full-page redirect instead of popup. Google's COOP headers sever
       // window.opener in popups, breaking expo-auth-session's postMessage
@@ -64,7 +60,7 @@ export function useGoogleAuth() {
         console.error("Google login failed:", err);
       }
     }
-  }, [promptAsync, login, redirectUri, request, track]);
+  }, [promptAsync, login, redirectUri, request]);
 
   return {
     signIn,

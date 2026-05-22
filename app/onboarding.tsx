@@ -17,7 +17,6 @@ import { Plane } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { useCreateTrip } from "@/lib/hooks/useTrips";
-import { useAnalytics } from "@/lib/analytics";
 
 const SAMPLE_PERSONAS = [
   {
@@ -58,7 +57,6 @@ export default function OnboardingScreen() {
   const { colors } = useTheme();
   const { completeOnboarding } = useOnboarding();
   const createTrip = useCreateTrip();
-  const { track } = useAnalytics();
   const [destination, setDestination] = useState("");
 
   const openTerms = useCallback(() => {
@@ -74,7 +72,6 @@ export default function OnboardingScreen() {
 
     // Implicit terms acceptance on primary CTA press.
     await completeOnboarding();
-    track("onboarding_completed", { cta: "start_planning" });
 
     try {
       const startDate = new Date();
@@ -98,14 +95,13 @@ export default function OnboardingScreen() {
         params: { destination: destination.trim() },
       });
     }
-  }, [completeOnboarding, createTrip, destination, router, track]);
+  }, [completeOnboarding, createTrip, destination, router]);
 
   const handleBrowseIdeas = useCallback(async () => {
     // Implicit terms acceptance on secondary CTA press as well.
     await completeOnboarding();
-    track("onboarding_completed", { cta: "explore_first" });
     router.replace("/(tabs)" as never);
-  }, [completeOnboarding, router, track]);
+  }, [completeOnboarding, router]);
 
   const styles = StyleSheet.create({
     container: {

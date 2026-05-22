@@ -8,9 +8,7 @@ set -e
 cat > /usr/share/nginx/html/config.json <<EOF
 {
   "apiUrl": "${EXPO_PUBLIC_API_URL:-http://localhost:8090}",
-  "googleClientId": "${GOOGLE_CLIENT_ID:-}",
-  "posthogKey": "${POSTHOG_KEY:-}",
-  "sentryDsn": "${SENTRY_DSN:-}"
+  "googleClientId": "${GOOGLE_CLIENT_ID:-}"
 }
 EOF
 

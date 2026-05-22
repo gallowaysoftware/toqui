@@ -13,7 +13,6 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
-import { useAnalytics } from "@/lib/analytics";
 
 interface ShareButtonProps {
   /** Trip ID to enable sharing for */
@@ -42,7 +41,6 @@ export function ShareButton({
   const [isSharing, setIsSharing] = useState(false);
   const { accessToken } = useAuth();
   const { colors } = useTheme();
-  const { track } = useAnalytics();
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -74,7 +72,6 @@ export function ShareButton({
           url: shareUrl,
         });
       }
-      track("trip_shared", { platform: Platform.OS });
     } catch (err) {
       // User cancelled the share sheet — not an error
       if (err instanceof Error && err.message.includes("User did not share")) {

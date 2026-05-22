@@ -19,7 +19,6 @@ import {
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
-import { useAnalytics } from "@/lib/analytics";
 import {
   tripTemplates,
   TEMPLATE_CATEGORIES,
@@ -45,21 +44,14 @@ function TemplateCard({ template, compact }: { template: TripTemplate; compact?:
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const { track } = useAnalytics();
   const Icon = ICON_MAP[template.icon] ?? MapPin;
 
   const handlePress = useCallback(() => {
-    // Funnel event — distinguishes template-driven trip creation from
-    // free-text creation. Pairs with `trip_created` (which already
-    // fires on the backend; toqui-backend PR #403) so the funnel can
-    // measure template → trip conversion separately. The template id
-    // is fine to send (it's a fixed enum, not user content).
-    track("template_selected", { template_id: template.id });
     router.push({
       pathname: "/trips/new" as never,
       params: { template: template.id },
     });
-  }, [router, template.id, track]);
+  }, [router, template.id]);
 
   if (compact) {
     return (

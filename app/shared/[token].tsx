@@ -45,7 +45,6 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import type { ThemeColors } from "@/lib/theme";
 import { getConfig } from "@/lib/config";
-import { useAnalytics } from "@/lib/analytics";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -719,7 +718,6 @@ export default function SharedTripScreen() {
   const { colors } = useTheme();
   const { accessToken } = useAuth();
   const router = useRouter();
-  const { track } = useAnalytics();
   const refCode = getPendingRef();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
@@ -738,13 +736,6 @@ export default function SharedTripScreen() {
 
   const tripTitle = data?.trip?.title;
 
-  // Track shared trip view (behavior only — no destination or content)
-  useEffect(() => {
-    if (data) {
-      track("shared_trip_viewed", { source: refCode ? "referral" : "direct" });
-    }
-  }, [data, track, refCode]);
-
   useEffect(() => {
     if (tripTitle && typeof document !== "undefined") {
       document.title = `${tripTitle} — Toqui`;
@@ -754,7 +745,7 @@ export default function SharedTripScreen() {
   const styles = makeStyles(colors);
 
   const handleSignupClick = () => {
-    track("shared_trip_signup_clicked", { source: refCode ? "referral" : "direct" });
+    // No-op hook kept for future telemetry; currently does nothing.
   };
 
   const handleCta = () => {

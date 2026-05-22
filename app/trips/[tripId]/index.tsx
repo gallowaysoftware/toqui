@@ -17,7 +17,6 @@ import { exportItineraryPDF } from "@/lib/export/pdf-export";
 import { exportItineraryICal } from "@/lib/export/calendar-export";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import { useAuth } from "@/lib/auth";
-import { useAnalytics } from "@/lib/analytics";
 import { authFetch } from "@/lib/authFetch";
 import { getConfig } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
@@ -48,7 +47,6 @@ export default function TripDetailScreen() {
   const { trip: networkTrip, isLoading: isNetworkLoading, error: tripError } = useTrip(tripId!);
   const { collaborators } = useCollaborators(tripId!);
   const queryClient = useQueryClient();
-  const { track } = useAnalytics();
   const { itinerary: networkItinerary, coveredDays: networkCoveredDays, isLoading: isNetworkItineraryLoading } = useItinerary(tripId!);
 
   // Offline support: sync bundle in background, fall back to cache when offline
@@ -691,12 +689,6 @@ export default function TripDetailScreen() {
               <Pressable
                 style={styles.exportButton}
                 onPress={() => {
-                  // Funnel event — pairs with itinerary_generated to
-                  // measure "do users actually export the plans we
-                  // help them build?". `format` distinguishes PDF vs
-                  // calendar so the funnel can show preference. No
-                  // trip content goes through — just the format.
-                  track("itinerary_exported", { format: "pdf" });
                   void exportItineraryPDF(trip, itinerary);
                 }}
               >
@@ -706,7 +698,6 @@ export default function TripDetailScreen() {
               <Pressable
                 style={styles.exportButton}
                 onPress={() => {
-                  track("itinerary_exported", { format: "calendar" });
                   void exportItineraryICal(trip, itinerary);
                 }}
               >
