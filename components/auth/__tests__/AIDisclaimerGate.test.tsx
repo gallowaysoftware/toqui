@@ -3,8 +3,8 @@ import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import { createElement } from "react";
 import en from "@/messages/en.json";
 
-// react-native shim — same shape used by AgeGate.test.tsx so the modal
-// component renders against the web platform path.
+// react-native shim — forces the web platform path so the modal component
+// renders against jsdom.
 vi.mock("react-native", async () => {
   const actual = await vi.importActual<typeof import("react-native")>("react-native");
   return {

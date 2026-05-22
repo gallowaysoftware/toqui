@@ -81,7 +81,7 @@ components/                   Shared UI components
   OfflineBanner.tsx           Network status banner (offline/reconnecting)
   ShareButton.tsx             Native/web share sheet integration
   auth/
-    AgeGate.tsx               Age verification gate (18+ enforcement)
+    AIDisclaimerGate.tsx      One-time AI disclaimer acknowledgement modal
   bookings/
     ForwardingCard.tsx        Email forwarding setup card for booking import
   chat/
@@ -111,7 +111,6 @@ lib/                          Shared utilities
   theme.tsx                   Light/dark/system theme with ThemeColors interface
   google-auth.ts              useGoogleAuth() hook — expo-auth-session PKCE wrapper
   authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
-  attribution.ts              Read UTM/ref attribution cookie/AsyncStorage on signup; clears after
   analytics.tsx               PostHog privacy-first analytics provider
   config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
@@ -248,7 +247,7 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 Providers wrap the entire app in `app/_layout.tsx`:
 
 ```
-ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AgeGate → ConsentGate → AIDisclaimerGate → {children}
+ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → AnalyticsProvider → TransportProvider → AIDisclaimerGate → {children}
 ```
 
 - **ThemeProvider** — Light/dark/system theme management with persistence (`lib/theme.tsx`). Provides `ThemeColors` interface to all components.
@@ -256,9 +255,7 @@ ThemeProvider → I18nProvider → QueryClientProvider → AuthProvider → Anal
 - **QueryClientProvider** — TanStack Query client for server state caching and mutations
 - **AuthProvider** — JWT token management, SecureStore/localStorage persistence
 - **AnalyticsProvider** — PostHog initialization, user identification, feature flags (`lib/analytics.tsx`)
-- **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401. Also detects the backend `FailedPrecondition("consent_required")` sentinel and exposes it via `useConsentSignal()`.
-- **AgeGate** — Wraps the app to enforce 18+ verification, but **only post-OAuth** (toqui-backend#420 redesign). Behaviour: logged-out users are not gated (the `accessToken` short-circuit at the top of the component renders children unchanged so marketing/sign-in screens are visible without a DOB demand). Logged-in users with `user.ageVerifiedAt` set pass through. Logged-in users without it see the DOB form. On submit, the backend is the single enforcement point: `>= 18` returns 200 and the user proceeds; `< 18` triggers a backend-side hard delete (`lifecycle.DeleteUser`) plus a SHA-256 email entry in `under_age_blocks` for anti-evasion, and the frontend renders a deletion-confirmation screen + calls `logout()` to clear local tokens. The legacy `toqui_age_verified` localStorage key was dropped — `user.ageVerifiedAt` is the source of truth on every render.
-- **ConsentGate** — Pops a blocking modal when the transport interceptor sees `FailedPrecondition("consent_required")` from the backend (toqui-backend PR #374). Calls `POST /auth/consent` to record `terms` + `privacy_policy`, invalidates React Query caches so errored fetches refire, and clears the signal on success.
+- **TransportProvider** — ConnectRPC transport with Bearer auth interceptor + auto-refresh on 401.
 - **AIDisclaimerGate** — One-time blocking modal on first sign-in per device that surfaces the "AI may be wrong, especially on visa/health/safety; verify before booking" disclaimer (toqui#197). Acceptance is stored per-user in `expo-secure-store` (native) or `localStorage` (web) under `toqui_ai_disclaimer_acked_v1_<userId>` and audit-trailed via the PostHog `ai_disclaimer_acknowledged` event.
 
 ## Hooks
@@ -304,7 +301,7 @@ Both generate from the trip itinerary and are accessible from the trip settings 
 
 EU-hosted PostHog instance (`eu.i.posthog.com`). Privacy-first setup compliant with Core Principles:
 
-- **Tracked events (acquisition)**: session_start, return_visit, signup_started, signup_completed, signin_completed, age_gate_passed, ai_disclaimer_acknowledged, consent_recorded, onboarding_completed
+- **Tracked events (acquisition)**: session_start, return_visit, signup_started, signup_completed, signin_completed, ai_disclaimer_acknowledged, onboarding_completed
 - **Tracked events (engagement)**: trip_created, first_trip_created, second_trip_created, trip_shared, shared_trip_viewed, shared_trip_signup_clicked, first_message_sent, first_itinerary_generated, itinerary_generated, error_encountered
 - **Tracked events (monetization)**: upgrade_viewed, upgrade_prompt_shown, upgrade_started, checkout_initiated, payment_completed, recommendation_clicked, subscription_started, subscription_cancel_started, subscription_manage_opened
 - All events track behavior patterns only — no destination names, chat content, or PII

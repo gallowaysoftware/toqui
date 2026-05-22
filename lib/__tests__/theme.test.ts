@@ -329,7 +329,7 @@ describe("WCAG AA color contrast", () => {
 
   // Button text contrast
   it("light: button text (white) on accent bg meets 4.5:1", () => {
-    // The AgeGate uses color: #fff on backgroundColor: userBubble (#c44a32)
+    // Primary CTAs use color: #fff on backgroundColor: userBubble (#c44a32)
     expect(contrastRatio("#ffffff", "#c44a32")).toBeGreaterThanOrEqual(4.5);
   });
 });

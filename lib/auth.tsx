@@ -9,12 +9,9 @@ import {
 import { Platform } from "react-native";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { timestampDate } from "@bufbuild/protobuf/wkt";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
 import { getConfig } from "./config";
-import { readAttributionEncoded, clearAttribution } from "./attribution";
 
 // Token storage: SecureStore on native (Keychain/Keystore), localStorage on web.
 // localStorage persists across browser sessions so users stay logged in between
@@ -52,18 +49,13 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  // ISO 8601 string (or null) — when the user completed age verification
-  // on the backend. Set by login/refresh from User.age_verified_at on the
-  // proto. Consumed by AgeGate to skip the modal for returning users who
-  // verified on another device/session.
-  ageVerifiedAt: string | null;
 }
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isLoading: boolean;
-  login: (googleAuthCode: string, redirectUri?: string) => Promise<{ consentPending: boolean }>;
+  login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
   user: AuthUser | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
@@ -71,24 +63,6 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-
-// Convert a google.protobuf.Timestamp (or any object with a toDate() method,
-// which is how our tests stub it) to an ISO-8601 string. Returns null for
-// unset / nullish inputs. Kept forgiving of shape so it works with both the
-// real @bufbuild/protobuf Timestamp and simple test doubles.
-function toIsoOrNull(
-  ts: Timestamp | { toDate: () => Date } | undefined | null,
-): string | null {
-  if (!ts) return null;
-  if (typeof (ts as { toDate?: unknown }).toDate === "function") {
-    return (ts as { toDate: () => Date }).toDate().toISOString();
-  }
-  try {
-    return timestampDate(ts as Timestamp).toISOString();
-  } catch {
-    return null;
-  }
-}
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
@@ -115,13 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userJson) {
         try {
           const parsed = JSON.parse(userJson);
-          const ageVerifiedAt =
-            typeof parsed.ageVerifiedAt === "string" ? parsed.ageVerifiedAt : null;
           setUser({
             id: parsed.id,
             email: parsed.email,
             name: parsed.name,
-            ageVerifiedAt,
           });
         } catch { /* ignore corrupt data */ }
       }
@@ -142,41 +113,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (googleAuthCode: string, redirectUri?: string) => {
     const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
     const client = createClient(AuthService, transport);
-    // Attribution is best-effort metadata for the launch funnel — never
-    // throw login over a missing or malformed cookie. Fire the read in
-    // parallel with the no-op proto-construction work above.
-    const attributionEncoded = await readAttributionEncoded();
     const res = await client.googleLogin({
       code: googleAuthCode,
       redirectUri: redirectUri ?? "",
-      attribution: attributionEncoded,
     });
     setAccessToken(res.accessToken);
     setRefreshToken(res.refreshToken);
-    // One-shot: clear attribution storage so a returning user's later
-    // sign-in doesn't get re-attributed to the original launch campaign.
-    if (attributionEncoded) {
-      void clearAttribution();
-    }
     if (res.user) {
-      const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
       const u: AuthUser = {
         id: res.user.id,
         email: res.user.email,
         name: res.user.name,
-        ageVerifiedAt,
       };
       setUser(u);
       await tokenStorage.set("toqui_user", JSON.stringify(u));
     }
     await tokenStorage.set("toqui_access_token", res.accessToken);
     await tokenStorage.set("toqui_refresh_token", res.refreshToken);
-    // Surface consentPending so callers (auth/callback.tsx) can fire
-    // the right analytics event — signup_completed for first-time
-    // users (consent not yet recorded), signin_completed otherwise.
-    // Pre-fix this leaked signup_completed on every returning sign-in
-    // (toqui#190 LB-8) which polluted the funnel-conversion metric.
-    return { consentPending: res.consentPending };
   }, []);
 
   const refreshTokens = useCallback(async (): Promise<string | null> => {
@@ -189,15 +142,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(res.accessToken);
       setRefreshToken(res.refreshToken);
       // Sync the user snapshot from the refresh response so server-side
-      // state (age_verified_at) propagates without requiring the user to
-      // sign back in.
+      // state propagates without requiring the user to sign back in.
       if (res.user) {
-        const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
         const u: AuthUser = {
           id: res.user.id,
           email: res.user.email,
           name: res.user.name,
-          ageVerifiedAt,
         };
         setUser(u);
         await tokenStorage.set("toqui_user", JSON.stringify(u));

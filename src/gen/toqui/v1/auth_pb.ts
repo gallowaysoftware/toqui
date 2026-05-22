@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/auth.proto.
  */
 export const file_toqui_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ2ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCRITCgthdHRyaWJ1dGlvbhgEIAEoCSKcAQoTR29vZ2xlTG9naW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlchIXCg9jb25zZW50X3BlbmRpbmcYBCABKAgSIQoZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZBgFIAEoCCJKChRGYWNlYm9va0xvZ2luUmVxdWVzdBIdCgxhY2Nlc3NfdG9rZW4YASABKAlCB7pIBHICEAESEwoLYXR0cmlidXRpb24YAiABKAkingEKFUZhY2Vib29rTG9naW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlchIXCg9jb25zZW50X3BlbmRpbmcYBCABKAgSIQoZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZBgFIAEoCCJ+ChFBcHBsZUxvZ2luUmVxdWVzdBIjChJhdXRob3JpemF0aW9uX2NvZGUYASABKAlCB7pIBHICEAESGQoIaWRfdG9rZW4YAiABKAlCB7pIBHICEAESFAoMcmVkaXJlY3RfdXJpGAMgASgJEhMKC2F0dHJpYnV0aW9uGAQgASgJIssBChJBcHBsZUxvZ2luUmVzcG9uc2USHAoEdXNlchgBIAEoCzIOLnRvcXVpLnYxLlVzZXISFAoMYWNjZXNzX3Rva2VuGAIgASgJEhUKDXJlZnJlc2hfdG9rZW4YAyABKAkSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoPY29uc2VudF9wZW5kaW5nGAUgASgIEiEKGWFnZV92ZXJpZmljYXRpb25fcmVxdWlyZWQYBiABKAgiNQoTUmVmcmVzaFRva2VuUmVxdWVzdBIeCg1yZWZyZXNoX3Rva2VuGAEgASgJQge6SARyAhABImEKFFJlZnJlc2hUb2tlblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIhcKFUdldEN1cnJlbnRVc2VyUmVxdWVzdCI2ChZHZXRDdXJyZW50VXNlclJlc3BvbnNlEhwKBHVzZXIYASABKAsyDi50b3F1aS52MS5Vc2VyIqgBCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEgoKYXZhdGFyX3VybBgEIAEoCRIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCg9hZ2VfdmVyaWZpZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjAKFERlbGV0ZUFjY291bnRSZXF1ZXN0EhgKB2NvbmZpcm0YASABKAhCB7pIBGoCCAEiPAoVRGVsZXRlQWNjb3VudFJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCSITChFFeHBvcnREYXRhUmVxdWVzdCI5ChJFeHBvcnREYXRhUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJMrMECgtBdXRoU2VydmljZRJKCgtHb29nbGVMb2dpbhIcLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVxdWVzdBodLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVzcG9uc2USUAoNRmFjZWJvb2tMb2dpbhIeLnRvcXVpLnYxLkZhY2Vib29rTG9naW5SZXF1ZXN0Gh8udG9xdWkudjEuRmFjZWJvb2tMb2dpblJlc3BvbnNlEkcKCkFwcGxlTG9naW4SGy50b3F1aS52MS5BcHBsZUxvZ2luUmVxdWVzdBocLnRvcXVpLnYxLkFwcGxlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
+  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ0ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCUoECAQQBVILYXR0cmlidXRpb24imAEKE0dvb2dsZUxvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJIChRGYWNlYm9va0xvZ2luUmVxdWVzdBIdCgxhY2Nlc3NfdG9rZW4YASABKAlCB7pIBHICEAFKBAgCEANSC2F0dHJpYnV0aW9uIpoBChVGYWNlYm9va0xvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJ8ChFBcHBsZUxvZ2luUmVxdWVzdBIjChJhdXRob3JpemF0aW9uX2NvZGUYASABKAlCB7pIBHICEAESGQoIaWRfdG9rZW4YAiABKAlCB7pIBHICEAESFAoMcmVkaXJlY3RfdXJpGAMgASgJSgQIBBAFUgthdHRyaWJ1dGlvbiLHAQoSQXBwbGVMb2dpblJlc3BvbnNlEhwKBHVzZXIYASABKAsyDi50b3F1aS52MS5Vc2VyEhQKDGFjY2Vzc190b2tlbhgCIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAMgASgJEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSgQIBRAGSgQIBhAHUg9jb25zZW50X3BlbmRpbmdSGWFnZV92ZXJpZmljYXRpb25fcmVxdWlyZWQiNQoTUmVmcmVzaFRva2VuUmVxdWVzdBIeCg1yZWZyZXNoX3Rva2VuGAEgASgJQge6SARyAhABImEKFFJlZnJlc2hUb2tlblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIhcKFUdldEN1cnJlbnRVc2VyUmVxdWVzdCI2ChZHZXRDdXJyZW50VXNlclJlc3BvbnNlEhwKBHVzZXIYASABKAsyDi50b3F1aS52MS5Vc2VyIooBCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEgoKYXZhdGFyX3VybBgEIAEoCRIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAcQCFIPYWdlX3ZlcmlmaWVkX2F0IjAKFERlbGV0ZUFjY291bnRSZXF1ZXN0EhgKB2NvbmZpcm0YASABKAhCB7pIBGoCCAEiPAoVRGVsZXRlQWNjb3VudFJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCSITChFFeHBvcnREYXRhUmVxdWVzdCI5ChJFeHBvcnREYXRhUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJMrMECgtBdXRoU2VydmljZRJKCgtHb29nbGVMb2dpbhIcLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVxdWVzdBodLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVzcG9uc2USUAoNRmFjZWJvb2tMb2dpbhIeLnRvcXVpLnYxLkZhY2Vib29rTG9naW5SZXF1ZXN0Gh8udG9xdWkudjEuRmFjZWJvb2tMb2dpblJlc3BvbnNlEkcKCkFwcGxlTG9naW4SGy50b3F1aS52MS5BcHBsZUxvZ2luUmVxdWVzdBocLnRvcXVpLnYxLkFwcGxlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message toqui.v1.GoogleLoginRequest
@@ -35,19 +35,6 @@ export type GoogleLoginRequest = Message<"toqui.v1.GoogleLoginRequest"> & {
    * @generated from field: string code_verifier = 3;
    */
   codeVerifier: string;
-
-  /**
-   * Optional. Base64-encoded JSON with whitelisted UTM/ref attribution captured
-   * by the marketing site (toqui-site/AttributionCapture.astro) on first
-   * visit. Forwarded as PostHog `signup_completed` event properties on
-   * first-ever login per user, then discarded. The whitelist is enforced
-   * server-side: anything outside {ref, utm_source, utm_medium,
-   * utm_campaign} is dropped. Bad input is logged and ignored — login
-   * never fails over a malformed attribution string. See audit issue #39 A-2.
-   *
-   * @generated from field: string attribution = 4;
-   */
-  attribution: string;
 };
 
 /**
@@ -75,25 +62,6 @@ export type GoogleLoginResponse = Message<"toqui.v1.GoogleLoginResponse"> & {
    * @generated from field: toqui.v1.User user = 3;
    */
   user?: User | undefined;
-
-  /**
-   * True when the user has not yet accepted terms/privacy
-   *
-   * @generated from field: bool consent_pending = 4;
-   */
-  consentPending: boolean;
-
-  /**
-   * True when the user has not yet completed the 18+ age gate
-   * (POST /auth/verify-age). The frontend mounts the age form
-   * immediately after login when this is set. The check is also
-   * enforced server-side by the age interceptor on every gated RPC,
-   * so this flag is purely a UX hint — bypassing it doesn't bypass
-   * the gate. Mirrors the consent_pending pattern.
-   *
-   * @generated from field: bool age_verification_required = 5;
-   */
-  ageVerificationRequired: boolean;
 };
 
 /**
@@ -111,13 +79,6 @@ export type FacebookLoginRequest = Message<"toqui.v1.FacebookLoginRequest"> & {
    * @generated from field: string access_token = 1;
    */
   accessToken: string;
-
-  /**
-   * Optional attribution payload — see GoogleLoginRequest.attribution.
-   *
-   * @generated from field: string attribution = 2;
-   */
-  attribution: string;
 };
 
 /**
@@ -145,20 +106,6 @@ export type FacebookLoginResponse = Message<"toqui.v1.FacebookLoginResponse"> & 
    * @generated from field: toqui.v1.User user = 3;
    */
   user?: User | undefined;
-
-  /**
-   * True when the user has not yet accepted terms/privacy
-   *
-   * @generated from field: bool consent_pending = 4;
-   */
-  consentPending: boolean;
-
-  /**
-   * see GoogleLoginResponse
-   *
-   * @generated from field: bool age_verification_required = 5;
-   */
-  ageVerificationRequired: boolean;
 };
 
 /**
@@ -195,13 +142,6 @@ export type AppleLoginRequest = Message<"toqui.v1.AppleLoginRequest"> & {
    * @generated from field: string redirect_uri = 3;
    */
   redirectUri: string;
-
-  /**
-   * Optional attribution payload — see GoogleLoginRequest.attribution.
-   *
-   * @generated from field: string attribution = 4;
-   */
-  attribution: string;
 };
 
 /**
@@ -234,20 +174,6 @@ export type AppleLoginResponse = Message<"toqui.v1.AppleLoginResponse"> & {
    * @generated from field: google.protobuf.Timestamp expires_at = 4;
    */
   expiresAt?: Timestamp | undefined;
-
-  /**
-   * True when the user has not yet accepted terms/privacy
-   *
-   * @generated from field: bool consent_pending = 5;
-   */
-  consentPending: boolean;
-
-  /**
-   * see GoogleLoginResponse
-   *
-   * @generated from field: bool age_verification_required = 6;
-   */
-  ageVerificationRequired: boolean;
 };
 
 /**
@@ -359,15 +285,6 @@ export type User = Message<"toqui.v1.User"> & {
    * @generated from field: google.protobuf.Timestamp created_at = 5;
    */
   createdAt?: Timestamp | undefined;
-
-  /**
-   * When the user completed age verification (POST /auth/verify-age).
-   * Unset for users who have not yet verified. Used by the frontend
-   * to skip the AgeGate modal for returning users.
-   *
-   * @generated from field: google.protobuf.Timestamp age_verified_at = 7;
-   */
-  ageVerifiedAt?: Timestamp | undefined;
 };
 
 /**
