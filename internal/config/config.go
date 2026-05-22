@@ -91,9 +91,6 @@ type Config struct {
 	// internal/handlers/email_webhook.go for the verification contract.
 	EmailWebhookSecret string
 
-	// Capacity
-	MaxFreeUsers int
-
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
 
@@ -110,8 +107,6 @@ type Config struct {
 
 	// Signup restrictions
 	AllowedEmailDomains []string // Empty = allow all
-	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
-	AdminEmails         []string // Emails allowed to access /admin/* endpoints
 
 	// GDPR export storage
 	GCSExportBucket string // GCS bucket for GDPR data exports (empty = local filesystem fallback)
@@ -158,14 +153,11 @@ func Load() (*Config, error) {
 		GoogleCustomSearchCX:      os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
 		EmailWebhookSecret:        os.Getenv("EMAIL_WEBHOOK_SECRET"),
-		MaxFreeUsers:              getEnvInt("MAX_FREE_USERS", 500),
 		AIProvider:                getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:           getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:               getEnvDuration("LLM_CACHE_TTL", time.Hour),
 		PostHogAPIKey:             os.Getenv("POSTHOG_API_KEY"),
 		AllowedEmailDomains:       parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
-		AllowedEmails:             parseCSVEnv("ALLOWED_EMAILS"),
-		AdminEmails:               parseCSVEnv("ADMIN_EMAILS"),
 		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
 		EmailFrom:                 getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
 		CORSAllowedOrigins:        parseCSVEnv("CORS_ALLOWED_ORIGINS"),

@@ -31,8 +31,6 @@ type AuthHandler struct {
 	queries        *dbgen.Queries
 	lifecycleSvc   *lifecycle.Service
 	allowedDomains []string
-	allowedEmails  []string
-	maxFreeUsers   int
 	authLimiter    *ratelimit.AuthLimiter
 
 	// Facebook/Meta OAuth config
@@ -54,13 +52,6 @@ func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lif
 		allowedDomains: allowedDomains,
 		authLimiter:    authLimiter,
 	}
-}
-
-// WithCapacityCap configures capacity cap settings for Facebook OAuth (native app flow).
-func (h *AuthHandler) WithCapacityCap(allowedEmails []string, maxFreeUsers int) *AuthHandler {
-	h.allowedEmails = allowedEmails
-	h.maxFreeUsers = maxFreeUsers
-	return h
 }
 
 // WithFacebookCredentials configures Facebook/Meta OAuth credentials for native app login.
@@ -193,16 +184,10 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 	// Use the shared findOrCreateFacebookUser logic via an inline OAuthHandler.
 	// This avoids duplicating the user creation/linking logic.
 	oauthH := &OAuthHandler{
-		queries:       h.queries,
-		allowedEmails: h.allowedEmails,
-		maxFreeUsers:  h.maxFreeUsers,
+		queries: h.queries,
 	}
 	user, err := oauthH.findOrCreateFacebookUser(ctx, fbUser)
 	if err != nil {
-		if err.Error() == "at capacity" {
-			audit.Log(audit.EventLoginDeniedCapacity, "email", maskEmail(fbUser.Email))
-			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("service at capacity"))
-		}
 		return nil, internalError(ctx, "facebook user upsert", err)
 	}
 

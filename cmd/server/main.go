@@ -310,13 +310,12 @@ func main() {
 	defer authLimiter.Stop()
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
-		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
 		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret).
 		WithAnalytics(posthogClient).
 		WithAlertChecker(alertChecker)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool)).
 		WithAnalytics(posthogClient)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, pool, cfg.AdminEmails).
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, pool).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
 		WithAnalytics(posthogClient).
 		WithAlertChecker(alertChecker).
@@ -335,8 +334,7 @@ func main() {
 	} else if cfg.TargetEnv != "local" {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
-	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, cfg.AllowedEmails, authLimiter, emailSender).
-		WithMaxFreeUsers(cfg.MaxFreeUsers).
+	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, authLimiter, emailSender).
 		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
 		WithAnalytics(posthogClient).
 		WithAlertChecker(alertChecker)
@@ -382,43 +380,6 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ready"}`))
-	})
-
-	// Public waitlist status (no auth) — looks up an email's position in the
-	// waitlist queue. Documented in CLAUDE.md but was previously unregistered
-	// (#186). Returns {"position":N,"total":M} for all emails. Unknown emails
-	// receive {"position":0,"total":0} to prevent email enumeration attacks.
-	mux.HandleFunc("/waitlist/status", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		email := strings.TrimSpace(r.URL.Query().Get("email"))
-		if email == "" {
-			http.Error(w, "email query parameter required", http.StatusBadRequest)
-			return
-		}
-		entry, err := queries.GetWaitlistByEmail(r.Context(), email)
-		if err != nil {
-			// Return 200 with zeroed response to prevent email enumeration.
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"position":0,"total":0}`))
-			return
-		}
-		total, _ := queries.CountWaitlist(r.Context())
-		var position int64
-		if entry.AcceptedAt.Valid {
-			position = 0
-		} else if entry.VerifiedAt.Valid {
-			ahead, _ := queries.CountWaitlistAhead(r.Context(), entry.SignedUpAt)
-			position = ahead + 1
-		} else {
-			position = -1 // unverified
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"position":%d,"total":%d}`, position, total)
 	})
 
 	// Debug/profiling endpoints — local only, never exposed in staging/prod.
@@ -520,32 +481,6 @@ func main() {
 	mux.HandleFunc("/api/trips/share", sharedHandler.HandleEnable)    // POST — enable sharing (auth)
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
 	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
-
-	// Admin UI (embedded SPA)
-	mux.Handle("/admin-ui/", http.StripPrefix("/admin-ui/", http.FileServer(http.FS(adminStaticFS()))))
-	mux.HandleFunc("/admin-ui", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin-ui/", http.StatusMovedPermanently)
-	})
-
-	// Admin endpoints (authenticated + admin email check)
-	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL, lifecycleSvc)
-	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
-	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
-	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
-	mux.HandleFunc("/admin/invite", adminHandler.HandleGenerateInvite)
-	mux.HandleFunc("/admin/send-invite", adminHandler.HandleSendInvite)
-	mux.HandleFunc("/admin/revoke-invite", adminHandler.HandleRevokeInvite)
-	mux.HandleFunc("/admin/delete-waitlist", adminHandler.HandleDeleteWaitlistEntry)
-	mux.HandleFunc("/admin/unlock-trip", adminHandler.HandleUnlockTrip)
-	mux.HandleFunc("/admin/grant-pro", adminHandler.HandleGrantPro)
-	mux.HandleFunc("/admin/delete-user", adminHandler.HandleDeleteUser)
-	mux.HandleFunc("/admin/metrics", adminHandler.HandleMetrics)
-	mux.HandleFunc("/admin/feedback", adminHandler.HandleListFeedback)
-	mux.HandleFunc("/admin/ai-costs", adminHandler.HandleAICosts)
-	mux.HandleFunc("/admin/revenue", adminHandler.HandleRevenue)
-	mux.HandleFunc("/admin/set-admin", adminHandler.HandleSetAdmin)
-	mux.HandleFunc("/admin/retention", adminHandler.HandleRetention)
-	mux.HandleFunc("/admin/funnel", adminHandler.HandleFunnel)
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailInbound := email.NewInbound(cfg.ResendAPIKey)
@@ -819,12 +754,7 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		// Admin SPA needs inline scripts/styles and fetch access to same origin.
-		if strings.HasPrefix(r.URL.Path, "/admin-ui") {
-			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'")
-		} else {
-			w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-		}
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		// HSTS — only set on HTTPS (Cloud Run terminates TLS)
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

@@ -46,16 +46,11 @@ type ChatHandler struct {
 	queries       *dbgen.Queries
 	pool          *pgxpool.Pool
 	placesAPIKey  string
-	adminEmails   map[string]bool
 	analytics     *analytics.Client
 	alertChecker  *analytics.AlertChecker
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
-	emailSet := make(map[string]bool, len(adminEmails))
-	for _, e := range adminEmails {
-		emailSet[strings.ToLower(strings.TrimSpace(e))] = true
-	}
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, pool *pgxpool.Pool) *ChatHandler {
 	return &ChatHandler{
 		chatSvc:       chatSvc,
 		tripSvc:       tripSvc,
@@ -64,7 +59,6 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 		locationSvc:   locationSvc,
 		queries:       dbgen.New(pool),
 		pool:          pool,
-		adminEmails:   emailSet,
 	}
 }
 
@@ -100,17 +94,6 @@ func (h *ChatHandler) WithAIProvider(provider ai.Provider) *ChatHandler {
 	return h
 }
 
-func (h *ChatHandler) isAdmin(ctx context.Context, userID uuid.UUID) bool {
-	if len(h.adminEmails) == 0 {
-		return false
-	}
-	user, err := h.queries.GetUserByID(ctx, userID)
-	if err != nil {
-		return false
-	}
-	return h.adminEmails[strings.ToLower(user.Email)]
-}
-
 func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toquiv1.SendMessageRequest], stream *connect.ServerStream[toquiv1.SendMessageResponse]) error {
 	userID, ok := auth.UserIDFromContext(ctx)
 	if !ok {
@@ -131,9 +114,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	if err := validateAttachments(req.Msg.Attachments); err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-
-	// Admin users have unlimited AI interactions.
-	_ = h.isAdmin(ctx, userID)
 
 	// Companion mode can work without a trip (standalone), so don't force it to selection.
 	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION ||

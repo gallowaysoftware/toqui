@@ -27,7 +27,7 @@ import (
 //  3. Resolve the user:
 //     - Look up by Apple `sub` → existing user.
 //     - Else look up by email → link Apple to existing account.
-//     - Else create a new user (subject to capacity cap).
+//     - Else create a new user.
 //  4. Issue Toqui access + refresh tokens.
 //
 // Returns Unimplemented when Apple is not configured (no team ID / services
@@ -75,10 +75,6 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 
 	user, isNew, err := h.findOrCreateAppleUser(ctx, claims.Subject, email)
 	if err != nil {
-		if errors.Is(err, errAtCapacity) {
-			audit.Log(audit.EventLoginDeniedCapacity, "email", maskEmail(email))
-			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("service at capacity"))
-		}
 		return nil, internalError(ctx, "apple user upsert", err)
 	}
 
@@ -121,16 +117,12 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 	}), nil
 }
 
-// errAtCapacity is the sentinel returned by findOrCreateAppleUser when the
-// free-user cap is hit and the email isn't on the allowlist or pre-invited.
-var errAtCapacity = errors.New("at capacity")
-
 // findOrCreateAppleUser resolves an Apple sign-in to a Toqui user.
 //
 // Resolution order:
 //  1. Lookup by apple_sub → existing user.
 //  2. Lookup by email (when Apple included one) → link apple_sub.
-//  3. Create new user, subject to the capacity cap and waitlist invite logic.
+//  3. Create new user.
 //
 // The bool return indicates whether a new user was created (true) so the
 // caller can route audit logs to the *_new event.
@@ -172,29 +164,6 @@ func (h *AuthHandler) findOrCreateAppleUser(ctx context.Context, appleSub, email
 	// blank here, refuse rather than create a placeholder account.
 	if email == "" {
 		return nil, false, fmt.Errorf("apple did not return email on first sign-in")
-	}
-
-	// Capacity cap (matches Facebook flow exactly).
-	if !isEmailAllowListed(email, h.allowedEmails) && h.maxFreeUsers > 0 {
-		userCount, countErr := h.queries.CountUsers(ctx)
-		if countErr != nil {
-			return nil, false, fmt.Errorf("count users: %w", countErr)
-		}
-		if int(userCount) >= h.maxFreeUsers {
-			waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(ctx, email)
-			if wlErr != nil || !waitlistEntry.InviteCode.Valid {
-				return nil, false, errAtCapacity
-			}
-			audit.Log(audit.EventLoginAdmittedInvite,
-				"email", maskEmail(email),
-				"invite_code", waitlistEntry.InviteCode.String,
-			)
-		}
-	}
-
-	// Mark waitlist as accepted (idempotent, no-op for non-listed emails).
-	if markErr := h.queries.MarkWaitlistAccepted(ctx, email); markErr != nil && !errors.Is(markErr, pgx.ErrNoRows) {
-		slog.Error("mark waitlist accepted on apple signup failed", "email", maskEmail(email), "error", markErr)
 	}
 
 	created, err := h.queries.CreateUserWithApple(ctx, dbgen.CreateUserWithAppleParams{

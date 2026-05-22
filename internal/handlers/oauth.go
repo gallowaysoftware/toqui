@@ -34,8 +34,6 @@ type OAuthHandler struct {
 	frontendURL    string
 	secureCookies  bool
 	allowedDomains []string
-	allowedEmails  []string
-	maxFreeUsers   int
 	authLimiter    *ratelimit.AuthLimiter
 	emailSvc       *email.Sender
 
@@ -48,7 +46,7 @@ type OAuthHandler struct {
 	alertChecker    *analytics.AlertChecker
 }
 
-func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, allowedEmails []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
+func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
 	return &OAuthHandler{
 		authSvc:        authSvc,
 		pool:           pool,
@@ -57,15 +55,8 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 		emailSvc:       emailSvc,
 		secureCookies:  secureCookies,
 		allowedDomains: allowedDomains,
-		allowedEmails:  allowedEmails,
 		authLimiter:    authLimiter,
 	}
-}
-
-// WithMaxFreeUsers configures the capacity cap for Facebook OAuth new user registration.
-func (h *OAuthHandler) WithMaxFreeUsers(maxFreeUsers int) *OAuthHandler {
-	h.maxFreeUsers = maxFreeUsers
-	return h
 }
 
 // WithAnalytics configures the OAuth handler to send events to PostHog.
@@ -237,12 +228,6 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(info.Email))
 		http.Redirect(w, r, h.frontendURL+"/?error=domain_not_allowed", http.StatusTemporaryRedirect)
 		return
-	}
-
-	// Always mark waitlist as accepted when the user successfully signs up,
-	// regardless of whether capacity check was needed.
-	if markErr := h.queries.MarkWaitlistAccepted(r.Context(), info.Email); markErr != nil && !errors.Is(markErr, pgx.ErrNoRows) {
-		slog.Error("mark waitlist accepted on signup failed", "email", maskEmail(info.Email), "error", markErr)
 	}
 
 	user, err := h.queries.UpsertUserByGoogleID(r.Context(), dbgen.UpsertUserByGoogleIDParams{
@@ -746,7 +731,7 @@ func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Req
 	// Domain allowlist
 	if !isEmailDomainAllowed(fbUser.Email, h.allowedDomains) {
 		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(fbUser.Email))
-		http.Redirect(w, r, h.frontendURL+"/waitlist?reason=domain_not_allowed", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, h.frontendURL+"/?error=domain_not_allowed", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -995,38 +980,7 @@ func (h *OAuthHandler) findOrCreateFacebookUser(ctx context.Context, fbUser *fac
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
 
-	// 3. Capacity check for new users
-	if !isEmailAllowListed(fbUser.Email, h.allowedEmails) && h.maxFreeUsers > 0 {
-		userCount, countErr := h.queries.CountUsers(ctx)
-		if countErr != nil {
-			return nil, fmt.Errorf("count users: %w", countErr)
-		}
-		if int(userCount) >= h.maxFreeUsers {
-			waitlistEntry, wlErr := h.queries.GetWaitlistByEmail(ctx, fbUser.Email)
-			if wlErr != nil || !waitlistEntry.InviteCode.Valid {
-				audit.Log(audit.EventLoginDeniedCapacity,
-					"email", maskEmail(fbUser.Email),
-					"user_count", userCount,
-					"max_free_users", h.maxFreeUsers,
-				)
-				return nil, fmt.Errorf("at capacity")
-			}
-			if markErr := h.queries.MarkWaitlistAccepted(ctx, fbUser.Email); markErr != nil {
-				slog.Error("mark waitlist accepted failed", "email", maskEmail(fbUser.Email), "error", markErr)
-			}
-			audit.Log(audit.EventLoginAdmittedInvite,
-				"email", maskEmail(fbUser.Email),
-				"invite_code", waitlistEntry.InviteCode.String,
-			)
-		}
-	}
-
-	// Mark waitlist as accepted
-	if markErr := h.queries.MarkWaitlistAccepted(ctx, fbUser.Email); markErr != nil && !errors.Is(markErr, pgx.ErrNoRows) {
-		slog.Error("mark waitlist accepted on signup failed", "email", maskEmail(fbUser.Email), "error", markErr)
-	}
-
-	// Create new user with Facebook ID
+	// 3. Create new user with Facebook ID
 	user, err = h.queries.CreateUserWithFacebook(ctx, dbgen.CreateUserWithFacebookParams{
 		Email:      fbUser.Email,
 		Name:       pgtype.Text{String: fbUser.Name, Valid: fbUser.Name != ""},
@@ -1070,13 +1024,3 @@ func isEmailDomainAllowed(email string, allowedDomains []string) bool {
 	return false
 }
 
-// isEmailAllowListed checks if the email is on the explicit allow-list.
-// Used to bypass capacity/waitlist checks for team and friends/family.
-func isEmailAllowListed(email string, allowedEmails []string) bool {
-	for _, allowed := range allowedEmails {
-		if strings.EqualFold(email, allowed) {
-			return true
-		}
-	}
-	return false
-}
