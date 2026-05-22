@@ -2,6 +2,15 @@
 
 Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, PostgreSQL + PostGIS, Firestore, and Claude.
 
+> **Status:** This repo is part of Toqui's transition from a hosted SaaS to a
+> self-hostable open source project under [AGPL-3.0-or-later](./LICENSE).
+> SaaS surfaces (Stripe, subscription, referral, analytics, age gate, etc.)
+> are actively being stripped; AI orchestration is moving to a BYO-API-key
+> model. The repo is still private while that work lands. See
+> [toqui.travel](https://toqui.travel) for context.
+>
+> Copyright (C) 2026 Galloway Software Solutions Inc.
+
 ## Prerequisites
 
 - Go 1.26+
