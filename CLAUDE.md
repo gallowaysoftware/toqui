@@ -89,24 +89,17 @@ components/                   Shared UI components
     FollowUpSuggestions.tsx   AI-generated follow-up question chips
     MessageBubble.tsx         Single chat message (user/AI/tool-result variants)
     PersonaIntroCard.tsx      Persona introduction card on switch
-    RecommendationCard.tsx    Affiliate recommendation card with booking link
     SharePromptCard.tsx       Prompt to share trip with collaborators
     SuggestionChips.tsx       Quick suggestion chips in chat
     TypingIndicator.tsx       Animated typing indicator while AI responds
-  checkout/
-    ProUpgrade.tsx            Stripe hosted checkout redirect (all platforms)
   feedback/
     FeedbackModal.tsx         User feedback submission modal
   itinerary/
     ItineraryTimeline.tsx     Day-by-day itinerary timeline component
   map/
     ItineraryMap.tsx          Interactive map showing itinerary locations
-  referral/
-    ReferralCard.tsx          Referral code sharing with stats
   share/
     ShareNudgeBanner.tsx      Contextual nudge to share trip
-  subscription/
-    SubscriptionCard.tsx      Subscription tier selection and management
   trips/
     TemplateBrowser.tsx       Browse and select trip templates
   weather/
@@ -123,15 +116,11 @@ lib/                          Shared utilities
   config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
     useTrips.ts               Trip CRUD via ConnectRPC TripService
-    useChat.ts                SSE streaming chat — tool activity, personas, recommendations
+    useChat.ts                SSE streaming chat — tool activity, persona switches
     useBookings.ts            Booking CRUD via ConnectRPC BookingService
     useItinerary.ts           Itinerary fetch via ConnectRPC TripService
-    useCheckout.ts            Stripe checkout init/status via REST
-    useTrialStatus.ts         Trial expiration tracking via REST
-    useReferral.ts            Referral code, stats, redemption via REST
     useFeedback.ts            Submit user feedback via REST
     useDestinationGuide.ts    Fetch destination guides via REST
-    useUsage.ts               Daily message usage tracking via REST
     useLocation.ts            Device location permission + tracking
     useWeather.ts             Current weather for trip destination (Open-Meteo)
     useCollaborators.ts       Trip collaborator management
@@ -246,24 +235,6 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 
 **No cookies are used.** The backend's `cookieAuth` middleware is bypassed — the auth interceptor reads the Bearer header directly.
 
-## Payment & Trip Pro
-
-Trip Pro ($19/trip) is purchased via Stripe hosted checkout (all platforms):
-
-1. User taps "Upgrade" → `useCheckout.initCheckout(tripId)` → `POST /api/checkout` → backend creates Stripe checkout session
-2. `ProUpgrade.tsx` redirects to Stripe via `Linking.openURL(url)` (works on web and native)
-3. User completes payment on Stripe's hosted page
-4. Stripe sends webhook to backend → backend verifies and unlocks the trip in the database
-5. `useCheckout.checkStatus(tripId)` polls `GET /api/checkout/status` to confirm unlock
-
-Unlocked trips get: unlimited messages, all 989 expert personas (43 locations × 23 themes), email forwarding, export, best-fit recommendations.
-
-## Referral
-`ReferralCard.tsx` and `useReferral` hook:
-- `GET /api/referral` — fetch user's referral code and referred-user count
-- `POST /api/referral/redeem` — redeem another user's referral code
-- Share link: `https://toqui.travel?ref=CODE`
-
 ## Conventions
 
 - **Routing**: Expo Router file-based routing in `app/` directory
@@ -297,12 +268,9 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | Hook | Transport | Purpose |
 |------|-----------|---------|
 | `useTrips` | ConnectRPC | Trip CRUD (list, create, update, delete) via TripService |
-| `useChat` | ConnectRPC (SSE) | Streaming chat — handles tool events, persona switches, recommendations |
+| `useChat` | ConnectRPC (SSE) | Streaming chat — handles tool events, persona switches |
 | `useBookings` | ConnectRPC | Booking CRUD (list, create, update, delete) via BookingService |
 | `useItinerary` | ConnectRPC | Fetch trip itinerary via TripService |
-| `useCheckout` | REST | Init checkout (`POST /api/checkout`), validate payment, poll unlock status |
-| `useTrialStatus` | REST | Poll trial expiration via checkout status endpoint |
-| `useReferral` | REST | Get referral code/stats, redeem codes (`POST /api/referral/redeem`) |
 | `useLocation` | expo-location | Device location permission + tracking (companion mode) |
 | `useWeather` | REST (Open-Meteo) | Current weather for trip destination coordinates |
 | `useCollaborators` | ConnectRPC | Trip collaborator management (invite, remove, list) |
@@ -311,8 +279,6 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useAnalytics` | PostHog | Privacy-first event tracking (EU-hosted, via `lib/analytics.tsx`) |
 | `useFeedback` | REST | Submit user feedback (`POST /api/feedback`) |
 | `useDestinationGuide` | REST | Fetch destination guides (`GET /api/guides`) |
-| `useUsage` | REST | Daily message usage tracking (`GET /api/usage`) |
-| `useSubscription` | REST | Subscription management (tier, status, checkout, cancel, portal) via REST |
 
 ## Security
 

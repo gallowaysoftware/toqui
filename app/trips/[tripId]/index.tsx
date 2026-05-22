@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share } from "react-native";
 import { alertNotice } from "@/lib/confirm";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Clock, AlertTriangle, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Crown, Navigation } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Navigation } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -9,8 +9,6 @@ import { useTrip, useUpdateTrip } from "@/lib/hooks/useTrips";
 import { useItinerary } from "@/lib/hooks/useItinerary";
 import { useWeather } from "@/lib/hooks/useWeather";
 import { useOfflineTrip, useOfflineSync } from "@/lib/offline";
-import { ProUpgrade } from "@/components/checkout/ProUpgrade";
-import { useTrialStatus } from "@/lib/hooks/useTrialStatus";
 import { useDestinationGuide } from "@/lib/hooks/useDestinationGuide";
 import { WeatherCard } from "@/components/weather/WeatherCard";
 import { ItineraryTimeline } from "@/components/itinerary/ItineraryTimeline";
@@ -80,7 +78,6 @@ export default function TripDetailScreen() {
     );
     return dayKeys.size;
   })();
-  const { isTrialActive, isTrialExpired, daysRemaining, isLastDay } = useTrialStatus(tripId!);
   const updateTrip = useUpdateTrip();
   const { guide } = useDestinationGuide(trip?.destinationCountry || undefined);
   const router = useRouter();
@@ -90,8 +87,6 @@ export default function TripDetailScreen() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(false);
   const [shareViewCount, setShareViewCount] = useState<number | null>(null);
-  const [proBannerDismissed, setProBannerDismissed] = useState(false);
-  const [hasChatVisit, setHasChatVisit] = useState(false);
 
   // Extract first available coordinates from itinerary for weather lookup
   const firstLocation = itinerary?.days
@@ -106,8 +101,6 @@ export default function TripDetailScreen() {
 
   const dismissalKey = `toqui_planning_dismissed_${tripId}`;
   const shareNudgeKey = `toqui_share_nudge_dismissed_${tripId}`;
-  const proBannerKey = `toqui_pro_dismissed_${tripId}`;
-  const chatVisitKey = `toqui_chat_visited_${tripId}`;
 
   useEffect(() => {
     AsyncStorage.getItem(dismissalKey).then((val) => {
@@ -116,13 +109,7 @@ export default function TripDetailScreen() {
     AsyncStorage.getItem(shareNudgeKey).then((val) => {
       if (val === "true") setShareNudgeDismissed(true);
     });
-    AsyncStorage.getItem(proBannerKey).then((val) => {
-      if (val === "true") setProBannerDismissed(true);
-    });
-    AsyncStorage.getItem(chatVisitKey).then((val) => {
-      if (val === "true") setHasChatVisit(true);
-    });
-  }, [dismissalKey, shareNudgeKey, proBannerKey, chatVisitKey]);
+  }, [dismissalKey, shareNudgeKey]);
 
   // Fetch share view count if trip has been shared
   useEffect(() => {
@@ -153,11 +140,6 @@ export default function TripDetailScreen() {
   const handleDismissShareNudge = () => {
     setShareNudgeDismissed(true);
     void AsyncStorage.setItem(shareNudgeKey, "true");
-  };
-
-  const handleDismissProBanner = () => {
-    setProBannerDismissed(true);
-    void AsyncStorage.setItem(proBannerKey, "true");
   };
 
   const styles = StyleSheet.create({
@@ -230,20 +212,6 @@ export default function TripDetailScreen() {
       borderColor: colors.border,
     },
     exportText: { fontSize: 13, fontWeight: "500", color: colors.accent },
-    trialBanner: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor: colors.infoBg,
-      borderWidth: 1,
-      borderColor: colors.infoBorder,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 16,
-    },
-    trialBannerText: { fontSize: 14, color: colors.info, fontWeight: "500", flex: 1 },
-    trialBannerExpired: { backgroundColor: colors.warningBg, borderColor: colors.warningBorder },
-    trialBannerExpiredText: { fontSize: 14, color: colors.warning, fontWeight: "500", flex: 1 },
     errorContainer: {
       flex: 1,
       justifyContent: "center",
@@ -502,28 +470,6 @@ export default function TripDetailScreen() {
           </Text>
         )}
 
-        {isTrialActive && (
-          <View style={styles.trialBanner}>
-            <Clock color={colors.info} size={16} />
-            <Text style={styles.trialBannerText}>
-              {t("trial.active")}
-              {" — "}
-              {isLastDay
-                ? t("trial.hoursRemaining")
-                : t("trial.daysRemaining", { days: daysRemaining })}
-            </Text>
-          </View>
-        )}
-
-        {isTrialExpired && (
-          <View style={[styles.trialBanner, styles.trialBannerExpired]}>
-            <AlertTriangle color={colors.warning} size={16} />
-            <Text style={styles.trialBannerExpiredText}>
-              {t("trial.expired")} — {t("trial.upgradePrompt")}
-            </Text>
-          </View>
-        )}
-
         {showShareNudge && (
           <ShareNudgeBanner onShare={handleShare} onDismiss={handleDismissShareNudge} />
         )}
@@ -539,7 +485,6 @@ export default function TripDetailScreen() {
           const memberCount = collaborators.length || 1;
           const visible = previewMembers.slice(0, 4);
           const overflow = Math.max(0, previewMembers.length - visible.length);
-          const isUnlocked = trip?.isUnlocked ?? false;
           return (
             <Pressable
               style={styles.memberStrip}
@@ -582,18 +527,7 @@ export default function TripDetailScreen() {
                 <Text style={styles.memberStripText}>
                   {t("collaborators.memberCount", { count: memberCount })}
                 </Text>
-                {isUnlocked && memberCount > 1 && (
-                  <Text style={styles.memberStripSubtext}>
-                    {t("collaborators.proAppliesAll")}
-                  </Text>
-                )}
               </View>
-              {isUnlocked && memberCount > 1 && (
-                <View style={styles.memberStripBadge}>
-                  <Crown size={11} color={colors.accent} />
-                  <Text style={styles.memberStripBadgeText}>PRO</Text>
-                </View>
-              )}
               <Users size={18} color={colors.textTertiary} />
             </Pressable>
           );
@@ -783,14 +717,6 @@ export default function TripDetailScreen() {
             <ItineraryMap itinerary={itinerary} />
             <ItineraryTimeline itinerary={itinerary} />
           </>
-        )}
-
-        {hasChatVisit && !proBannerDismissed && (
-          <ProUpgrade
-            tripId={tripId!}
-            compact
-            onDismiss={handleDismissProBanner}
-          />
         )}
 
         {isPlannable && (

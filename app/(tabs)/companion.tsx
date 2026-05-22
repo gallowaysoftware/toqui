@@ -18,7 +18,6 @@ import { useLocation } from "@/lib/hooks/useLocation";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
-import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { LocationPermission } from "@/components/LocationPermission";
@@ -96,7 +95,7 @@ export default function CompanionScreen() {
 
   const lastAssistantMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant" && !messages[i].recommendation && !messages[i].isError) {
+      if (messages[i].role === "assistant" && !messages[i].isError) {
         return messages[i].content;
       }
     }
@@ -110,9 +109,6 @@ export default function CompanionScreen() {
     messages[messages.length - 1]?.role === "assistant";
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
-    if (item.recommendation) {
-      return <RecommendationCard recommendation={item.recommendation} />;
-    }
     return <MessageBubble message={item} />;
   }, []);
 

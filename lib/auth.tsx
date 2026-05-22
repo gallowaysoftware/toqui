@@ -48,13 +48,10 @@ const tokenStorage = {
   },
 };
 
-export type SubscriptionTier = "free" | "pro";
-
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  tier: SubscriptionTier;
   // ISO 8601 string (or null) — when the user completed age verification
   // on the backend. Set by login/refresh from User.age_verified_at on the
   // proto. Consumed by AgeGate to skip the modal for returning users who
@@ -118,10 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userJson) {
         try {
           const parsed = JSON.parse(userJson);
-          const tier = parsed.tier === "pro" ? "pro" : "free" as const;
           const ageVerifiedAt =
             typeof parsed.ageVerifiedAt === "string" ? parsed.ageVerifiedAt : null;
-          setUser({ ...parsed, tier, ageVerifiedAt });
+          setUser({
+            id: parsed.id,
+            email: parsed.email,
+            name: parsed.name,
+            ageVerifiedAt,
+          });
         } catch { /* ignore corrupt data */ }
       }
       setIsLoading(false);
@@ -158,13 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void clearAttribution();
     }
     if (res.user) {
-      const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
       const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
       const u: AuthUser = {
         id: res.user.id,
         email: res.user.email,
         name: res.user.name,
-        tier,
         ageVerifiedAt,
       };
       setUser(u);
@@ -190,16 +189,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(res.accessToken);
       setRefreshToken(res.refreshToken);
       // Sync the user snapshot from the refresh response so server-side
-      // state (tier upgrades, age_verified_at) propagates without requiring
-      // the user to sign back in.
+      // state (age_verified_at) propagates without requiring the user to
+      // sign back in.
       if (res.user) {
-        const tier = res.user.subscriptionTier === "pro" ? "pro" : "free" as const;
         const ageVerifiedAt = toIsoOrNull(res.user.ageVerifiedAt);
         const u: AuthUser = {
           id: res.user.id,
           email: res.user.email,
           name: res.user.name,
-          tier,
           ageVerifiedAt,
         };
         setUser(u);

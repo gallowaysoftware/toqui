@@ -16,20 +16,16 @@ import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
 import { useChat } from "@/lib/hooks/useChat";
-import { useUsage, formatTimeUntilReset } from "@/lib/hooks/useUsage";
 import { useTrip } from "@/lib/hooks/useTrips";
 import { useOfflineTrip, useOfflineSync } from "@/lib/offline";
 import { useNetworkStatus } from "@/lib/hooks/useNetworkStatus";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
-import { RecommendationCard } from "@/components/chat/RecommendationCard";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { SharePromptCard } from "@/components/chat/SharePromptCard";
 import { PersonaIntroCard } from "@/components/chat/PersonaIntroCard";
-import { UsageIndicator } from "@/components/chat/UsageIndicator";
-import { FreePlanInfoBar } from "@/components/chat/FreePlanInfoBar";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { ChatMessage, PersonaIntroData } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
@@ -74,12 +70,10 @@ export default function ChatScreen() {
     () => getAutoPersona(trip?.title),
     [trip?.title],
   );
-  const [showExpertBanner, setShowExpertBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [isSharePromptSharing, setIsSharePromptSharing] = useState(false);
   const sharePromptCheckedRef = useRef(false);
-  const [showFreePlanInfo, setShowFreePlanInfo] = useState(false);
 
   // Offline support
   const { isConnected } = useNetworkStatus();
@@ -87,21 +81,6 @@ export default function ChatScreen() {
   const { lastSyncedAt } = useOfflineSync(tripId);
   const isOffline = !isConnected;
 
-  const { used, limit, resetsAt, tier } = useUsage();
-
-  // Mark that the user has visited chat for this trip (used to gate pro upsell)
-  // Also show the free plan info bar on first chat visit for free-tier users
-  useEffect(() => {
-    if (tripId) {
-      const key = `toqui_chat_visited_${tripId}`;
-      void AsyncStorage.getItem(key).then((val) => {
-        if (val !== "true" && tier === "free") {
-          setShowFreePlanInfo(true);
-        }
-        void AsyncStorage.setItem(key, "true");
-      });
-    }
-  }, [tripId, tier]);
   const {
     messages,
     isStreaming,
@@ -117,9 +96,7 @@ export default function ChatScreen() {
     retryHistory,
     lastFailedMessage,
     clearLastFailedMessage,
-  } = useChat(tripId, "planning", {
-    onExpertLimitReached: () => setShowExpertBanner(true),
-  });
+  } = useChat(tripId, "planning");
 
   // When offline and no network messages loaded, use cached messages from bundle
   const offlineMessages: ChatMessage[] = useMemo(() => {
@@ -221,7 +198,7 @@ export default function ChatScreen() {
 
   const lastAssistantMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant" && !messages[i].recommendation && !messages[i].isError) {
+      if (messages[i].role === "assistant" && !messages[i].isError) {
         return messages[i].content;
       }
     }
@@ -239,14 +216,9 @@ export default function ChatScreen() {
     const sameSpeaker =
       prev !== null &&
       prev.role === item.role &&
-      prev.personaName === item.personaName &&
-      !item.recommendation &&
-      !prev.recommendation;
+      prev.personaName === item.personaName;
     const showAvatar = !sameSpeaker;
 
-    if (item.recommendation) {
-      return <RecommendationCard recommendation={item.recommendation} />;
-    }
     if (item.isError) {
       return (
         <View>
@@ -276,34 +248,6 @@ export default function ChatScreen() {
     errorTitle: { fontSize: 20, fontWeight: "bold", color: colors.error, marginBottom: 8 },
     retryButton: { backgroundColor: colors.accent, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 24 },
     retryButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-    expertBanner: {
-      backgroundColor: colors.warningBg,
-      borderWidth: 1,
-      borderColor: colors.warningBorder,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      marginHorizontal: 16,
-      marginVertical: 8,
-      alignItems: "center",
-    },
-    expertBannerText: { fontSize: 13, color: colors.textPrimary, marginBottom: 6, textAlign: "center" },
-    expertBannerRow: {
-      flexDirection: "row" as const,
-      alignItems: "center" as const,
-      gap: 12,
-    },
-    expertBannerButton: {
-      backgroundColor: colors.accent,
-      borderRadius: 16,
-      paddingVertical: 6,
-      paddingHorizontal: 16,
-    },
-    expertBannerButtonText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-    expertBannerAlt: {
-      paddingVertical: 6,
-    },
-    expertBannerAltText: { fontSize: 12, color: colors.accent, fontWeight: "500" },
     loadMoreButton: {
       alignSelf: "center",
       paddingVertical: 12,
@@ -342,17 +286,6 @@ export default function ChatScreen() {
     headerTitle: { alignItems: "center" },
     headerTitleText: { fontSize: 16, fontWeight: "600" },
     headerSubtitle: { fontSize: 12 },
-    usageBar: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    usageText: { fontSize: 12 },
-    upgradeLink: { fontSize: 12, fontWeight: "600", color: colors.accent },
     offlineInputBar: {
       paddingHorizontal: 16,
       paddingVertical: 8,
@@ -365,11 +298,6 @@ export default function ChatScreen() {
       textAlign: "center",
     },
   });
-
-  // Bottom usage bar: only show the at-limit CTA for non-free tiers
-  // (free users already see the proactive UsageIndicator at the top)
-  const usageAtLimit = limit > 0 && used >= limit;
-  const showBottomUsageBar = usageAtLimit && tier !== "free";
 
   return (
     <>
@@ -404,21 +332,6 @@ export default function ChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={90}
     >
-      {/* Proactive usage counter — always visible for free users */}
-      {tier === "free" && limit > 0 && (
-        <UsageIndicator
-          used={used}
-          limit={limit}
-          tier={tier}
-          onUpgrade={() => tripId && router.push(`/trips/${tripId}`)}
-        />
-      )}
-      {/* Free plan info bar — shown once on first visit to a new trip chat */}
-      {showFreePlanInfo && tier === "free" && (
-        <FreePlanInfoBar
-          onUpgrade={() => tripId && router.push(`/trips/${tripId}`)}
-        />
-      )}
       <FlatList
         ref={flatListRef}
         data={displayMessages}
@@ -498,27 +411,6 @@ export default function ChatScreen() {
           </>
         }
       />
-      {showExpertBanner && tripId && (
-        <View style={styles.expertBanner}>
-          <Text style={styles.expertBannerText}>{t("chat.expertLimitSoft")}</Text>
-          <View style={styles.expertBannerRow}>
-            <Pressable
-              onPress={() => router.push(`/trips/${tripId}`)}
-              style={styles.expertBannerButton}
-              accessibilityRole="button"
-            >
-              <Text style={styles.expertBannerButtonText}>{t("chat.expertLimitCta")}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/(tabs)/settings" as never)}
-              style={styles.expertBannerAlt}
-              accessibilityRole="button"
-            >
-              <Text style={styles.expertBannerAltText}>{t("chat.subscriptionAlt")}</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
       {lastFailedMessage && !isStreaming && (
         <View style={styles.retryBanner}>
           <View style={styles.retryBannerLeft}>
@@ -549,18 +441,6 @@ export default function ChatScreen() {
               <Text style={styles.retryDismissText}>×</Text>
             </Pressable>
           </View>
-        </View>
-      )}
-      {showBottomUsageBar && (
-        <View style={styles.usageBar}>
-          <Text style={[styles.usageText, { color: colors.error }]}>
-            {t("chat.dailyLimitReached", { time: formatTimeUntilReset(resetsAt) })}
-          </Text>
-          {tripId && (
-            <Pressable onPress={() => router.push(`/trips/${tripId}`)}>
-              <Text style={styles.upgradeLink}>{t("chat.upgrade")}</Text>
-            </Pressable>
-          )}
         </View>
       )}
       {isOffline && (
