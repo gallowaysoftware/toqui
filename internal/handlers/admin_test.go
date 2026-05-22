@@ -84,31 +84,6 @@ func TestHandleMetrics_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestSubscriptionMRR_KnownTiers(t *testing.T) {
-	// Verify that subscription MRR prices are set for known tiers.
-	tests := []struct {
-		tier string
-		want float64
-	}{
-		{"explorer", 9.99},
-		{"voyager", 19.99},
-	}
-	for _, tt := range tests {
-		if got, ok := subscriptionMRR[tt.tier]; !ok {
-			t.Errorf("subscriptionMRR missing tier %q", tt.tier)
-		} else if got != tt.want {
-			t.Errorf("subscriptionMRR[%q] = %v, want %v", tt.tier, got, tt.want)
-		}
-	}
-}
-
-func TestSubscriptionMRR_UnknownTier(t *testing.T) {
-	// Unknown tiers should not be in the map (they contribute zero MRR).
-	if _, ok := subscriptionMRR["free"]; ok {
-		t.Error("subscriptionMRR should not contain 'free' tier")
-	}
-}
-
 func TestHandleSetAdmin_MethodNotAllowed(t *testing.T) {
 	handler := &AdminHandler{}
 

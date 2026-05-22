@@ -66,13 +66,6 @@ type Config struct {
 	// Expressed in cents (e.g. 50000 = $500/day). 0 = unlimited.
 	AIDailyBudgetCents int
 
-	// Per-tier budget allocation as percentage of AIDailyBudgetCents (0–100).
-	// 0 means the tier shares the full global budget without a dedicated slice.
-	AIBudgetFreePct     int
-	AIBudgetProPct      int
-	AIBudgetExplorerPct int
-	AIBudgetVoyagerPct  int
-
 	// Firestore
 	FirestoreProjectID    string
 	FirestoreDatabaseID   string
@@ -98,26 +91,8 @@ type Config struct {
 	// internal/handlers/email_webhook.go for the verification contract.
 	EmailWebhookSecret string
 
-	// Affiliate partners
-	SkyscannerAffiliateID   string
-	BookingComAffiliateID   string
-	GetYourGuidePartnerID   string
-	ViatorPartnerID         string
-	DiscoverCarsAffiliateID string
-	SafetyWingReferenceID   string
-	// Expedia Group Affiliate Program (EGAP) publisher ID, issued by
-	// Partnerize. A single ID covers Expedia Hotels, VRBO, and Hotels.com
-	// — links for each brand are built by wrapping the destination URL
-	// in https://prf.hn/click/camref:<id>/destination:<encoded-url>.
-	ExpediaPublisherID string
-
-	// Capacity + usage limits
-	MaxFreeUsers      int
-	DailyMessageLimit int // Deprecated: kept for backward compat; use tier-specific limits
-
-	// Tier-specific daily message limits (0 = unlimited)
-	DailyMessageLimitFree int
-	DailyMessageLimitPro  int
+	// Capacity
+	MaxFreeUsers int
 
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
@@ -125,16 +100,6 @@ type Config struct {
 	// LLM response caching
 	LLMCacheEnabled bool
 	LLMCacheTTL     time.Duration
-
-	// Stripe payment processing (Trip Pro + subscriptions)
-	StripeSecretKey                string
-	StripeWebhookSecret            string
-	StripeTripProProductID         string // Stripe Product ID for Trip Pro one-time purchase
-	TripProPriceCents              int    // Default 1900 ($19.00 CAD)
-	StripeExplorerMonthlyProductID string
-	StripeExplorerAnnualProductID  string
-	StripeVoyagerMonthlyProductID  string
-	StripeVoyagerAnnualProductID   string
 
 	// Email (Resend) for transactional emails
 	ResendAPIKey string
@@ -148,15 +113,9 @@ type Config struct {
 	AllowedEmails       []string // Emails that bypass waitlist/capacity entirely
 	AdminEmails         []string // Emails allowed to access /admin/* endpoints
 
-	// Referral
-	ReferralMaxRewards int // Max referral trip unlocks a referrer can earn (default: 10)
-
 	// GDPR export storage
 	GCSExportBucket string // GCS bucket for GDPR data exports (empty = local filesystem fallback)
 	ExportLocalDir  string // Local directory for exports when GCS is not configured
-
-	// Staging overrides
-	StagingProAll bool // When true, all trips are treated as unlocked (staging only)
 
 	// Consent enforcement (#369 P1 #3). When true, the ConsentInterceptor
 	// refuses non-exempt RPCs for users without recorded 'terms' +
@@ -179,72 +138,48 @@ func Load() (*Config, error) {
 
 	// Layer 2: read env vars with defaults
 	cfg := &Config{
-		TargetEnv:                      env,
-		Port:                           getEnv("PORT", "8090"),
-		DatabaseURL:                    getEnv("DATABASE_URL", "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"),
-		GoogleClientID:                 os.Getenv("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret:             os.Getenv("GOOGLE_CLIENT_SECRET"),
-		GoogleRedirectURI:              getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
-		FacebookClientID:               os.Getenv("FACEBOOK_CLIENT_ID"),
-		FacebookClientSecret:           os.Getenv("FACEBOOK_CLIENT_SECRET"),
-		FacebookRedirectURI:            getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
-		AppleTeamID:                    os.Getenv("APPLE_TEAM_ID"),
-		AppleServicesID:                os.Getenv("APPLE_SERVICES_ID"),
-		AppleKeyID:                     os.Getenv("APPLE_KEY_ID"),
-		ApplePrivateKey:                os.Getenv("APPLE_PRIVATE_KEY"),
-		JWTSecret:                      getEnv("JWT_SECRET", "dev-secret-change-in-production"),
-		AnthropicAPIKey:                os.Getenv("ANTHROPIC_API_KEY"),
-		GeminiAPIKey:                   os.Getenv("GEMINI_API_KEY"),
-		VertexAIProjectID:              os.Getenv("VERTEX_AI_PROJECT_ID"),
-		VertexAILocation:               getEnv("VERTEX_AI_LOCATION", "us-central1"),
-		DailyAITokenBudget:             getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
-		AIDailyBudgetCents:             getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
-		AIBudgetFreePct:                getEnvInt("AI_BUDGET_FREE_PCT", 20),
-		AIBudgetProPct:                 getEnvInt("AI_BUDGET_PRO_PCT", 30),
-		AIBudgetExplorerPct:            getEnvInt("AI_BUDGET_EXPLORER_PCT", 25),
-		AIBudgetVoyagerPct:             getEnvInt("AI_BUDGET_VOYAGER_PCT", 25),
-		FirestoreProjectID:             getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
-		FirestoreDatabaseID:            getEnv("FIRESTORE_DATABASE_ID", ""),
-		FirestoreEmulatorHost:          os.Getenv("FIRESTORE_EMULATOR_HOST"),
-		FrontendURL:                    getEnv("FRONTEND_URL", "http://localhost:3000"),
-		GoogleCustomSearchAPIKey:       os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
-		GoogleCustomSearchCX:           os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
-		GooglePlacesAPIKey:             os.Getenv("GOOGLE_PLACES_API_KEY"),
-		EmailWebhookSecret:             os.Getenv("EMAIL_WEBHOOK_SECRET"),
-		SkyscannerAffiliateID:          os.Getenv("SKYSCANNER_AFFILIATE_ID"),
-		BookingComAffiliateID:          os.Getenv("BOOKINGCOM_AFFILIATE_ID"),
-		GetYourGuidePartnerID:          os.Getenv("GETYOURGUIDE_PARTNER_ID"),
-		ViatorPartnerID:                os.Getenv("VIATOR_PARTNER_ID"),
-		DiscoverCarsAffiliateID:        os.Getenv("DISCOVERCARS_AFFILIATE_ID"),
-		ExpediaPublisherID:             os.Getenv("EXPEDIA_PUBLISHER_ID"),
-		SafetyWingReferenceID:          os.Getenv("SAFETYWING_REFERENCE_ID"),
-		MaxFreeUsers:                   getEnvInt("MAX_FREE_USERS", 500),
-		DailyMessageLimit:              getEnvInt("DAILY_MESSAGE_LIMIT", 30),
-		DailyMessageLimitFree:          getEnvInt("DAILY_MESSAGE_LIMIT_FREE", 10),
-		DailyMessageLimitPro:           getEnvInt("DAILY_MESSAGE_LIMIT_PRO", 50),
-		AIProvider:                     getEnv("AI_PROVIDER", "gemini"),
-		LLMCacheEnabled:                getEnvBool("LLM_CACHE_ENABLED", true),
-		LLMCacheTTL:                    getEnvDuration("LLM_CACHE_TTL", time.Hour),
-		PostHogAPIKey:                  os.Getenv("POSTHOG_API_KEY"),
-		AllowedEmailDomains:            parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
-		AllowedEmails:                  parseCSVEnv("ALLOWED_EMAILS"),
-		AdminEmails:                    parseCSVEnv("ADMIN_EMAILS"),
-		ReferralMaxRewards:             getEnvInt("REFERRAL_MAX_REWARDS", 10),
-		StagingProAll:                  getEnvBool("STAGING_PRO_ALL", false),
-		ConsentEnforcementEnabled:      getEnvBool("CONSENT_ENFORCEMENT_ENABLED", false),
-		ResendAPIKey:                   os.Getenv("RESEND_API_KEY"),
-		EmailFrom:                      getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
-		StripeSecretKey:                os.Getenv("STRIPE_SECRET_KEY"),
-		StripeWebhookSecret:            os.Getenv("STRIPE_WEBHOOK_SECRET"),
-		StripeTripProProductID:         os.Getenv("STRIPE_TRIP_PRO_PRODUCT_ID"),
-		TripProPriceCents:              getEnvInt("TRIP_PRO_PRICE_CENTS", 1900),
-		StripeExplorerMonthlyProductID: os.Getenv("STRIPE_EXPLORER_MONTHLY_PRODUCT"),
-		StripeExplorerAnnualProductID:  os.Getenv("STRIPE_EXPLORER_ANNUAL_PRODUCT"),
-		StripeVoyagerMonthlyProductID:  os.Getenv("STRIPE_VOYAGER_MONTHLY_PRODUCT"),
-		StripeVoyagerAnnualProductID:   os.Getenv("STRIPE_VOYAGER_ANNUAL_PRODUCT"),
-		CORSAllowedOrigins:             parseCSVEnv("CORS_ALLOWED_ORIGINS"),
-		GCSExportBucket:                getEnv("GCS_EXPORT_BUCKET", ""),
-		ExportLocalDir:                 getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
+		TargetEnv:                 env,
+		Port:                      getEnv("PORT", "8090"),
+		DatabaseURL:               getEnv("DATABASE_URL", "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"),
+		GoogleClientID:            os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:        os.Getenv("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURI:         getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
+		FacebookClientID:          os.Getenv("FACEBOOK_CLIENT_ID"),
+		FacebookClientSecret:      os.Getenv("FACEBOOK_CLIENT_SECRET"),
+		FacebookRedirectURI:       getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
+		AppleTeamID:               os.Getenv("APPLE_TEAM_ID"),
+		AppleServicesID:           os.Getenv("APPLE_SERVICES_ID"),
+		AppleKeyID:                os.Getenv("APPLE_KEY_ID"),
+		ApplePrivateKey:           os.Getenv("APPLE_PRIVATE_KEY"),
+		JWTSecret:                 getEnv("JWT_SECRET", "dev-secret-change-in-production"),
+		AnthropicAPIKey:           os.Getenv("ANTHROPIC_API_KEY"),
+		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
+		VertexAIProjectID:         os.Getenv("VERTEX_AI_PROJECT_ID"),
+		VertexAILocation:          getEnv("VERTEX_AI_LOCATION", "us-central1"),
+		DailyAITokenBudget:        getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
+		AIDailyBudgetCents:        getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
+		FirestoreProjectID:        getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
+		FirestoreDatabaseID:       getEnv("FIRESTORE_DATABASE_ID", ""),
+		FirestoreEmulatorHost:     os.Getenv("FIRESTORE_EMULATOR_HOST"),
+		FrontendURL:               getEnv("FRONTEND_URL", "http://localhost:3000"),
+		GoogleCustomSearchAPIKey:  os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
+		GoogleCustomSearchCX:      os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
+		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
+		EmailWebhookSecret:        os.Getenv("EMAIL_WEBHOOK_SECRET"),
+		MaxFreeUsers:              getEnvInt("MAX_FREE_USERS", 500),
+		AIProvider:                getEnv("AI_PROVIDER", "gemini"),
+		LLMCacheEnabled:           getEnvBool("LLM_CACHE_ENABLED", true),
+		LLMCacheTTL:               getEnvDuration("LLM_CACHE_TTL", time.Hour),
+		PostHogAPIKey:             os.Getenv("POSTHOG_API_KEY"),
+		AllowedEmailDomains:       parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
+		AllowedEmails:             parseCSVEnv("ALLOWED_EMAILS"),
+		AdminEmails:               parseCSVEnv("ADMIN_EMAILS"),
+		ConsentEnforcementEnabled: getEnvBool("CONSENT_ENFORCEMENT_ENABLED", false),
+		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
+		EmailFrom:                 getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
+		CORSAllowedOrigins:        parseCSVEnv("CORS_ALLOWED_ORIGINS"),
+		GCSExportBucket:           getEnv("GCS_EXPORT_BUCKET", ""),
+		ExportLocalDir:            getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
 	}
 
 	// Layer 3: resolve gcsm:// references

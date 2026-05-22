@@ -23,7 +23,6 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
@@ -42,15 +41,12 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
 	"github.com/gallowaysoftware/toqui-backend/internal/middleware"
-	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
 	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
-	"github.com/gallowaysoftware/toqui-backend/internal/subscription"
 	"github.com/gallowaysoftware/toqui-backend/internal/telemetry"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
-	"github.com/gallowaysoftware/toqui-backend/internal/usage"
 	"github.com/gallowaysoftware/toqui-backend/internal/validate"
 
 	toquiv1connect "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1/toquiv1connect"
@@ -242,18 +238,6 @@ func main() {
 		themeSvc = theme.NewService(pool, tagger)
 	}
 
-	// Affiliate link builder — generates partner URLs for booking recommendations.
-	// Empty IDs disable affiliate tracking (plain URLs still work).
-	linkBuilder := affiliate.NewLinkBuilder(affiliate.LinkBuilderConfig{
-		SkyscannerID:       cfg.SkyscannerAffiliateID,
-		BookingComID:       cfg.BookingComAffiliateID,
-		GetYourGuideID:     cfg.GetYourGuidePartnerID,
-		ViatorID:           cfg.ViatorPartnerID,
-		DiscoverCarsID:     cfg.DiscoverCarsAffiliateID,
-		SafetyWingID:       cfg.SafetyWingReferenceID,
-		ExpediaPublisherID: cfg.ExpediaPublisherID,
-	})
-
 	if aiProvider == nil {
 		slog.Error("no AI provider available — neither ANTHROPIC_API_KEY nor Vertex AI credentials are configured")
 		os.Exit(1)
@@ -275,28 +259,6 @@ func main() {
 		tokenBudget := ai.NewTokenBudget(cfg.DailyAITokenBudget)
 		chatSvc.SetBudget(tokenBudget)
 		slog.Info("daily AI token budget configured (legacy)", "limit", cfg.DailyAITokenBudget)
-	}
-
-	// DB-backed daily cost budget — hard limit on total AI spend per day.
-	// Reads actual cost from the ai_usage table and enforces global + per-tier limits.
-	var budgetChecker *usage.BudgetChecker
-	if cfg.AIDailyBudgetCents > 0 {
-		budgetCfg := usage.BudgetConfig{
-			GlobalDailyCents: int64(cfg.AIDailyBudgetCents),
-			FreePct:          cfg.AIBudgetFreePct,
-			ProPct:           cfg.AIBudgetProPct,
-			ExplorerPct:      cfg.AIBudgetExplorerPct,
-			VoyagerPct:       cfg.AIBudgetVoyagerPct,
-		}
-		budgetChecker = usage.NewBudgetChecker(budgetCfg, dbgen.New(pool))
-		chatSvc.SetBudgetChecker(budgetChecker)
-		slog.Info("daily AI cost budget configured",
-			"budget_cents", cfg.AIDailyBudgetCents,
-			"free_pct", cfg.AIBudgetFreePct,
-			"pro_pct", cfg.AIBudgetProPct,
-			"explorer_pct", cfg.AIBudgetExplorerPct,
-			"voyager_pct", cfg.AIBudgetVoyagerPct,
-		)
 	}
 
 	bookingSvc := booking.NewService(pool, aiProvider)
@@ -322,9 +284,6 @@ func main() {
 			slog.Info("GDPR export storage: local filesystem", "dir", cfg.ExportLocalDir)
 		}
 	}
-	usageSvc := usage.NewService(pool, cfg.DailyMessageLimit).
-		WithTierLimits(cfg.DailyMessageLimitFree, cfg.DailyMessageLimitPro)
-	chatSvc.SetUsageService(usageSvc)
 	if otelMetrics != nil {
 		chatSvc.SetAITokenMetric(otelMetrics.AITokenUsage)
 	}
@@ -379,26 +338,6 @@ func main() {
 	authLimiter := ratelimit.NewAuthLimiter(5, 15*time.Minute, 15*time.Minute)
 	defer authLimiter.Stop()
 
-	paymentSvc := payment.NewService(cfg.StripeSecretKey, cfg.StripeTripProProductID, cfg.TripProPriceCents, queries, cfg.FrontendURL).
-		WithAnalytics(posthogClient)
-	if cfg.StagingProAll {
-		if cfg.TargetEnv != "staging" {
-			slog.Error("STAGING_PRO_ALL=true is only allowed in staging environment, ignoring", "env", cfg.TargetEnv)
-		} else {
-			paymentSvc.SetAlwaysUnlocked(true)
-			slog.Info("staging mode: all trips treated as unlocked (pro)")
-		}
-	}
-
-	// Stripe subscription service — no-ops gracefully when STRIPE_SECRET_KEY is empty.
-	subSvc := subscription.NewService(cfg.StripeSecretKey, queries, subscription.ProductConfig{
-		ExplorerMonthly: cfg.StripeExplorerMonthlyProductID,
-		ExplorerAnnual:  cfg.StripeExplorerAnnualProductID,
-		VoyagerMonthly:  cfg.StripeVoyagerMonthlyProductID,
-		VoyagerAnnual:   cfg.StripeVoyagerAnnualProductID,
-	}, cfg.FrontendURL)
-	subSvc.SetPaymentService(paymentSvc)
-
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
 		WithCapacityCap(cfg.AllowedEmails, cfg.MaxFreeUsers).
 		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret).
@@ -406,7 +345,7 @@ func main() {
 		WithAlertChecker(alertChecker)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool)).
 		WithAnalytics(posthogClient)
-	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, linkBuilder, usageSvc, paymentSvc, pool, cfg.AdminEmails).
+	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, pool, cfg.AdminEmails).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
 		WithAnalytics(posthogClient).
 		WithAlertChecker(alertChecker).
@@ -430,8 +369,6 @@ func main() {
 		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI).
 		WithAnalytics(posthogClient).
 		WithAlertChecker(alertChecker)
-
-	usageHandler := handlers.NewUsageHandler(usageSvc, authSvc, pool)
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).
@@ -544,24 +481,6 @@ func main() {
 	mux.HandleFunc("/.well-known/apple-app-site-association", handlers.HandleAppleAppSiteAssociation)
 	mux.HandleFunc("/.well-known/assetlinks.json", handlers.HandleAssetLinks)
 
-	// Usage route (authenticated via Bearer token)
-	mux.HandleFunc("/api/usage", usageHandler.HandleUsage)
-
-	// Payment routes (authenticated)
-	checkoutHandler := handlers.NewCheckoutHandler(paymentSvc, authSvc, pool).
-		WithAnalytics(posthogClient)
-	mux.HandleFunc("/api/checkout", checkoutHandler.HandleCreateCheckout)
-	mux.HandleFunc("/api/checkout/status", checkoutHandler.HandleCheckUnlock)
-
-	// Subscription routes (authenticated, except webhook)
-	subscriptionHandler := handlers.NewSubscriptionHandler(subSvc, authSvc, pool, cfg.StripeWebhookSecret).
-		WithAnalytics(posthogClient)
-	mux.HandleFunc("/api/subscription/checkout", subscriptionHandler.HandleCreateCheckout)
-	mux.HandleFunc("/api/subscription/cancel", subscriptionHandler.HandleCancelSubscription)
-	mux.HandleFunc("/api/subscription/webhook", subscriptionHandler.HandleWebhook)
-	mux.HandleFunc("/api/subscription/portal", subscriptionHandler.HandleCreatePortal)
-	mux.HandleFunc("/api/subscription", subscriptionHandler.HandleGetSubscription)
-
 	// Public destination guides (no auth required)
 	guidesHandler := handlers.NewGuidesHandler(cfg.FrontendURL)
 	mux.HandleFunc("/api/guides/", guidesHandler.HandleGetGuide)
@@ -570,16 +489,6 @@ func main() {
 	// User feedback
 	feedbackHandler := handlers.NewFeedbackHandler(authSvc, pool)
 	mux.HandleFunc("/api/feedback", feedbackHandler.HandleSubmitFeedback)
-
-	// Referral system
-	referralHandler := handlers.NewReferralHandler(authSvc, pool, cfg.FrontendURL, cfg.ReferralMaxRewards).
-		WithAnalytics(posthogClient)
-	mux.HandleFunc("/api/referral", referralHandler.HandleGetReferralCode)
-	mux.HandleFunc("/api/referral/redeem", referralHandler.HandleRedeemReferral)
-
-	// Affiliate click tracking (public — no auth required)
-	affiliateHandler := handlers.NewAffiliateHandler(posthogClient)
-	mux.HandleFunc("/api/affiliate/click", affiliateHandler.HandleClick)
 
 	// Destination autocomplete (public — no auth required)
 	destinationHandler := handlers.NewDestinationSearchHandler()
@@ -668,9 +577,6 @@ func main() {
 
 	// Admin endpoints (authenticated + admin email check)
 	adminHandler := handlers.NewAdminHandler(authSvc, pool, cfg.AdminEmails, emailSender, cfg.FrontendURL, lifecycleSvc)
-	if budgetChecker != nil {
-		adminHandler.SetBudgetChecker(budgetChecker)
-	}
 	mux.HandleFunc("/admin/stats", adminHandler.HandleStats)
 	mux.HandleFunc("/admin/users", adminHandler.HandleListUsers)
 	mux.HandleFunc("/admin/waitlist", adminHandler.HandleListWaitlist)
@@ -691,7 +597,7 @@ func main() {
 
 	// Email ingestion webhook (outside ConnectRPC)
 	emailInbound := email.NewInbound(cfg.ResendAPIKey)
-	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, paymentSvc, pool, emailInbound, cfg.EmailWebhookSecret)
+	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, emailInbound, cfg.EmailWebhookSecret)
 	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)
 
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))
@@ -734,7 +640,7 @@ func main() {
 
 	// CSRF protection — validate Origin/Referer on state-changing requests.
 	// Webhooks are exempt (they use ECDSA signature verification).
-	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/", "/api/subscription/webhook"})
+	csrfProtected := csrf.Middleware(mux, corsOrigins, []string{"/webhooks/"})
 
 	// Middleware chain: recovery → request ID → request logging → security headers → CORS → cookie auth → IP rate limit → CSRF → metrics → handler
 	// IP rate limiter runs after cookie auth so it can use Bearer token (set by

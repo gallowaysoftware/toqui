@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -23,21 +22,15 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
 )
 
-// BudgetUtilizer is the subset of usage.BudgetChecker needed by the admin handler.
-type BudgetUtilizer interface {
-	Utilization(ctx context.Context) (pct float64, costCents, budgetCents int64, err error)
-}
-
 // AdminHandler serves internal admin endpoints.
 // All endpoints require JWT auth + email in the admin allow-list.
 type AdminHandler struct {
-	authSvc       *auth.Service
-	queries       *dbgen.Queries
-	adminEmails   []string
-	emailSvc      *email.Sender
-	appURL        string
-	lifecycleSvc  *lifecycle.Service
-	budgetChecker BudgetUtilizer // nil when budget enforcement is disabled
+	authSvc      *auth.Service
+	queries      *dbgen.Queries
+	adminEmails  []string
+	emailSvc     *email.Sender
+	appURL       string
+	lifecycleSvc *lifecycle.Service
 }
 
 // NewAdminHandler creates a new AdminHandler.
@@ -50,11 +43,6 @@ func NewAdminHandler(authSvc *auth.Service, pool *pgxpool.Pool, adminEmails []st
 		appURL:       appURL,
 		lifecycleSvc: lifecycleSvc,
 	}
-}
-
-// SetBudgetChecker enables budget utilization reporting on the admin dashboard.
-func (h *AdminHandler) SetBudgetChecker(b BudgetUtilizer) {
-	h.budgetChecker = b
 }
 
 // authenticateAdmin verifies JWT + checks the is_admin DB column.
@@ -135,7 +123,6 @@ func (h *AdminHandler) HandleStats(w http.ResponseWriter, r *http.Request) {
 	userCount, _ := h.queries.CountUsers(ctx)
 	waitlistCount, _ := h.queries.CountWaitlist(ctx)
 	activeTrips, _ := h.queries.CountActiveTrips(ctx)
-	dailyMessages, _ := h.queries.CountDailyMessages(ctx)
 	proInterest, _ := h.queries.CountProInterest(ctx)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -143,7 +130,6 @@ func (h *AdminHandler) HandleStats(w http.ResponseWriter, r *http.Request) {
 		"total_users":    userCount,
 		"waitlist_count": waitlistCount,
 		"active_trips":   activeTrips,
-		"daily_messages": dailyMessages,
 		"pro_interest":   proInterest,
 	})
 }
@@ -420,16 +406,8 @@ func (h *AdminHandler) HandleUnlockTrip(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, err := h.queries.CreateTripUnlock(r.Context(), dbgen.CreateTripUnlockParams{
-		UserID: userID,
-		TripID: tripID,
-		Source: "admin",
-	}); err != nil {
-		slog.Error("admin unlock trip failed", "error", err, "user_id", userID, "trip_id", tripID)
-		http.Error(w, "failed to unlock trip", http.StatusInternalServerError)
-		return
-	}
-
+	// Trip unlock is a monetization concept that no longer exists; this
+	// endpoint is retained as a no-op for compatibility.
 	audit.Log(audit.EventAdminTripUnlock,
 		"admin_id", adminID.String(),
 		"user_id", userID.String(),
@@ -698,8 +676,8 @@ func (h *AdminHandler) HandleDeleteWaitlistEntry(w http.ResponseWriter, r *http.
 }
 
 // HandleAICosts handles GET /admin/ai-costs — AI cost dashboard.
-// Returns costs in dollars and per-tier breakdowns matching the admin panel's
-// AICosts interface: { daily_cost, weekly_cost, monthly_cost, cost_by_tier }.
+// Detailed AI cost tracking has been removed along with monetization tables.
+// Returns a zeroed payload for backward compatibility with admin clients.
 func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -710,116 +688,20 @@ func (h *AdminHandler) HandleAICosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-
-	// Try detailed ai_usage table first; fall back to daily_usage aggregates.
-	dailyCents, dailyErr := h.queries.GetDailyAIUsageCost(ctx)
-	weeklyCents, weeklyErr := h.queries.GetWeeklyAIUsageCost(ctx)
-	monthlyCents, monthlyErr := h.queries.GetMonthlyAIUsageCost(ctx)
-
-	// Fallback to daily_usage table if ai_usage table has no data or errors.
-	if dailyErr != nil || (dailyCents == 0 && weeklyCents == 0 && monthlyCents == 0) {
-		dailyCents, _ = h.queries.GetDailyAICostTotal(ctx)
-		if weeklyErr != nil {
-			weeklyCents, _ = h.queries.GetWeeklyAICostTotal(ctx)
-		}
-		if monthlyErr != nil {
-			monthlyCents, _ = h.queries.GetMonthlyAICostTotal(ctx)
-		}
-	}
-
-	// Per-tier breakdown from ai_usage table.
-	tierRows, _ := h.queries.GetAIUsageCostByTier(ctx)
-	costByTier := make([]map[string]any, 0, len(tierRows))
-	for _, row := range tierRows {
-		costByTier = append(costByTier, map[string]any{
-			"tier":          row.Tier,
-			"cost":          float64(row.TotalCents) / 100.0,
-			"request_count": row.RequestCount,
-		})
-	}
-
-	// If no ai_usage tier data, fall back to daily_usage by subscription tier.
-	if len(costByTier) == 0 {
-		legacyRows, _ := h.queries.GetAICostByTier(ctx)
-		for _, row := range legacyRows {
-			costByTier = append(costByTier, map[string]any{
-				"tier":          row.Tier,
-				"cost":          float64(row.TotalCents) / 100.0,
-				"request_count": row.UserCount, // approximate: user count as proxy
-			})
-		}
-	}
-
-	// Top users by cost.
-	topUsers, _ := h.queries.GetTopAIUsers(ctx)
-	topUsersOut := make([]map[string]any, 0, len(topUsers))
-	for _, u := range topUsers {
-		topUsersOut = append(topUsersOut, map[string]any{
-			"user_id":       u.UserID.String(),
-			"email":         u.Email,
-			"total_cents":   u.TotalCents,
-			"request_count": u.RequestCount,
-		})
-	}
-
-	// Model breakdown.
-	modelRows, _ := h.queries.GetAIUsageByModel(ctx)
-	byModel := make([]map[string]any, 0, len(modelRows))
-	for _, row := range modelRows {
-		byModel = append(byModel, map[string]any{
-			"provider":      row.Provider,
-			"model_tier":    row.ModelTier,
-			"input_tokens":  row.TotalInputTokens,
-			"output_tokens": row.TotalOutputTokens,
-			"cost":          float64(row.TotalCents) / 100.0,
-			"request_count": row.RequestCount,
-		})
-	}
-
-	// Budget utilization (if budget enforcement is enabled).
-	var budgetInfo map[string]any
-	if h.budgetChecker != nil {
-		pct, costC, budgetC, budgetErr := h.budgetChecker.Utilization(ctx)
-		if budgetErr != nil {
-			slog.Warn("admin ai-costs: budget utilization query failed", "error", budgetErr)
-		} else {
-			budgetInfo = map[string]any{
-				"utilization_pct": pct,
-				"cost_cents":      costC,
-				"budget_cents":    budgetC,
-				"cost_dollars":    float64(costC) / 100.0,
-				"budget_dollars":  float64(budgetC) / 100.0,
-			}
-		}
-	}
-
-	resp := map[string]any{
-		"daily_cost":   float64(dailyCents) / 100.0,
-		"weekly_cost":  float64(weeklyCents) / 100.0,
-		"monthly_cost": float64(monthlyCents) / 100.0,
-		"cost_by_tier": costByTier,
-		"top_users":    topUsersOut,
-		"by_model":     byModel,
-	}
-	if budgetInfo != nil {
-		resp["budget"] = budgetInfo
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
-}
-
-// subscriptionMRR maps subscription tiers to their estimated monthly price in
-// dollars. Used to compute MRR from active subscription counts. These should
-// match the Stripe product prices.
-var subscriptionMRR = map[string]float64{
-	"explorer": 9.99,
-	"voyager":  19.99,
+	json.NewEncoder(w).Encode(map[string]any{
+		"daily_cost":   0.0,
+		"weekly_cost":  0.0,
+		"monthly_cost": 0.0,
+		"cost_by_tier": []map[string]any{},
+		"top_users":    []map[string]any{},
+		"by_model":     []map[string]any{},
+	})
 }
 
 // HandleRevenue handles GET /admin/revenue — revenue dashboard.
-// Returns MRR from active subscriptions and Trip Pro one-time purchase revenue.
+// Monetization has been removed; this endpoint returns a zeroed payload for
+// backward compatibility with admin clients.
 func (h *AdminHandler) HandleRevenue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -830,38 +712,11 @@ func (h *AdminHandler) HandleRevenue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-
-	// Compute MRR from active subscriptions by tier.
-	var mrr float64
-	subsByTier, err := h.queries.GetActiveSubscriptionsByTier(ctx)
-	if err != nil {
-		slog.Warn("admin revenue: failed to get active subscriptions", "error", err)
-	}
-	for _, row := range subsByTier {
-		if price, ok := subscriptionMRR[row.Tier]; ok {
-			mrr += price * float64(row.SubCount)
-		}
-	}
-
-	// Trip Pro one-time purchase revenue.
-	tripProTotalCents, err := h.queries.GetTotalTripProRevenueCents(ctx)
-	if err != nil {
-		slog.Warn("admin revenue: failed to get trip pro revenue", "error", err)
-	}
-
-	tripProMonthlyCents, err := h.queries.GetMonthlyTripProRevenueCents(ctx)
-	if err != nil {
-		slog.Warn("admin revenue: failed to get monthly trip pro revenue", "error", err)
-	}
-
-	totalRevenue := mrr + float64(tripProTotalCents)/100.0
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"mrr":              mrr,
-		"trip_pro_monthly": float64(tripProMonthlyCents) / 100.0,
-		"total_revenue":    totalRevenue,
+		"mrr":              0.0,
+		"trip_pro_monthly": 0.0,
+		"total_revenue":    0.0,
 	})
 }
 

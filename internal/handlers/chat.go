@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/affiliate"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/analytics"
@@ -26,12 +25,9 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/location"
-	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/persona"
 	"github.com/gallowaysoftware/toqui-backend/internal/theme"
-	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
-	"github.com/gallowaysoftware/toqui-backend/internal/usage"
 
 	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
 )
@@ -46,9 +42,6 @@ type ChatHandler struct {
 	themeSvc      *theme.Service
 	locationCache *location.Cache
 	locationSvc   *location.Service
-	linkBuilder   *affiliate.LinkBuilder
-	usageSvc      *usage.Service
-	paymentSvc    *payment.Service
 	aiProvider    ai.Provider // for companion gate LLM classifier
 	queries       *dbgen.Queries
 	pool          *pgxpool.Pool
@@ -58,7 +51,7 @@ type ChatHandler struct {
 	alertChecker  *analytics.AlertChecker
 }
 
-func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, linkBuilder *affiliate.LinkBuilder, usageSvc *usage.Service, paymentSvc *payment.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
+func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *theme.Service, locationCache *location.Cache, locationSvc *location.Service, pool *pgxpool.Pool, adminEmails []string) *ChatHandler {
 	emailSet := make(map[string]bool, len(adminEmails))
 	for _, e := range adminEmails {
 		emailSet[strings.ToLower(strings.TrimSpace(e))] = true
@@ -69,9 +62,6 @@ func NewChatHandler(chatSvc *chat.Service, tripSvc *trip.Service, themeSvc *them
 		themeSvc:      themeSvc,
 		locationCache: locationCache,
 		locationSvc:   locationSvc,
-		paymentSvc:    paymentSvc,
-		linkBuilder:   linkBuilder,
-		usageSvc:      usageSvc,
 		queries:       dbgen.New(pool),
 		pool:          pool,
 		adminEmails:   emailSet,
@@ -143,19 +133,7 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	}
 
 	// Admin users have unlimited AI interactions.
-	isAdmin := h.isAdmin(ctx, userID)
-
-	// Look up the user's subscription tier for usage limits and booking recommendation gating.
-	// Default to free tier if the lookup fails so we never block the chat flow.
-	userTier := tier.Free
-	if h.queries != nil {
-		if raw, err := h.queries.GetUserSubscriptionTier(ctx, userID); err == nil {
-			userTier = tier.Parse(raw)
-		} else {
-			slog.Warn("failed to look up user subscription tier, defaulting to free",
-				"user_id", userID, "error", err)
-		}
-	}
+	_ = h.isAdmin(ctx, userID)
 
 	// Companion mode can work without a trip (standalone), so don't force it to selection.
 	isSelection := req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_SELECTION ||
@@ -167,38 +145,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		mode = "selection"
 	case req.Msg.Mode == toquiv1.ChatMode_CHAT_MODE_COMPANION:
 		mode = "companion"
-	}
-
-	// Check daily message limit before processing (skip for admins).
-	// Selection-mode messages are exempt from the quota — they're orientation
-	// interactions before any trip exists, and counting them against the
-	// daily cap meant first-time users could be blocked mid-planning by
-	// throwaway "where should I go?" turns (#191).
-	if h.usageSvc != nil && !isAdmin && !isSelection {
-		limit := h.usageSvc.LimitForTier(userTier)
-		remaining, err := h.usageSvc.IncrementAndCheckTier(ctx, userID, userTier)
-		if err != nil {
-			if errors.Is(err, usage.ErrDailyLimitExceeded) {
-				upgradeHint := ""
-				switch {
-				case userTier.IsFree():
-					upgradeHint = " Upgrade to Voyager for unlimited messages + priority AI model, or Explorer for unlimited messages — visit your account settings to learn more."
-				case userTier == tier.Pro:
-					upgradeHint = " Upgrade to Voyager for unlimited messages + priority AI model, or Explorer for unlimited messages."
-				case userTier == tier.Explorer:
-					upgradeHint = " Upgrade to Voyager for priority AI model + priority support."
-				}
-				return connect.NewError(
-					connect.CodeResourceExhausted,
-					fmt.Errorf("you have reached your daily message limit of %d messages; it resets at %s.%s",
-						limit, usage.ResetTime().Format("2006-01-02T15:04:05Z"), upgradeHint),
-				)
-			}
-			// Log but don't block on usage tracking errors
-			slog.Error("usage tracking failed", "user_id", userID, "error", err)
-		} else {
-			slog.Debug("daily usage tracked", "user_id", userID, "remaining", remaining, "tier", string(userTier))
-		}
 	}
 
 	// Track chat message (async, non-blocking, privacy-safe — no message content)
@@ -221,14 +167,12 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var tripThemes []string
 	var tripTitle, tripDescription string
 	var tripStartDate, tripEndDate string
-	var tripStartDateISO, tripEndDateISO string // YYYY-MM-DD for affiliate URLs
 	var tripStatus string
 	var existingItinerary []dbgen.ItineraryItem
 	var existingBookings []dbgen.Booking
 	var collaboratorCount int64
 	var tripBudgetCents *int64
 	var tripCurrency string
-	var trialExpired bool         // true if trial existed but has expired (conversion nudge)
 	var isCollaboratorEditor bool // true if user is an editor collaborator (not owner)
 	var tripOwnerID uuid.UUID     // populated from the loaded trip row; feeds ownership gate in BuildPlanningAndCompanionTools
 	if !isSelection {
@@ -250,22 +194,15 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 				}
 				if t.StartDate.Valid {
 					tripStartDate = t.StartDate.Time.Format(dateFormatLong)
-					tripStartDateISO = t.StartDate.Time.Format("2006-01-02")
 				}
 				if t.EndDate.Valid {
 					tripEndDate = t.EndDate.Time.Format(dateFormatLong)
-					tripEndDateISO = t.EndDate.Time.Format("2006-01-02")
 				}
 				if t.BudgetCents.Valid {
 					tripBudgetCents = &t.BudgetCents.Int64
 				}
 				if t.Currency.Valid && t.Currency.String != "" {
 					tripCurrency = t.Currency.String
-				}
-				// Detect expired trial for conversion nudge (#271):
-				// trial existed (TrialStartedAt set) but is no longer active.
-				if t.TrialStartedAt.Valid && t.TrialEndsAt.Valid && !t.TrialEndsAt.Time.After(time.Now()) {
-					trialExpired = true
 				}
 				// Pass the trip's owner ID through to the tool builder,
 				// which derives owner-vs-editor gating from a direct
@@ -332,8 +269,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		DestinationCountry: destinationCountry,
 		TripThemes:         tripThemes,
 		Attachments:        attachments,
-		PriorityModel:      userTier.HasPriorityModel(),
-		UserTier:           string(userTier),
 	}
 
 	// Inject ephemeral location (companion mode only).
@@ -361,23 +296,9 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	var updatedTrips []tripUpdatedInfo
 	var itineraryItems []dbgen.ItineraryItem
 	var pendingSwitch *personaSwitchInfo
-	var recommendations []affiliate.Recommendation
 	var createdTripID string  // first trip created this session (for session relinking, #153)
 	var selectedTripID string // most recent trip selected this session (survives copy-and-clear)
 	var mu sync.Mutex
-
-	// Check if this trip is unlocked (Trip Pro purchased or trial active)
-	var tripUnlocked bool
-	if parsedTripID, parseErr := uuid.Parse(req.Msg.TripId); parseErr == nil {
-		if h.paymentSvc != nil {
-			tripUnlocked, _ = h.paymentSvc.IsTripUnlocked(ctx, userID, parsedTripID)
-		}
-		if !tripUnlocked && h.queries != nil {
-			if active, err := h.queries.IsTripTrialActive(ctx, parsedTripID); err == nil && active {
-				tripUnlocked = true
-			}
-		}
-	}
 
 	// personaSwitchCh signals a mid-turn handoff to the chat service so the
 	// expert can answer in the same turn (#175). Buffered so the suggest_expert
@@ -426,52 +347,8 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 		})
 	}
 
-	// Wrap suggest_expert for free-tier users to enforce per-trip expert limit.
-	// The counter is persisted in the DB (trips.expert_calls) so it survives
-	// across messages and sessions, unlike the old per-RPC atomic counter.
+	// suggest_expert is available to all users without gating.
 	var expertTool tools.Tool = suggestExpertTool
-	if !userTier.IsPro() && !tripUnlocked {
-		gateTripID := uuid.Nil
-		if id, err := uuid.Parse(req.Msg.TripId); err == nil {
-			gateTripID = id
-		}
-		expertTool = newExpertTeaserGate(suggestExpertTool, h.queries, gateTripID, userID)
-	}
-
-	// Recommend booking tool is available in all modes. Pro-tier callers
-	// preferentially get non-affiliate sources (IndependentDisclosure) —
-	// every category currently exposes at least one independent
-	// candidate. If the affiliate fallback does fire (future category
-	// with no independent option), the label is FTCDisclosure, same as
-	// free-tier — the URL is commission-earning regardless of who
-	// clicks it (#190 LB-4).
-	var recommendBookingTool tools.Tool
-	if h.linkBuilder != nil {
-		rbt := NewRecommendBookingTool(h.linkBuilder, userTier, func(rec affiliate.Recommendation) {
-			mu.Lock()
-			recommendations = append(recommendations, rec)
-			mu.Unlock()
-		})
-		if destinationCountry != "" || tripStartDateISO != "" || req.Msg.TripId != "" {
-			// Convert ISO country code (e.g. "JP") to a human country name
-			// (e.g. "Japan") before handing it to the tool. The tool treats
-			// this as a city/place name in URL construction — passing the
-			// raw 2-letter code produces user-visible nonsense like
-			// "Hotels in JP on Google Maps" or wikivoyage.org/wiki/JP.
-			// GetLocationProfile covers all 43 supported countries; if the
-			// code is unrecognised we fall back to the raw code rather than
-			// silently dropping the destination context.
-			tripDestName := destinationCountry
-			if profile := persona.GetLocationProfile(destinationCountry); profile != nil {
-				tripDestName = profile.Name
-			}
-			rbt = rbt.WithTripContext(tripDestName, tripStartDateISO, tripEndDateISO, req.Msg.TripId)
-		}
-		if h.analytics != nil {
-			rbt = rbt.WithAnalytics(h.analytics, userID.String())
-		}
-		recommendBookingTool = rbt
-	}
 
 	// Selection mode: add create_trip + select_trip tools
 	// Planning mode: add create_itinerary_items tool
@@ -534,13 +411,10 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			})
 
 		params.ExtraTools = []tools.Tool{createTripTool, selectTripTool, expertTool, deferredItineraryTool}
-		if recommendBookingTool != nil {
-			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
-		}
-		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID, userTier)
+		params.ExtraSystemContext = h.buildSelectionContext(ctx, userID)
 	} else {
 		// Planning/companion mode: inject trip metadata so the AI knows what trip it's working on
-		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, userTier, tripBudgetCents, tripCurrency, trialExpired)
+		params.ExtraSystemContext = buildTripContext(tripTitle, tripDescription, destinationCountry, destinationCountries, tripStartDate, tripEndDate, tripStatus, tripThemes, existingItinerary, existingBookings, collaboratorCount, tripBudgetCents, tripCurrency)
 	}
 
 	// Inject user preferences into the system context (all modes).
@@ -556,9 +430,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 
 	if !isSelection {
 		params.ExtraTools = append(params.ExtraTools, expertTool)
-		if recommendBookingTool != nil {
-			params.ExtraTools = append(params.ExtraTools, recommendBookingTool)
-		}
 
 		// Inject itinerary creation/deletion tools and the owner-only
 		// update_trip tool. See BuildPlanningAndCompanionTools for the
@@ -627,20 +498,17 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 	}
 
 	var fullContent string
-	hadContent := false // Track if any AI content was received (for usage refund on failure)
 	for event := range eventCh {
 		var chatEvent *toquiv1.SendMessageResponse
 
 		switch event.Type {
 		case "text_delta":
-			hadContent = true
 			chatEvent = &toquiv1.SendMessageResponse{
 				Event: &toquiv1.SendMessageResponse_TextDelta{
 					TextDelta: &toquiv1.TextDelta{Text: event.Text},
 				},
 			}
 		case "tool_call":
-			hadContent = true
 			chatEvent = &toquiv1.SendMessageResponse{
 				Event: &toquiv1.SendMessageResponse_ToolCall{
 					ToolCall: &toquiv1.ToolCall{
@@ -667,7 +535,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			var localSelected []tripCreatedInfo
 			var localSwitch *personaSwitchInfo
 			var localItinerary []dbgen.ItineraryItem
-			var localRecs []affiliate.Recommendation
 
 			if event.ToolName == "create_trip" {
 				localCreated = createdTrips
@@ -684,10 +551,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 			if event.ToolName == "create_itinerary_items" {
 				localItinerary = itineraryItems
 				itineraryItems = nil
-			}
-			if event.ToolName == "recommend_booking" {
-				localRecs = recommendations
-				recommendations = nil
 			}
 			var localUpdated []tripUpdatedInfo
 			if event.ToolName == "update_trip" {
@@ -769,16 +632,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					}
 				}
 			}
-			for _, rec := range localRecs {
-				// Privacy: recommendation titles can include destination
-				// names ("Hotel X in Paris"), revealing user travel intent
-				// in logs. Track partner+category counts only.
-				slog.Info("affiliate recommendation generated",
-					"partner", rec.Partner,
-					"category", rec.Category,
-					"user_id", userID,
-				)
-			}
 			for _, ut := range localUpdated {
 				tripProto := &toquiv1.Trip{
 					Id:          ut.ID,
@@ -851,15 +704,6 @@ func (h *ChatHandler) SendMessage(ctx context.Context, req *connect.Request[toqu
 					}()
 				}
 			}
-		}
-	}
-
-	// Refund daily usage if the AI produced no content (e.g., 429 rate limit
-	// killed the stream). Selection-mode messages were never counted, so
-	// nothing to refund (#191).
-	if !hadContent && h.usageSvc != nil && !isAdmin && !isSelection {
-		if err := h.queries.DecrementDailyUsage(ctx, userID); err != nil {
-			slog.Error("failed to decrement daily usage after empty AI response", "user_id", userID, "error", err)
 		}
 	}
 
@@ -1023,7 +867,7 @@ func sanitizeForPrompt(s string, maxLen int) string {
 
 // buildTripContext returns system prompt context for planning/companion mode:
 // the trip's metadata so the AI knows what it's helping with.
-func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, userTier tier.UserTier, budgetCents *int64, currency string, trialExpired bool) string {
+func buildTripContext(title, description, destinationCountry string, destinationCountries []string, startDate, endDate, status string, themes []string, itineraryItems []dbgen.ItineraryItem, bookings []dbgen.Booking, collaboratorCount int64, budgetCents *int64, currency string) string {
 	if title == "" && description == "" && destinationCountry == "" && len(destinationCountries) == 0 {
 		return ""
 	}
@@ -1221,12 +1065,6 @@ func buildTripContext(title, description, destinationCountry string, destination
 		sb.WriteString("\nThe traveler has accommodation bookings listed above. When planning daily activities, consider proximity to their hotel/accommodation and suggest activities in nearby neighborhoods first.\n")
 	}
 
-	// Trial expired conversion nudge (#271): gently remind the AI to mention
-	// upgrade when users ask about premium features on an expired-trial trip.
-	if trialExpired {
-		sb.WriteString("\nNote: This trip's free trial has expired. If the user asks about expert personas or premium features, mention that they can upgrade to Trip Pro ($19) to unlock unlimited expert access for this trip.\n")
-	}
-
 	sb.WriteString("\nYou already know the trip destination, dates, existing itinerary, bookings, and group size. Do NOT ask for this information again. If USER PREFERENCES are provided below, use them without asking again — only ask about preferences that are NOT already listed. For any unlisted preferences (interests, mobility needs, travel style, etc.), DO ask clarifying questions to give better recommendations.")
 
 	// Differentiate itinerary tool behavior between planning and companion mode.
@@ -1239,14 +1077,12 @@ func buildTripContext(title, description, destinationCountry string, destination
 		sb.WriteString("\n\nITINERARY TOOL USAGE: ALWAYS use the create_itinerary_items tool when you suggest specific activities, meals, sightseeing, or experiences for the trip. If you mention a concrete place or activity the traveler should do, save it to the itinerary — don't just describe it in prose. The user expects items to appear in their itinerary view. Only skip the tool for abstract questions about transport logistics, safety, budgets, or general destination info where no specific activity is being recommended.")
 		sb.WriteString("\nCRITICAL: NEVER describe an itinerary plan in text without also calling create_itinerary_items to save it. If you mention specific activities, restaurants, or attractions for specific days, you MUST create itinerary items for them. The user's itinerary is only useful if it's saved — text descriptions alone are not visible in their trip plan.")
 	}
-	sb.WriteString("\n\n")
-	sb.WriteString(bookingInstructionsForTier(userTier))
 	return sb.String()
 }
 
 // buildSelectionContext returns system prompt context for selection mode:
 // the user's existing trips so Toqui can help them find or create one.
-func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID, userTier tier.UserTier) string {
+func (h *ChatHandler) buildSelectionContext(ctx context.Context, userID uuid.UUID) string {
 	today := time.Now().Format(dateFormatLong)
 
 	trips, _, err := h.tripSvc.ListByUser(ctx, userID, "", 20, 0)
@@ -1262,8 +1098,7 @@ Help the user decide on a trip. You can:
 The user has no existing trips yet. Help them get started!
 
 When the user expresses interest in a specific destination or trip idea, proactively create the trip for them using the create_trip tool. Don't wait for them to explicitly say "create a trip" — if they say something like "I want to go to Japan" or "planning a weekend in Paris", go ahead and create it.
-
-%s`, today, bookingInstructionsForTier(userTier))
+`, today)
 	}
 
 	var sb strings.Builder
@@ -1294,47 +1129,7 @@ The user's existing trips:
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString("\n")
-	sb.WriteString(bookingInstructionsForTier(userTier))
-
 	return sb.String()
-}
-
-// bookingInstructionsForTier returns the system prompt snippet that tells the
-// AI how to handle booking recommendations.
-//
-// Free-tier callers receive an affiliate-first system prompt: every booking
-// link carries a Toqui partner ID, so the AI must include the FTC disclosure
-// in every reply.
-//
-// Pro-tier callers get a slightly different framing because the
-// recommend_booking tool now prefers non-affiliate sources (Google Flights,
-// Google Maps, Wikivoyage) over affiliate partners — see SelectForPreference
-// in the affiliate package. The AI is told that Pro recommendations prefer
-// independent sources and to include whichever disclosure string the tool
-// returns (independent or partner) verbatim. The "include the disclosure
-// from the tool result" rule applies in both cases — it's the safe path
-// whether the tool returned IndependentDisclosure or one of the affiliate
-// disclosures. The Pro framing is intentionally a behaviour claim ("prefers
-// independent sources") rather than a quality claim ("ranks by fit"): the
-// tool does not score sources for fit, it picks the first non-affiliate
-// candidate from a hand-curated list.
-func bookingInstructionsForTier(t tier.UserTier) string {
-	triggerPhrases := `
-When the user asks about ANY of the following, you MUST call the recommend_booking tool:
-- "book a flight", "find flights", "search for flights"
-- "book a hotel", "find accommodation", "where to stay"
-- "book a tour", "book an activity", "things to book", "tickets"
-- "day trip", "excursion", "can I book"
-- "car rental", "rent a car"
-- Any question about purchasing, reserving, or booking travel services
-Do NOT respond with text-only suggestions when the user is asking to BOOK something. Use the tool.`
-
-	if t.IsPro() {
-		return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For Pro users the tool prefers independent sources (Google Flights, Google Maps, Wikivoyage) over affiliate partners — Toqui earns no commission on most Pro recommendations. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the exact disclosure text from the tool result verbatim in your response to the user — the disclosure differs depending on whether the chosen source is independent or affiliate, and copying it as-is is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
-	}
-
-	return "BOOKING RECOMMENDATIONS: When the user asks about flights, hotels, activities, car rentals, or travel insurance, use the recommend_booking tool. For international trips, proactively suggest travel insurance if the user hasn't mentioned it. For destinations that benefit from driving (rural areas, road trips), suggest car rentals. IMPORTANT: You MUST include the disclosure text from the tool result in your response to the user — this is a legal requirement. Present the recommendation with the search link and the full disclosure statement." + triggerPhrases
 }
 
 func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[toquiv1.GetChatHistoryRequest]) (*connect.Response[toquiv1.GetChatHistoryResponse], error) {

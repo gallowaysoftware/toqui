@@ -40,9 +40,7 @@ type lifecycleQueries interface {
 	ListItineraryItemsByTrip(ctx context.Context, tripID uuid.UUID) ([]dbgen.ItineraryItem, error)
 	GetTripThemes(ctx context.Context, tripID uuid.UUID) ([]dbgen.GetTripThemesRow, error)
 	ListBookingsByUser(ctx context.Context, arg dbgen.ListBookingsByUserParams) ([]dbgen.Booking, error)
-	ListReferralsByUser(ctx context.Context, userID uuid.UUID) ([]dbgen.Referral, error)
 	ListFeedbackByUser(ctx context.Context, userID uuid.UUID) ([]dbgen.Feedback, error)
-	ListUserPayments(ctx context.Context, arg dbgen.ListUserPaymentsParams) ([]dbgen.ListUserPaymentsRow, error)
 	GetPreferences(ctx context.Context, userID uuid.UUID) ([]dbgen.UserPreference, error)
 	GetActiveConsents(ctx context.Context, userID uuid.UUID) ([]dbgen.UserConsent, error)
 	CreateExportRequest(ctx context.Context, userID uuid.UUID) (dbgen.ExportRequest, error)
@@ -410,15 +408,6 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 		}
 	}
 
-	// Referrals
-	referrals, err := s.queries.ListReferralsByUser(ctx, userID)
-	if err != nil {
-		slog.Warn("export: failed to list referrals", "error", err)
-	}
-	for _, r := range referrals {
-		export.Referrals = append(export.Referrals, r)
-	}
-
 	// Feedback (GDPR Article 20 — feedback the user submitted is their
 	// own personal data and must be included in their export). Previously
 	// this field was allocated on UserExport but never populated; the
@@ -430,19 +419,6 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 	}
 	for _, f := range feedback {
 		export.Feedback = append(export.Feedback, f)
-	}
-
-	// Payments
-	payments, err := s.queries.ListUserPayments(ctx, dbgen.ListUserPaymentsParams{
-		UserID:     userID,
-		PageOffset: 0,
-		PageSize:   10000,
-	})
-	if err != nil {
-		slog.Warn("export: failed to list payments", "error", err)
-	}
-	for _, p := range payments {
-		export.Payments = append(export.Payments, p)
 	}
 
 	// Preferences

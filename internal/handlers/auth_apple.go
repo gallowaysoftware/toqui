@@ -120,8 +120,6 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 		audit.Log(audit.EventAppleLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 	}
 
-	tier := h.lookupTier(ctx, user.ID)
-
 	consentPending := true
 	if hasRequired, cErr := h.queries.HasRequiredConsents(ctx, user.ID); cErr != nil {
 		slog.Warn("failed to check required consents, assuming pending", "user_id", user.ID, "error", cErr)
@@ -130,7 +128,7 @@ func (h *AuthHandler) AppleLogin(ctx context.Context, req *connect.Request[toqui
 	}
 
 	return connect.NewResponse(&toquiv1.AppleLoginResponse{
-		User:                    userToProto(user, tier),
+		User:                    userToProto(user),
 		AccessToken:             accessToken,
 		RefreshToken:            refreshResult.Token,
 		ExpiresAt:               timestamppb.New(refreshResult.ExpiresAt),

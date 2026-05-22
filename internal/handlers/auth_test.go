@@ -46,7 +46,7 @@ func TestUserToProto_AgeVerifiedAt(t *testing.T) {
 				Name:          pgtype.Text{String: "Test User", Valid: true},
 				AgeVerifiedAt: tc.ageVerifiedAt,
 			}
-			proto := userToProto(u, "free")
+			proto := userToProto(u)
 
 			if proto == nil {
 				t.Fatal("userToProto returned nil")
@@ -84,11 +84,7 @@ func TestUserToProto_DefaultsAndOptionals(t *testing.T) {
 		Name:  pgtype.Text{Valid: false},
 	}
 
-	// Empty subscription tier should default to "free".
-	proto := userToProto(u, "")
-	if proto.SubscriptionTier != "free" {
-		t.Errorf("SubscriptionTier = %q, want free", proto.SubscriptionTier)
-	}
+	proto := userToProto(u)
 	if proto.Name != "" {
 		t.Errorf("Name = %q, want empty when invalid", proto.Name)
 	}
@@ -102,14 +98,11 @@ func TestUserToProto_DefaultsAndOptionals(t *testing.T) {
 	// Populated optional fields.
 	u.Name = pgtype.Text{String: "Alice", Valid: true}
 	u.AvatarUrl = pgtype.Text{String: "https://example.com/a.png", Valid: true}
-	proto2 := userToProto(u, "pro")
+	proto2 := userToProto(u)
 	if proto2.Name != "Alice" {
 		t.Errorf("Name = %q, want Alice", proto2.Name)
 	}
 	if proto2.AvatarUrl != "https://example.com/a.png" {
 		t.Errorf("AvatarUrl = %q, want url", proto2.AvatarUrl)
-	}
-	if proto2.SubscriptionTier != "pro" {
-		t.Errorf("SubscriptionTier = %q, want pro", proto2.SubscriptionTier)
 	}
 }

@@ -3229,14 +3229,14 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x14IngestBookingRequest\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.toqui.v1.BookingTypeR\x04type\x12&\n" +
-	"\braw_text\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x01\x18І\x03R\arawText\"\x88\x02\n" +
+	"\braw_text\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x01\x18І\x03R\arawText\"\x8e\x02\n" +
 	"\x15IngestBookingResponse\x12+\n" +
 	"\abooking\x18\x01 \x01(\v2\x11.toqui.v1.BookingR\abooking\x12\x1f\n" +
 	"\vwas_updated\x18\x03 \x01(\bR\n" +
 	"wasUpdated\x12.\n" +
 	"\x13previous_booking_id\x18\x04 \x01(\tR\x11previousBookingId\x127\n" +
 	"\tconflicts\x18\x05 \x03(\v2\x19.toqui.v1.BookingConflictR\tconflicts\x128\n" +
-	"\fcoverage_gap\x18\x06 \x01(\v2\x15.toqui.v1.CoverageGapR\vcoverageGap\"|\n" +
+	"\fcoverage_gap\x18\x06 \x01(\v2\x15.toqui.v1.CoverageGapR\vcoverageGapJ\x04\b\x02\x10\x03\"|\n" +
 	"\x0fBookingConflict\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x1a\n" +
 	"\bseverity\x18\x02 \x01(\tR\bseverity\x12\x18\n" +

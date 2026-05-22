@@ -107,7 +107,6 @@ message User {
   string name = 3;
   string avatar_url = 4;
   google.protobuf.Timestamp created_at = 5;
-  string subscription_tier = 6;
   // When the user completed age verification (POST /auth/verify-age).
   // Unset for users who have not yet verified. Used by the frontend
   // to skip the AgeGate modal for returning users.

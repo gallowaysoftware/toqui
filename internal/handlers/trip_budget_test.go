@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/tier"
 )
 
 func TestTripToProto_BudgetFields(t *testing.T) {
@@ -114,7 +113,7 @@ func TestItineraryToProto_CostFields(t *testing.T) {
 
 func TestBuildTripContext_IncludesBudget(t *testing.T) {
 	budget := int64(200000)
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, tier.Free, &budget, "USD", false)
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, &budget, "USD")
 
 	if !strings.Contains(ctx, "Trip budget") {
 		t.Error("trip context should include budget when set")
@@ -128,7 +127,7 @@ func TestBuildTripContext_IncludesBudget(t *testing.T) {
 }
 
 func TestBuildTripContext_NoBudget(t *testing.T) {
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, tier.Free, nil, "", false)
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, nil, nil, 0, nil, "")
 
 	if strings.Contains(ctx, "Trip budget") {
 		t.Error("trip context should not include budget when not set")
@@ -137,7 +136,7 @@ func TestBuildTripContext_NoBudget(t *testing.T) {
 
 func TestBuildTripContext_EuroBudget(t *testing.T) {
 	budget := int64(150000)
-	ctx := buildTripContext("Euro Trip", "", "FR", nil, "", "", "planning", nil, nil, nil, 0, tier.Free, &budget, "EUR", false)
+	ctx := buildTripContext("Euro Trip", "", "FR", nil, "", "", "planning", nil, nil, nil, 0, &budget, "EUR")
 
 	if !strings.Contains(ctx, "Trip budget") {
 		t.Error("trip context should include budget")
@@ -164,7 +163,7 @@ func TestBuildTripContext_ItineraryWithCosts(t *testing.T) {
 			// No cost
 		},
 	}
-	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, tier.Free, nil, "", false)
+	ctx := buildTripContext("Japan Trip", "", "JP", nil, "", "", "planning", nil, items, nil, 0, nil, "")
 
 	if !strings.Contains(ctx, "Sushi Dinner ($50.00)") {
 		t.Errorf("trip context should include cost for priced items, got:\n%s", ctx)
@@ -181,9 +180,9 @@ func TestCurrencySymbol(t *testing.T) {
 		want string
 	}{
 		{"USD", "$"},
-		{"EUR", "\u20ac"},
-		{"GBP", "\u00a3"},
-		{"JPY", "\u00a5"},
+		{"EUR", "€"},
+		{"GBP", "£"},
+		{"JPY", "¥"},
 		{"CAD", "CA$"},
 		{"AUD", "A$"},
 		{"SEK", ""},

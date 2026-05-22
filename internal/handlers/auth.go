@@ -178,8 +178,6 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 
 	audit.Log(audit.EventLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
-	tier := h.lookupTier(ctx, user.ID)
-
 	// Check if the user has accepted required consents (terms + privacy_policy).
 	consentPending := true
 	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
@@ -191,7 +189,7 @@ func (h *AuthHandler) GoogleLogin(ctx context.Context, req *connect.Request[toqu
 	return connect.NewResponse(&toquiv1.GoogleLoginResponse{
 		AccessToken:             accessToken,
 		RefreshToken:            refreshResult.Token,
-		User:                    userToProto(&user, tier),
+		User:                    userToProto(&user),
 		ConsentPending:          consentPending,
 		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
 	}), nil
@@ -265,8 +263,6 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 
 	audit.Log(audit.EventFacebookLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
 
-	tier := h.lookupTier(ctx, user.ID)
-
 	// Check if the user has accepted required consents (terms + privacy_policy).
 	consentPending := true
 	if hasRequired, err := h.queries.HasRequiredConsents(ctx, user.ID); err != nil {
@@ -278,7 +274,7 @@ func (h *AuthHandler) FacebookLogin(ctx context.Context, req *connect.Request[to
 	return connect.NewResponse(&toquiv1.FacebookLoginResponse{
 		AccessToken:             accessToken,
 		RefreshToken:            refreshResult.Token,
-		User:                    userToProto(user, tier),
+		User:                    userToProto(user),
 		ConsentPending:          consentPending,
 		AgeVerificationRequired: !user.AgeVerifiedAt.Valid,
 	}), nil
@@ -416,12 +412,10 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[toq
 
 	audit.Log(audit.EventTokenRefresh, "user_id", user.ID.String(), "ip", ip)
 
-	tier := h.lookupTier(ctx, user.ID)
-
 	return connect.NewResponse(&toquiv1.RefreshTokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshResult.Token,
-		User:         userToProto(&user, tier),
+		User:         userToProto(&user),
 	}), nil
 }
 
@@ -436,10 +430,8 @@ func (h *AuthHandler) GetCurrentUser(ctx context.Context, _ *connect.Request[toq
 		return nil, internalError(ctx, "get current user", err)
 	}
 
-	tier := h.lookupTier(ctx, user.ID)
-
 	return connect.NewResponse(&toquiv1.GetCurrentUserResponse{
-		User: userToProto(&user, tier),
+		User: userToProto(&user),
 	}), nil
 }
 
@@ -557,21 +549,10 @@ func (h *AuthHandler) HandleExportDownload(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h *AuthHandler) lookupTier(ctx context.Context, userID uuid.UUID) string {
-	if raw, err := h.queries.GetUserSubscriptionTier(ctx, userID); err == nil {
-		return raw
-	}
-	return "free"
-}
-
-func userToProto(u *dbgen.User, subscriptionTier string) *toquiv1.User {
-	if subscriptionTier == "" {
-		subscriptionTier = "free"
-	}
+func userToProto(u *dbgen.User) *toquiv1.User {
 	user := &toquiv1.User{
-		Id:               u.ID.String(),
-		Email:            u.Email,
-		SubscriptionTier: subscriptionTier,
+		Id:    u.ID.String(),
+		Email: u.Email,
 	}
 	if u.Name.Valid {
 		user.Name = u.Name.String

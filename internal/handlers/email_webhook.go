@@ -23,7 +23,6 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui-backend/internal/email"
-	"github.com/gallowaysoftware/toqui-backend/internal/payment"
 	"github.com/gallowaysoftware/toqui-backend/internal/trip"
 )
 
@@ -89,7 +88,6 @@ type ReceivedEmailFetcher interface {
 type EmailWebhookHandler struct {
 	bookingSvc           *booking.Service
 	tripSvc              *trip.Service
-	paymentSvc           *payment.Service
 	queries              *dbgen.Queries
 	inbound              ReceivedEmailFetcher
 	webhookSecret        string // Resend webhook signing secret (whsec_...)
@@ -116,7 +114,6 @@ type EmailWebhookHandler struct {
 func NewEmailWebhookHandler(
 	bookingSvc *booking.Service,
 	tripSvc *trip.Service,
-	paymentSvc *payment.Service,
 	pool *pgxpool.Pool,
 	inbound ReceivedEmailFetcher,
 	webhookSecret string,
@@ -124,7 +121,6 @@ func NewEmailWebhookHandler(
 	return &EmailWebhookHandler{
 		bookingSvc:    bookingSvc,
 		tripSvc:       tripSvc,
-		paymentSvc:    paymentSvc,
 		queries:       dbgen.New(pool),
 		inbound:       inbound,
 		webhookSecret: webhookSecret,

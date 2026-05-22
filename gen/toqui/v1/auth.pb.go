@@ -654,13 +654,12 @@ func (x *GetCurrentUserResponse) GetUser() *User {
 }
 
 type User struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Email            string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Name             string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	AvatarUrl        string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	SubscriptionTier string                 `protobuf:"bytes,6,opt,name=subscription_tier,json=subscriptionTier,proto3" json:"subscription_tier,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email     string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	AvatarUrl string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// When the user completed age verification (POST /auth/verify-age).
 	// Unset for users who have not yet verified. Used by the frontend
 	// to skip the AgeGate modal for returning users.
@@ -732,13 +731,6 @@ func (x *User) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
-}
-
-func (x *User) GetSubscriptionTier() string {
-	if x != nil {
-		return x.SubscriptionTier
-	}
-	return ""
 }
 
 func (x *User) GetAgeVerifiedAt() *timestamppb.Timestamp {
@@ -981,7 +973,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x04user\x18\x03 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x17\n" +
 	"\x15GetCurrentUserRequest\"<\n" +
 	"\x16GetCurrentUserResponse\x12\"\n" +
-	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\x8b\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.toqui.v1.UserR\x04user\"\xde\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -989,8 +981,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12+\n" +
-	"\x11subscription_tier\x18\x06 \x01(\tR\x10subscriptionTier\x12B\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12B\n" +
 	"\x0fage_verified_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\rageVerifiedAt\"9\n" +
 	"\x14DeleteAccountRequest\x12!\n" +
 	"\aconfirm\x18\x01 \x01(\bB\a\xbaH\x04j\x02\b\x01R\aconfirm\"P\n" +
