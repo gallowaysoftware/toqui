@@ -82,8 +82,6 @@ components/                   Shared UI components
   ShareButton.tsx             Native/web share sheet integration
   auth/
     AIDisclaimerGate.tsx      One-time AI disclaimer acknowledgement modal
-  bookings/
-    ForwardingCard.tsx        Email forwarding setup card for booking import
   chat/
     ChatInput.tsx             Message input with send button and typing state
     FollowUpSuggestions.tsx   AI-generated follow-up question chips
