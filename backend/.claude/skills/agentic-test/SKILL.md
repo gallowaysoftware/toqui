@@ -17,7 +17,7 @@ You interact with the Toqui backend API using `curl` for unary RPCs and REST end
 **IMPORTANT**: Always set up your environment first:
 ```bash
 export PATH="/opt/homebrew/bin:$PATH"
-cd /Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend
+cd /Users/pequalsnp/src/github.com/gallowaysoftware/toqui/backend
 ```
 
 The `cd` is required because `buf curl` needs the proto schema from the project root.
