@@ -31,7 +31,7 @@ import type { ChatMessage, PersonaIntroData } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
-import { getConfig } from "@/lib/config";
+import { getConfig, getPublicUrl } from "@/lib/config";
 import { getAutoPersona } from "@/lib/data/autoPersona";
 
 const errorReportStyles = StyleSheet.create({
@@ -156,7 +156,7 @@ export default function ChatScreen() {
       );
       if (!res.ok) throw new Error(`Failed to enable sharing (${res.status})`);
       const data: { share_token: string } = await res.json();
-      const shareUrl = `https://app.toqui.travel/shared/${data.share_token}`;
+      const shareUrl = getPublicUrl(`/shared/${data.share_token}`);
       const shareMessage = trip?.destinationCountry
         ? `Check out my trip to ${trip.destinationCountry} on Toqui!`
         : `Check out "${trip?.title ?? "my trip"}" on Toqui!`;
