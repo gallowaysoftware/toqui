@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
+import { useAuthProviders } from "@/lib/hooks/useAuthProviders";
 import { useTheme } from "@/lib/theme";
 import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
@@ -98,6 +99,12 @@ export default function TripsScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
+  const { data: authProviders } = useAuthProviders();
+  // Hide the Google button unless the server explicitly reports it as
+  // available. Treat the unknown / loading state as "off" so we never
+  // flash a button that fails as soon as the user taps it. Self-hosted
+  // operators without Google credentials get the email-only experience.
+  const googleEnabled = authProviders?.googleOauth === true;
 
   // Redirect to onboarding if user is authenticated but hasn't completed it
   useEffect(() => {
@@ -143,6 +150,44 @@ export default function TripsScreen() {
       alignItems: "center",
       gap: 8,
     },
+    primaryButtonBlock: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      width: "100%",
+      maxWidth: 320,
+    },
+    secondaryButtonBlock: {
+      backgroundColor: colors.surface,
+      borderRadius: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      width: "100%",
+      maxWidth: 320,
+    },
+    secondaryButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: "600" },
+    createAccountLink: { color: colors.accent, fontSize: 14, fontWeight: "600", marginTop: 16 },
+    authSeparator: {
+      flexDirection: "row",
+      alignItems: "center",
+      width: "100%",
+      maxWidth: 320,
+      marginVertical: 14,
+      gap: 8,
+    },
+    authSeparatorLine: { flex: 1, height: 1, backgroundColor: colors.border },
+    authSeparatorText: { color: colors.textTertiary, fontSize: 12, textTransform: "uppercase" },
     disabledButton: { opacity: 0.5 },
     buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
     listContent: { padding: 16 },
@@ -206,12 +251,41 @@ export default function TripsScreen() {
         </View>
 
         <Pressable
-          style={[styles.primaryButton, !authReady && styles.disabledButton]}
-          onPress={signIn}
-          disabled={!authReady}
+          style={styles.primaryButtonBlock}
+          onPress={() => router.push("/auth/email-login" as never)}
+          accessibilityRole="button"
+          testID="signin-email"
         >
-          <Text style={styles.buttonText}>{t("common.getStarted")}</Text>
+          <Text style={styles.buttonText}>{t("common.signInWithEmail")}</Text>
         </Pressable>
+
+        {googleEnabled ? (
+          <>
+            <View style={styles.authSeparator}>
+              <View style={styles.authSeparatorLine} />
+              <Text style={styles.authSeparatorText}>{t("common.or")}</Text>
+              <View style={styles.authSeparatorLine} />
+            </View>
+            <Pressable
+              style={[styles.secondaryButtonBlock, !authReady && styles.disabledButton]}
+              onPress={signIn}
+              disabled={!authReady}
+              accessibilityRole="button"
+              testID="signin-google"
+            >
+              <Text style={styles.secondaryButtonText}>{t("common.getStarted")}</Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        <Pressable
+          onPress={() => router.push("/auth/email-register" as never)}
+          accessibilityRole="link"
+          testID="signin-create-account"
+        >
+          <Text style={styles.createAccountLink}>{t("common.createAccount")}</Text>
+        </Pressable>
+
         <Text style={styles.signInNote}>{t("home.signInNote")}</Text>
       </ScrollView>
     );

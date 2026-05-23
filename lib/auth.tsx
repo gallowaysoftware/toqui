@@ -56,6 +56,8 @@ interface AuthState {
   refreshToken: string | null;
   isLoading: boolean;
   login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, name: string) => Promise<void>;
   user: AuthUser | null;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<string | null>;
@@ -110,6 +112,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // Shared persistence path for any login/register RPC response that
+  // returns { accessToken, refreshToken, user? }. The three auth RPCs
+  // (googleLogin, emailLogin, emailRegister) all share this shape.
+  const applyAuthResponse = useCallback(
+    async (res: { accessToken: string; refreshToken: string; user?: { id: string; email: string; name: string } | undefined }) => {
+      setAccessToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
+      if (res.user) {
+        const u: AuthUser = {
+          id: res.user.id,
+          email: res.user.email,
+          name: res.user.name,
+        };
+        setUser(u);
+        await tokenStorage.set("toqui_user", JSON.stringify(u));
+      }
+      await tokenStorage.set("toqui_access_token", res.accessToken);
+      await tokenStorage.set("toqui_refresh_token", res.refreshToken);
+    },
+    [],
+  );
+
   const login = useCallback(async (googleAuthCode: string, redirectUri?: string) => {
     const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
     const client = createClient(AuthService, transport);
@@ -117,20 +141,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       code: googleAuthCode,
       redirectUri: redirectUri ?? "",
     });
-    setAccessToken(res.accessToken);
-    setRefreshToken(res.refreshToken);
-    if (res.user) {
-      const u: AuthUser = {
-        id: res.user.id,
-        email: res.user.email,
-        name: res.user.name,
-      };
-      setUser(u);
-      await tokenStorage.set("toqui_user", JSON.stringify(u));
-    }
-    await tokenStorage.set("toqui_access_token", res.accessToken);
-    await tokenStorage.set("toqui_refresh_token", res.refreshToken);
-  }, []);
+    await applyAuthResponse(res);
+  }, [applyAuthResponse]);
+
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
+    const client = createClient(AuthService, transport);
+    const res = await client.emailLogin({ email, password });
+    await applyAuthResponse(res);
+  }, [applyAuthResponse]);
+
+  const registerWithEmail = useCallback(
+    async (email: string, password: string, name: string) => {
+      const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
+      const client = createClient(AuthService, transport);
+      const res = await client.emailRegister({ email, password, name });
+      await applyAuthResponse(res);
+    },
+    [applyAuthResponse],
+  );
 
   const refreshTokens = useCallback(async (): Promise<string | null> => {
     const rt = await tokenStorage.get("toqui_refresh_token");
@@ -180,8 +209,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually }),
-    [accessToken, refreshToken, user, isLoading, login, logout, refreshTokens, setTokensManually],
+    () => ({
+      accessToken,
+      refreshToken,
+      user,
+      isLoading,
+      login,
+      loginWithEmail,
+      registerWithEmail,
+      logout,
+      refreshTokens,
+      setTokensManually,
+    }),
+    [
+      accessToken,
+      refreshToken,
+      user,
+      isLoading,
+      login,
+      loginWithEmail,
+      registerWithEmail,
+      logout,
+      refreshTokens,
+      setTokensManually,
+    ],
   );
 
   return (

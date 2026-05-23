@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/auth.proto.
  */
 export const file_toqui_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ0ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCUoECAQQBVILYXR0cmlidXRpb24imAEKE0dvb2dsZUxvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJIChRGYWNlYm9va0xvZ2luUmVxdWVzdBIdCgxhY2Nlc3NfdG9rZW4YASABKAlCB7pIBHICEAFKBAgCEANSC2F0dHJpYnV0aW9uIpoBChVGYWNlYm9va0xvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJ8ChFBcHBsZUxvZ2luUmVxdWVzdBIjChJhdXRob3JpemF0aW9uX2NvZGUYASABKAlCB7pIBHICEAESGQoIaWRfdG9rZW4YAiABKAlCB7pIBHICEAESFAoMcmVkaXJlY3RfdXJpGAMgASgJSgQIBBAFUgthdHRyaWJ1dGlvbiLHAQoSQXBwbGVMb2dpblJlc3BvbnNlEhwKBHVzZXIYASABKAsyDi50b3F1aS52MS5Vc2VyEhQKDGFjY2Vzc190b2tlbhgCIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAMgASgJEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSgQIBRAGSgQIBhAHUg9jb25zZW50X3BlbmRpbmdSGWFnZV92ZXJpZmljYXRpb25fcmVxdWlyZWQiNQoTUmVmcmVzaFRva2VuUmVxdWVzdBIeCg1yZWZyZXNoX3Rva2VuGAEgASgJQge6SARyAhABImEKFFJlZnJlc2hUb2tlblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIhcKFUdldEN1cnJlbnRVc2VyUmVxdWVzdCI2ChZHZXRDdXJyZW50VXNlclJlc3BvbnNlEhwKBHVzZXIYASABKAsyDi50b3F1aS52MS5Vc2VyIooBCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEgoKYXZhdGFyX3VybBgEIAEoCRIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAcQCFIPYWdlX3ZlcmlmaWVkX2F0IjAKFERlbGV0ZUFjY291bnRSZXF1ZXN0EhgKB2NvbmZpcm0YASABKAhCB7pIBGoCCAEiPAoVRGVsZXRlQWNjb3VudFJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCSITChFFeHBvcnREYXRhUmVxdWVzdCI5ChJFeHBvcnREYXRhUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdtZXNzYWdlGAIgASgJMrMECgtBdXRoU2VydmljZRJKCgtHb29nbGVMb2dpbhIcLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVxdWVzdBodLnRvcXVpLnYxLkdvb2dsZUxvZ2luUmVzcG9uc2USUAoNRmFjZWJvb2tMb2dpbhIeLnRvcXVpLnYxLkZhY2Vib29rTG9naW5SZXF1ZXN0Gh8udG9xdWkudjEuRmFjZWJvb2tMb2dpblJlc3BvbnNlEkcKCkFwcGxlTG9naW4SGy50b3F1aS52MS5BcHBsZUxvZ2luUmVxdWVzdBocLnRvcXVpLnYxLkFwcGxlTG9naW5SZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpLWJhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
+  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ0ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCUoECAQQBVILYXR0cmlidXRpb24imAEKE0dvb2dsZUxvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJlChRFbWFpbFJlZ2lzdGVyUmVxdWVzdBIWCgVlbWFpbBgBIAEoCUIHukgEcgJgARIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQDBjIARIXCgRuYW1lGAMgASgJQgm6SAZyBBABGGQiYgoVRW1haWxSZWdpc3RlclJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIkkKEUVtYWlsTG9naW5SZXF1ZXN0EhYKBWVtYWlsGAEgASgJQge6SARyAmABEhwKCHBhc3N3b3JkGAIgASgJQgq6SAdyBRABGMgBIl8KEkVtYWlsTG9naW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIZChdHZXRBdXRoUHJvdmlkZXJzUmVxdWVzdCJIChhHZXRBdXRoUHJvdmlkZXJzUmVzcG9uc2USFgoOZW1haWxfcGFzc3dvcmQYASABKAgSFAoMZ29vZ2xlX29hdXRoGAIgASgIIjUKE1JlZnJlc2hUb2tlblJlcXVlc3QSHgoNcmVmcmVzaF90b2tlbhgBIAEoCUIHukgEcgIQASJhChRSZWZyZXNoVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIXChVHZXRDdXJyZW50VXNlclJlcXVlc3QiNgoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIcCgR1c2VyGAEgASgLMg4udG9xdWkudjEuVXNlciKKAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBKBAgHEAhSD2FnZV92ZXJpZmllZF9hdCIwChREZWxldGVBY2NvdW50UmVxdWVzdBIYCgdjb25maXJtGAEgASgIQge6SARqAggBIjwKFURlbGV0ZUFjY291bnRSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiEwoRRXhwb3J0RGF0YVJlcXVlc3QiOQoSRXhwb3J0RGF0YVJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCTKOBQoLQXV0aFNlcnZpY2USSgoLR29vZ2xlTG9naW4SHC50b3F1aS52MS5Hb29nbGVMb2dpblJlcXVlc3QaHS50b3F1aS52MS5Hb29nbGVMb2dpblJlc3BvbnNlElAKDUVtYWlsUmVnaXN0ZXISHi50b3F1aS52MS5FbWFpbFJlZ2lzdGVyUmVxdWVzdBofLnRvcXVpLnYxLkVtYWlsUmVnaXN0ZXJSZXNwb25zZRJHCgpFbWFpbExvZ2luEhsudG9xdWkudjEuRW1haWxMb2dpblJlcXVlc3QaHC50b3F1aS52MS5FbWFpbExvZ2luUmVzcG9uc2USWQoQR2V0QXV0aFByb3ZpZGVycxIhLnRvcXVpLnYxLkdldEF1dGhQcm92aWRlcnNSZXF1ZXN0GiIudG9xdWkudjEuR2V0QXV0aFByb3ZpZGVyc1Jlc3BvbnNlEk0KDFJlZnJlc2hUb2tlbhIdLnRvcXVpLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaHi50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXNwb25zZRJTCg5HZXRDdXJyZW50VXNlchIfLnRvcXVpLnYxLkdldEN1cnJlbnRVc2VyUmVxdWVzdBogLnRvcXVpLnYxLkdldEN1cnJlbnRVc2VyUmVzcG9uc2USUAoNRGVsZXRlQWNjb3VudBIeLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXF1ZXN0Gh8udG9xdWkudjEuRGVsZXRlQWNjb3VudFJlc3BvbnNlEkcKCkV4cG9ydERhdGESGy50b3F1aS52MS5FeHBvcnREYXRhUmVxdWVzdBocLnRvcXVpLnYxLkV4cG9ydERhdGFSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message toqui.v1.GoogleLoginRequest
@@ -72,26 +72,36 @@ export const GoogleLoginResponseSchema: GenMessage<GoogleLoginResponse> = /*@__P
   messageDesc(file_toqui_v1_auth, 1);
 
 /**
- * @generated from message toqui.v1.FacebookLoginRequest
+ * @generated from message toqui.v1.EmailRegisterRequest
  */
-export type FacebookLoginRequest = Message<"toqui.v1.FacebookLoginRequest"> & {
+export type EmailRegisterRequest = Message<"toqui.v1.EmailRegisterRequest"> & {
   /**
-   * @generated from field: string access_token = 1;
+   * @generated from field: string email = 1;
    */
-  accessToken: string;
+  email: string;
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
 };
 
 /**
- * Describes the message toqui.v1.FacebookLoginRequest.
- * Use `create(FacebookLoginRequestSchema)` to create a new message.
+ * Describes the message toqui.v1.EmailRegisterRequest.
+ * Use `create(EmailRegisterRequestSchema)` to create a new message.
  */
-export const FacebookLoginRequestSchema: GenMessage<FacebookLoginRequest> = /*@__PURE__*/
+export const EmailRegisterRequestSchema: GenMessage<EmailRegisterRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 2);
 
 /**
- * @generated from message toqui.v1.FacebookLoginResponse
+ * @generated from message toqui.v1.EmailRegisterResponse
  */
-export type FacebookLoginResponse = Message<"toqui.v1.FacebookLoginResponse"> & {
+export type EmailRegisterResponse = Message<"toqui.v1.EmailRegisterResponse"> & {
   /**
    * @generated from field: string access_token = 1;
    */
@@ -109,79 +119,99 @@ export type FacebookLoginResponse = Message<"toqui.v1.FacebookLoginResponse"> & 
 };
 
 /**
- * Describes the message toqui.v1.FacebookLoginResponse.
- * Use `create(FacebookLoginResponseSchema)` to create a new message.
+ * Describes the message toqui.v1.EmailRegisterResponse.
+ * Use `create(EmailRegisterResponseSchema)` to create a new message.
  */
-export const FacebookLoginResponseSchema: GenMessage<FacebookLoginResponse> = /*@__PURE__*/
+export const EmailRegisterResponseSchema: GenMessage<EmailRegisterResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 3);
 
 /**
- * Apple Sign-In: the frontend (expo-apple-authentication) returns an
- * authorization_code + id_token after the user taps "Sign in with Apple."
- * The backend exchanges the code with Apple, verifies the signed ID token,
- * and creates / links a Toqui user account.
- *
- * @generated from message toqui.v1.AppleLoginRequest
+ * @generated from message toqui.v1.EmailLoginRequest
  */
-export type AppleLoginRequest = Message<"toqui.v1.AppleLoginRequest"> & {
+export type EmailLoginRequest = Message<"toqui.v1.EmailLoginRequest"> & {
   /**
-   * @generated from field: string authorization_code = 1;
+   * @generated from field: string email = 1;
    */
-  authorizationCode: string;
+  email: string;
 
   /**
-   * @generated from field: string id_token = 2;
+   * @generated from field: string password = 2;
    */
-  idToken: string;
-
-  /**
-   * Optional. The Services-ID redirect URI the frontend supplied during the
-   * initial authorization request. Apple verifies this against the value it
-   * saw client-side, so it must match exactly.
-   *
-   * @generated from field: string redirect_uri = 3;
-   */
-  redirectUri: string;
+  password: string;
 };
 
 /**
- * Describes the message toqui.v1.AppleLoginRequest.
- * Use `create(AppleLoginRequestSchema)` to create a new message.
+ * Describes the message toqui.v1.EmailLoginRequest.
+ * Use `create(EmailLoginRequestSchema)` to create a new message.
  */
-export const AppleLoginRequestSchema: GenMessage<AppleLoginRequest> = /*@__PURE__*/
+export const EmailLoginRequestSchema: GenMessage<EmailLoginRequest> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 4);
 
 /**
- * @generated from message toqui.v1.AppleLoginResponse
+ * @generated from message toqui.v1.EmailLoginResponse
  */
-export type AppleLoginResponse = Message<"toqui.v1.AppleLoginResponse"> & {
+export type EmailLoginResponse = Message<"toqui.v1.EmailLoginResponse"> & {
   /**
-   * @generated from field: toqui.v1.User user = 1;
-   */
-  user?: User | undefined;
-
-  /**
-   * @generated from field: string access_token = 2;
+   * @generated from field: string access_token = 1;
    */
   accessToken: string;
 
   /**
-   * @generated from field: string refresh_token = 3;
+   * @generated from field: string refresh_token = 2;
    */
   refreshToken: string;
 
   /**
-   * @generated from field: google.protobuf.Timestamp expires_at = 4;
+   * @generated from field: toqui.v1.User user = 3;
    */
-  expiresAt?: Timestamp | undefined;
+  user?: User | undefined;
 };
 
 /**
- * Describes the message toqui.v1.AppleLoginResponse.
- * Use `create(AppleLoginResponseSchema)` to create a new message.
+ * Describes the message toqui.v1.EmailLoginResponse.
+ * Use `create(EmailLoginResponseSchema)` to create a new message.
  */
-export const AppleLoginResponseSchema: GenMessage<AppleLoginResponse> = /*@__PURE__*/
+export const EmailLoginResponseSchema: GenMessage<EmailLoginResponse> = /*@__PURE__*/
   messageDesc(file_toqui_v1_auth, 5);
+
+/**
+ * @generated from message toqui.v1.GetAuthProvidersRequest
+ */
+export type GetAuthProvidersRequest = Message<"toqui.v1.GetAuthProvidersRequest"> & {
+};
+
+/**
+ * Describes the message toqui.v1.GetAuthProvidersRequest.
+ * Use `create(GetAuthProvidersRequestSchema)` to create a new message.
+ */
+export const GetAuthProvidersRequestSchema: GenMessage<GetAuthProvidersRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 6);
+
+/**
+ * @generated from message toqui.v1.GetAuthProvidersResponse
+ */
+export type GetAuthProvidersResponse = Message<"toqui.v1.GetAuthProvidersResponse"> & {
+  /**
+   * always true
+   *
+   * @generated from field: bool email_password = 1;
+   */
+  emailPassword: boolean;
+
+  /**
+   * env-gated (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET set)
+   *
+   * @generated from field: bool google_oauth = 2;
+   */
+  googleOauth: boolean;
+};
+
+/**
+ * Describes the message toqui.v1.GetAuthProvidersResponse.
+ * Use `create(GetAuthProvidersResponseSchema)` to create a new message.
+ */
+export const GetAuthProvidersResponseSchema: GenMessage<GetAuthProvidersResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 7);
 
 /**
  * @generated from message toqui.v1.RefreshTokenRequest
@@ -198,7 +228,7 @@ export type RefreshTokenRequest = Message<"toqui.v1.RefreshTokenRequest"> & {
  * Use `create(RefreshTokenRequestSchema)` to create a new message.
  */
 export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 6);
+  messageDesc(file_toqui_v1_auth, 8);
 
 /**
  * @generated from message toqui.v1.RefreshTokenResponse
@@ -225,7 +255,7 @@ export type RefreshTokenResponse = Message<"toqui.v1.RefreshTokenResponse"> & {
  * Use `create(RefreshTokenResponseSchema)` to create a new message.
  */
 export const RefreshTokenResponseSchema: GenMessage<RefreshTokenResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 7);
+  messageDesc(file_toqui_v1_auth, 9);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserRequest
@@ -238,7 +268,7 @@ export type GetCurrentUserRequest = Message<"toqui.v1.GetCurrentUserRequest"> & 
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
 export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 8);
+  messageDesc(file_toqui_v1_auth, 10);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserResponse
@@ -255,7 +285,7 @@ export type GetCurrentUserResponse = Message<"toqui.v1.GetCurrentUserResponse"> 
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
 export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 9);
+  messageDesc(file_toqui_v1_auth, 11);
 
 /**
  * @generated from message toqui.v1.User
@@ -292,7 +322,7 @@ export type User = Message<"toqui.v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 10);
+  messageDesc(file_toqui_v1_auth, 12);
 
 /**
  * Account deletion — GDPR Article 17 (Right to Erasure)
@@ -313,7 +343,7 @@ export type DeleteAccountRequest = Message<"toqui.v1.DeleteAccountRequest"> & {
  * Use `create(DeleteAccountRequestSchema)` to create a new message.
  */
 export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 11);
+  messageDesc(file_toqui_v1_auth, 13);
 
 /**
  * @generated from message toqui.v1.DeleteAccountResponse
@@ -337,7 +367,7 @@ export type DeleteAccountResponse = Message<"toqui.v1.DeleteAccountResponse"> & 
  * Use `create(DeleteAccountResponseSchema)` to create a new message.
  */
 export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 12);
+  messageDesc(file_toqui_v1_auth, 14);
 
 /**
  * Data export — GDPR Article 20 (Right to Data Portability)
@@ -352,7 +382,7 @@ export type ExportDataRequest = Message<"toqui.v1.ExportDataRequest"> & {
  * Use `create(ExportDataRequestSchema)` to create a new message.
  */
 export const ExportDataRequestSchema: GenMessage<ExportDataRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 13);
+  messageDesc(file_toqui_v1_auth, 15);
 
 /**
  * @generated from message toqui.v1.ExportDataResponse
@@ -376,13 +406,18 @@ export type ExportDataResponse = Message<"toqui.v1.ExportDataResponse"> & {
  * Use `create(ExportDataResponseSchema)` to create a new message.
  */
 export const ExportDataResponseSchema: GenMessage<ExportDataResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 14);
+  messageDesc(file_toqui_v1_auth, 16);
 
 /**
  * @generated from service toqui.v1.AuthService
  */
 export const AuthService: GenService<{
   /**
+   * Note: FacebookLogin and AppleLogin RPCs were removed when the project
+   * transitioned to self-hostable OSS (email+password default, Google OAuth
+   * optional). Do not reuse those names. Proto3 doesn't support `reserved`
+   * inside services, so this comment is the contract.
+   *
    * @generated from rpc toqui.v1.AuthService.GoogleLogin
    */
   googleLogin: {
@@ -391,20 +426,28 @@ export const AuthService: GenService<{
     output: typeof GoogleLoginResponseSchema;
   },
   /**
-   * @generated from rpc toqui.v1.AuthService.FacebookLogin
+   * @generated from rpc toqui.v1.AuthService.EmailRegister
    */
-  facebookLogin: {
+  emailRegister: {
     methodKind: "unary";
-    input: typeof FacebookLoginRequestSchema;
-    output: typeof FacebookLoginResponseSchema;
+    input: typeof EmailRegisterRequestSchema;
+    output: typeof EmailRegisterResponseSchema;
   },
   /**
-   * @generated from rpc toqui.v1.AuthService.AppleLogin
+   * @generated from rpc toqui.v1.AuthService.EmailLogin
    */
-  appleLogin: {
+  emailLogin: {
     methodKind: "unary";
-    input: typeof AppleLoginRequestSchema;
-    output: typeof AppleLoginResponseSchema;
+    input: typeof EmailLoginRequestSchema;
+    output: typeof EmailLoginResponseSchema;
+  },
+  /**
+   * @generated from rpc toqui.v1.AuthService.GetAuthProviders
+   */
+  getAuthProviders: {
+    methodKind: "unary";
+    input: typeof GetAuthProvidersRequestSchema;
+    output: typeof GetAuthProvidersResponseSchema;
   },
   /**
    * @generated from rpc toqui.v1.AuthService.RefreshToken
