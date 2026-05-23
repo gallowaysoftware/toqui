@@ -117,4 +117,3 @@ https://toqui.travel`, inviterName, tripTitle, acceptURL)
 
 	return s.Send(to, subject, body)
 }
-
