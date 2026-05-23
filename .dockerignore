@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.expo
+.vscode
+.idea
+dist
+backend
+ios
+android
+*.log
+.env
+.env.*
+!.env.example
