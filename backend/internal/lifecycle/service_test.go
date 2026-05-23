@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/exportstorage"
+	"github.com/gallowaysoftware/toqui/backend/internal/exportstorage"
 )
 
 func TestHasLocalExport_NilStore(t *testing.T) {

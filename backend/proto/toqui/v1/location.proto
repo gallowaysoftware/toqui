@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package toqui.v1;
 
-option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+option go_package = "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1";
 
 import "buf/validate/validate.proto";
 import "toqui/v1/common.proto";

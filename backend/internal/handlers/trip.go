@@ -15,13 +15,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
-	"github.com/gallowaysoftware/toqui-backend/internal/theme"
-	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/lifecycle"
+	"github.com/gallowaysoftware/toqui/backend/internal/theme"
+	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
 )
 
 type TripHandler struct {

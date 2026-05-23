@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/persona"
 )
 
 // SuggestExpertTool is a chat tool that lets Toqui hand off the conversation

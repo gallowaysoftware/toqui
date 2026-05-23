@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/middleware"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/middleware"
 )
 
 // captureHandler records the Authorization header value the middleware

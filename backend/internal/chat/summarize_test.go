@@ -3,7 +3,7 @@ package chat
 import (
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
 )
 
 func TestNeedsSummary(t *testing.T) {

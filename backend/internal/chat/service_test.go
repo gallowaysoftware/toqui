@@ -3,7 +3,7 @@ package chat
 import (
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
 func TestImpliesItineraryCreation(t *testing.T) {

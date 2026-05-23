@@ -10,8 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 )
 
 // newTestAuthService creates an auth.Service for unit tests with a known secret.

@@ -83,7 +83,7 @@ A bad deploy reached prod and is breaking users — error rate spike, broken fea
 
 ## Postmortem
 
-File an incident issue in `gallowaysoftware/toqui-backend` with the `P0` label (or `P1` if no customer impact). Capture:
+File an incident issue in `gallowaysoftware/toqui` with the `P0` label (or `P1` if no customer impact). Capture:
 
 - **Bad SHA** and **previous good SHA** (the one we rolled back to).
 - **Trigger**: what merged to main / what `gh workflow run CI` invocation deployed it. Link the PR.

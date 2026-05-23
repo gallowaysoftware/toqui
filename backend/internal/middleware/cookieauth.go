@@ -4,7 +4,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
 )
 
 // CookieAuth bridges HttpOnly cookie-based auth to the existing Bearer token

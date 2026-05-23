@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
 type Tool interface {

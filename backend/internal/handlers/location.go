@@ -6,10 +6,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/location"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/location"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
 )
 
 type LocationHandler struct {

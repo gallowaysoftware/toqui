@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
 type WebSearch struct {

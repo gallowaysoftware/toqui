@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 )
 
 func TestCollaboratorEditing(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/requestid"
+	"github.com/gallowaysoftware/toqui/backend/internal/requestid"
 )
 
 // uuidPattern matches the canonical google/uuid.NewString() format —

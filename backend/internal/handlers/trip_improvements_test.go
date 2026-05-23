@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 // TestTripToProto_NotesField verifies that the notes field round-trips

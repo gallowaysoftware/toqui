@@ -982,7 +982,7 @@ const file_toqui_v1_auth_proto_rawDesc = "" +
 	"\x0eGetCurrentUser\x12\x1f.toqui.v1.GetCurrentUserRequest\x1a .toqui.v1.GetCurrentUserResponse\x12P\n" +
 	"\rDeleteAccount\x12\x1e.toqui.v1.DeleteAccountRequest\x1a\x1f.toqui.v1.DeleteAccountResponse\x12G\n" +
 	"\n" +
-	"ExportData\x12\x1b.toqui.v1.ExportDataRequest\x1a\x1c.toqui.v1.ExportDataResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"ExportData\x12\x1b.toqui.v1.ExportDataRequest\x1a\x1c.toqui.v1.ExportDataResponseB@Z>github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_auth_proto_rawDescOnce sync.Once

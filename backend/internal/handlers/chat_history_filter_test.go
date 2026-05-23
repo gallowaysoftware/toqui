@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
 )
 
 // TestIsToolLoopIntermediate documents exactly which chat-store messages are

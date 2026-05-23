@@ -1541,7 +1541,7 @@ const file_toqui_v1_chat_proto_rawDesc = "" +
 	"\vChatService\x12L\n" +
 	"\vSendMessage\x12\x1c.toqui.v1.SendMessageRequest\x1a\x1d.toqui.v1.SendMessageResponse0\x01\x12S\n" +
 	"\x0eGetChatHistory\x12\x1f.toqui.v1.GetChatHistoryRequest\x1a .toqui.v1.GetChatHistoryResponse\x12Y\n" +
-	"\x10ListChatSessions\x12!.toqui.v1.ListChatSessionsRequest\x1a\".toqui.v1.ListChatSessionsResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\x10ListChatSessions\x12!.toqui.v1.ListChatSessionsRequest\x1a\".toqui.v1.ListChatSessionsResponseB@Z>github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_chat_proto_rawDescOnce sync.Once

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/gallowaysoftware/toqui-backend/tests/agentic/report-schema.json",
+  "$id": "https://github.com/gallowaysoftware/toqui/backend/tests/agentic/report-schema.json",
   "title": "Agentic Test Report",
   "description": "Schema every agentic test persona must emit at the end of its run. The orchestrator validates outputs against this schema before synthesis; invalid reports are rejected and the agent is re-prompted.",
   "type": "object",

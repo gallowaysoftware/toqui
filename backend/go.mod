@@ -1,4 +1,4 @@
-module github.com/gallowaysoftware/toqui-backend
+module github.com/gallowaysoftware/toqui/backend
 
 go 1.26.3
 

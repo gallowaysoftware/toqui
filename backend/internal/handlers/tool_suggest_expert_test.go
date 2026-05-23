@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui/backend/internal/persona"
 )
 
 func TestSuggestExpertTool_Definition(t *testing.T) {

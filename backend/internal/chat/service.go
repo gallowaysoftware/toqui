@@ -17,10 +17,10 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai/tools"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/persona"
 )
 
 type Service struct {

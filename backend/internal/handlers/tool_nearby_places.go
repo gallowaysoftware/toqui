@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/location"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/location"
 )
 
 // NearbyPlacesTool is a chat tool that finds nearby places using the user's

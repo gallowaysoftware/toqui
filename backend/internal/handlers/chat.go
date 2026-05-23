@@ -17,18 +17,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/chat"
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/location"
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
-	"github.com/gallowaysoftware/toqui-backend/internal/theme"
-	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai/tools"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/chat"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/location"
+	"github.com/gallowaysoftware/toqui/backend/internal/persona"
+	"github.com/gallowaysoftware/toqui/backend/internal/theme"
+	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
 )
 
 // dateFormatLong is the Go reference-time layout for human-readable dates

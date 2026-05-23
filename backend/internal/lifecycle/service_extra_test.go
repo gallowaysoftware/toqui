@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 // ---------------------------------------------------------------------------

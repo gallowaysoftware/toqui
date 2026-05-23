@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/exportstorage"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/exportstorage"
 )
 
 // lifecycleQueries is the slice of *dbgen.Queries that Service depends

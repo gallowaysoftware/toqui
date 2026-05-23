@@ -678,7 +678,7 @@ const file_toqui_v1_persona_proto_rawDesc = "" +
 	"\n" +
 	"GetPersona\x12\x1b.toqui.v1.GetPersonaRequest\x1a\x1c.toqui.v1.GetPersonaResponse\x12\\\n" +
 	"\x11SetDefaultPersona\x12\".toqui.v1.SetDefaultPersonaRequest\x1a#.toqui.v1.SetDefaultPersonaResponse\x12S\n" +
-	"\x0eResolvePersona\x12\x1f.toqui.v1.ResolvePersonaRequest\x1a .toqui.v1.ResolvePersonaResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\x0eResolvePersona\x12\x1f.toqui.v1.ResolvePersonaRequest\x1a .toqui.v1.ResolvePersonaResponseB@Z>github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_persona_proto_rawDescOnce sync.Once

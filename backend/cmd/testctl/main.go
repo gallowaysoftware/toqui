@@ -24,8 +24,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/config"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/config"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 func main() {

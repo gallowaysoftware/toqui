@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 )
 
 // ---------------------------------------------------------------------------

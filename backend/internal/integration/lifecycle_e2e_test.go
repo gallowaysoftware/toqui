@@ -41,9 +41,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/lifecycle"
 )
 
 // e2eFixture stages a "fully populated user" — a row in every

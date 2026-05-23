@@ -21,7 +21,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/config"
+	"github.com/gallowaysoftware/toqui/backend/internal/config"
 )
 
 // resolveTraceSampler returns the OTel sampler to use, derived from the

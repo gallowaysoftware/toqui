@@ -15,11 +15,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/audit"
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/email"
-	"github.com/gallowaysoftware/toqui-backend/internal/ratelimit"
+	"github.com/gallowaysoftware/toqui/backend/internal/audit"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/email"
+	"github.com/gallowaysoftware/toqui/backend/internal/ratelimit"
 )
 
 // maxInvitesPerTrip is the maximum number of collaborators allowed per trip.
