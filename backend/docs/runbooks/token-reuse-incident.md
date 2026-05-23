@@ -2,13 +2,20 @@
 
 A refresh token from a previously-rotated family was presented again, triggering family revocation. Either we caught real token theft, or a benign double-refresh race tripped the breach-response path.
 
+> **Self-host note**: The example commands below use `gcloud logging read`
+> and `gcloud sql connect` because this runbook was originally written for
+> the GCP-hosted SaaS. The triage logic + SQL queries are infra-agnostic —
+> the SQL works against any Postgres, and the log-search step works against
+> whatever log aggregator you run (Loki / journalctl / `docker logs` /
+> CloudWatch). Substitute the obvious equivalents.
+
 ## Symptoms
 
 - User report: "I got logged out on all my devices at the same time" or "I have to keep logging in."
-- Spike in `auth.token_reuse_detected` audit events in Cloud Logging.
+- Spike in `auth.token_reuse_detected` audit events in your log aggregator.
 - Sudden surge in `auth.token_refresh_denied` (downstream effect — every device in the revoked family now fails to refresh).
 - Sometimes correlated with `auth.lockout` if the user / attacker hammers `/auth/refresh` after revocation.
-- In rare cases, customer support gets a wave of password-style "I can't get back in" reports — but Toqui is OAuth-only, so the symptom is "Google / Facebook / Apple sign-in works but the app immediately bounces me back to login."
+- For email+password setups: a wave of "I can't get back in" reports. For Google OAuth setups: the symptom is "Google sign-in works but the app immediately bounces me back to login."
 
 ## Triage
 

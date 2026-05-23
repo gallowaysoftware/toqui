@@ -16,7 +16,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "travel.toqui.app",
       "buildNumber": "1",
-      "associatedDomains": ["applinks:app.toqui.travel"],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Toqui uses your location to recommend nearby restaurants, attractions, and experiences while you travel.",
         "ITSAppUsesNonExemptEncryption": false
@@ -26,25 +25,6 @@
       "package": "travel.toqui.app",
       "versionCode": 1,
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "app.toqui.travel",
-              "pathPrefix": "/shared/"
-            },
-            {
-              "scheme": "https",
-              "host": "app.toqui.travel",
-              "pathPrefix": "/trips/invite"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#e8654a"
