@@ -1,0 +1,43 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Trip title not updated after major destination change",
+      "description": "After cutting Venice and replacing it with Cinque Terre (message 7), the trip title remained 'First-Time Italy: Rome, Florence, Venice'. The AI did not call UpdateTrip to reflect the new destinations in the title. This is cosmetic but could confuse the user when viewing their trip list.",
+      "expected": "Trip title updated to reflect Rome, Florence, Cinque Terre after Venice was removed",
+      "actual": "Trip title remained 'First-Time Italy: Rome, Florence, Venice' through completion",
+      "api_command": "GetTrip after message 7"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Free tier daily message limit (10) is too low for a rapid-fire planning persona. Marco's 10-message conversation flow plus the initial selection message exhausted the limit, making companion mode testing impossible. A user who iterates rapidly on plans would hit the wall quickly.",
+      "severity": "P2",
+      "suggestion": "Consider a higher free-tier limit (15-20) or don't count selection-mode messages against the planning budget."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI created new itinerary items via create_itinerary_items during the final summary (message 10), even though itinerary was already complete. This is redundant and could cause duplicate items if parsing differs.",
+      "context": "Message 10 asked for a 'complete final itinerary with all changes'. The AI called create_itinerary_items again, potentially duplicating existing items rather than just summarizing what was already in the itinerary.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The AI handled 10 rapid-fire planning messages excellently, maintaining context across all turns. Vegetarian preference from message 3 was consistently reflected in all subsequent food recommendations (28 vegetarian references in the final summary). The critical Venice-to-Cinque-Terre swap (message 7) was executed perfectly — delete_itinerary_items removed Venice items and create_itinerary_items added Cinque Terre items. Pompeii day trip and wine tasting additions were both preserved through all modifications. The train pass recommendation (point-to-point over Eurail) was substantive and correct. The only issues were cosmetic: the trip title was never updated to reflect the destination change, and the AI re-created itinerary items unnecessarily in the final summary. Companion mode could not be tested due to hitting the daily message limit. Overall, this is a genuinely useful rapid-iteration planning experience."
+  },
+  "feature_coverage": ["selection", "planning", "create_trip", "create_itinerary_items", "delete_itinerary_items", "sharing", "unsharing", "chat_history", "usage", "trip_completion", "context_retention", "modification_handling"]
+}

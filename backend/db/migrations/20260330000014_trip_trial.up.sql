@@ -1,0 +1,2 @@
+ALTER TABLE trips ADD COLUMN trial_started_at TIMESTAMPTZ;
+ALTER TABLE trips ADD COLUMN trial_ends_at TIMESTAMPTZ;

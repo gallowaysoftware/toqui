@@ -1,0 +1,50 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon",
+  "completed_steps": ["auth", "selection", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "In companion mode, the AI attempted to call create_itinerary_items for a one-day plan but the tool returned 'not_needed' with message 'The user's message is an informational query, not a request to modify the itinerary.' This prevented itinerary items from being persisted. The AI then repeated the full plan in text, resulting in a very long doubled response. The user effectively got no itinerary items despite the AI clearly wanting to create them.",
+      "severity": "P1",
+      "suggestion": "The companion mode gate for create_itinerary_items should allow creation when the AI explicitly says 'I'll add these to your itinerary now!' -- the intent is unambiguous. The gate's heuristic incorrectly classified this as an informational query."
+    },
+    {
+      "description": "The one-day Lisbon plan response in companion mode was excessively long (~450 words). The response was effectively duplicated: first a detailed plan, then 'I'll add these to your itinerary now!', then the tool was rejected, then the same plan was repeated in slightly different words. For a traveler who just landed, this is too much text.",
+      "severity": "P2",
+      "suggestion": "When create_itinerary_items is rejected in companion mode, the AI should not repeat the plan. It already gave it once. The doubled output is a side effect of the tool loop continuation."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "After trip creation in selection mode, the AI asked 'What kind of vibe are you looking for? Are you into historic sights, delicious food, vibrant nightlife, or just soaking in the atmosphere?' despite the user explicitly stating urgency ('I'm at the airport right now'). For a last-minute traveler with 2 hours to boarding, the AI should have given immediate actionable advice rather than asking preference questions.",
+      "context": "Selection mode initial message",
+      "severity": "P2"
+    },
+    {
+      "issue": "The create_itinerary_items tool was called in companion mode but was rejected by the companion mode gate with 'not_needed'. The AI had clearly intended to save itinerary items, saying 'I'll add these to your itinerary now!' The companion gate's classifier incorrectly determined the user's message was 'informational' when the AI was proactively trying to add items.",
+      "context": "Companion mode - one full day plan message. Tool returned: {\"message\":\"The user's message is an informational query, not a request to modify the itinerary. Answer the question directly in your response text instead. Do NOT call this tool again for this message.\",\"status\":\"not_needed\"}",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "5 well-structured itinerary items for a one-day Lisbon plan (Alfama, Baixa lunch, Tram 28, Belem, Sunset dinner)",
+      "error": "Companion mode gate rejected the tool call with status 'not_needed', classifying user's 'What are the absolute must-do things' as an informational query rather than a request to modify the itinerary. The AI's intent to create items was clear from its preceding text."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI handled the last-minute traveler scenario well overall. Trip creation was instant with correct destination (PT). The late-night arrival response was practical with specific restaurant names and addresses plus an affiliate hotel link with proper FTC disclosure. The airport logistics response was the standout -- concise, accurate (Red Line metro to Aeroporto, 20-30 min, leave by 3:30pm), and helpfully distinguished between 'arrive by 4pm' vs 'flight at 4pm'. The one-day Lisbon plan was solid content-wise (Alfama, Castelo, Tram 28, Pasteis de Belem, miradouros) but was too long for companion mode and suffered from the doubled-response issue when create_itinerary_items was rejected. No itinerary items were persisted, which is a gap for this use case."
+  },
+  "feature_coverage": ["selection", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

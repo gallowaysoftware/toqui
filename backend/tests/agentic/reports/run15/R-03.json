@@ -1,0 +1,28 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "setup_trips", "selection_match", "planning", "trip_switch", "new_trip_creation", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Usage counter shows 2 messages used but 4 AI messages were sent (selection Greece, planning Santorini, companion Morocco, selection NZ). The counter appears to only count messages in planning/companion modes, not selection mode. This may be intentional but could confuse users checking their quota.",
+      "severity": "minor",
+      "suggestion": "Clarify in the usage endpoint response or docs whether selection-mode messages count toward the daily limit."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The multi-trip workflow worked flawlessly. Vague reference matching ('my Greece trip' -> 'Greek Islands Hopping') was instant and correct. Trip switching via selection mode was seamless. The AI correctly distinguished between selecting existing trips and creating new ones. The 3-day Santorini itinerary was genuinely excellent — 9 well-structured items with practical tips, timing, and location details. The Morocco companion response was relevant and concise. The only reason companion_mode_score is 4 instead of 5 is that only one companion message was tested per the persona spec."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_matching", "trip_switching", "trip_creation", "itinerary_creation", "recommend_booking", "sharing", "unsharing", "chat_history", "usage", "trip_completion"]
+}

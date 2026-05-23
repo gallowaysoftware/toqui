@@ -1,0 +1,33 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila — Food Blogger Mexico City & Oaxaca",
+  "status": "COMPLETED",
+  "trip_destination": "Mexico City & Oaxaca, Mexico",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingestion", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Usage counter shows 5 messages used but 6 were sent (1 selection + 3 planning + 2 companion). The selection-mode message may not be counted toward the daily limit, or there is a counting discrepancy.",
+      "severity": "P2",
+      "suggestion": "Verify whether selection-mode messages are intentionally excluded from daily usage tracking, and if so, document this behavior."
+    },
+    {
+      "description": "Day 6 itinerary items lack orderInDay values, causing them to appear in arbitrary order (transport, then market, then dinner, then lunch). Days 1-5 have correct orderInDay values.",
+      "severity": "P2",
+      "suggestion": "Ensure all itinerary items created by the AI include orderInDay so they display in logical sequence."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional food-focused trip planning experience. The AI proactively created the trip, immediately handed off to a Mexico food expert (Elena), and built a comprehensive 28-item itinerary across all 10 days without being asked twice. The expert demonstrated genuine depth: correctly distinguishing CDMX and Oaxacan food cultures as separate culinary traditions, naming specific agave varieties (Espadin, Tobala, Madrecuixe) for mezcal, explaining artisanal palenque production processes (tahona, earthen ovens, natural fermentation), and providing deeply cultural Dia de Muertos food context (pan de muerto regional variations, mole negro significance on ofrendas, calabaza en tacha, calaveras de azucar). Booking ingestion parsed all tour fields perfectly including guide name, meeting point, stops, and pricing. The recommend_booking tool fired with proper FTC affiliate disclosure. Companion mode was practical and concise with specific restaurant names and addresses. The only minor issue was Day 6 items missing orderInDay values."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "booking_ingestion", "extract_booking_field", "recommend_booking", "affiliate_disclosure", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_lifecycle"]
+}

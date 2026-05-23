@@ -1,0 +1,165 @@
+{
+  "persona": "N-13",
+  "name": "Companion Mode Info-Query Guardrail",
+  "status": "FAIL",
+  "date": "2026-04-10",
+  "run": 19,
+  "trip_id": "e7b19f66-7118-4fda-aeac-7183677ed904",
+  "planning_session_id": "126a9ea1-d577-4684-8a5b-cdfb7633523c",
+  "companion_session_id": "27b29e10-c0a9-468f-b93d-ae1635e51516",
+  "itinerary_count_before": 12,
+  "itinerary_count_after": 19,
+  "itinerary_delta": 7,
+  "bugs": [
+    {
+      "id": "N13-01",
+      "severity": "P1",
+      "title": "Companion mode creates itinerary items on informational lunch query",
+      "description": "Asked 'I'm near Praca do Comercio -- what's a good lunch spot around here?' in companion mode (ACTIVE trip). AI called create_itinerary_items 3 times across tool loop iterations, adding 3 new items (Martinho da Arcada, Floresta das Escadinhas, A Licorista e O Bacalhoeiro). Also emitted itineraryUpdate stream events. Companion mode should only create itinerary items on explicit 'add to my plan' requests per CLAUDE.md tool docs.",
+      "rpc": "SendMessage",
+      "query": "I'm near Praca do Comercio -- what's a good lunch spot around here?",
+      "items_added": 3,
+      "tool_calls": ["create_itinerary_items x3"],
+      "stream_events": ["itineraryUpdate x2"]
+    },
+    {
+      "id": "N13-02",
+      "severity": "P1",
+      "title": "Companion mode creates itinerary items on Tram 28 opinion query",
+      "description": "Asked 'Is the Tram 28 worth riding or is it a tourist trap?' in companion mode. AI called create_itinerary_items (attempted to add 1 item with updated description, was deduplicated by backend). Even though no new items were created, the tool call itself violates the companion mode guardrail -- the AI should not call create_itinerary_items on a pure opinion/information query.",
+      "rpc": "SendMessage",
+      "query": "Is the Tram 28 worth riding or is it a tourist trap?",
+      "items_added": 0,
+      "tool_calls": ["create_itinerary_items x1"],
+      "stream_events": []
+    },
+    {
+      "id": "N13-03",
+      "severity": "P1",
+      "title": "Companion mode creates itinerary items on 'recommend something fun' query",
+      "description": "Asked 'Recommend something fun to do tonight.' in companion mode. AI called create_itinerary_items 3 times across tool loop iterations, adding 4 new items (Ginjinha at Largo de Sao Domingos, Miradouro da Graca, Mesa de Frades, Cemiterio dos Prazeres). Also emitted itineraryUpdate stream events. The 'recommend something fun' query is informational -- the user did not say 'add to my itinerary'.",
+      "rpc": "SendMessage",
+      "query": "Recommend something fun to do tonight.",
+      "items_added": 4,
+      "tool_calls": ["create_itinerary_items x3"],
+      "stream_events": ["itineraryUpdate x2"]
+    },
+    {
+      "id": "N13-04",
+      "severity": "P1",
+      "title": "Itinerary mutated in companion mode without explicit user request",
+      "description": "After 6 companion mode info queries, itinerary grew from 12 to 19 items (58% increase). Day 1 went from 3 items to 9 items. None of the 6 queries contained 'add to my plan/itinerary' or equivalent explicit request. The system prompt for companion mode needs stronger guardrails to prevent proactive itinerary mutations on informational queries.",
+      "rpc": "GetItinerary",
+      "expected_count": 12,
+      "actual_count": 19
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "N13-UX-01",
+      "severity": "P2",
+      "title": "Companion mode responses exceed 300 words on 5 of 6 queries",
+      "description": "Word counts: msg1 (weather) 184, msg2 (lunch) 531, msg3 (Tram 28) 356, msg4 (directions) 347, msg5 (tipping) 426, msg6 (fun tonight) 602. For a companion mode user who is actively traveling and likely on mobile, responses should be concise (~150-200 words). The tipping response alone was 426 words -- a full essay when the user just needs 2-3 bullet points.",
+      "messages_over_300": ["msg2 (531w)", "msg3 (356w)", "msg4 (347w)", "msg5 (426w)", "msg6 (602w)"]
+    },
+    {
+      "id": "N13-UX-02",
+      "severity": "P2",
+      "title": "AI stutters/repeats itself in multi-tool-loop responses",
+      "description": "In msg2 (lunch query), the AI produced 3 separate recommendation blocks across tool loop iterations, each recommending the same restaurants with slightly different wording. The fullContent contains duplicate paragraphs. Similarly msg6 has two nearly identical evening plan descriptions. This creates a disorienting experience where the user reads redundant paragraphs.",
+      "affected_messages": ["msg2 (lunch)", "msg6 (fun tonight)"]
+    },
+    {
+      "id": "N13-UX-03",
+      "severity": "P2",
+      "title": "Day 1 itinerary now has 9 items including 3 duplicate lunch spots",
+      "description": "After companion mode queries, Day 1 has 9 items including 3 separate lunch options (Martinho da Arcada, Floresta das Escadinhas, A Licorista) all at order_in_day=2, plus 3 evening items. This makes the itinerary confusing and impractical. The AI itself acknowledged this in msg6: 'I also noticed you have three different lunch spots scheduled for today'."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "id": "N13-AI-01",
+      "title": "AI treats all recommendations as implicit add-to-itinerary requests",
+      "description": "The AI's system prompt instructs it to proactively call create_itinerary_items when discussing plans. In planning mode this makes sense. In companion mode, this behavior is harmful -- the user is asking for information, not asking the AI to modify their itinerary. The companion mode prompt needs to explicitly suppress proactive itinerary creation and only create items when the user explicitly requests it (e.g., 'add that to my plan', 'put that on my itinerary')."
+    },
+    {
+      "id": "N13-AI-02",
+      "title": "AI falsely claims it 'updated' existing items when it created new ones",
+      "description": "In msg3 (Tram 28), the AI said 'I've updated your Day 4 itinerary item with these insider instructions' but actually attempted to create a new item (which was deduplicated). The AI cannot update existing itinerary items via create_itinerary_items -- it can only add new ones. This is misleading to the user."
+    }
+  ],
+  "tool_failures": [],
+  "companion_message_log": [
+    {
+      "index": 1,
+      "query": "What's the weather like in Lisbon today?",
+      "tools_called": ["web_search"],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 184,
+      "pass": true
+    },
+    {
+      "index": 2,
+      "query": "I'm near Praca do Comercio -- what's a good lunch spot around here?",
+      "tools_called": ["create_itinerary_items x3"],
+      "itinerary_tools_called": true,
+      "itinerary_count_after": 15,
+      "items_added": 3,
+      "word_count": 531,
+      "pass": false,
+      "fail_reason": "create_itinerary_items called on info query; 3 items added; >300 words"
+    },
+    {
+      "index": 3,
+      "query": "Is the Tram 28 worth riding or is it a tourist trap?",
+      "tools_called": ["create_itinerary_items x1 (deduplicated)"],
+      "itinerary_tools_called": true,
+      "itinerary_count_after": 15,
+      "items_added": 0,
+      "word_count": 356,
+      "pass": false,
+      "fail_reason": "create_itinerary_items called on opinion query; >300 words"
+    },
+    {
+      "index": 4,
+      "query": "How do I get from here to Belem?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 15,
+      "word_count": 347,
+      "pass": false,
+      "fail_reason": ">300 words"
+    },
+    {
+      "index": 5,
+      "query": "What's the tipping etiquette in Portugal?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 15,
+      "word_count": 426,
+      "pass": false,
+      "fail_reason": ">300 words"
+    },
+    {
+      "index": 6,
+      "query": "Recommend something fun to do tonight.",
+      "tools_called": ["create_itinerary_items x3"],
+      "itinerary_tools_called": true,
+      "itinerary_count_after": 19,
+      "items_added": 4,
+      "word_count": 602,
+      "pass": false,
+      "fail_reason": "create_itinerary_items called on info query; 4 items added; >300 words"
+    }
+  ],
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": "N/A",
+    "booking_parsing": "N/A",
+    "companion_mode": 1,
+    "overall": 2
+  },
+  "summary": "N-13 tests that companion mode does NOT proactively create/delete itinerary items on informational queries. FAILED. The AI called create_itinerary_items on 3 of 6 purely informational companion queries, adding 7 items to the itinerary without the user ever asking. The itinerary grew from 12 to 19 items (58% increase). Day 1 ended up with 9 items including 3 duplicate lunch spots. Additionally, 5 of 6 responses exceeded 300 words, with some responses containing duplicate/stuttered paragraphs from multi-tool-loop iterations. The root cause is that the companion mode system prompt does not sufficiently distinguish between 'recommend something' (informational) and 'add something to my plan' (mutative). The planning mode instruction to proactively create itinerary items is bleeding into companion mode."
+}

@@ -1,0 +1,48 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James, the Luxury Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives + Dubai",
+  "completed_steps": ["auth", "selection", "planning", "booking_recommendations", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "fullContent only captures last tool-loop segment",
+      "description": "When a SendMessage response spans multiple tool-loop iterations (text -> tool_call -> tool_result -> text), the messageComplete.fullContent field only contains the text from the final segment, not the complete response. In the Dubai fine dining message (msg 3), the AI produced a detailed multi-paragraph response about Tresind Studio, Zuma, Ossiano, STAY, Dinner by Heston, Hoseki, and Orfali Bros, then called create_itinerary_items, then produced a short follow-up. fullContent only captured the short follow-up: 'It seems there was a slight misunderstanding! ...' (81 chars) instead of the full ~3000 char response.",
+      "steps_to_reproduce": "Send a planning message that triggers both a long text response AND a tool call (e.g., ask about restaurants + have AI add itinerary items). Check messageComplete.fullContent in the stream output.",
+      "expected": "fullContent should contain the complete concatenated text from all segments of the response across tool-loop iterations",
+      "actual": "fullContent only contains the text from the last segment after the final tool result"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI creates a large itinerary (30 items), it sometimes makes a duplicate tool call with the same items, which returns 'already_exists'. The third create_itinerary_items call in msg 2 sent all 30 items again and got back 0 created / 30 skipped. This wastes tokens and could confuse the AI.",
+      "severity": "P2",
+      "suggestion": "Consider having the AI check tool results before re-calling with identical items, or have the backend return a clearer signal that prevents the AI from retrying."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "No expert persona handoff triggered during the entire session. The conversation about Dubai fine dining and Maldives luxury resorts should have triggered suggest_expert for food/luxury themes, but Toqui handled everything directly without handing off to a composed expert.",
+      "context": "Multiple messages about Maldives resort selection and Dubai fine dining — both strong candidates for food/luxury expert handoff.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Booking.com suggested for ultra-luxury Maldives resort booking. The AI recommended booking the St. Regis Maldives Vommuli via Booking.com, which is tone-deaf for this tier of property. Ultra-luxury resorts like St. Regis and Soneva are typically best booked directly, through the hotel's own website, or via a luxury travel advisor for preferred rates and upgrade eligibility.",
+      "context": "Victoria explicitly stated money is not a concern and she stays at Aman/Four Seasons regularly. The recommend_booking tool defaulted to Booking.com.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent luxury calibration throughout the session. Resort recommendations (St. Regis, Waldorf Astoria, Cheval Blanc, Soneva Jani) were all genuinely top-tier with specific differentiators. The 30-item itinerary had perfect luxury pacing — no cramming, plenty of leisure time, romantic elements woven in without being asked. Dubai dining knowledge was impressive (Tresind Studio reservation difficulty, Hoseki's 9 seats, Orfali Bros as a newer standout). Companion mode was appropriately concise and practical. The main gaps were: no expert persona handoffs (missed opportunity for food/luxury specialists), fullContent bug loses response text after tool loops, and the Booking.com recommendation for an ultra-luxury resort was a calibration miss for this persona tier."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "recommend_booking", "web_search", "activate", "companion", "sharing", "chat_history", "usage", "complete"]
+}

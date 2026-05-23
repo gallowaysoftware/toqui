@@ -1,0 +1,108 @@
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+
+	"github.com/google/uuid"
+
+	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui-backend/internal/trip"
+)
+
+// CreateTripTool is a chat tool that lets the AI create a trip on behalf of the user.
+// It's injected into selection mode chat so Toqui can say "Let me create that trip for you."
+type CreateTripTool struct {
+	tripSvc *trip.Service
+	userID  uuid.UUID
+	// onCreated is called after a trip is created so the handler can emit a TripCreated event.
+	onCreated func(tripID, title, description string)
+}
+
+type createTripArgs struct {
+	Title                string   `json:"title"`
+	Description          string   `json:"description"`
+	DestinationCountry   string   `json:"destination_country"`
+	DestinationCountries []string `json:"destination_countries"`
+}
+
+func NewCreateTripTool(tripSvc *trip.Service, userID uuid.UUID, onCreated func(tripID, title, description string)) *CreateTripTool {
+	return &CreateTripTool{tripSvc: tripSvc, userID: userID, onCreated: onCreated}
+}
+
+func (t *CreateTripTool) Definition() ai.ToolDefinition {
+	return ai.ToolDefinition{
+		Name:        "create_trip",
+		Description: "Create a new trip for the user. Call this when the user wants to start planning a specific trip. Use the conversation context to set a good title and description.",
+		Parameters: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"title": {
+					"type": "string",
+					"description": "Short trip title, e.g. 'Japan Spring 2026' or 'Weekend in Paris'"
+				},
+				"description": {
+					"type": "string",
+					"description": "Brief trip description based on what the user has said"
+				},
+				"destination_country": {
+					"type": "string",
+					"description": "ISO 3166-1 alpha-2 country code for the primary destination, e.g. 'JP', 'FR', 'CR'. Set this for single-country trips."
+				},
+				"destination_countries": {
+					"type": "array",
+					"items": {"type": "string"},
+					"description": "ISO 3166-1 alpha-2 codes for ALL destination countries on multi-country trips, e.g. ['GR','TR'] for a Greece + Turkey trip. Use this in addition to (or instead of) destination_country whenever the trip spans more than one country."
+				}
+			},
+			"required": ["title"]
+		}`),
+	}
+}
+
+func (t *CreateTripTool) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	var params createTripArgs
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("parse args: %w", err)
+	}
+
+	if params.Title == "" {
+		return nil, fmt.Errorf("title is required")
+	}
+
+	created, err := t.tripSvc.Create(ctx, t.userID, params.Title, params.Description, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create trip: %w", err)
+	}
+
+	// Set destinations immediately if the AI provided any (avoids async tagger race condition).
+	// Multi-country trips populate destination_countries; single-country trips also set the
+	// legacy destination_country field via SetDestinations for backward compat (#133).
+	countries := params.DestinationCountries
+	if len(countries) == 0 && params.DestinationCountry != "" {
+		countries = []string{params.DestinationCountry}
+	}
+	if len(countries) > 0 {
+		if err := t.tripSvc.SetDestinations(ctx, t.userID, created.ID, countries); err != nil {
+			slog.Warn("failed to set trip destinations on create",
+				"trip_id", created.ID,
+				"countries", countries,
+				"error", err,
+			)
+		}
+	}
+
+	if t.onCreated != nil {
+		t.onCreated(created.ID.String(), created.Title, created.Description.String)
+	}
+
+	result := map[string]string{
+		"trip_id": created.ID.String(),
+		"title":   created.Title,
+		"status":  "planning",
+		"message": "Trip created successfully. You are now in planning mode for this trip.",
+	}
+	return json.Marshal(result)
+}

@@ -1,0 +1,36 @@
+{
+  "persona_id": "N-15",
+  "persona_name": "UpdateItinerary Day-Metadata Round Trip (Structural)",
+  "status": "COMPLETED",
+  "trip_destination": "",
+  "run_id": "run-13",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "phase2_single_day_write_read",
+    "phase3_multi_day_write_read",
+    "phase4_summary_only_date_only",
+    "phase5_empty_truncate",
+    "phase6_replacement_overwrites"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Structural test with no AI. All 6 phases passed: single-day summary+date round-trip, multi-day round-trip (3 days with distinct summaries and dates), summary-only and date-only partial metadata, empty-days truncation to zero items, and full replacement semantics (3-day overwritten by 2-day with no stale data). PR #198 day_summary/day_date JSONB metadata fix is verified end-to-end."
+  },
+  "feature_coverage": [
+    "update_itinerary",
+    "day_summary_roundtrip",
+    "day_date_roundtrip",
+    "replace_semantics"
+  ]
+}

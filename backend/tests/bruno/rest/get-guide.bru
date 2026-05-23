@@ -1,0 +1,17 @@
+meta {
+  name: Get Guide
+  type: http
+  seq: 8
+}
+
+get {
+  url: http://{{host}}/api/guides/japan-tokyo
+  body: none
+  auth: none
+}
+
+docs {
+  Public endpoint — no auth required.
+  Returns full content for a destination guide by slug.
+  Replace "japan-tokyo" with any slug from List Guides response.
+}

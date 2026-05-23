@@ -1,0 +1,34 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece & Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "In step 3c, the AI response contained a duplicated section — it gave the Delphi guide recommendations and Knossos Evans analysis, then appended 'Apologies for the missing response — here is the full answer' and repeated much of the same content with slight variations. This creates a confusing reading experience for the user.",
+      "severity": "P2",
+      "suggestion": "Investigate whether the tool loop continuation logic can cause partial response duplication when multiple tools (create_itinerary_items + recommend_booking) are called in the same turn."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Minor response duplication in step 3c — the AI apologized for a 'missing response' mid-stream and re-delivered content it had already provided, including the Evans controversy and opening hours sections.",
+      "context": "This occurred in a turn where both create_itinerary_items and recommend_booking tools were called. The duplication may be related to the tool loop continuation reassembling context.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI performed exceptionally well for an academic traveler persona. Trip creation captured the multi-country archaeological theme accurately with both GR and TR destination codes. The expert persona 'Dimitris' provided genuinely academic-level depth on every topic tested: the Oracle at Delphi (de Boer/Hale ethylene theory, Plutarch's De defectu oraculorum, Alcmaeonid bribery, Cleomenes/Perialla scandal), the Ephesus transition (Attalid bequest, Mithridates VI, Second Sophistic, Library of Celsus as Heroon with specific scholars cited), and the Knossos Evans controversy (Peter Warren, Anemospilia, Hamilakis). The itinerary was outstanding — 16 items on first pass growing to 20, with realistic time allocations (4-5 hours at major sites), specific museum rooms, artifact references (Phaistos Disc, Charioteer, Alexander Sarcophagus), and academic recommendations (EfA, Context Travel). Companion mode responses were appropriately concise while maintaining scholarly depth. The only issue was a minor response duplication in one planning turn."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "expert_handoff", "itinerary_creation", "recommend_booking"]
+}

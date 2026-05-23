@@ -1,0 +1,81 @@
+{
+  "persona": "N-13",
+  "name": "Companion Mode Info-Query Guardrail",
+  "run": "run20",
+  "retest_of": "run19",
+  "status": "PASS",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "setup": {
+    "trip_id": "d38527e0-0422-420c-93d5-730af5ce5c7a",
+    "planning_session_id": "f1e6fc89-f2ce-4589-8d55-fec5257af687",
+    "companion_session_id": "79c04af4-bcc5-4641-8424-1bf80a492d72",
+    "itinerary_items_before": 12,
+    "itinerary_items_after": 12,
+    "trip_status": "TRIP_STATUS_ACTIVE"
+  },
+  "companion_message_log": [
+    {
+      "message_number": 1,
+      "query": "What's the weather like in Lisbon today?",
+      "tools_called": [
+        "web_search"
+      ],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 129,
+      "pass": true
+    },
+    {
+      "message_number": 2,
+      "query": "I'm near Pra\u00e7a do Com\u00e9rcio \u2014 what's a good lunch spot around here?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 153,
+      "pass": true
+    },
+    {
+      "message_number": 3,
+      "query": "Is the Tram 28 worth riding or is it a tourist trap?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 145,
+      "pass": true
+    },
+    {
+      "message_number": 4,
+      "query": "How do I get from here to Bel\u00e9m?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 135,
+      "pass": true
+    },
+    {
+      "message_number": 5,
+      "query": "What's the tipping etiquette in Portugal?",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 126,
+      "pass": true
+    },
+    {
+      "message_number": 6,
+      "query": "Recommend something fun to do tonight.",
+      "tools_called": [],
+      "itinerary_tools_called": false,
+      "itinerary_count_after": 12,
+      "word_count": 134,
+      "pass": true
+    }
+  ],
+  "scores": {
+    "companion_mode": 5,
+    "overall": 5
+  },
+  "summary": "PASS. All 6 companion-mode informational queries were answered without triggering create_itinerary_items or delete_itinerary_items tools. Itinerary count remained stable at 12 items throughout. The Run 19 fixes (stricter CompanionGate classifier, fail-closed on error, separate companion mode system prompt instructions) are working correctly. All responses were informative, contextual, and within the 300-word limit. The AI answered questions directly without refusing or mentioning inability to modify the itinerary."
+}

@@ -1,0 +1,143 @@
+{
+  "persona": "N-11",
+  "name": "Structural — Full Lifecycle CRUD Stress Test",
+  "run": 10,
+  "date": "2026-04-09",
+  "duration_seconds": 540,
+  "steps": [
+    {
+      "step": 1,
+      "name": "CreateTrip",
+      "status": "PASS",
+      "details": "Created trip with title 'Lifecycle Test — Kyoto Spring', description 'Cherry blossom season trip for lifecycle validation', dates 2026-10-01 to 2026-10-10. Returned trip_id=345f0f9b-af2d-4405-9514-78b38ba17619. Status=TRIP_STATUS_PLANNING. Destination auto-detected as JP."
+    },
+    {
+      "step": 2,
+      "name": "GetTrip (verify create)",
+      "status": "PASS",
+      "details": "GetTrip returned all fields correctly: title matches, description matches, status=TRIP_STATUS_PLANNING, startDate=2026-10-01, endDate=2026-10-10, destinationCountry=JP, themes=['history'] auto-assigned."
+    },
+    {
+      "step": 3,
+      "name": "UpdateTrip title only (COALESCE test)",
+      "status": "PASS",
+      "details": "Updated title to 'Lifecycle Test — Kyoto Autumn'. GetTrip verified: title changed, description PRESERVED as 'Cherry blossom season trip for lifecycle validation', dates preserved. COALESCE partial update works correctly for title-only updates."
+    },
+    {
+      "step": 4,
+      "name": "UpdateTrip description only (COALESCE test)",
+      "status": "PASS",
+      "details": "Updated description to 'Updated: autumn foliage trip.' GetTrip verified: description changed, title PRESERVED as 'Lifecycle Test — Kyoto Autumn', dates preserved. COALESCE partial update works correctly for description-only updates."
+    },
+    {
+      "step": 5,
+      "name": "UpdateTrip status to ACTIVE",
+      "status": "PASS",
+      "details": "Updated status to TRIP_STATUS_ACTIVE. GetTrip verified: status=ACTIVE, title='Lifecycle Test — Kyoto Autumn' preserved, description='Updated: autumn foliage trip.' preserved, dates preserved. Status transition does not reset other fields."
+    },
+    {
+      "step": 6,
+      "name": "Send planning message (create itinerary)",
+      "status": "FAIL",
+      "severity": "P1",
+      "details": "Sent companion mode message 'Add a visit to Kinkaku-ji temple on day 1.' The AI correctly called create_itinerary_items 5 times with well-structured data (title, description, day_number, location_name, type). However, the tool rejected EVERY call with status='not_needed' and message='The user's message is an informational query, not a request to modify the itinerary.' This is incorrect — the user explicitly asked to ADD an item to the itinerary. The tool's companion-mode guard is too aggressive and misclassifies explicit itinerary requests as informational queries. The AI hit the max tool loop iterations (5) retrying. Also attempted planning mode but got DeadlineExceeded from both Gemini and Claude providers."
+    },
+    {
+      "step": 7,
+      "name": "IngestBooking (flight)",
+      "status": "FAIL",
+      "severity": "P2",
+      "details": "IngestBooking with flight confirmation artifact timed out with DeadlineExceeded. Both primary (Gemini) and fallback (Claude) AI providers appear to be timing out. This may be a rate limit or infrastructure issue rather than a code bug."
+    },
+    {
+      "step": 8,
+      "name": "GetItinerary",
+      "status": "PASS",
+      "details": "GetItinerary returned empty itinerary (tripId only, no items). This is expected given Step 6 failed to create items. The RPC itself works correctly."
+    },
+    {
+      "step": 9,
+      "name": "Enable sharing + verify shared view",
+      "status": "PASS",
+      "details": "POST /api/trips/share returned share_token='Z1sfqEpyWrJbBsbN0cA1X0'. GET /shared/Z1sfqEpyWrJbBsbN0cA1X0 (unauthenticated) returned correct trip data: title='Lifecycle Test — Kyoto Autumn', description='Updated: autumn foliage trip.', destination_country='JP', status='active', correct dates, empty itinerary."
+    },
+    {
+      "step": 10,
+      "name": "UpdateTrip status to COMPLETED",
+      "status": "PASS",
+      "details": "Updated status to TRIP_STATUS_COMPLETED. GetTrip verified: status=COMPLETED, title='Lifecycle Test — Kyoto Autumn' preserved, description='Updated: autumn foliage trip.' preserved, dates preserved. All fields survive status transitions (planning->active->completed)."
+    },
+    {
+      "step": 11,
+      "name": "ListTrips",
+      "status": "PASS",
+      "details": "ListTrips returned 1 trip with status=TRIP_STATUS_COMPLETED, correct title 'Lifecycle Test — Kyoto Autumn', totalCount=1."
+    },
+    {
+      "step": 12,
+      "name": "Disable sharing + verify",
+      "status": "PASS",
+      "details": "POST /api/trips/unshare returned status='ok'. GET /shared/Z1sfqEpyWrJbBsbN0cA1X0 now returns 'not found'. Share token correctly invalidated — no security issue."
+    },
+    {
+      "step": 13,
+      "name": "DeleteTrip",
+      "status": "PASS",
+      "details": "DeleteTrip returned empty response (success). No error."
+    },
+    {
+      "step": 14,
+      "name": "Verify deletion",
+      "status": "PASS",
+      "details": "GetTrip returns NotFound error. ListTrips returns empty list (pagination.totalCount absent/0). Trip fully deleted with no orphaned data visible."
+    }
+  ],
+  "bugs": [
+    {
+      "id": "N11-B1",
+      "severity": "P1",
+      "title": "Companion mode create_itinerary_items rejects explicit add-to-itinerary requests",
+      "description": "When the user sends 'Add a visit to Kinkaku-ji temple on day 1' in companion mode, the AI correctly calls create_itinerary_items with well-structured item data. However, the tool handler returns status='not_needed' with message 'The user's message is an informational query, not a request to modify the itinerary.' This classification is wrong — the message explicitly says 'Add'. The AI retried 5 times (max tool loop), each time getting the same rejection. This means companion mode users cannot add itinerary items via chat, which is a core feature.",
+      "steps_to_reproduce": "1. Create a trip, set status to ACTIVE. 2. Send companion mode message: 'Add a visit to Kinkaku-ji temple on day 1.' 3. Observe tool_result: status='not_needed'. 4. No itinerary items created.",
+      "expected": "create_itinerary_items should successfully create the item and return the created items.",
+      "actual": "Tool returns not_needed, classifying the explicit request as informational."
+    },
+    {
+      "id": "N11-B2",
+      "severity": "P2",
+      "title": "AI provider timeouts on IngestBooking and planning mode SendMessage",
+      "description": "IngestBooking with flight confirmation text hit DeadlineExceeded. A separate planning mode SendMessage also hit DeadlineExceeded with message 'primary (gemini): send request: context deadline exceeded; fallback (claude): send request: context deadline exceeded'. Both AI providers timing out suggests either API key / quota issues, or the request timeout is too short for these operations.",
+      "steps_to_reproduce": "1. Call IngestBooking with flight confirmation artifact text. 2. Observe DeadlineExceeded error.",
+      "expected": "Booking should be parsed and ingested within the timeout window.",
+      "actual": "Both Gemini and Claude providers time out."
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "id": "N11-AI1",
+      "description": "AI correctly identified the need to call create_itinerary_items and provided well-structured tool arguments (title, description, day_number, location_name, type). However, when the tool rejected the call, the AI was unable to find an alternative approach and kept retrying the same tool call 5 times with identical arguments until hitting the max loop iterations. The AI should ideally vary its approach or inform the user that itinerary creation failed.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "mode": "companion",
+      "error": "status='not_needed', message='The user's message is an informational query, not a request to modify the itinerary.'",
+      "context": "User message: 'Add a visit to Kinkaku-ji temple on day 1 of my trip. Please add it to my itinerary.' — clearly an explicit request, not informational."
+    }
+  ],
+  "evaluation": {
+    "trip_creation": 5,
+    "trip_crud": 5,
+    "coalesce_partial_updates": 5,
+    "status_transitions": 5,
+    "itinerary_creation": 1,
+    "booking_ingestion": 1,
+    "sharing_lifecycle": 5,
+    "deletion_cascade": 5,
+    "overall": 4
+  },
+  "summary": "The CRUD lifecycle is rock solid. CreateTrip, GetTrip, UpdateTrip (partial updates via COALESCE), status transitions (planning->active->completed), sharing enable/disable, and DeleteTrip with cascade all work perfectly. All 12 non-AI steps passed without issue. The two failures are both AI-dependent: (1) companion mode create_itinerary_items has a guard that incorrectly classifies explicit 'add to itinerary' requests as informational, rejecting the tool call; (2) AI providers (both Gemini and Claude) timed out on IngestBooking and a planning mode message. The COALESCE partial update logic — the highest priority test target — is fully verified and working correctly across title-only, description-only, and status-only updates."
+}

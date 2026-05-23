@@ -1,0 +1,56 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "run_id": 17,
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history missing assistant response for message 5",
+      "description": "GetChatHistory returned 13 messages (6 user + 7 assistant roles visible), but the assistant response to the 5th user message (cooking class/sesame answer) appears to be missing or collapsed. Two consecutive user messages appear in the history without an intervening assistant response.",
+      "api_command": "GetChatHistory with session_id 242e7bb8-2807-4073-b3b6-dbe7c159d4f2",
+      "expected": "Each user message should have a corresponding assistant response in history",
+      "actual": "Messages 9 and 10 are both user role with no assistant between them"
+    },
+    {
+      "severity": "P2",
+      "title": "EpiPen customs guidance slightly imprecise",
+      "description": "In the initial selection response, the AI said 'you likely won't exceed the one-month limit' and downplayed the Yakkan Shoumei requirement. In the follow-up safety question, the AI correctly recommended obtaining the Yakkan Shoumei regardless. The initial response was less cautious than ideal for someone with anaphylaxis risk - the safe advice is always to get the certificate.",
+      "expected": "Consistent recommendation to always obtain the Yakkan Shoumei for EpiPens",
+      "actual": "First response said it's 'generally fine' without it; second response correctly recommended always getting it"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The initial selection mode response was very long (7787 chars) covering restaurants, konbini tips, neighborhoods, hotel search links, and travel insurance all in one message. This could overwhelm users on mobile. Consider breaking into follow-up messages or collapsible sections.",
+      "severity": "P2",
+      "suggestion": "Chunk the initial response into 2-3 shorter messages: first the trip creation + critical safety info, then restaurant recommendations, then logistics"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Sesame handling was exemplary - the AI correctly ASKED whether Priya had a sesame allergy rather than assuming one. Both the initial Toqui response and the expert Kenji asked about sesame cross-reactivity, which is medically appropriate.",
+      "context": "Persona spec required checking for 'sesame allergy fabricated without asking' - this did NOT occur. The AI asked properly.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Some restaurant recommendations may not be verifiable real places (e.g., 'Gluten-Free T's Kitchen', 'Rice Terrace', 'Sinbusakiya', 'Chagohan Tokyo'). While T's TanTan and Ain Soph are well-known real restaurants, some others may be AI-generated names. For a user with anaphylaxis risk, recommending potentially non-existent restaurants is a safety concern.",
+      "context": "The AI presented these as specific real restaurants with detailed descriptions. If a user travels to the location and the restaurant doesn't exist, they may be stranded without safe food options.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional understanding of compound dietary restrictions in Japan. It correctly identified the dashi/soy sauce/wheat interactions, warned about cross-contamination at street food stalls, provided specific konbini survival strategies, and handled the sesame cross-reactivity question perfectly by asking rather than assuming. The expert handoff to Kenji (Japan food + history) maintained full dietary context and provided deep shojin ryori guidance. The companion mode responses were appropriately concise and actionable for urgent situations. The emergency response with the correct 119 number and Japanese phrases was genuinely useful. The main concern is that some restaurant names may be fabricated, which for someone with anaphylaxis risk could be dangerous. Overall, this would be a genuinely useful tool for a traveler with severe dietary restrictions planning a Japan trip."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation", "trip_lifecycle"]
+}

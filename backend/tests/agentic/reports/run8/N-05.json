@@ -1,0 +1,51 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural — Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "trip_destination": "Japan",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "share_enable", "shared_view_access", "share_disable", "share_revocation_verify", "share_re_enable", "new_share_verify", "old_token_still_invalid", "content_completeness", "usage", "chat_sessions", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared view does not include bookings",
+      "description": "The shared trip view at GET /shared/{token} returns trip info and itinerary but does not include any bookings. A ryokan booking was ingested and confirmed via ListBookings, but the shared view response has no 'bookings' key or it is empty. This means someone viewing a shared trip cannot see hotel/flight information, reducing the usefulness of shared views for trip coordination.",
+      "expected": "Shared view includes bookings array with at least the ingested ryokan booking",
+      "actual": "Shared view response has only 'trip' and 'itinerary' keys, no bookings",
+      "api_command": "curl -s http://localhost:8090/shared/p543PgGVN9KbjnkSsEbLfJ"
+    },
+    {
+      "severity": "P2",
+      "title": "First planning message returned 'no response from AI' error",
+      "description": "The first planning message asking for a day-by-day itinerary returned a textDelta with initial text, then an error event: {\"error\":{\"message\":\"no response from AI — please try again\"}}. The tool call was never made. A retry of the same message succeeded. This suggests a transient AI provider timeout or tool loop failure on the first attempt.",
+      "expected": "AI completes the response and calls create_itinerary_items",
+      "actual": "Partial text response followed by error: 'no response from AI — please try again'",
+      "api_command": "buf curl ... SendMessage with itinerary request"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared view itinerary uses snake_case field names (day_number) while the authenticated GetItinerary RPC uses camelCase (dayNumber). This inconsistency could cause frontend bugs if the same rendering logic is used for both views.",
+      "severity": "P2",
+      "suggestion": "Normalize field naming convention between shared view REST endpoint and ConnectRPC itinerary response"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "SendMessage (planning mode)",
+      "input": "Build me a day-by-day itinerary with 2 days in Tokyo, a day trip to Hakone, and 4 days in Kyoto.",
+      "error": "First attempt: partial text response then error 'no response from AI — please try again'. Second attempt succeeded."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The trip sharing lifecycle works correctly and securely. Token revocation is properly enforced (old tokens return 404 after unshare), re-sharing generates new tokens, and old tokens remain invalid after re-sharing. The shared view contains full itinerary content with day numbers, item titles, and location references. No private data leaks detected. The only gaps are: bookings are not included in shared views (P2), and the AI had one transient failure on the first planning message (retry worked)."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingest", "share_enable", "shared_view_access", "share_disable", "share_revocation", "share_re_enable", "old_token_invalidation", "usage", "chat_sessions", "complete"]
+}

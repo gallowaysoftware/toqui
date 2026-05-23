@@ -1,0 +1,17 @@
+version: v2
+modules:
+  - path: proto
+    name: buf.build/gallowaysoftware/toqui
+  - path: third_party
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX
+  ignore:
+    - third_party
+breaking:
+  use:
+    - FILE
+  ignore:
+    - third_party

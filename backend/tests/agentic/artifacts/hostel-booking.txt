@@ -1,0 +1,55 @@
+Subject: Hostelworld Booking Confirmed - VBH-20260601 (3 Properties)
+
+HOSTELWORLD - MULTI-STOP BOOKING CONFIRMATION
+==============================================
+Master Booking Reference: VBH-20260601
+Guest: Marcus Chen
+Email: m.chen.travel@gmail.com
+Booked: May 12, 2026
+
+--- STOP 1 ---
+HANOI OLD QUARTER HOSTEL
+  Address: 48 Ma May Street, Hoan Kiem District, Hanoi, Vietnam
+  Check-in: Monday, June 1, 2026 | 2:00 PM - 10:00 PM
+  Check-out: Thursday, June 4, 2026 | 11:00 AM
+  Nights: 3
+  Room: Mixed Dorm (8-Bed) - Bottom Bunk
+  Ref: VBH-HAN-001
+  Rate: 3 x $8.50/night = $25.50
+  Includes: Daily breakfast (pho or banh mi), free walking tour voucher,
+  A/C, personal locker (bring your own padlock), free Wi-Fi
+  Rating: 9.1/10 (2,847 reviews)
+
+--- STOP 2 ---
+HUE BACKPACKER HOSTEL
+  Address: 10 Pham Ngu Lao Street, Hue City, Vietnam
+  Check-in: Thursday, June 5, 2026 | 1:00 PM - 11:00 PM
+  Check-out: Sunday, June 7, 2026 | 10:30 AM
+  Nights: 2
+  Room: Mixed Dorm (6-Bed) - Top Bunk
+  Ref: VBH-HUE-002
+  Rate: 2 x $7.00/night = $14.00
+  Includes: Breakfast (eggs + toast + coffee), bicycle rental (free first 4 hrs),
+  A/C, personal reading light + USB charging port
+  Rating: 8.7/10 (1,203 reviews)
+
+--- STOP 3 ---
+SAIGON CENTRAL BACKPACKERS
+  Address: 241 Pham Ngu Lao Street, District 1, Ho Chi Minh City, Vietnam
+  Check-in: Monday, June 8, 2026 | 2:00 PM - midnight
+  Check-out: Friday, June 12, 2026 | 11:00 AM
+  Nights: 4
+  Room: Mixed Dorm (10-Bed) - Bottom Bunk
+  Ref: VBH-SGN-003
+  Rate: 4 x $9.00/night = $36.00
+  Includes: Breakfast buffet, rooftop bar happy hour (6-8 PM), A/C,
+  personal locker, towel rental available ($1/stay)
+  Rating: 8.9/10 (3,412 reviews)
+
+TOTAL: $75.50 USD
+  Deposit paid (10%): $7.55 (Visa ending 9033)
+  Balance due at each property: $67.95
+
+CANCELLATION: Free cancellation up to 48 hours before each check-in. Deposit non-refundable for cancellations within 48 hours.
+
+Questions? support@hostelworld.com | App: Hostelworld (iOS/Android)

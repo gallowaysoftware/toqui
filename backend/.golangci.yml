@@ -1,0 +1,82 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    # Core correctness
+    - errcheck # unchecked errors
+    - govet # go vet checks
+    - staticcheck # includes gosimple + stylecheck in v2
+    - unused # unused code
+    - ineffassign # ineffectual assignments
+
+    # Bug detection
+    - bodyclose # unclosed HTTP response bodies
+    - nilerr # returning nil after checking err != nil
+    - sqlclosecheck # unclosed sql.Rows/sql.Stmt
+
+    # Code quality
+    - gocritic # opinionated style + diagnostics
+    - misspell # typos in comments/strings
+    - nolintlint # malformed nolint directives
+    - unconvert # unnecessary type conversions
+    - errorlint # error wrapping compliance
+    - usestdlibvars # use stdlib constants instead of literals
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - ifElseChain # stylistic preference
+        - paramTypeCombine # too noisy, doesn't affect correctness
+        - hugeParam # premature optimization
+        - tooManyResultsChecker # sometimes needed for internal funcs
+        - exitAfterDefer # valid pattern in main()
+        - importShadow # too strict for url/path packages
+        - rangeValCopy # sqlc-generated structs are large, pointers not worth it
+    staticcheck:
+      checks:
+        - all
+        - "-SA1019" # allow deprecated (fix incrementally)
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close # deferred file close
+        - (*cloud.google.com/go/firestore.Client).Close
+        - (*cloud.google.com/go/secretmanager/apiv1.Client).Close
+        - os.Setenv # noisy in config loading
+        - os.Unsetenv # noisy in tests
+        - (net/http.ResponseWriter).Write # checked at handler level
+        - (*encoding/json.Encoder).Encode # checked at handler level
+    govet:
+      disable:
+        - fieldalignment # premature optimization, noisy
+        - shadow # too many false positives
+
+  exclusions:
+    paths:
+      - gen
+      - db/migrations
+    rules:
+      - path: '_test\.go'
+        linters:
+          - errcheck # test files can ignore some error checks
+      - path: "cmd/"
+        linters:
+          - errcheck # main() defer .Close() is fine
+    presets:
+      - comments
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gallowaysoftware/toqui

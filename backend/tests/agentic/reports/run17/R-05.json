@@ -1,0 +1,28 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_verification"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Companion mode creates a new session for each message rather than reusing the session. This means two companion messages resulted in two separate sessions with 2 messages each, rather than a single session with 4 messages. This could fragment conversation context in companion mode.",
+      "severity": "P2",
+      "suggestion": "Consider auto-reusing the most recent companion session within a time window, or allow the client to pass a session_id in companion mode."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional performance across all tested dimensions. The extended location profiles (CZ and IS) and extended themes (craft-beer and hiking) loaded correctly and produced deeply knowledgeable expert personas. Jakub (CZ craft-beer) knew specific Prague neighborhoods, microbreweries (Dva Kohouti, Zlý Časy, BeerGeek, Sibeeria), regions beyond Prague (Plzeň, Brno, Potštejn, Mikulov), dark lager culture (tmavé pivo, Kout na Šumavě), and Czech pour styles (hladinka, šnyt, mlíko). Björn (IS hiking) provided trail-specific details for the Laugavegur including hut booking logistics via Ferðafélag Íslands, weather windows, river crossing gear, Iceland-specific equipment recommendations, and smart comparisons to PNW hiking. The two-trip workflow worked flawlessly — creating the Iceland trip did not interfere with the Czech trip. Companion mode was concise and practical with location-aware recommendations. Itinerary creation was proactive and detailed across both trips (7 days each with specific venues and activities)."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "expert_handoff", "itinerary_creation", "extended_profiles", "extended_themes"]
+}

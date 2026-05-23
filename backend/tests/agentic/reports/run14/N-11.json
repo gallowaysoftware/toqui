@@ -1,0 +1,67 @@
+{
+  "persona_id": "N-11",
+  "persona_name": "Structural — Full Lifecycle CRUD Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Kyoto)",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "get_trip_verify_create",
+    "update_title_only_coalesce",
+    "update_description_only_coalesce",
+    "update_status_active",
+    "send_planning_message",
+    "ingest_booking",
+    "get_itinerary",
+    "enable_sharing",
+    "update_status_completed",
+    "list_trips",
+    "disable_sharing",
+    "delete_trip",
+    "verify_deletion"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "UpdateTrip response omits 'themes' field that GetTrip includes. The themes array only appears after a subsequent GetTrip call, not in the UpdateTrip response itself. Minor inconsistency between the two endpoints.",
+      "severity": "P2",
+      "suggestion": "Include themes in the UpdateTrip response to match GetTrip behavior."
+    },
+    {
+      "description": "GetItinerary returns 'get trip: no rows in result set' error message after trip deletion. While the behavior is correct (404), the error message leaks internal implementation details (mentioning 'no rows in result set'). Should return a cleaner 'trip not found' or 'itinerary not found' message.",
+      "severity": "P2",
+      "suggestion": "Wrap the DB error in a user-facing message like 'itinerary not found' instead of exposing the raw SQL error."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 14 lifecycle steps passed with zero bugs. COALESCE partial update logic works correctly for both title-only and description-only updates. Status transitions (PLANNING -> ACTIVE -> COMPLETED) preserve all fields. Booking ingestion correctly parsed the Delta flight confirmation. Trip sharing lifecycle (enable, verify public view, disable, verify revoked) works perfectly. Cascade deletion properly removes trip, bookings, and itinerary items. The only issues found were minor response inconsistencies (themes missing from UpdateTrip response, raw DB error in GetItinerary after deletion)."
+  },
+  "feature_coverage": [
+    "create_trip",
+    "get_trip",
+    "update_trip_partial_title",
+    "update_trip_partial_description",
+    "update_trip_status_active",
+    "update_trip_status_completed",
+    "send_message_companion",
+    "create_itinerary_items",
+    "get_itinerary",
+    "ingest_booking",
+    "list_bookings",
+    "trip_share",
+    "shared_view",
+    "trip_unshare",
+    "list_trips",
+    "delete_trip",
+    "cascade_deletion"
+  ]
+}

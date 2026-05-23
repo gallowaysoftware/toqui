@@ -1,0 +1,28 @@
+meta {
+  name: Send Message
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.ChatService/SendMessage
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Server streaming RPC — returns a stream of ChatEvent messages.
+  Events include text deltas, tool calls/results, persona switches,
+  and itinerary updates. The stream ends with a final message event.
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>",
+    "content": "Plan a full day exploring the temples and street food in Kyoto. I love hidden gems off the tourist path.",
+    "session_id": "<session-id-or-omit-for-new>"
+  }
+}

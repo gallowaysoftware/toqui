@@ -1,0 +1,28 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "setup_trips", "selection_matching", "planning", "trip_switching", "new_trip_creation", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items 3 times in one turn for the same items. First call succeeded (10 items created), second and third calls returned 'already_exists' with 0 created. The tool result explicitly said 'Do NOT call this tool again with the same items' but the AI ignored it on the third attempt.",
+      "context": "Step 5: Planning mode Santorini itinerary request. The tool loop ran 3 iterations when 1 would have sufficed.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "All critical multi-trip workflows passed: vague reference matching ('my Greece trip' matched to 'Greek Islands Hopping'), trip switching ('take me to my Morocco trip' selected the existing Moroccan Adventure), and new trip creation ('New Zealand' correctly triggered create_trip instead of select_trip). The Santorini 3-day itinerary was comprehensive with 10 well-structured items. The only minor issue was redundant tool calls in the itinerary creation step. Context isolation between trips was clean — no cross-trip content leakage."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_switching", "multi_trip", "sharing", "chat_history", "usage"]
+}

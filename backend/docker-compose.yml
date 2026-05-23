@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: toqui
+      POSTGRES_USER: toqui
+      POSTGRES_PASSWORD: toqui
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toqui"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  firestore:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud emulators firestore start --host-port=0.0.0.0:8080
+    ports:
+      - "8080:8080"
+
+  migrate:
+    build: .
+    command:
+      [
+        "/migrate",
+        "-dir",
+        "/migrations",
+        "-db",
+        "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable",
+        "up",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations
+
+  backend:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      PORT: "8090"
+      DATABASE_URL: "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable"
+      FIRESTORE_EMULATOR_HOST: "firestore:8080"
+      FIRESTORE_PROJECT_ID: "toqui-dev"
+      JWT_SECRET: "dev-secret-change-in-production"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      GOOGLE_REDIRECT_URI: "http://localhost:3000/auth/callback"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      VERTEX_AI_PROJECT_ID: "${VERTEX_AI_PROJECT_ID:-toqui-staging}"
+      VERTEX_AI_LOCATION: "${VERTEX_AI_LOCATION:-us-central1}"
+      FRONTEND_URL: "http://localhost:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      firestore:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

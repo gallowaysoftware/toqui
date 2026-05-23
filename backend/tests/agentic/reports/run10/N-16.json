@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning_turn1", "planning_turn2", "planning_turn3", "planning_turn4", "planning_turn5", "planning_turn6_summary", "verification", "fabrication_check"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Day 7 became overloaded with 14 items after Turn 4 added Machu Picchu items alongside existing Moray/Maras/Chinchero items. The AI flagged the scheduling conflict but added the items to the same day rather than creating a separate day or waiting for user confirmation on restructuring.",
+      "severity": "P2",
+      "suggestion": "The AI could offer to restructure before adding items when a scheduling conflict is detected, or add items to the correct day (Day 8) and shift subsequent days automatically."
+    },
+    {
+      "description": "In Turns 1, 2, and 3, the AI called create_itinerary_items successfully on the first tool loop iteration, then repeated itself with a second message saying the items were already added and re-called the tool (which correctly detected duplicates). This produces redundant stream events and a somewhat confusing user experience where the AI seems to doubt itself.",
+      "severity": "P2",
+      "suggestion": "After a successful create_itinerary_items call, the AI should not re-iterate the confirmation or attempt to re-call the tool. The fabrication detection retry nudge may be triggering unnecessarily when the tool already succeeded."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Duplicate tool calls: In Turns 2 and 3, the AI called create_itinerary_items a second time after the first call already succeeded (all items were created). The second call was correctly rejected as 'already_exists' by the backend, but it wastes API tokens and produces confusing stream output.",
+      "context": "Turn 2: first call created 15 items, second call skipped 15. Turn 3: first call created 4 items, second call skipped 4. The fabrication detection retry nudge appears to fire even when the original tool call succeeded.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 6 planning turns produced correct tool calls. Turn 1: 16 items (Cusco 4 days). Turn 2: +15 items (Sacred Valley, cumulative 31). Turn 3: +4 food items appended to existing days without overwrite (cumulative 35, up from 31 — no overwrite bug). Turn 4: +7 Machu Picchu items (cumulative 42). Turn 5: +10 Lake Titicaca items (cumulative 52). Turn 6: summary only, no tool call (correct). Final total: 52 items across 9 days. Zero fabrication bugs detected — every turn that contained fabrication-adjacent phrases also had a successful create_itinerary_items tool call. The itinerary content was detailed, geographically accurate, and well-structured with practical timing advice. The only notable issues were duplicate tool calls in turns 2-3 (harmless due to backend dedup) and Day 7 overloading."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "fabrication_detection", "multi_turn_context", "fabrication_matches_1"]
+}

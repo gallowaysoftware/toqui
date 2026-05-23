@@ -1,0 +1,64 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya (Multi-Turn Fabrication Detection)",
+  "status": "COMPLETED",
+  "run_id": "run-8",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning_turn_1", "planning_turn_2", "planning_turn_3", "planning_turn_4", "planning_turn_5", "planning_turn_6", "verification", "fabrication_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items across turns on Day 9",
+      "description": "Day 9 ended up with 8 items including apparent duplicates: 'Bus to Machu Picchu' appears twice, 'Explore Machu Picchu Citadel' appears twice, and items from both Turn 2 (original Machu Picchu plan) and Turn 4 (revised plan) coexist. The AI deleted some items in Turn 4 but not all duplicates.",
+      "expected": "Each day should have distinct, non-overlapping items after modification",
+      "actual": "Day 9 has 8 items with duplicate activities (Bus to Machu Picchu x2, Explore Citadel x2, Return Bus x2, Dinner in Aguas Calientes x2)"
+    },
+    {
+      "severity": "P2",
+      "title": "Day 10 has leftover items from pre-Turn 4 Machu Picchu plan",
+      "description": "Day 10 contains items like 'Leisurely Morning in Aguas Calientes' and 'Return Train to Ollantaytambo & Transfer to Cusco' which are remnants of the original Machu Picchu plan (days 8-9 in Turn 2). After Turn 4 reorganized Machu Picchu to Day 7-8, these Day 10 leftovers should have been cleaned up but remain alongside the new Lake Titicaca items.",
+      "expected": "Day 10 should contain only Lake Titicaca items after Turn 5",
+      "actual": "Day 10 has a mix of old Machu Picchu leftovers and new Titicaca items (6 items total)"
+    },
+    {
+      "severity": "P2",
+      "title": "AI repeatedly calls create_itinerary_items with identical items",
+      "description": "In Turns 1, 2, 3, and 5 the AI called create_itinerary_items multiple times with the same items in a single turn, getting 'already_exists' responses. This wastes API tokens and tool loop iterations. The deduplication guard prevents data corruption but the AI should respect the tool result telling it not to call again.",
+      "expected": "AI calls create_itinerary_items once per turn with the full item list",
+      "actual": "AI calls it 2-3 times per turn, with subsequent calls returning already_exists"
+    },
+    {
+      "severity": "P2",
+      "title": "itineraryUpdate stream event contains 0 items despite 18 created",
+      "description": "In Turn 1, the itineraryUpdate stream event was emitted with 0 items, even though the toolResult confirmed 18 items were created. The frontend relies on itineraryUpdate to refresh the itinerary display, so this could cause a stale UI.",
+      "expected": "itineraryUpdate event should contain the created items or at least a non-zero count",
+      "actual": "itineraryUpdate had 0 items while toolResult showed created_count: 18"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI went beyond what was asked in Turn 2 — user requested Sacred Valley over 3 days but the AI also added Machu Picchu, Titicaca, and Lima return days (days 8-13) without being asked. While proactive, this means Turn 4 and 5 requests partially overlapped with already-created content.",
+      "severity": "P2",
+      "suggestion": "The AI should stick closer to what the user explicitly requests and ask before adding days beyond the scope of the request."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI over-generates itinerary content beyond the user's explicit request scope",
+      "context": "Turn 2 asked for Sacred Valley over 3 days but the AI added days 5-13 (9 days of content). This pre-empted the user's Turn 4 (Machu Picchu) and Turn 5 (Titicaca) requests, causing confusion about what was new vs already existing.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The fabrication detection system worked well across all 6 turns — create_itinerary_items was called in every turn that requested itinerary additions (turns 1-5) and correctly NOT called for the summary turn (turn 6). Zero fabrication bugs detected. Per-turn item counts: Turn 1: 0->18, Turn 2: 18->43, Turn 3: 43->58, Turn 4: 58->62, Turn 5: 62->67. Final total: 67 items across 14 days, well above the 15-item minimum. The main quality issues were: (1) the AI over-generated content in Turn 2 beyond what was requested, and (2) duplicate/leftover items accumulated on days 9-10 as the AI reorganized Machu Picchu across turns. The fabrication phrase check found 3 matches across all turns (turns 2 and 3) but in every case create_itinerary_items had also been called, so none were actual fabrication bugs."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "delete_itinerary_items", "fabrication_detection", "multi_turn_context", "fabrication_matches_3"]
+}

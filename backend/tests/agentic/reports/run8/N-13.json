@@ -1,0 +1,66 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "setup_trip", "setup_itinerary", "activate", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "companion_msg6", "final_itinerary_check"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool over-eager on info query 2",
+      "description": "Asking 'I'm near Praca do Comercio — what's a good lunch spot around here?' in companion mode caused the AI to call create_itinerary_items and emit an itineraryUpdate event. The user was asking for a recommendation, not requesting a plan change. Itinerary count went from 12 to 13.",
+      "steps_to_reproduce": "1. Create trip, seed 12-item itinerary, activate trip. 2. In CHAT_MODE_COMPANION send: 'I'm near Praca do Comercio — what's a good lunch spot around here?' 3. Observe create_itinerary_items tool call and itineraryUpdate stream event.",
+      "expected": "No itinerary tool calls; AI should answer the question directly without modifying the itinerary.",
+      "actual": "create_itinerary_items was called, itineraryUpdate emitted, 1 item added to itinerary.",
+      "api_command": "buf curl SendMessage with mode=CHAT_MODE_COMPANION, content='I'm near Praca do Comercio — what's a good lunch spot around here?'"
+    },
+    {
+      "severity": "P1",
+      "title": "companion mode tool over-eager on info query 3",
+      "description": "Asking 'Is the Tram 28 worth riding or is it a tourist trap?' in companion mode caused the AI to call create_itinerary_items and emit an itineraryUpdate event. The user was asking for an opinion, not requesting a plan change.",
+      "steps_to_reproduce": "1. Same setup as above. 2. Send: 'Is the Tram 28 worth riding or is it a tourist trap?' 3. Observe create_itinerary_items tool call and itineraryUpdate stream event.",
+      "expected": "No itinerary tool calls; AI should share its opinion without modifying the itinerary.",
+      "actual": "create_itinerary_items was called, itineraryUpdate emitted, item added. AI response: 'I've added the Tram 28 Ride to your itinerary as an optional activity for Day 4'."
+    },
+    {
+      "severity": "P1",
+      "title": "companion mode tool over-eager on info query 6",
+      "description": "Asking 'Recommend something fun to do tonight.' in companion mode caused the AI to call create_itinerary_items and emit an itineraryUpdate event. This is the exact regression from Run 5 N-01 msg5. The word 'recommend' is being interpreted as 'add to plan'.",
+      "steps_to_reproduce": "1. Same setup as above. 2. Send: 'Recommend something fun to do tonight.' 3. Observe create_itinerary_items tool call and itineraryUpdate stream event.",
+      "expected": "No itinerary tool calls; AI should recommend an activity without adding it to the itinerary.",
+      "actual": "create_itinerary_items was called, itineraryUpdate emitted. AI response: 'I've added Fado Show in Alfama to your itinerary for tonight. Enjoy the music!'"
+    },
+    {
+      "severity": "P1",
+      "title": "itinerary mutated in companion mode",
+      "description": "After 6 purely informational companion-mode messages, the itinerary item count changed from 12 to 15. Three items were added across messages 2, 3, and 6. The companion-mode system prompt is not preventing the AI from proactively calling create_itinerary_items on info queries.",
+      "expected": "12 (N_BEFORE)",
+      "actual": "15 (3 items added)"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI claims to have added items to the itinerary in response to informational queries (msgs 2, 3, 6). In msg 2: 'I recommended Pinoquio for lunch' with itinerary modification. In msg 3: 'I've added the Tram 28 Ride to your itinerary as an optional activity'. In msg 6: 'I've added Fado Show in Alfama to your itinerary for tonight.'",
+      "context": "The user never asked the AI to modify the itinerary. All 6 messages were purely informational. The companion-mode system prompt should instruct the AI to only call create_itinerary_items when the user explicitly asks to add something to their plan.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Msg 1 (weather query): AI responded 'I cannot provide real-time weather updates as I don't have access to live web data' despite having the web_search tool available and actually calling it. The response ignored the web_search results and gave a generic climate answer instead.",
+      "context": "The web_search tool was called but the AI's final text says it cannot provide real-time weather. This suggests the web_search results may not have contained weather data, but the AI's framing is misleading since it did attempt a web search.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 2,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 1,
+    "would_use_again": false,
+    "narrative": "The planning mode itinerary generation worked well, producing a solid 12-item 4-day Lisbon plan. However, companion mode is seriously broken for informational queries. 3 out of 6 purely informational questions caused unwanted itinerary modifications, adding items the user never asked for. This fundamentally undermines the companion mode experience — a traveler on the ground asking quick questions should not have their carefully planned itinerary silently altered. The PR #201 guardrail for companion-mode info queries is not effective."
+  },
+  "feature_coverage": ["trip_creation", "planning_itinerary", "trip_activation", "companion_mode", "itinerary_guardrail"]
+}

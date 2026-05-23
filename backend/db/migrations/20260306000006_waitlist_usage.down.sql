@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS daily_usage;
+DROP TABLE IF EXISTS waitlist;

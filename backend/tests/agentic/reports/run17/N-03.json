@@ -1,0 +1,46 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "Structural - REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing", "error_handling"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "GET /shared/{invalid-token} returns plain text 'not found' instead of a JSON object like {\"error\":\"not found\"}. All other error responses also return plain text. Inconsistent with the JSON responses from successful calls. Frontend must handle mixed content types.",
+      "severity": "P2",
+      "suggestion": "Return JSON error bodies like {\"error\":\"not found\",\"code\":404} for all REST endpoints to match the JSON success responses."
+    },
+    {
+      "description": "GET /api/usage without auth returns plain text 'unauthorized' (no JSON). POST /api/trips/share without auth also returns plain text 'unauthorized'. Same inconsistency as above.",
+      "severity": "P2",
+      "suggestion": "Wrap error responses in JSON: {\"error\":\"unauthorized\",\"code\":401}"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural REST endpoint test with no AI interaction. All 16 test cases passed. Health endpoints respond in under 2ms. Auth enforcement is correct on all authenticated endpoints. The trip sharing lifecycle (share, fetch, unshare, verify-invalidated) works correctly. Guide API returns 25 guides with complete data. The only issues found are cosmetic: error responses use plain text instead of JSON."
+  },
+  "feature_coverage": ["health_endpoints", "guides_api", "usage_api", "referral_api", "trip_sharing", "auth_enforcement", "error_handling"],
+  "endpoint_shapes": {
+    "GET /healthz": {"status": "ok"},
+    "GET /health": {"status": "string", "components": {"database": {"status": "string", "latency_ms": "number"}, "server": {"status": "string", "uptime_seconds": "number"}}},
+    "GET /livez": {"status": "alive"},
+    "GET /readyz": {"status": "ready"},
+    "GET /api/guides": {"guides": ["array of {slug, title, persona_name, persona_specialty, destination, country, theme, excerpt, cta_text, cta_url}"], "total": "number (25)"},
+    "GET /api/guides/:slug": {"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "content": "string (full markdown)", "cta_text": "string", "cta_url": "string"},
+    "GET /api/usage": {"used": "number", "limit": "number", "tier": "string", "resets_at": "ISO8601 timestamp"},
+    "GET /api/referral": {"code": "string", "link": "string", "max_rewards": "number", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "number", "rewards_remaining": "number", "successful_referrals": "number"},
+    "POST /api/trips/share": {"share_token": "string", "share_url": "string"},
+    "GET /shared/:token": {"trip": {"title": "string", "description": "string", "status": "string"}, "itinerary": "array"},
+    "POST /api/trips/unshare": {"status": "ok"}
+  }
+}

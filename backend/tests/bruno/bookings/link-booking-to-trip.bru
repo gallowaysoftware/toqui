@@ -1,0 +1,26 @@
+meta {
+  name: Link Booking to Trip
+  type: grpc
+  seq: 5
+}
+
+grpc {
+  url: {{host}}/toqui.v1.BookingService/LinkBookingToTrip
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Associates a booking with a trip. Useful when a booking was ingested
+  without a trip_id (e.g., from email forwarding) and needs to be linked later.
+}
+
+body:json {
+  {
+    "booking_id": "<booking-id-from-ingest>",
+    "trip_id": "<trip-id>"
+  }
+}

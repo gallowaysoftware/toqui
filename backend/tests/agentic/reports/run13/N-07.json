@@ -1,0 +1,43 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "fullContent truncated on messages with tool calls",
+      "description": "When a SendMessage response includes tool calls (create_itinerary_items, suggest_expert), the fullContent field in the messageComplete event only contains text from the LAST segment after the final tool result, not the complete concatenated response. For example, plan1 had 1968 chars of textDelta but fullContent was only 187 chars (the post-tool-call summary). Plan2 had 6385 chars of textDelta but fullContent was only 1509 chars. Messages without tool calls (plan3, comp1, comp2) had correct fullContent matching textDelta length.",
+      "expected": "fullContent should contain the complete AI response text across all segments (pre-tool, post-tool)",
+      "actual": "fullContent only contains text from the last segment after the final tool call result",
+      "api_command": "buf curl SendMessage with mode CHAT_MODE_PLANNING"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode first response contained a duplicated paragraph — the opening recommendation for 2foods Shinjuku appeared twice with slightly different wording, suggesting the response was generated in two passes that were both emitted.",
+      "severity": "P2",
+      "suggestion": "Deduplicate response segments when the AI generates overlapping text across tool loop iterations."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode hospital query returned vague guidance instead of actionable information",
+      "context": "When asked about the nearest hospital to Shinjuku, the AI said it could not access real-time information and suggested asking locals or dialing 119. For a travel companion with severe anaphylaxis risk, providing well-known hospital names (e.g., Tokyo Medical University Hospital, Keio University Hospital) would be significantly more useful, even if they cannot confirm real-time availability.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent understanding of compound dietary restrictions in Japan. It correctly identified all major hazards (wheat in soy sauce, bonito dashi, fu in shojin ryori, shared fryers) and recommended specific real restaurants (Ain Soph, T's TanTan, 2foods, Saido). The sesame over-conflation test was passed perfectly — the AI asked whether Priya also avoids sesame rather than assuming. Safety preparation was thorough, including the critical Yakkan Shoumei for EpiPens. The expert handoff to food specialist Kenji was immediate and contextually appropriate. The main weakness was companion mode, which was less actionable on emergency hospital info and produced a duplicated response. Planning mode was genuinely helpful and would save a traveler with these restrictions significant research time."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation"]
+}

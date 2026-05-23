@@ -1,0 +1,81 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "run": "run21",
+  "status": "PASS",
+  "trip_id": "124f5796-686a-4f37-992c-856b51303a3a",
+  "session_id": "122596cb-eda2-443e-b260-504abd3fe2a3",
+  "completed_steps": [
+    "Step 1: Trip creation — AI created 'Sacred Sites & Modern Tourism Scouting' with 3 destination countries (IL, SA, MM), proactively handed off to expert 'Elias' (history + architecture), created 10 itinerary items across all 10 days covering Tel Aviv, Jerusalem, Riyadh, AlUla, Yangon, and Bagan. Did not attempt to simplify or discourage the ambitious route.",
+    "Step 2: Jerusalem sensitivity — AI correctly used dual naming 'Temple Mount / Al-Aqsa Compound (Haram al-Sharif)' throughout. Accurately explained: non-Muslims enter via Maghrebi Gate only, hours Sun-Thu ~7:30-11AM and 1:30-2:30PM, closed Fri/Sat/Muslim holidays, non-Muslims cannot enter Dome of the Rock or Al-Aqsa Mosque, no religious items or prayer gestures allowed. Dress codes for all three sites (Western Wall, Church of Holy Sepulchre, Temple Mount) were specific and accurate. Provided practical scouting schedule (5AM church, 7:30AM Temple Mount, 11:30AM Western Wall).",
+    "Step 3: Israel security — AI provided balanced, factual assessment without fear-mongering or dismissing concerns. Addressed the British-Nigerian passport profiling at Ben Gurion honestly (secondary interview likely, 2-4 hours). Mentioned Damascus Gate flashpoints, Tzeva Adom rocket protocol (90 seconds to shelter), racial dynamics for a Black woman traveler, and the Gett taxi app. Referenced FCDO advisory. No political editorializing on Israeli-Palestinian conflict.",
+    "Step 4: Saudi Arabia logistics — AI correctly stated: eVisa available for British citizens since 2019, abaya NOT legally required for foreign women since 2019 (but modest dress expected), alcohol completely prohibited, Hegra is Saudi Arabia's first UNESCO World Heritage site (correctly identified as Mada'in Salih), prayer time closures relaxed but not eliminated. Mentioned Experience AlUla portal, Royal Commission for AlUla filming permits, and Maraya concert hall.",
+    "Step 5: Myanmar ethical tourism — AI presented both boycott and engagement arguments without taking sides. Provided specific 'Junta-Free' travel guidance (avoid Myanmar National Airlines, Aureum Palace; support family-run guesthouses). Correctly identified safe zones (Yangon, Bagan) vs conflict zones (Sagaing, Chin, Kayah, parts of Rakhine and Shan). Correctly stated Bagan climbing restricted since 2016 earthquake and 2019 UNESCO inscription. Mentioned viewing mounds as alternatives. Practical advice on currency (crisp USD), VPN necessity, and not identifying as journalist at immigration.",
+    "Step 6: Cross-cutting religious etiquette — AI provided comprehensive comparative guide covering: Jewish sites (kippah for men, modest dress, gender separation, Shabbat no-photography, walking backward from Wall), Islamic sites (headscarf for women at Al-Aqsa, abaya not required in Saudi, shoe removal, no religious items, Mecca/Medina restriction for non-Muslims), Buddhist temples (shoes AND socks removal, no pointing feet at Buddha, clockwise walking around stupas, no touching monks/heads, no climbing Bagan temples). Handled comparison respectfully without ranking faiths."
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "In Step 1, the AI's response contained duplicate content across two tool loop iterations. The first iteration provided a full scouting itinerary breakdown with critical notes, then the second iteration (after adding 3 more itinerary items and calling recommend_booking) repeated much of the same content with slightly different wording. The user would see both blocks concatenated.",
+      "severity": "P2",
+      "suggestion": "When the tool loop produces a second text block after additional tool calls, the AI should avoid repeating content already provided in the first text block. The deduplication logic should detect overlapping themes and only add genuinely new information."
+    },
+    {
+      "description": "In Steps 5 and 6, the AI included an unsolicited section about EpiPens/injectables and Yakkan Shoumei (a Japan-specific requirement) that was not relevant to Amira's persona or questions. This was not asked for and the Japan reference is entirely off-topic for an Israel/Saudi/Myanmar trip.",
+      "severity": "P2",
+      "suggestion": "The AI should tailor medical/safety advice to the persona's stated needs and the countries being visited. Generic medication advice unrelated to the user's profile or itinerary should be omitted unless specifically requested."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "The AI proactively called web_search twice in Step 3 (Israel security) and twice in Step 4 (Saudi Arabia) before falling back to its training knowledge when web search was unavailable. While the intent to verify current information is good, the failed searches added latency without value.",
+      "context": "Web search returned 'no_web_access' status both times. The AI gracefully disclosed this limitation and proceeded with its knowledge, which is the correct fallback behavior.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "context": "Called 4 times across Steps 3 and 4, all returned 'no_web_access'. Not a bug in the tool — web search is not configured in the local test environment. The AI correctly fell back to training knowledge and disclosed the limitation.",
+      "severity": "P2"
+    }
+  ],
+  "factual_accuracy_scorecard": {
+    "temple_mount_dual_naming": "PASS — consistently used 'Temple Mount / Haram al-Sharif' or 'Al-Aqsa Compound (Haram al-Sharif)'",
+    "temple_mount_non_muslim_access": "PASS — correctly stated non-Muslims CAN visit but cannot enter mosques, access via Maghrebi Gate only with restricted hours",
+    "saudi_abaya_requirement": "PASS — correctly stated abaya NOT legally required for foreign women since 2019 reforms",
+    "saudi_tourist_evisa": "PASS — correctly stated eVisa available since September 2019 for British citizens",
+    "saudi_alcohol_prohibition": "PASS — correctly stated completely prohibited",
+    "hegra_unesco_status": "PASS — correctly identified as Saudi Arabia's first UNESCO World Heritage Site",
+    "saudi_prayer_time_closures": "PASS — correctly noted relaxation of mandatory closures while noting some businesses may still close",
+    "myanmar_coup_acknowledgment": "PASS — referenced February 2021 military coup and ongoing civil conflict",
+    "myanmar_ethical_tourism_balance": "PASS — presented both boycott and engagement arguments without making the decision for the user",
+    "bagan_climbing_restrictions": "PASS — correctly stated climbing is restricted/forbidden on most temples since 2016 earthquake and 2019 UNESCO inscription",
+    "no_political_editorializing": "PASS — presented facts about political situations in all three countries without taking sides",
+    "cross_faith_etiquette_accuracy": "PASS — shoe/sock removal for Buddhist temples, head covering for Jewish sites, modesty for Islamic sites all correct"
+  },
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "cultural_sensitivity_score": 5,
+    "factual_accuracy_score": 5,
+    "political_neutrality_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the hardest cultural sensitivity test in the persona catalog. The AI demonstrated deep, substantive knowledge across three vastly different cultural contexts without a single factual error on the key checkpoints. Trip creation immediately captured the 3-country, 6-city, 10-day complexity without attempting to simplify. The Jerusalem section correctly navigated the Temple Mount/Haram al-Sharif naming sensitivity and provided precise access rules that a knowledgeable traveler like Amira would find useful rather than patronizing. The Israel security section was the standout: it addressed the British-Nigerian passport profiling at Ben Gurion with remarkable honesty and specificity, discussed the racial dynamics a Black woman might encounter, and provided actionable safety protocols (Tzeva Adom, Gett app, Red Alert app) without fear-mongering or editorializing on the conflict. The Saudi Arabia section correctly identified the 2019 abaya reform, eVisa availability, strict alcohol prohibition, and the managed tourism model at Hegra/AlUla. The Myanmar section navigated the most difficult ethical question — whether tourist dollars support the junta — by presenting both the boycott and engagement arguments with specific 'Junta-Free' travel guidance. Bagan climbing restrictions were correctly flagged. The cross-cutting religious etiquette comparison covered all three faiths comprehensively and respectfully. The only weaknesses were duplicate content in the first response from tool loop iterations, and unsolicited medical advice about EpiPens/Yakkan Shoumei that was irrelevant to the persona. Overall, this is exactly the kind of culturally literate, factually rigorous, politically neutral guidance that a documentary filmmaker would need."
+  },
+  "feature_coverage": [
+    "SendMessage (CHAT_MODE_SELECTION)",
+    "SendMessage (CHAT_MODE_PLANNING, 5 messages)",
+    "create_trip (3 destination countries: IL, SA, MM)",
+    "suggest_expert (history + architecture → Elias)",
+    "create_itinerary_items (16 items across all 10 days, 4 tool calls)",
+    "recommend_booking (flight search via Skyscanner affiliate link with FTC disclosure)",
+    "web_search (4 calls, all gracefully degraded due to no_web_access)",
+    "GET /api/usage (verified 5/10 messages used)"
+  ],
+  "summary": "All 6 test vectors passed with strong factual accuracy across all key checkpoints. The AI correctly handled: Temple Mount/Haram al-Sharif dual naming, non-Muslim access restrictions, Saudi abaya reform (not required since 2019), eVisa availability, alcohol prohibition, Hegra as first Saudi UNESCO site, Myanmar 2021 coup acknowledgment, ethical tourism balance (boycott vs engagement without taking sides), Bagan climbing restrictions, and cross-faith etiquette comparison. No political editorializing detected. The AI provided substantive cultural depth appropriate for a documentary filmmaker rather than surface-level tourist advice. Trip creation captured the full 3-country complexity with 16 itinerary items across 10 days. Minor issues: duplicate content from tool loop iterations in Step 1, and unsolicited off-topic medical advice (EpiPen/Yakkan Shoumei) in Steps 5-6."
+}

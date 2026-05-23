@@ -1,0 +1,59 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Stale itinerary item not cleaned up after detailed items added",
+      "description": "Day 2 retains the original generic 'Explore Ancient Rome' item alongside the more detailed items (Colosseum & Roman Forum, Palatine Hill, Lunch, Pantheon, Dinner in Testaccio) that were added later. The AI added detailed items but did not delete the original generic item, resulting in a duplicate/stale entry on Day 2.",
+      "expected": "Original generic 'Explore Ancient Rome' item should have been deleted when detailed replacement items were created for the same day",
+      "actual": "Day 2 has 6 items including both the generic and detailed versions"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip title/description not updated when Venice replaced with Cinque Terre",
+      "description": "After message 7 cut Venice and replaced it with Cinque Terre, the trip title remained '10 Days in Italy: Rome, Florence, Venice' and description still mentions Venice. The AI used delete_itinerary_items and create_itinerary_items correctly but did not update the trip metadata to reflect the new destination.",
+      "expected": "Trip title should be updated to mention Cinque Terre instead of Venice when the destination changed",
+      "actual": "Trip title remained '10 Days in Italy: Rome, Florence, Venice' through completion"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Message limit (10 for free tier) was consumed entirely during planning, leaving no messages available for companion mode. The rapid-fire planning flow of 10 messages + 1 selection message exhausted the daily budget before the user could even test traveling.",
+      "severity": "P2",
+      "suggestion": "Consider whether the free tier limit of 10 messages is sufficient for the planning use case, or whether the limit should be higher for planning mode where iterative refinement is expected."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI leaked internal tool-calling reasoning to the user twice",
+      "context": "In messages 4 and 9, the AI's fullContent included text like 'I cannot call create_itinerary_items at this moment because the user has not yet specified...' This is internal reasoning about tool usage that should not be visible to end users.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Budget amount possibly lost due to dollar sign parsing",
+      "context": "In message 5, when user said '$150/day', the AI responded with 'You said \"/day for hotels and food\"' — the dollar amount appeared to be stripped. This was worked around by rephrasing as 'one hundred and fifty dollars' in the next message, after which the AI correctly acknowledged $150.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI attempted to re-create all 17 existing items in final summary",
+      "context": "In message 10, the AI called create_itinerary_items with all 17 items that already existed. The backend correctly returned 'already_exists' with 17 skipped, but this is a wasteful tool call that could confuse users if they see tool call events.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI handled the rapid-fire modification flow impressively well. The critical Venice-to-Cinque-Terre swap was executed perfectly using both delete_itinerary_items and create_itinerary_items, with zero Venice items remaining after the change. Context retention was strong — vegetarian preferences were maintained throughout all food recommendations, and the budget was respected. The train pass advice was substantive and correct (recommending point-to-point over Eurail). The main weaknesses were: leaking internal tool reasoning to the user twice, not updating the trip title when destinations changed, and leaving a stale generic item on Day 2. The companion mode response (the one that succeeded before hitting the limit) was appropriately concise and relevant."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "delete_itinerary_items", "suggest_expert", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

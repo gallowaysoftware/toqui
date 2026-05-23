@@ -1,0 +1,58 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_nonexistent_uuid", "test2_malformed_id", "test3_empty_title", "test4_oversized_title", "test5_invalid_transition", "test6_empty_message", "test7_oversized_message", "test8_delete_nonexistent", "test9_empty_booking", "test10_empty_list", "bonus_state_machine"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "State machine does not allow active->planning (pause trip) despite CLAUDE.md documenting it",
+      "description": "The CLAUDE.md state diagram shows 'Traveling -> Planning: Pause trip' as a valid transition. However, the code in internal/trip/service.go isValidStatusTransition() only allows active->completed. Attempting active->planning returns 'failed_precondition: invalid trip status transition: active -> planning'. Either the code or the documentation is wrong.",
+      "expected": "active->planning should be allowed (per CLAUDE.md state diagram) OR the documentation should be updated to remove the pause transition",
+      "actual": "active->planning is rejected with failed_precondition",
+      "api_command": "UpdateTrip with status TRIP_STATUS_PLANNING on an ACTIVE trip"
+    },
+    {
+      "severity": "P2",
+      "title": "DeleteBooking silently succeeds for non-existent booking ID (idempotent)",
+      "description": "DeleteBooking with a valid UUID format that does not correspond to any booking returns an empty success response {} instead of NOT_FOUND. While idempotent deletes are a valid design choice, this means the client cannot distinguish between 'booking was deleted' and 'booking never existed'. This is acceptable behavior but noted for awareness.",
+      "expected": "Either NOT_FOUND or silent success (both are defensible)",
+      "actual": "Silent success (empty response {})",
+      "api_command": "DeleteBooking with id 00000000-0000-0000-0000-000000000001"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural/adversarial test persona, not a user experience test. No AI interactions were evaluated. All 10 specified test cases passed: validation interceptor correctly rejects malformed IDs, empty/oversized strings; status machine enforces transitions; empty collections return success. The API surface is well-hardened against edge cases."
+  },
+  "feature_coverage": ["validation_interceptor", "status_transitions", "error_codes", "empty_collections", "auth_enforcement", "idempotent_delete"],
+  "test_results_table": [
+    {"test": 1, "description": "GetTrip with non-existent UUID", "expected": "NOT_FOUND", "actual": "not_found: trip not found", "pass": true},
+    {"test": 2, "description": "GetTrip with malformed ID", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: id: value must be a valid UUID", "pass": true},
+    {"test": 3, "description": "CreateTrip with empty title", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: title: value length must be at least 1 characters", "pass": true},
+    {"test": 4, "description": "CreateTrip with oversized title (513 chars)", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: title: value length must be at most 512 characters", "pass": true},
+    {"test": 5, "description": "Invalid status transition (completed->planning)", "expected": "Rejected", "actual": "failed_precondition: invalid trip status transition: completed -> planning", "pass": true},
+    {"test": 6, "description": "SendMessage with empty content", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: content: value length must be at least 1 characters", "pass": true},
+    {"test": 7, "description": "SendMessage with oversized content (10001 chars)", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: content: value length must be at most 10000 characters", "pass": true},
+    {"test": 8, "description": "DeleteBooking on non-existent ID", "expected": "NOT_FOUND or silent success", "actual": "Silent success (empty response)", "pass": true, "note": "Idempotent delete - acceptable"},
+    {"test": 9, "description": "IngestBooking with empty raw_text", "expected": "INVALID_ARGUMENT", "actual": "invalid_argument: validation error: raw_text: value length must be at least 1 characters", "pass": true},
+    {"test": 10, "description": "ListTrips with zero trips", "expected": "Empty array (success)", "actual": "Success with empty pagination response", "pass": true}
+  ],
+  "bonus_tests": [
+    {"test": "A", "description": "GetBooking with malformed ID", "actual": "invalid_argument: validation error: id: value must be a valid UUID", "pass": true},
+    {"test": "B", "description": "UpdateTrip with no ID", "actual": "invalid_argument: validation error: id: value is empty, which is not a valid UUID", "pass": true},
+    {"test": "C", "description": "Request without auth header", "actual": "unauthenticated: missing authorization header", "pass": true},
+    {"test": "D", "description": "active->planning (pause trip)", "actual": "failed_precondition: invalid trip status transition: active -> planning", "pass": false, "note": "CLAUDE.md documents this as valid but code rejects it"},
+    {"test": "E", "description": "active->completed", "actual": "Success", "pass": true}
+  ]
+}

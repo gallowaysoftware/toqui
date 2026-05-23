@@ -1,0 +1,158 @@
+{
+  "persona": "R-05",
+  "name": "Alex and Jordan — Craft Beer + Hiking Couple",
+  "run": 19,
+  "timestamp": "2026-04-10T22:17:00Z",
+  "duration_seconds": 120,
+  "status": "PASS",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "test_results": {
+    "phase1_czech_beer": {
+      "status": "PASS",
+      "details": {
+        "get_current_user": {
+          "status": "PASS",
+          "email": "r05-run19b@toqui-test.local",
+          "user_id": "78a65ee8-9ae1-40da-809e-e2563e0f5c7b"
+        },
+        "create_trip": {
+          "status": "PASS",
+          "trip_id": "fe9b45b7-8bc7-4aab-a933-3aea5795b475",
+          "title": "Czech Beer Heritage Tour",
+          "destination_country": "CZ"
+        },
+        "expert_handoff": {
+          "status": "PASS",
+          "expert_name": "Jakub",
+          "expert_id": "expert-3d3bf7503461f08a",
+          "specialties": ["craft-beer", "history"],
+          "type": "PERSONA_TYPE_LOCAL_SPECIALIST"
+        },
+        "create_itinerary_items": {
+          "status": "PASS",
+          "items_created": 10,
+          "days_covered": [1, 2, 3, 4, 5, 6, 7],
+          "item_types": ["activity", "nightlife", "meal"],
+          "key_locations": [
+            "Břevnov Monastery Brewery",
+            "Pilsner Urquell Brewery",
+            "Pivovar Raven",
+            "Pivovar Dudák Strakonice",
+            "Budweiser Budvar Brewery",
+            "Solnice",
+            "Český Krumlov Historic Brewery",
+            "Pivovar Matuška Broumy",
+            "Dva Kohouti Prague",
+            "Vinohradský Pivovar Prague"
+          ]
+        },
+        "czech_beer_knowledge_depth": {
+          "status": "PASS",
+          "notes": "Demonstrated excellent CZ extended profile depth: referenced Plato scale (desítka/dvanáctka), pour types (hladinka/šnyt/mlíko), coaster etiquette, zero-tolerance BAC, regions beyond Prague (Pilsen, České Budějovice, Strakonice, Třeboň, Broumy), both traditional and craft breweries, Bohemian vs Moravian distinction"
+        },
+        "recommend_booking": {
+          "status": "PASS",
+          "bookings_recommended": 2,
+          "categories": ["hotel"],
+          "ftc_disclosure": true,
+          "disclosure_text": "This is a partner link. Toqui may earn a commission at no extra cost to you."
+        }
+      }
+    },
+    "phase2_iceland_hiking": {
+      "status": "PASS",
+      "details": {
+        "create_trip": {
+          "status": "PASS",
+          "trip_id": "3ffc3c34-b2dc-49ae-8312-9c7dca6e86c4",
+          "title": "Iceland Hiking: Laugavegur Trail",
+          "destination_country": "IS",
+          "separate_from_czech": true
+        },
+        "expert_handoff": {
+          "status": "PASS",
+          "expert_name": "Björn",
+          "expert_id": "expert-1f27fcd850c56bb3",
+          "specialties": ["adventure", "nature"],
+          "type": "PERSONA_TYPE_LOCAL_SPECIALIST"
+        },
+        "create_itinerary_items": {
+          "status": "PASS",
+          "items_created": 7,
+          "days_covered": [1, 2, 3, 4, 5, 6, 7],
+          "key_locations": [
+            "Landmannalaugar",
+            "Hrafntinnusker",
+            "Álftavatn",
+            "Emstrur (Botnar)",
+            "Þórsmörk",
+            "Fimmvörðuháls Pass",
+            "Sky Lagoon Reykjavik"
+          ]
+        },
+        "laugavegur_trail_knowledge": {
+          "status": "PASS",
+          "notes": "Excellent IS extended profile depth: accurate trail distance (55km), duration (4 days standard), hut system (Ferðafélag Íslands), highland bus logistics (Trex/Reykjavik Excursions), river crossing safety (unbuckle waist strap), Fimmvörðuháls extension (25km), gear advice (no cotton rule, 3-layer system), water safety, food carrying requirements"
+        }
+      }
+    },
+    "phase3_verification": {
+      "status": "PASS",
+      "details": {
+        "list_trips": {
+          "status": "PASS",
+          "trip_count": 2,
+          "trips": [
+            {
+              "id": "3ffc3c34-b2dc-49ae-8312-9c7dca6e86c4",
+              "title": "Iceland Hiking: Laugavegur Trail",
+              "destination_country": "IS",
+              "status": "TRIP_STATUS_PLANNING"
+            },
+            {
+              "id": "fe9b45b7-8bc7-4aab-a933-3aea5795b475",
+              "title": "Czech Beer Heritage Tour",
+              "destination_country": "CZ",
+              "status": "TRIP_STATUS_PLANNING"
+            }
+          ]
+        },
+        "itinerary_persistence": {
+          "status": "PASS",
+          "czech_items": 10,
+          "iceland_items": 7
+        },
+        "chat_sessions": {
+          "status": "PASS",
+          "czech_session_messages": 8,
+          "iceland_session_messages": 10
+        }
+      }
+    }
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "overall": 5
+  },
+  "usefulness_notes": {
+    "trip_creation": "Both trips created correctly with accurate titles, descriptions, and destination countries (CZ, IS). AI correctly created separate trips rather than modifying the existing one.",
+    "itinerary_quality": "Outstanding. Czech itinerary covers 7 days with 10 items across brewery visits, craft bars, meals, and nightlife — hits deep-cut locations beyond tourist standards (Dudák, Matuška, Raven). Iceland itinerary provides accurate day-by-day Laugavegur trail breakdown with correct distances, durations, and the Fimmvörðuháls extension.",
+    "persona_handoff": "Two successful expert handoffs: Jakub (CZ craft-beer/history) and Björn (IS adventure/nature). Both demonstrated deep, niche-specific knowledge consistent with extended location profiles. Handoffs were proactive and contextually appropriate.",
+    "overall": "Exceptional test run. Extended location profiles for CZ and IS work beautifully with niche themes (craft-beer, hiking). AI demonstrated domain expertise far beyond surface-level travel advice — Czech beer culture (Plato scale, pour types, pub etiquette) and Iceland hiking logistics (hut booking, highland buses, river crossing safety) were thoroughly covered."
+  },
+  "extended_profile_coverage": {
+    "CZ_profile_tested": true,
+    "IS_profile_tested": true,
+    "craft_beer_theme_tested": true,
+    "hiking_theme_tested": true,
+    "notes": "Both CZ and IS are extended profiles (not core 4). Both performed excellently with niche theme combinations."
+  },
+  "summary": "All 3 test phases passed. Czech Beer Heritage Tour (10 itinerary items, expert 'Jakub') and Iceland Hiking: Laugavegur Trail (7 itinerary items, expert 'Björn') created as separate trips. Extended location profiles (CZ, IS) demonstrated deep niche knowledge. No bugs found."
+}

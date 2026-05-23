@@ -1,0 +1,69 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake Morrison — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon",
+  "completed_steps": ["auth", "selection", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "create_itinerary_items rejected in companion mode with 'not_needed' status",
+      "description": "The AI called create_itinerary_items with 5 well-structured itinerary items for a one-day Lisbon plan in companion mode. The tool returned {status: 'not_needed', message: 'The user's message is an informational query, not a request to modify the itinerary. Answer the question directly in your response text instead. Do NOT call this tool again for this message.'}. This prevented any itinerary items from being persisted. The result was an empty itinerary for the entire trip despite the AI clearly intending to create structured items.",
+      "expected": "Itinerary items should be created when the AI calls create_itinerary_items with valid structured data, especially in companion mode where the user asked 'What are the absolute must-do things in Lisbon if you only have 24 hours?'",
+      "actual": "Tool returned not_needed status, zero itinerary items persisted. The shared trip view also showed empty itinerary.",
+      "api_command": "buf curl SendMessage with content 'I have one full day tomorrow. What are the absolute must-do things in Lisbon if you only have 24 hours?'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Chat session mode shows CHAT_MODE_COMPANION even though the session was created in CHAT_MODE_SELECTION. The session mode reflects the last used mode rather than the creation mode, which could be confusing in session listings.",
+      "severity": "P2",
+      "suggestion": "Consider tracking both creation mode and last-used mode, or showing mode transitions in session metadata."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode responses too verbose for urgent last-minute traveler context. The one-day plan response was ~250 words with flowery language ('It's truly magical', 'paint the city in golden hues'). A user who just landed at 10pm in a foreign city needs bullet points, not travel essays.",
+      "context": "Persona explicitly tests response brevity. Ideal companion response is 3-5 bullet points with specific names and neighborhoods.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Airport logistics response was overly conservative on timing. User said 'I need to be at airport by 4pm' and AI suggested leaving at 1pm (3 hours early). Lisbon airport is 15-20 min from downtown by metro. Leaving by 3pm would be sufficient for a 4pm arrival.",
+      "context": "The AI misinterpreted 'need to be at airport by 4pm' as 'flight is at 4pm' and added excessive buffer time, reducing the user's sightseeing time by 2 hours.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not recognize the photographer background from context. The user (Jake) is a freelance photographer, but the AI never mentioned morning light for photos, best photography spots, or golden hour timing — all of which would be highly relevant.",
+      "context": "The persona background mentions Jake is a photographer with camera gear. The AI should tailor recommendations to include photography-friendly suggestions.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Selection mode response started giving a detailed multi-day itinerary in text form before the trip was even activated. For an urgent trip creation, the AI should confirm trip creation and ask what help is needed first, not launch into planning.",
+      "context": "User said 'I'm at the airport right now' — urgency should trigger fast confirmation, not a text-based itinerary dump.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not mention Pasteis de Belem by name (the famous bakery) or Tram 28 in the one-day plan, both of which are quintessential Lisbon must-dos for a 24-hour visit.",
+      "context": "These are two of the most commonly recommended Lisbon experiences and particularly relevant for a one-day visit.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "5 items for a one-day Lisbon plan (Alfama, lunch, Baixa, sunset, Fado)",
+      "error": "Tool returned {status: 'not_needed', message: '...not a request to modify the itinerary...'} despite the AI sending well-formed itinerary item data. This appears to be a gating/classification issue in the tool's pre-execution logic."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 2,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Trip creation was fast and appropriate for the urgency — the AI created the trip immediately without asking unnecessary clarifying questions. However, companion mode responses were too verbose for a last-minute traveler scenario, and the create_itinerary_items tool rejection meant no structured itinerary was ever persisted. The Lisbon-specific knowledge was decent but missed some key landmarks. The recommend_booking tool worked well for accommodation. Overall useful but needs tuning for urgent/companion-first use cases."
+  },
+  "feature_coverage": ["selection", "companion", "sharing", "chat_history", "usage", "recommend_booking"]
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Export Data
+  type: grpc
+  seq: 4
+}
+
+grpc {
+  url: {{host}}/toqui.v1.AuthService/ExportData
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  GDPR Article 20 — Right to data portability. Initiates async data export.
+  Returns a request_id. The export archive is prepared in the background
+  and delivered to the user's email address on file.
+  No request body required — user is identified from the auth token.
+}
+
+body:json {
+  {}
+}

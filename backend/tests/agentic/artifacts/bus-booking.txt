@@ -1,0 +1,38 @@
+FlixBus - Booking Confirmation
+
+Booking Reference: FLX-4829173
+Booking Date: July 10, 2026
+
+PASSENGER
+Elena Martinez
+
+JOURNEY DETAILS
+Route: N740
+From: Barcelona Nord Bus Station
+To: Madrid - Estacion Sur
+Date: August 1, 2026
+Departure: 07:30 (Platform 3)
+Arrival: 15:00
+Duration: 7h 30m
+
+SEAT
+Seat: 12A (Window)
+Class: Standard
+
+FARE
+Ticket Price: EUR 29.90
+Booking Fee: EUR 1.99
+Total: EUR 31.89
+
+INCLUDED
+- Free Wi-Fi on board
+- Power outlets at every seat
+- 1 carry-on bag + 1 checked luggage (max 20kg)
+
+IMPORTANT
+- Arrive at the station at least 15 minutes before departure
+- Present your booking confirmation (digital or printed) to the driver
+- ID required for boarding
+
+FlixBus Customer Service: +49 30 300 137 300
+www.flixbus.com

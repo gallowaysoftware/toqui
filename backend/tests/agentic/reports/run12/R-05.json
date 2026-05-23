@@ -1,0 +1,54 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions returns messageCount=0 despite messages existing",
+      "description": "ListChatSessions for both trips returned messageCount=0 for each session, but GetChatHistory for the same session returned 10 messages. The session listing does not accurately reflect the number of persisted messages.",
+      "expected": "messageCount should reflect the actual number of messages in the session",
+      "actual": "messageCount=0 for sessions with 10+ messages",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions with trip_id"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count may be slightly off",
+      "description": "Sent approximately 7 messages (1 selection CZ + 2 planning CZ + 1 selection IS + 2 planning IS + 2 companion CZ = 8), but usage endpoint reported used=6. Possible that selection-mode messages on the second trip (which started a new session without a trip_id) are not counted, or the counting logic differs from expectations. Not a blocking issue but worth investigating.",
+      "expected": "used count to match the number of SendMessage calls",
+      "actual": "used=6 after approximately 8 SendMessage calls"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "In the first selection-mode message, the AI offered to bring in an expert but did not proactively call suggest_expert. The user had to explicitly agree before the expert was invoked in the next message. The persona spec says this should be proactive.",
+      "severity": "P2",
+      "suggestion": "The AI should proactively call suggest_expert when the topic clearly matches a location+theme combination, without requiring user confirmation."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Bjorn (Iceland hiking expert) gave extremely detailed trail information but did NOT call create_itinerary_items in the first message. Items were only created when explicitly asked in the follow-up message.",
+      "context": "The first Iceland planning message asked for trail details and the response was text-only. The second message explicitly asked to 'add it all to our itinerary' and then items were created.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Marek (Czech beer expert) provided excellent location-specific knowledge including Zly Casy, Pivovarsky Dum references, Zatec hops, tankove pivo, and mliko pours. This validates that the extended CZ profile is loading correctly with deep craft-beer theme knowledge.",
+      "context": "Positive observation: the extended profile system is working well for CZ + craft-beer combination."
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Excellent experience testing extended profiles for CZ and IS. Both expert personas (Marek for Czech craft beer, Bjorn for Iceland hiking) demonstrated deep location-specific knowledge far beyond generic advice. The Czech beer expert knew Zly Casy, Lokal Dlouhaaa, and tank beer culture. The Iceland hiking expert provided detailed Laugavegur Trail info including hut booking urgency, river crossing strategies, and day-by-day elevation profiles. Two-trip workflow worked flawlessly with no interference between trips. Itinerary quality was strong (10 items for Czech, 18 for Iceland). Companion mode was appropriately concise. Minor deductions for not proactively creating itinerary items in some messages and for the messageCount reporting bug."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "expert_handoff", "extended_profiles"]
+}

@@ -1,0 +1,97 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Structural — Chat History Data Integrity",
+  "status": "COMPLETED",
+  "run_id": "run-14",
+  "trip_destination": "Portugal",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "activate",
+    "companion",
+    "list_sessions",
+    "get_history_selection",
+    "get_history_planning",
+    "get_history_companion",
+    "cross_session_isolation",
+    "sharing",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Planning message A lost from chat history — messages not persisted",
+      "description": "Sent 2 messages in planning mode to the same session (da45f506). Message A ('I want to visit Lisbon and Porto. Can you suggest a rough itinerary?') and its assistant response were streamed successfully (text deltas received, tool calls executed, itinerary created) but are completely absent from GetChatHistory. Only message B and its response are present. This means 2 of 4 expected messages in the planning session were lost.",
+      "steps_to_reproduce": "1. SendMessage in CHAT_MODE_PLANNING without session_id (creates session da45f506). 2. SendMessage in CHAT_MODE_PLANNING with session_id=da45f506. 3. GetChatHistory for session da45f506 — only message B is present.",
+      "expected": "4 messages in planning session (user A, assistant A, user B, assistant B)",
+      "actual": "2 messages in planning session (user B, assistant B only). Message A pair is missing.",
+      "api_command": "GetChatHistory with trip_id=b1abfcd1-b797-49c3-b77d-7cc76a90bbd7, session_id=da45f506-190a-4b18-aa12-39b8e94c4eae"
+    },
+    {
+      "severity": "P1",
+      "title": "fullContent empty in messageComplete for planning message A",
+      "description": "Planning message A streamed text deltas successfully (AI described a 7-day plan), but the messageComplete event had fullContent as an empty string (length 0). This is the same regression reported in Run 11 (fixed in commit 83337a8) — it appears to still occur when the AI response involves multiple tool loop iterations (3 create_itinerary_items calls).",
+      "steps_to_reproduce": "1. SendMessage in CHAT_MODE_PLANNING asking for an itinerary. 2. AI calls create_itinerary_items multiple times in a tool loop. 3. messageComplete event has fullContent=''.",
+      "expected": "fullContent contains the complete AI response text",
+      "actual": "fullContent is empty string despite textDelta events being streamed"
+    },
+    {
+      "severity": "P2",
+      "title": "Planning session lastMessageAt not updated after second message",
+      "description": "ListChatSessions shows the planning session (da45f506) with lastMessageAt equal to createdAt (2026-04-10T01:31:50.706817Z), even though a second message was sent at 01:31:44. The lastMessageAt should reflect the most recent message in the session.",
+      "expected": "lastMessageAt should be updated to the timestamp of message B's assistant response",
+      "actual": "lastMessageAt equals createdAt, not reflecting the second message exchange"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count off by one — shows 3 instead of 4",
+      "description": "Sent 4 user messages total (1 selection, 2 planning, 1 companion) but /api/usage reports used=3. The missing count likely corresponds to planning message A whose fullContent was empty, suggesting the usage counter may not increment when fullContent persistence fails.",
+      "expected": "used=4",
+      "actual": "used=3"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions returns sessions in reverse chronological order (most recent first) but the API does not document the sort order. Clients need to know whether to expect ascending or descending order.",
+      "severity": "P2",
+      "suggestion": "Document the sort order in the proto comments, or add a sort parameter."
+    },
+    {
+      "description": "ListChatSessions uses 'lastMessageAt' instead of 'updated_at' as the field name. This is fine but inconsistent with typical CRUD patterns where entities have created_at/updated_at pairs.",
+      "severity": "P2"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Planning message B ('Add those to my itinerary please') did not trigger any tool calls. The AI responded that items were already added in the previous step, which is technically correct but means the user's explicit request to add items was essentially ignored.",
+      "context": "Message A already created itinerary items via create_itinerary_items tool calls. Message B was interpreted as a duplicate request.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Trip creation and itinerary generation worked well — a comprehensive 10-day Portugal plan was built in one message. However, the chat history persistence has a significant bug: planning message A and its response were lost from Firestore despite being streamed successfully. The fullContent regression from Run 11 is not fully resolved. Cross-session isolation and session listing work correctly, and the sharing lifecycle is clean."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "ListChatSessions",
+    "GetChatHistory",
+    "cross_session_isolation",
+    "trip_sharing",
+    "usage_tracking",
+    "trip_completion",
+    "GetItinerary"
+  ]
+}

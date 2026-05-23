@@ -1,0 +1,45 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "create_trip", "planning_seed", "activate", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "companion_msg6", "final_itinerary_check"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 2",
+      "description": "Message 2 ('I'm near Praca do Comercio -- what's a good lunch spot around here?') triggered a toolCall with toolName 'create_itinerary_items'. The tool-level guardrail rejected the call (status: not_needed) so no items were created, but the AI should not have attempted the call at all on an informational query. The prompt discipline failed; only the tool-level safety net prevented mutation.",
+      "expected": "No toolCall for create_itinerary_items on an informational lunch recommendation query",
+      "actual": "toolCall fired with create_itinerary_items attempting to add 'Lunch at Pinoquio' as day 4 item",
+      "api_command": "buf curl SendMessage with content 'I'm near Praca do Comercio -- what's a good lunch spot around here?' in CHAT_MODE_COMPANION"
+    },
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 6",
+      "description": "Message 6 ('Recommend something fun to do tonight.') triggered a toolCall with toolName 'create_itinerary_items'. The tool-level guardrail rejected the call (status: not_needed) so no items were created, but the AI should not have attempted the call at all. This is the exact same trigger pattern as Run 5 N-01 msg5 -- the AI still conflates 'recommend' with 'add to plan'.",
+      "expected": "No toolCall for create_itinerary_items on an informational recommendation query",
+      "actual": "toolCall fired with create_itinerary_items attempting to add 'Fado Show in Alfama' as day 4 nightlife item",
+      "api_command": "buf curl SendMessage with content 'Recommend something fun to do tonight.' in CHAT_MODE_COMPANION"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI cannot answer weather questions -- msg1 response said 'I cannot access real-time weather information' despite web_search tool being available in companion mode. The AI should have attempted a web search.",
+      "context": "Message 1: 'What's the weather like in Lisbon today?'",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The companion mode guardrail partially works: 4 of 6 informational queries correctly avoided itinerary tool calls, and the tool-level safety net prevented actual mutations on the 2 that over-fired. However, the AI still attempts create_itinerary_items on food recommendation and nightlife recommendation queries (msgs 2 and 6), meaning prompt discipline alone is insufficient -- the tool-level guardrail is doing the heavy lifting. The itinerary was never mutated (N_BEFORE=12, N_AFTER=12), so the user experience is correct, but the architecture is relying on a fallback rather than primary prompt control. Responses were concise and phone-friendly. The AI failed to use web_search for the weather question."
+  },
+  "feature_coverage": ["create_trip", "planning", "activate_trip", "companion", "itinerary_guardrail"]
+}

@@ -1,0 +1,47 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Konbini/street food response truncated mid-sentence",
+      "description": "The AI response to the konbini and street food question (step 3c) was truncated at 3326 characters. The street food section started with 'avoid street food entirely' but the response ended abruptly mid-paragraph with 'But for' and no further text. The messageComplete event contained the same truncated content, suggesting a token limit or output truncation issue rather than a streaming problem.",
+      "expected": "Complete response covering both konbini options and street food safety",
+      "actual": "Response cut off mid-sentence in the street food section. Street food advice was incomplete.",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING asking about konbini and street food"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The itinerary item for Day 5 (Shinkansen transport) suggests 'Consider getting a bento box at Tokyo Station for a safe snack' which is careless advice for someone with celiac disease and nut allergy. Tokyo Station bento boxes are overwhelmingly unsafe for this user's restrictions. The AI should have either omitted this or warned against it.",
+      "severity": "P2",
+      "suggestion": "The itinerary description should either not mention bento boxes at all, or should explicitly warn that standard bento boxes are unsafe and suggest bringing pre-purchased safe food from a known vegan/GF restaurant instead."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Peanut allergy conflated with tree nut allergy in Japanese allergy card text",
+      "context": "When providing the Japanese allergy card text, the AI wrote 'konome arerugii (piinatsu fukumu)' which translates to 'tree nut allergy (including peanuts)'. Priya has a TREE NUT allergy but was never stated to have a peanut allergy. Peanuts are legumes, not tree nuts. While including peanuts as extra caution is not dangerous, it fabricates an allergy the user does not have and could unnecessarily restrict food options (e.g., avoiding peanut-based satay sauces that would otherwise be safe).",
+      "severity": "P2"
+    },
+    {
+      "issue": "Sesame cross-reactivity correctly handled (positive finding, not an issue)",
+      "context": "The AI correctly ASKED whether Priya also avoids sesame rather than assuming a sesame allergy. This was a specific test vector and the AI passed it perfectly, noting that sesame is botanically a seed and that cross-reactivity can exist for some individuals."
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent understanding of compound dietary restrictions in Japan, correctly identifying tamari as the GF soy sauce alternative, kombu dashi as the vegan alternative, and warning about fu (wheat gluten) in shojin ryori. The expert handoff to a food specialist was immediate and appropriate. Safety preparation advice was thorough, including the Yakkan Shoumei for EpiPens, Japanese emergency number 119, specific hospitals, and allergy card recommendations with actual Japanese text. The sesame cross-reactivity question was handled perfectly — asked, not assumed. Minor issues: one response was truncated, peanut allergy was conflated with tree nut allergy in the card text, and one itinerary item carelessly suggested bento boxes at Tokyo Station. Overall, genuinely helpful for a traveler with serious dietary restrictions in Japan."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "expert_handoff", "itinerary_creation", "trip_sharing", "chat_history", "usage", "trip_lifecycle"]
+}

@@ -1,0 +1,61 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "SendMessage returns 'no response from AI' error after tool calls complete",
+      "description": "During Phase 6 (Agra free activities + Varanasi food), the AI generated complete text deltas and successfully called create_itinerary_items, but the stream ended with an error: {\"error\":{\"message\":\"no response from AI — please try again\"}}. The response content was fully generated before the error, suggesting a race condition or timeout in the tool loop finalization. The message was not persisted to chat history despite useful content being streamed.",
+      "steps_to_reproduce": "Send a complex planning message that triggers both text generation and tool calls in multiple iterations",
+      "expected": "Stream completes with messageComplete event",
+      "actual": "Stream ends with error after all content is generated and tool results returned"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history missing messages from errored stream",
+      "description": "The planning session shows only 4 messages (2 user + 2 assistant) instead of the expected 8 (4 user + 4 assistant). Messages from the stream that ended with 'no response from AI' error were not persisted, even though the AI generated useful content including itinerary items that WERE persisted to the database.",
+      "expected": "All user messages and AI responses persisted even if stream has errors",
+      "actual": "Only 4 of expected 8 planning messages in history"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate text fragment in first message response",
+      "description": "In the initial selection mode response, the AI output contained a duplicate fragment: 'cent samosas.\\n\\ncent samosas.\\n\\n' — the end of one text block was repeated at the start of the next block after the persona switch.",
+      "expected": "No duplicate text fragments in streamed response",
+      "actual": "Fragment 'cent samosas' appears twice consecutively in the fullContent"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode recommended non-vegetarian food despite user being vegetarian",
+      "context": "In companion mode, when asked about food near Paharganj under 100 INR, the AI mentioned 'Egg Rolls' as an option. The user profile explicitly states vegetarian (not vegan). Egg Rolls contain eggs which some vegetarians avoid, and more importantly the user said 'I'm vegetarian' in the planning phase. The AI should have only recommended pure vegetarian options.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Budget context survived expert handoff excellently",
+      "context": "The AI correctly handed off to 'Arjun' (budget India expert) and Arjun immediately demonstrated understanding of the $10/day constraint, breaking it down into accommodation ($4.20), food ($3.60), and transit ($1.80). This is exactly the behavior the persona test was designed to verify.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Taj Mahal budget conflict correctly flagged in all mentions",
+      "context": "The AI consistently flagged that the Taj Mahal entry (1100 INR / ~$13) exceeds the daily budget across multiple messages. It suggested strategies like 'averaging' spending and free alternatives like Mehtab Bagh / riverbank views. This is excellent budget enforcement behavior.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent budget awareness throughout the session. It correctly understood the $10/day constraint, proactively flagged budget conflicts (Taj Mahal at $13 exceeding daily budget), recommended Sleeper Class trains over AC, suggested free activities (ghats, Gurudwara Langar, temples), and provided accurate INR prices for street food and transport. The expert handoff to Arjun retained full budget context. The only significant issue was recommending Egg Rolls (non-vegetarian) in companion mode despite the user's stated vegetarian preference. Price accuracy was generally good — hostel dorms at 300-400 INR, thalis at 100-150 INR, Delhi-Agra sleeper at 175-200 INR are all within realistic ranges. The 21-day itinerary covered all requested cities including Rishikesh."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

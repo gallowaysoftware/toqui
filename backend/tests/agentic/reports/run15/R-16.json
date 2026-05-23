@@ -1,0 +1,71 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "run_id": "run15",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Selection mode SendMessage stream ends with error after successful tool calls",
+      "description": "The first SendMessage in CHAT_MODE_SELECTION successfully created the trip and itinerary (12 items) via tool calls, but the stream terminated with {\"error\":{\"message\":\"no response from AI — please try again\"}} after the recommend_booking tool results were returned. The trip and itinerary were created, but the final AI text response was never delivered to the user.",
+      "steps_to_reproduce": "Send a detailed academic trip description in CHAT_MODE_SELECTION. The AI calls create_trip, suggest_expert, web_search (x3, all fail with no_web_access), create_itinerary_items, then recommend_booking (x2). After the recommend_booking results, the stream emits textDelta chunks and then another recommend_booking pair, followed by the error.",
+      "expected": "Stream should complete with a messageComplete event containing the full AI response",
+      "actual": "Stream ends with error: no response from AI — please try again",
+      "api_command": "buf curl SendMessage with CHAT_MODE_SELECTION"
+    },
+    {
+      "severity": "P2",
+      "title": "Share endpoint generates new token on each call (not idempotent)",
+      "description": "Calling POST /api/trips/share multiple times for the same trip generates a different share_token each time (first: 9VDy9wtpMDrH7T72KcbePL, second: BEq5WDAAZXUTHmKnBx2R7L, third: sWyQYAfnsumn77Jmas4B2O). The first token returned empty JSON ({}) when accessed via /shared/{token}, suggesting it was invalidated when the second token was generated. Only the latest token works.",
+      "expected": "Either return the same token on repeated calls (idempotent) or clearly document that re-sharing invalidates previous tokens",
+      "actual": "New token generated each time; previous tokens return empty response rather than a clear error",
+      "api_command": "POST /api/trips/share"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history missing selection mode message",
+      "description": "GetChatHistory for the session shows 12 messages (6 user + 6 assistant) starting from the first planning message. The initial selection mode message that created the trip is not in the history for this session. This may be by design (selection mode uses a different session context) but creates a gap in conversation continuity.",
+      "expected": "All messages in the conversation flow should be retrievable",
+      "actual": "Selection mode message not included in the trip session history"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI makes multiple web_search calls that all fail with 'no_web_access', the user sees no indication that current information could not be verified. The AI gracefully falls back to its knowledge but this is only communicated in the text response, which in the selection mode case was never delivered due to the stream error.",
+      "severity": "P2",
+      "suggestion": "Consider emitting a stream event when web search is unavailable so the frontend can display a subtle indicator"
+    },
+    {
+      "description": "The itinerary accumulated 24 items across 12 days because the AI kept adding research-focused items on top of the initial 12. While the content was excellent, some days ended up with duplicate or overlapping entries (e.g., Day 7 has two Phaistos items with similar descriptions). The AI should consolidate or replace rather than always append.",
+      "severity": "P2",
+      "suggestion": "Consider having the AI check existing itinerary items before adding new ones, or use update/replace rather than always create"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Persona switch happened on second message (planning mode) even though a persona switch to Dimitris already occurred in the first message (selection mode). The second switch was also to Dimitris but with a different expert ID and slightly different description ('Expert in Hellenic history and Aegean wilderness' vs 'Expert in Greek architectural heritage and ancient history'). This creates persona identity inconsistency.",
+      "context": "First switch: expert-fdcff06053b8dab7 (history + architecture). Second switch: expert-76b03b5be2606d4b (history + nature). Both named Dimitris but different specialties.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "archaeological site museum hours Greece Turkey October 2026",
+      "error": "Real-time web search is not configured in this environment (returned no_web_access for all 3 search attempts)"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated genuinely impressive academic-level knowledge across all test vectors. It discussed the de Boer/Hale ethylene hypothesis with nuance (including Lehoux's critique), provided substantive analysis of the Library of Celsus as a heroon with political context about the Attalid bequest, and engaged deeply with the Evans reconstruction controversy at Knossos (mentioning the Gillieron restorations and the composite Prince of the Lilies). It recommended real academic works (Mitchell, Rogers, Burrell, Gere, Marinatos). The itinerary included genuinely scholarly additions like the Oracle of Trophonius at Lebadeia, Didyma, and the Ideon Cave. Companion mode responses were appropriately concise and practical. The only weakness was the persona identity inconsistency (two different Dimitris experts) and the stream error on the first message."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "recommend_booking", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

@@ -1,0 +1,84 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary (Maldives + Dubai)",
+  "status": "COMPLETED",
+  "run_id": "run21",
+  "trip_destination": "Maldives + Dubai",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "activate",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Stream ends with error after second create_itinerary_items in selection mode",
+      "description": "During the initial selection-mode message, the AI triggered two rounds of create_itinerary_items. After the second batch completed (3 items created, 1 duplicate skipped), the stream ended with an error: {\"error\":{\"message\":\"no response from AI -- please try again\"}}. The data was persisted correctly despite the error, and subsequent messages worked fine. This appears to be a timeout or token limit issue during the long initial response that included 4 tool calls (3x recommend_booking, 1x create_itinerary_items) plus a persona handoff and second create_itinerary_items call.",
+      "steps_to_reproduce": "Send a detailed luxury trip description in CHAT_MODE_SELECTION that triggers multiple tool calls including recommend_booking and create_itinerary_items. The AI may attempt a second round of itinerary creation after a persona handoff, causing the stream to exceed its response budget.",
+      "expected": "Stream should complete with a messageComplete event",
+      "actual": "Stream ended with error: {\"error\":{\"message\":\"no response from AI -- please try again\"}} after the second create_itinerary_items tool result"
+    },
+    {
+      "severity": "P2",
+      "title": "Itinerary has Day 5 gap between Maldives and Dubai legs",
+      "description": "The itinerary jumps from Day 4 (Maldives) to Day 6 (Dubai arrival) with no Day 5 entry. Day 5 should represent the travel day or final morning at the Maldives resort. While this is an AI content quality issue rather than a system bug, it means the itinerary has a visible gap that could confuse users viewing the shared trip.",
+      "expected": "Day 5 should have at least a checkout/departure item for the Maldives",
+      "actual": "Day 5 is missing entirely from the itinerary"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI adds 3 resort 'options' as separate itinerary items on Day 1, it clutters the itinerary. Options should ideally be presented in chat text only, with only the selected option added to the itinerary. Currently all three accommodation options (Stella Maris, Soneva Water Reserve, St. Regis Astor Estate) appear as Day 1 items.",
+      "severity": "P2",
+      "suggestion": "Consider a mechanism for 'draft' or 'option' itinerary items that the user can confirm before they become permanent itinerary entries."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode referenced current date (April) instead of trip's planned travel month (February) when discussing diving visibility",
+      "context": "When asked about February visibility in the Maldives while in companion mode, the AI said 'The visibility right now in April (the end of the dry season) is spectacular' instead of confirming February conditions. It did add 'It is actually very similar to February' as a recovery, but this shows the AI is anchoring to the current date rather than the trip context.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Expert persona switched from Julian to Elena to Elias across messages without clear continuity",
+      "context": "The first message created Julian (luxury/romance/adventure expert). The second message switched to Elena (luxury/wellness). The third switched to Elias (food expert). While the theme-based handoffs make sense, the rapid switching between 3 different experts in 4 planning messages could feel disorienting to a user who was building rapport with one expert.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional luxury calibration throughout the test. It consistently recommended ultra-high-end properties (Cheval Blanc Randheli, Waldorf Astoria Stella Maris, Bulgari Resort Dubai) with specific knowledge of their differentiators. Restaurant recommendations were outstanding -- correctly identifying that Nobu and Zuma have become mainstream, and suggesting insider options like Hoseki (9-seat omakase) and Moonrise. The logistics advice for the Maldives-to-Dubai transition was practical and sophisticated (CIP service at Male, seaplane timing constraints, Emirates First Class recommendation). Companion mode was appropriately concise. The recommend_booking tool triggered correctly with FTC disclosures. Minor issues: the Day 5 gap in the itinerary, resort options cluttering the itinerary as permanent items, and the date anchoring to April instead of February in companion mode."
+  },
+  "feature_coverage": [
+    "selection",
+    "create_trip",
+    "planning",
+    "create_itinerary_items",
+    "recommend_booking",
+    "suggest_expert",
+    "web_search",
+    "activate",
+    "companion",
+    "sharing",
+    "unsharing",
+    "chat_history",
+    "usage",
+    "complete",
+    "list_trips",
+    "get_itinerary"
+  ]
+}

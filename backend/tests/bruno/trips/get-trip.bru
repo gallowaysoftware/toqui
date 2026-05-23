@@ -1,0 +1,20 @@
+meta {
+  name: Get Trip
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/GetTrip
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "id": "<trip-id-from-create>"
+  }
+}

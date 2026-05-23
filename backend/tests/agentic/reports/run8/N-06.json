@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Web search tool returned 'no_web_access' when asked about Delhi accommodation prices. The AI gracefully degraded to knowledge-based recommendations, but real-time price lookups would significantly improve budget travel planning.",
+      "severity": "P2",
+      "suggestion": "Ensure web search is configured in the test environment so accommodation price queries return live data."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Day 5 itinerary includes both Taj Mahal (INR 1100 / ~$13) and Agra Fort (INR 550 / ~$6.50), totaling ~$19.50 in entry fees alone for one day. This is nearly double the $10/day total budget. The AI noted the Taj's individual cost but did not flag the combined daily total as a budget violation when creating the itinerary.",
+      "context": "create_itinerary_items for Day 5 in the initial itinerary build. The AI mentioned 'This is your biggest single expense' for the Taj and 'Entry fee is around INR 550' for Agra Fort, but never added up the day's total against the $10 budget.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Day 3 itinerary includes Humayun's Tomb (INR 600 / ~$7.20) and Qutub Minar (INR 600 / ~$7.20), totaling ~$14.40 in entry fees alone. The AI did note 'you might need to choose between Humayun's Tomb and Qutub Minar' but still placed both in the same day's itinerary rather than spreading them across days.",
+      "context": "create_itinerary_items for Day 3. The AI acknowledged the tension but created both items on the same day anyway.",
+      "severity": "P2"
+    },
+    {
+      "issue": "No proactive expert handoff triggered. Despite the trip covering India with strong focus on temple architecture (Mughal/Hindu), food, and budget travel, the AI never called suggest_expert to hand off to an India specialist persona. The persona test expected budget context retention through a handoff.",
+      "context": "Across 6 planning messages and 1 companion message, no personaSwitch event was observed.",
+      "severity": "P2"
+    },
+    {
+      "issue": "When asked about Taj Mahal budget handling, the AI also appended extensive Varanasi food recommendations and itinerary items at the end of the same response (visible in the stream output). While the Taj Mahal budget advice was excellent, the response conflated two unrelated topics.",
+      "context": "The fullContent for the Taj Mahal query included Varanasi food items being added to the itinerary, likely from the tool loop processing additional create_itinerary_items calls.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness overall, creating a comprehensive 21-day itinerary across all 5 Indian cities with many free activities (temple visits, ghat walks, garden strolls, bazaar exploration). Food recommendations were all vegetarian with accurate INR prices under $3. Transport recommendations correctly suggested General and Sleeper class trains at realistic prices. The Taj Mahal budget conflict was explicitly flagged with practical workarounds (Mehtab Bagh, saving from other days). However, the itinerary itself placed multiple expensive attractions on the same day (Day 3 and Day 5) without flagging the combined daily total exceeding $10 -- a significant oversight for an ultra-budget traveler. No expert persona handoff was triggered despite strong India/architecture/food themes. Companion mode response was appropriately concise and budget-aware."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary", "trip_lifecycle"]
+}

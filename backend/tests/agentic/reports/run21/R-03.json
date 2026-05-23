@@ -1,0 +1,124 @@
+{
+  "persona": "R-03",
+  "name": "Marcus — Returning User, Multi-Trip",
+  "run": 21,
+  "status": "PASS",
+  "focus": "Multi-trip management: vague matching, switching, new trip creation",
+  "steps": [
+    {
+      "step": 1,
+      "name": "CreateTrip — Moroccan Adventure",
+      "status": "PASS",
+      "details": "Created trip via TripService/CreateTrip. ID: 1d221ffa-3220-49f1-ad3c-915f7115ad5a. Status initially PLANNING."
+    },
+    {
+      "step": 2,
+      "name": "UpdateTrip — Set Morocco to ACTIVE",
+      "status": "PASS",
+      "details": "Updated trip status to TRIP_STATUS_ACTIVE via TripService/UpdateTrip. Backend auto-detected destination_country=MA, destination_countries=[MA]."
+    },
+    {
+      "step": 3,
+      "name": "CreateTrip — Greek Islands Hopping",
+      "status": "PASS",
+      "details": "Created trip via TripService/CreateTrip. ID: 4737e70c-8fe4-4b77-92a7-76a6472ff315. Status PLANNING. Backend auto-detected destination_country=GR, destination_countries=[GR]."
+    },
+    {
+      "step": 4,
+      "name": "ListTrips — Verify 2 trips exist",
+      "status": "PASS",
+      "details": "ListTrips returned totalCount=2. Both trips present with correct titles, statuses, and destination countries."
+    },
+    {
+      "step": 5,
+      "name": "Selection mode — Vague Greece trip matching (KEY TEST)",
+      "status": "PASS",
+      "details": "Sent 'Hey, can we look at my Greece trip?' in CHAT_MODE_SELECTION. AI called select_trip with correct trip_id (4737e70c). TripSelected event emitted with title 'Greek Islands Hopping'. AI correctly matched vague 'Greece trip' to 'Greek Islands Hopping' without asking for clarification. Session: f54f21be-0940-424f-b885-b37913380c16.",
+      "tool_calls": ["select_trip"]
+    },
+    {
+      "step": 6,
+      "name": "Planning mode — Santorini itinerary creation",
+      "status": "PASS",
+      "details": "Sent Santorini planning message in CHAT_MODE_PLANNING with trip_id set. AI called create_itinerary_items with 9 well-structured items across 3 days: Day 1 (Caldera hike, Anogi lunch, Oia sunset), Day 2 (Akrotiri, To Psaraki, Venetsanos Winery), Day 3 (Volcano boat tour, Pyrgos Village, Metaxi Mas dinner). All 9 items created successfully. ItineraryUpdate event emitted. Second tool loop call deduped (skipped_count=9). AI provided excellent local knowledge (fava, tomatokeftedes, Assyrtiko wine, KTEL buses).",
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 7,
+      "name": "Trip switching — Greece to Morocco (KEY TEST)",
+      "status": "PASS",
+      "details": "Sent 'Actually, take me to my Morocco trip.' in CHAT_MODE_SELECTION. AI called select_trip with correct Morocco trip_id (1d221ffa). TripSelected event emitted with title 'Moroccan Adventure'. AI recognized this as a trip switch (not a new trip creation) and correctly identified the status as 'active'. New session: 311f4831-a667-4713-9e48-4f50c5d524d7.",
+      "tool_calls": ["select_trip"]
+    },
+    {
+      "step": 8,
+      "name": "Morocco context confirmation — Marrakech question",
+      "status": "PASS",
+      "details": "Asked 'What's the best time of year to visit Marrakech?' in CHAT_MODE_COMPANION. AI responded with Morocco-specific content: seasonal breakdown (Spring/Autumn best), temperature ranges, Ramadan considerations, Jemaa el-Fna stalls, Atlas Mountains. Zero references to Greece or Santorini. Context correctly maintained after switch."
+    },
+    {
+      "step": 9,
+      "name": "New trip creation — New Zealand (KEY TEST)",
+      "status": "PASS",
+      "details": "Sent 'I also want to start planning a trip to New Zealand — maybe 2 weeks on the South Island.' in CHAT_MODE_SELECTION. AI called create_trip (NOT select_trip) with title 'South Island New Zealand Adventure', destination_country 'NZ'. TripCreated event emitted. AI correctly recognized NZ does not match any existing trip and created a new one. Asked clarifying questions about timing and preferences. Session: e5ac8373-2037-4451-8913-94579cb65122.",
+      "tool_calls": ["create_trip"]
+    },
+    {
+      "step": 10,
+      "name": "ListTrips — Verify 3 trips total",
+      "status": "PASS",
+      "details": "ListTrips returned totalCount=3. All trips present: 'South Island New Zealand Adventure' (PLANNING, NZ), 'Greek Islands Hopping' (PLANNING, GR), 'Moroccan Adventure' (ACTIVE, MA)."
+    },
+    {
+      "step": 11,
+      "name": "GetItinerary — Verify Greece itinerary persisted",
+      "status": "PASS",
+      "details": "GetItinerary for Greece trip returned 3 days, 9 items total. Day 1: Caldera Hike, Lunch at Anogi, Explore Oia & Sunset Viewing. Day 2: Visit Prehistoric Akrotiri, Seafood Lunch at To Psaraki, Wine Tasting at Venetsanos Winery. Day 3: Volcano & Hot Springs Boat Tour, Wander through Pyrgos Village, Farewell Dinner at Metaxi Mas. All items persisted correctly."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "UX-01",
+      "severity": "P2",
+      "title": "Duplicate create_itinerary_items call on tool loop iteration",
+      "description": "In step 6 (Santorini planning), the AI called create_itinerary_items twice with identical items. The dedup logic correctly handled it (skipped_count=9, status=already_exists), but it wastes a tool loop iteration and tokens. The tool result message explicitly tells the AI 'Do NOT call this tool again with the same items' but the second call was already queued."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "observation": "Vague reference matching is excellent",
+      "details": "The AI correctly matched 'my Greece trip' to 'Greek Islands Hopping' without hesitation or clarification. It also matched 'my Morocco trip' to 'Moroccan Adventure' on the first attempt. This is the critical behavior for R-03."
+    },
+    {
+      "observation": "Trip switch vs. new trip discrimination is correct",
+      "details": "The AI correctly used select_trip for existing trips (Greece, Morocco) and create_trip for a new destination (New Zealand). It never confused the two operations, which is the hardest part of the multi-trip workflow."
+    },
+    {
+      "observation": "Context isolation after trip switching",
+      "details": "After switching from Greece to Morocco, the AI's Marrakech response contained zero references to Greek content. After creating the NZ trip, the AI asked NZ-specific questions (Queenstown, Wanaka, Central Otago autumn colors). Context is properly isolated per trip."
+    },
+    {
+      "observation": "Proactive itinerary creation",
+      "details": "The AI proactively called create_itinerary_items with 9 well-structured Santorini items including specific restaurant names, timing tips, and local knowledge. Items were well-typed (activity, meal, sightseeing) and organized across 3 logical days."
+    },
+    {
+      "observation": "Mode awareness",
+      "details": "The AI recognized Morocco trip was ACTIVE and responded in companion mode tone ('what's on the agenda for today?'). Greece trip was PLANNING and got planning-appropriate responses. This shows correct mode detection from trip status."
+    }
+  ],
+  "tool_calls": {
+    "select_trip": {"calls": 2, "successes": 2, "failures": 0, "note": "Step 5 (Greece match) and Step 7 (Morocco switch) both correct"},
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0, "note": "Step 9 (NZ creation) correctly used create not select"},
+    "create_itinerary_items": {"calls": 2, "successes": 2, "failures": 0, "items_created": 9, "items_skipped": 9, "note": "First call created 9 items, second was dedup (all skipped)"}
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "trip_matching": 5,
+    "trip_switching": 5,
+    "itinerary_quality": 5,
+    "context_isolation": 5,
+    "overall": 5
+  },
+  "summary": "PASS. All 4 phases completed successfully. Phase 1: Two trips created via TripService API and verified via ListTrips. Phase 2: Vague reference matching ('my Greece trip' -> 'Greek Islands Hopping') worked perfectly with select_trip and TripSelected event. Santorini planning created 9 high-quality itinerary items across 3 days. Phase 3: Trip switching ('take me to my Morocco trip') correctly used select_trip (not create_trip), emitted TripSelected, and subsequent Marrakech question confirmed Morocco context with zero Greece leakage. Phase 4: New Zealand trip creation correctly used create_trip (not select_trip), emitted TripCreated, and ListTrips confirmed all 3 trips present. The AI demonstrated excellent discrimination between selecting existing trips and creating new ones, correct context isolation after switches, and proactive itinerary creation. Only minor issue: duplicate create_itinerary_items call on tool loop iteration (handled by dedup, P2)."
+}

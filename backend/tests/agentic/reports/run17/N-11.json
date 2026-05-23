@@ -1,0 +1,71 @@
+{
+  "persona_id": "N-11",
+  "persona_name": "Lifecycle Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Kyoto)",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "verify_create",
+    "update_title_only",
+    "update_description_only",
+    "activate",
+    "planning_message",
+    "ingest_booking",
+    "verify_itinerary",
+    "enable_sharing",
+    "verify_shared_view",
+    "complete_trip",
+    "list_trips",
+    "disable_sharing",
+    "verify_unshared",
+    "delete_trip",
+    "verify_deletion",
+    "usage"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "UpdateTrip response omits 'themes' field, but GetTrip includes it. Minor inconsistency between the two responses for the same trip.",
+      "severity": "P2",
+      "suggestion": "UpdateTrip response should include all fields that GetTrip returns for consistency."
+    },
+    {
+      "description": "GetItinerary after trip deletion returns an error message 'get trip: no rows in result set' which leaks internal implementation details. Should return a cleaner 'not_found' message like GetTrip does.",
+      "severity": "P2",
+      "suggestion": "Wrap the internal error and return a user-friendly 'trip not found' or 'itinerary not found' message."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Full lifecycle CRUD stress test passed all 14 steps. COALESCE partial updates work correctly -- updating title preserves description and vice versa. Status transitions preserve all fields. Booking ingestion parsed the Delta flight correctly with confirmation code, provider, and flight details. Share token lifecycle works: enable returns a working public URL, disable correctly returns 404. Cascade deletion is clean -- trip, bookings, and itinerary all removed. The AI created itinerary items via create_itinerary_items tool as expected. No P0 or P1 bugs found."
+  },
+  "feature_coverage": [
+    "CreateTrip",
+    "GetTrip",
+    "UpdateTrip (partial - title only)",
+    "UpdateTrip (partial - description only)",
+    "UpdateTrip (status to ACTIVE)",
+    "UpdateTrip (status to COMPLETED)",
+    "SendMessage (PLANNING mode)",
+    "create_itinerary_items tool",
+    "GetItinerary",
+    "IngestBooking (flight)",
+    "ListBookings",
+    "POST /api/trips/share",
+    "GET /shared/{token}",
+    "POST /api/trips/unshare",
+    "ListTrips",
+    "DeleteTrip",
+    "Cascade deletion verification",
+    "GET /api/usage"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "run_id": "run-10",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "booking_extract", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Itinerary items not persisted despite tool reporting success",
+      "description": "The create_itinerary_items tool was called 3 times during planning, reporting created_count of 17, 8, and 0 (duplicate detection) respectively. However, GetItinerary consistently returns 0 items throughout the entire test run, including after trip completion. The tool result JSON claims items were created with valid UUIDs and day assignments, but the items are not retrievable via the API.",
+      "steps_to_reproduce": "1. Create trip via SendMessage in selection mode. 2. Send planning message asking for day-by-day itinerary. 3. AI calls create_itinerary_items, tool returns created_count:17. 4. Call GetItinerary with trip_id. 5. Returns 0 items.",
+      "expected": "GetItinerary should return 25 itinerary items matching what create_itinerary_items reported creating",
+      "actual": "GetItinerary returns 0 items despite tool reporting 25 successful creations",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.TripService/GetItinerary -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\": \"35dc11e2-0c38-42b4-b332-45301f198354\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "messageComplete fullContent is empty when tool loop executes",
+      "description": "When the AI response involves tool calls (create_itinerary_items, etc.), the messageComplete event contains fullContent of 0 chars, even though textDelta events contain substantial response text. This occurs in steps 3b and 3d but not in steps 3c, 6a, or 6b (which have no tool calls or single tool calls). The frontend likely relies on fullContent for display.",
+      "expected": "messageComplete.fullContent should contain the full concatenated AI response text",
+      "actual": "messageComplete.fullContent is empty string (0 chars) when tool loop iterations occur"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history missing 2 of 6 user messages",
+      "description": "GetChatHistory returns 8 messages (4 user + 4 assistant) but 6 SendMessage calls were made. The expert handoff request (step 3a) and the itinerary creation request (step 3b) are missing from chat history. These are the messages where the stream was truncated or the tool loop iterated multiple times.",
+      "expected": "All 6 user messages and their corresponding assistant responses should be in chat history (12 messages total)",
+      "actual": "Only 8 messages returned (4 user + 4 assistant)"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared trip view (/shared/{token}) does not include trip title or status in the JSON response, only bookings. This means shared trip viewers cannot see basic trip metadata.",
+      "severity": "P2",
+      "suggestion": "Include trip title, description, destination, and status in the shared trip response"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not call recommend_booking when explicitly asked for food tour and cooking class recommendations with budget. Instead created itinerary items directly. This means no affiliate links were generated and no FTC disclosure was included.",
+      "context": "User asked: 'Can you recommend some more food tours and cooking classes in Oaxaca? My budget is around $80-150 per experience.' AI called create_itinerary_items instead of recommend_booking.",
+      "severity": "P1"
+    },
+    {
+      "issue": "AI repeated itself in companion mode (step 6a). After recommending La Popular, the response contained a second paragraph that essentially restated the same recommendation verbatim, as if the AI started over.",
+      "context": "The response contained: 'Ah, yes, **La Popular**! That's an excellent choice for a first night...' which duplicated the recommendation already given in the first part of the response.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 2,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Trip creation was smooth and the expert handoff to Isabella was excellent, with genuinely deep knowledge of Oaxacan vs CDMX cuisine (Seven Moles, agave varieties, regional specialties). Booking ingestion and extraction worked flawlessly. Companion mode gave practical, actionable advice. However, the itinerary persistence bug is a major gap -- the AI generated 25 high-quality food-specific itinerary items but none were actually saved. The failure to use recommend_booking means the affiliate/recommendation pipeline was untested. Overall the AI knowledge quality is excellent but the data persistence layer has a critical gap."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "create_itinerary_items", "booking_ingest", "booking_extract", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

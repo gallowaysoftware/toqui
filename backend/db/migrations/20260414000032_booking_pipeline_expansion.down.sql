@@ -1,0 +1,4 @@
+ALTER TABLE bookings DROP COLUMN IF EXISTS updated_at;
+ALTER TABLE bookings DROP COLUMN IF EXISTS timezone;
+ALTER TABLE bookings DROP COLUMN IF EXISTS currency;
+ALTER TABLE bookings DROP COLUMN IF EXISTS price_cents;

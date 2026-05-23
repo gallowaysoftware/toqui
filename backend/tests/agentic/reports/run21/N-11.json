@@ -1,0 +1,211 @@
+{
+  "persona": "N-11",
+  "name": "Lifecycle Stress Test — Full CRUD",
+  "timestamp": "2026-04-12T11:52:00Z",
+  "duration_seconds": 240,
+  "overall_result": "PASS",
+  "steps": [
+    {
+      "step": 1,
+      "name": "CreateTrip",
+      "result": "PASS",
+      "details": {
+        "trip_id": "cc088676-8575-4f29-8c08-2ded9d54a385",
+        "title": "Lifecycle Test — Kyoto Spring",
+        "description": "Cherry blossom season trip for lifecycle validation",
+        "status": "TRIP_STATUS_PLANNING",
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-10"
+      }
+    },
+    {
+      "step": 2,
+      "name": "GetTrip (verify create)",
+      "result": "PASS",
+      "details": {
+        "title_matches": true,
+        "description_matches": true,
+        "status_is_planning": true,
+        "dates_set": true,
+        "auto_detected_destination": "JP",
+        "auto_detected_themes": ["history"]
+      }
+    },
+    {
+      "step": 3,
+      "name": "UpdateTrip title only (COALESCE test)",
+      "result": "PASS",
+      "details": {
+        "new_title": "Lifecycle Test — Kyoto Autumn",
+        "title_changed": true,
+        "description_preserved": true,
+        "description_value": "Cherry blossom season trip for lifecycle validation",
+        "dates_preserved": true,
+        "coalesce_working": true
+      }
+    },
+    {
+      "step": 4,
+      "name": "UpdateTrip description only (COALESCE test)",
+      "result": "PASS",
+      "details": {
+        "new_description": "Updated: autumn foliage trip.",
+        "description_changed": true,
+        "title_preserved": true,
+        "title_value": "Lifecycle Test — Kyoto Autumn",
+        "dates_preserved": true,
+        "coalesce_working": true
+      }
+    },
+    {
+      "step": 5,
+      "name": "UpdateTrip status to ACTIVE",
+      "result": "PASS",
+      "details": {
+        "status_changed_to": "TRIP_STATUS_ACTIVE",
+        "title_preserved": true,
+        "description_preserved": true,
+        "dates_preserved": true
+      }
+    },
+    {
+      "step": 6,
+      "name": "Send planning message (itinerary creation)",
+      "result": "PASS",
+      "details": {
+        "session_id": "487a757b-1875-4014-af0a-aabaca963b24",
+        "tool_called": "create_itinerary_items",
+        "items_created": 2,
+        "items": [
+          {"day": 1, "title": "Visit Kinkaku-ji (The Golden Pavilion)", "type": "sightseeing"},
+          {"day": 2, "title": "Explore Fushimi Inari Shrine", "type": "sightseeing"}
+        ],
+        "notes": "AI called create_itinerary_items twice; second call correctly detected already_exists and skipped. Minor redundancy in response text but functionally correct."
+      }
+    },
+    {
+      "step": 7,
+      "name": "IngestBooking (flight) + ListBookings verify",
+      "result": "PASS",
+      "details": {
+        "booking_id": "fffb2e01-ad50-4291-85c0-cbd5df06a771",
+        "type": "BOOKING_TYPE_FLIGHT",
+        "confirmation_code": "DL7829X",
+        "provider": "Delta Air Lines",
+        "title": "Flight DL 472 from New York (JFK) to Barcelona (BCN)",
+        "legs_parsed": 2,
+        "passengers_parsed": ["MARTINEZ/ELENA MS"],
+        "list_bookings_count": 1
+      }
+    },
+    {
+      "step": 8,
+      "name": "GetItinerary verify",
+      "result": "PASS",
+      "details": {
+        "total_items": 3,
+        "unscheduled_items": 1,
+        "day_1_items": 1,
+        "day_2_items": 1,
+        "flight_booking_in_itinerary": true,
+        "notes": "Flight booking auto-added to itinerary as unscheduled item (day_number=0)"
+      }
+    },
+    {
+      "step": 9,
+      "name": "Enable sharing + verify public access",
+      "result": "PASS",
+      "details": {
+        "share_token": "ljtB9n0ZVTtwWpSx345VvC",
+        "public_access_works": true,
+        "shared_title_correct": true,
+        "shared_title_value": "Lifecycle Test — Kyoto Autumn",
+        "shared_itinerary_included": true,
+        "shared_bookings_included": true
+      }
+    },
+    {
+      "step": 10,
+      "name": "UpdateTrip status to COMPLETED",
+      "result": "PASS",
+      "details": {
+        "status_changed_to": "TRIP_STATUS_COMPLETED",
+        "title_preserved": true,
+        "title_value": "Lifecycle Test — Kyoto Autumn",
+        "description_preserved": true,
+        "description_value": "Updated: autumn foliage trip.",
+        "dates_preserved": true
+      }
+    },
+    {
+      "step": 11,
+      "name": "ListTrips verify",
+      "result": "PASS",
+      "details": {
+        "trip_in_list": true,
+        "status_in_list": "TRIP_STATUS_COMPLETED",
+        "title_in_list": "Lifecycle Test — Kyoto Autumn",
+        "total_trips": 1
+      }
+    },
+    {
+      "step": 12,
+      "name": "Disable sharing + verify revocation",
+      "result": "PASS",
+      "details": {
+        "unshare_success": true,
+        "public_access_revoked": true,
+        "http_status_after_unshare": 404,
+        "security_leak": false
+      }
+    },
+    {
+      "step": 13,
+      "name": "DeleteTrip",
+      "result": "PASS",
+      "details": {
+        "delete_response": "empty (success)"
+      }
+    },
+    {
+      "step": 14,
+      "name": "Verify deletion (cascade)",
+      "result": "PASS",
+      "details": {
+        "get_trip_returns_not_found": true,
+        "error_code": "NotFound",
+        "error_message": "trip not found",
+        "list_trips_empty": true,
+        "list_bookings_empty": true,
+        "cascade_deletion_working": true
+      }
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "AI called create_itinerary_items twice in a single turn — the second call was correctly detected as already_exists and skipped, but this adds unnecessary latency and produces repetitive response text. The AI should not re-call a tool with identical arguments within the same turn.",
+      "step": 6,
+      "category": "ai_behavior"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "severity": "P2",
+      "description": "Response text in step 6 is repetitive — the AI confirms the itinerary additions three times in the same response, making it feel verbose and disjointed. This is a prompt engineering issue, not a backend bug.",
+      "step": 6
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": 5,
+    "companion_mode": null,
+    "overall": 5,
+    "notes": "All 14 lifecycle steps passed. COALESCE partial updates work correctly. Status transitions preserve all fields. Cascade deletion is complete. Share token lifecycle (enable/disable) is secure. Booking ingestion with multi-leg flight parsing is thorough."
+  },
+  "summary": "Full lifecycle CRUD stress test: 14/14 steps PASSED. No bugs found. COALESCE partial update logic is solid (steps 3-4). Status transitions (PLANNING -> ACTIVE -> COMPLETED) preserve all fields (steps 5, 10). Booking ingestion parses multi-leg flights with full detail (step 7). Share token lifecycle works correctly — token is properly revoked on unshare (steps 9, 12). Cascade deletion removes trip, bookings, and itinerary items (step 14). One minor AI behavior issue: duplicate tool call in step 6 produces redundant response text."
+}

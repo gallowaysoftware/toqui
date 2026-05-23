@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS bookings_user_trip_confirmation_unique;

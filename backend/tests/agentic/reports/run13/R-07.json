@@ -1,0 +1,68 @@
+{
+  "persona_id": "R-07",
+  "persona_name": "Structural Test — UpdateTrip COALESCE Regression",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "create_trip", "update_status_active", "update_title_only", "update_status_completed", "list_trips"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a deterministic structural regression test — no AI interaction. All 5 COALESCE partial-update steps passed with zero field-wiping regressions."
+  },
+  "feature_coverage": ["create_trip", "get_trip", "update_trip", "list_trips"],
+  "assertions": {
+    "step1_create": {
+      "status": "PASS",
+      "expected_title": "COALESCE Regression Test Trip",
+      "actual_title": "COALESCE Regression Test Trip",
+      "expected_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "actual_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "expected_status": "TRIP_STATUS_PLANNING",
+      "actual_status": "TRIP_STATUS_PLANNING"
+    },
+    "step2_update_status_only": {
+      "status": "PASS",
+      "expected_status": "TRIP_STATUS_ACTIVE",
+      "actual_status": "TRIP_STATUS_ACTIVE",
+      "expected_title": "COALESCE Regression Test Trip",
+      "actual_title": "COALESCE Regression Test Trip",
+      "expected_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "actual_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "coalesce_regression": false
+    },
+    "step3_update_title_only": {
+      "status": "PASS",
+      "expected_title": "Updated Title Only",
+      "actual_title": "Updated Title Only",
+      "expected_status": "TRIP_STATUS_ACTIVE",
+      "actual_status": "TRIP_STATUS_ACTIVE",
+      "expected_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "actual_description": "This trip tests that partial updates do not wipe unrelated fields."
+    },
+    "step4_update_status_completed": {
+      "status": "PASS",
+      "expected_status": "TRIP_STATUS_COMPLETED",
+      "actual_status": "TRIP_STATUS_COMPLETED",
+      "expected_title": "Updated Title Only",
+      "actual_title": "Updated Title Only",
+      "expected_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "actual_description": "This trip tests that partial updates do not wipe unrelated fields."
+    },
+    "step5_list_trips": {
+      "status": "PASS",
+      "trip_found_in_list": true,
+      "final_title": "Updated Title Only",
+      "final_status": "TRIP_STATUS_COMPLETED",
+      "final_description": "This trip tests that partial updates do not wipe unrelated fields."
+    }
+  }
+}

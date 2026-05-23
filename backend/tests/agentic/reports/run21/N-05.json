@@ -1,0 +1,81 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Trip sharing deep test (sharing lifecycle)",
+  "run": "run21",
+  "status": "PASS",
+  "completed_steps": [
+    "Phase 1.1: Created trip via selection mode chat. AI called create_trip, produced trip 'Tokyo & Kyoto Discovery' (id: 0c2b7c04-f13f-4c3e-9567-d5c8fe341db6) with 4 initial itinerary items (Shibuya Sky Views, Asakusa Exploration, Shinkansen to Kyoto, Fushimi Inari Torii Gates).",
+    "Phase 1.2: Sent planning message requesting 7-day itinerary with 2 days Tokyo, Hakone day trip, 4 days Kyoto. AI called create_itinerary_items adding 10 new items (Meiji Jingu, Harajuku, Akihabara, Hakone, Gion, Kiyomizu-dera, Arashiyama, Kinkaku-ji, Nishiki Market, Nijo Castle). Also called reorder_itinerary_items and suggest_expert (history handoff to Kenji). Total: 14+ itinerary items across 7 days.",
+    "Phase 1.3: Ingested ryokan-booking.txt as BOOKING_TYPE_HOTEL. Booking created: 'Stay at Gion Nanba Ryokan' (id: a4f1a5d1-c964-4822-a186-1f2024c1e911, confirmation: RYO-K-5521). AI correctly parsed hotel details (check-in/out, room type, address, phone).",
+    "Phase 2: POST /api/trips/share returned share_token 'k0Lb0MZn75p7cXaSZqGd0Z' and share_url. Token is non-empty string. PASS.",
+    "Phase 3: GET /shared/k0Lb0MZn75p7cXaSZqGd0Z returned full trip data. Security checks: no user_id, no auth tokens, no email, no payment info in response. Content checks: title present ('Tokyo & Kyoto Discovery'), 8 day entries with 17 items, Tokyo/Kyoto/Hakone references present, booking present. PASS.",
+    "Phase 4: POST /api/trips/unshare returned {status: ok}. GET /shared/k0Lb0MZn75p7cXaSZqGd0Z returned HTTP 404 'not found'. Token successfully invalidated. PASS.",
+    "Phase 5: POST /api/trips/share (re-enable) returned new share_token 'YHNmIjaUevxW89IcQK3YoI'. Token is different from original 'k0Lb0MZn75p7cXaSZqGd0Z'. PASS.",
+    "Phase 6: GET /shared/YHNmIjaUevxW89IcQK3YoI returned HTTP 200 with full trip data. GET /shared/k0Lb0MZn75p7cXaSZqGd0Z still returned HTTP 404. Old token remains invalid after re-share. PASS.",
+    "Phase 7: Content completeness — shared view has 17 items across days 0-7. Day 0: ryokan booking. Days 1-7: 16 itinerary items covering Tokyo (Meiji Jingu, Harajuku, Shibuya Sky, Asakusa, Akihabara), Hakone (day trip), Kyoto (Gion, Fushimi Inari, Kiyomizu-dera, Arashiyama, Kinkaku-ji, Nishiki Market, Nijo Castle). Booking appears in both itinerary (day 0) and bookings array. Well exceeds 5-item minimum. PASS."
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "UX-01",
+      "severity": "P2",
+      "title": "Duplicate itinerary items created by expert handoff",
+      "description": "When the AI handed off to the history expert (Kenji), the expert added duplicate items that partially overlap with existing ones: Day 3 has two Hakone items ('Hakone Day Trip (Mt. Fuji Views)' and 'Hakone Day Trip: History & Mt. Fuji') and Day 7 has two Nijo Castle items ('Nijo Castle Exploration' and 'Nijo Castle: Shogun's Residence'). The expert should check existing items before adding overlapping content. This affects both the planning view and the shared view."
+    },
+    {
+      "id": "UX-02",
+      "severity": "P2",
+      "title": "Shared view booking details are minimal",
+      "description": "The shared view's bookings array contains only {type, title, provider}. The booking's check-in/check-out dates, confirmation code, and address are not exposed in the bookings array (though confirmation code appears in the day 0 itinerary item description). Consider including dates and confirmation code in the shared booking projection for recipients who need to coordinate travel."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "id": "AI-01",
+      "severity": "P2",
+      "title": "Expert creates duplicate items without checking existing itinerary",
+      "description": "The history expert (Kenji) added 'Hakone Day Trip: History & Mt. Fuji' and 'Nijo Castle: Shogun's Residence' without recognizing that similar items already existed on those days. The expert should cross-reference existing itinerary before adding items to avoid duplication."
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": 4,
+    "booking_parsing": 5,
+    "companion_mode": 0,
+    "overall": 5,
+    "notes": "Trip sharing lifecycle works flawlessly. All security-critical paths pass: token revocation, token regeneration, old token invalidation after re-share, no PII leakage. Itinerary quality is strong with 14 unique items covering all requested destinations. Booking parsing correctly extracted all fields from the ryokan confirmation. The only issues are duplicate items from expert handoff (cosmetic, P2). Companion mode was not tested (not in scope for this persona). Overall score reflects the primary test target — sharing — which passed all 7 phases without any bugs."
+  },
+  "feature_coverage": [
+    "ChatService/SendMessage (CHAT_MODE_SELECTION — trip creation via create_trip tool)",
+    "ChatService/SendMessage (CHAT_MODE_PLANNING — itinerary creation via create_itinerary_items tool)",
+    "ChatService/SendMessage (CHAT_MODE_PLANNING — suggest_expert handoff)",
+    "ChatService/SendMessage (CHAT_MODE_PLANNING — reorder_itinerary_items tool)",
+    "BookingService/IngestBooking (BOOKING_TYPE_HOTEL — ryokan confirmation parsing)",
+    "POST /api/trips/share (enable sharing, returns share_token)",
+    "GET /shared/{token} (public shared view, no auth required)",
+    "POST /api/trips/unshare (disable sharing, invalidates token)",
+    "GET /shared/{token} after unshare (token revocation verification, HTTP 404)",
+    "POST /api/trips/share (re-enable sharing, generates NEW token)",
+    "GET /shared/{new_token} (new share accessible)",
+    "GET /shared/{old_token} after re-share (old token stays invalidated, HTTP 404)",
+    "Shared view security audit (no user_id, no auth tokens, no email, no payment data)",
+    "Shared view content completeness (itinerary items, bookings, trip metadata)"
+  ],
+  "shared_view_response_shape": {
+    "trip": {
+      "fields": ["title", "description", "destination_country", "destination_countries", "status", "currency"],
+      "note": "Read-only projection. No user_id, no trip_id, no created_at."
+    },
+    "itinerary": {
+      "structure": "Array of {day_number, items: [{title, type, description}]}",
+      "note": "Day 0 contains booking-derived items. Days 1-7 contain itinerary items. No item IDs exposed."
+    },
+    "bookings": {
+      "structure": "Array of {type, title, provider}",
+      "note": "Minimal projection. No dates, confirmation codes, or guest details in this array."
+    }
+  },
+  "summary": "All 7 phases of the trip sharing lifecycle passed without any bugs. The critical security paths all work correctly: (1) share tokens are invalidated immediately on unshare (HTTP 404), (2) re-sharing generates a new unique token (no token reuse), (3) old tokens remain invalid after re-share, (4) the shared view contains no user_id, auth tokens, email addresses, or payment information. The shared view is substantive — it includes the trip title, description, destination, full itinerary with 17 items across 7+ days, and a booking summary. Two P2 UX issues noted: duplicate items created by expert handoff, and minimal booking details in the shared view's bookings array."
+}

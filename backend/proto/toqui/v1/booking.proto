@@ -1,0 +1,383 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "toqui/v1/common.proto";
+
+service BookingService {
+  rpc IngestBooking(IngestBookingRequest) returns (IngestBookingResponse);
+  rpc IngestEmail(IngestEmailRequest) returns (IngestEmailResponse);
+  rpc UpdateBooking(UpdateBookingRequest) returns (UpdateBookingResponse);
+  rpc ListBookings(ListBookingsRequest) returns (ListBookingsResponse);
+  rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
+  rpc GetTripCostSummary(GetTripCostSummaryRequest) returns (GetTripCostSummaryResponse);
+  rpc LinkBookingToTrip(LinkBookingToTripRequest) returns (LinkBookingToTripResponse);
+  rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse);
+  rpc ExtractBookingField(ExtractBookingFieldRequest) returns (ExtractBookingFieldResponse);
+}
+
+message Booking {
+  string id = 1;
+  string trip_id = 2;
+  BookingType type = 3;
+  string confirmation_code = 4;
+  string provider = 5;
+  string title = 6;
+  google.protobuf.Timestamp start_time = 7;
+  google.protobuf.Timestamp end_time = 8;
+  LatLng location = 9;
+  string address = 10;
+  string details_json = 11 [deprecated = true];
+  string raw_source = 12;
+  BookingSource source = 13;
+  google.protobuf.Timestamp created_at = 14;
+  string departure_location = 15;
+  string arrival_location = 16;
+  int32 num_guests = 17;
+  // Price tracking: amount in smallest currency unit (cents/pence).
+  int64 price_cents = 18;
+  // ISO 4217 currency code (e.g. "USD", "EUR", "CAD").
+  string currency = 19;
+  // IANA timezone identifier for local display (e.g. "America/New_York").
+  string timezone = 27;
+
+  oneof booking_details {
+    FlightDetails flight_details = 20;
+    HotelDetails hotel_details = 21;
+    CarRentalDetails car_rental_details = 22;
+    TrainDetails train_details = 23;
+    TourDetails tour_details = 24;
+    ActivityDetails activity_details = 25;
+    RestaurantDetails restaurant_details = 26;
+    FerryDetails ferry_details = 28;
+    BusDetails bus_details = 29;
+    CruiseDetails cruise_details = 30;
+    TransferDetails transfer_details = 31;
+  }
+}
+
+message FlightLeg {
+  string flight_number = 1;
+  string airline = 2;
+  string departure_airport = 3;
+  string arrival_airport = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string cabin = 7;
+}
+
+message FlightDetails {
+  string airline = 1;
+  string flight_number = 2;
+  string departure_airport = 3;
+  string arrival_airport = 4;
+  string departure_terminal = 5;
+  string arrival_terminal = 6;
+  string seat = 7;
+  string cabin_class = 8;
+  repeated string passengers = 9;
+  // Multi-leg support: individual segments for connecting/round-trip flights.
+  // Top-level fields always reflect the first outbound leg.
+  repeated FlightLeg legs = 10;
+}
+
+message HotelDetails {
+  string hotel_name = 1;
+  string check_in_date = 2;
+  string check_out_date = 3;
+  string room_type = 4;
+  int32 num_guests = 5;
+  string address = 6;
+  string phone = 7;
+}
+
+message CarRentalDetails {
+  string company = 1;
+  string pickup_location = 2;
+  string dropoff_location = 3;
+  string pickup_time = 4;
+  string dropoff_time = 5;
+  string car_type = 6;
+  string driver_name = 7;
+}
+
+message TrainDetails {
+  string operator = 1;
+  string train_number = 2;
+  string departure_station = 3;
+  string arrival_station = 4;
+  string seat = 5;
+  string car_number = 6;
+  string class = 7;
+}
+
+message TourStop {
+  string name = 1;
+  string location = 2;
+  string duration = 3;
+  string notes = 4;
+}
+
+message TourDetails {
+  string tour_operator = 1;
+  string tour_name = 2;
+  int32 num_participants = 3;
+  string meeting_point = 4;
+  repeated TourStop stops = 5;
+  // Added in PR #198 (Run 5 R-06/R-11 fix). The Go struct already carried
+  // these fields and the AI parser writes them into details_json, but the
+  // proto schema didn't expose them. Run 6 R-11 flagged the gap. Adding
+  // them as new field numbers preserves wire compatibility with existing
+  // booking documents.
+  string date = 6;        // ISO YYYY-MM-DD
+  string start_time = 7;  // local HH:MM or HH:MM-HH:MM window
+  string duration = 8;    // human-readable duration, e.g. "3h 30m"
+  string guide_name = 9;
+  string price = 10;      // currency-prefixed string, e.g. "USD 85.00"
+}
+
+message ActivityDetails {
+  string operator = 1;
+  string activity_name = 2;
+  string location = 3;
+  int32 num_guests = 4;
+  string notes = 5;
+  // Same Run 6 R-11 follow-up: expose the parser's existing fields.
+  string date = 6;
+  string start_time = 7;
+  string duration = 8;
+  string guide_name = 9;
+  string price = 10;
+}
+
+message RestaurantDetails {
+  string restaurant_name = 1;
+  string cuisine = 2;
+  int32 party_size = 3;
+  string notes = 4;
+}
+
+message FerryDetails {
+  string operator = 1;
+  string vessel_name = 2;
+  string departure_port = 3;
+  string arrival_port = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string cabin_type = 7;
+  string deck = 8;
+  int32 num_passengers = 9;
+  bool vehicle_included = 10;
+}
+
+message BusDetails {
+  string operator = 1;
+  string route_number = 2;
+  string departure_station = 3;
+  string arrival_station = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  string seat = 7;
+  string class = 8;
+  string platform = 9;
+}
+
+message CruiseDetails {
+  string cruise_line = 1;
+  string ship_name = 2;
+  string departure_port = 3;
+  string arrival_port = 4;
+  string cabin_number = 5;
+  string cabin_type = 6;
+  string deck = 7;
+  int32 num_passengers = 8;
+  repeated string ports_of_call = 9;
+}
+
+message TransferDetails {
+  string operator = 1;
+  string vehicle_type = 2;
+  string pickup_location = 3;
+  string dropoff_location = 4;
+  string pickup_time = 5;
+  int32 num_passengers = 6;
+  string driver_name = 7;
+  string flight_number = 8;
+}
+
+enum BookingType {
+  BOOKING_TYPE_UNSPECIFIED = 0;
+  BOOKING_TYPE_FLIGHT = 1;
+  BOOKING_TYPE_HOTEL = 2;
+  BOOKING_TYPE_CAR_RENTAL = 3;
+  BOOKING_TYPE_TRAIN = 4;
+  BOOKING_TYPE_ACTIVITY = 5;
+  BOOKING_TYPE_RESTAURANT = 6;
+  BOOKING_TYPE_OTHER = 7;
+  BOOKING_TYPE_TOUR = 8;
+  BOOKING_TYPE_FERRY = 9;
+  BOOKING_TYPE_BUS = 10;
+  BOOKING_TYPE_CRUISE = 11;
+  BOOKING_TYPE_TRANSFER = 12;
+  // Vacation rentals — houses, cabins, villas, apartments (VRBO, Airbnb-style
+  // bookings). Distinct from BOOKING_TYPE_HOTEL to preserve category accuracy
+  // for affiliate sourcing and itinerary display.
+  BOOKING_TYPE_VACATION_RENTAL = 13;
+}
+
+enum BookingSource {
+  BOOKING_SOURCE_UNSPECIFIED = 0;
+  BOOKING_SOURCE_EMAIL = 1;
+  BOOKING_SOURCE_MANUAL = 2;
+  BOOKING_SOURCE_PASTE = 3;
+}
+
+message IngestBookingRequest {
+  string trip_id = 1;
+  BookingType type = 2;
+  string raw_text = 3 [(buf.validate.field).string = {min_len: 1, max_len: 50000}];
+}
+
+message IngestBookingResponse {
+  Booking booking = 1;
+  // Field 2 was briefly used during PR #441 development for an early
+  // dedup-status enum that was dropped before merge. Reserve it so a
+  // future contributor doesn't reuse the number and accidentally break
+  // wire compatibility for any client that ever shipped against an
+  // experimental build.
+  reserved 2;
+  // was_updated is true when an existing booking was merged rather than a
+  // new booking created. Clients can use this to show a "Booking updated"
+  // toast instead of "Booking added".
+  bool was_updated = 3;
+  // previous_booking_id is the ID of the booking that was merged into.
+  // Equal to booking.id after a merge. Empty when was_updated is false.
+  string previous_booking_id = 4;
+  // Conflicts detected on the trip after this ingest (tight layovers,
+  // hotel-before-arrival, etc). Empty when there are no conflicts or when
+  // the booking was unattached. Best-effort — populated when computable.
+  repeated BookingConflict conflicts = 5;
+  // Single highest-priority gap in the trip plan that the AI / frontend
+  // should surface as a proactive suggestion. Null when nothing's missing
+  // or when the booking was unattached.
+  CoverageGap coverage_gap = 6;
+}
+
+// BookingConflict describes a scheduling problem detected between two or
+// more bookings on the same trip after an ingest. Severity is "warning"
+// or "error" per internal/booking/conflict.go.
+message BookingConflict {
+  // Stable type identifier, e.g. "tight_layover", "hotel_before_arrival".
+  string type = 1;
+  // "warning" or "error".
+  string severity = 2;
+  // Short human-readable summary safe to render as-is (no travel content).
+  string message = 3;
+  // IDs of the bookings involved.
+  repeated string booking_ids = 4;
+}
+
+// CoverageGap describes the single highest-priority piece missing from a
+// trip plan after an ingest, used by the AI / frontend to make ONE
+// proactive suggestion (not a wall of warnings).
+message CoverageGap {
+  // Stable type identifier, e.g. "no_accommodation", "no_return_transport".
+  string type = 1;
+  // 1 (highest) .. 4 (lowest).
+  int32 priority = 2;
+  // Short human-facing string; the AI typically paraphrases this.
+  string suggestion_hint = 3;
+}
+
+message IngestEmailRequest {
+  string raw_email = 1 [(buf.validate.field).string = {min_len: 1, max_len: 500000}];
+}
+
+message IngestEmailResponse {
+  repeated Booking bookings = 1;
+}
+
+message UpdateBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Fields to update — only non-empty values are applied (COALESCE pattern).
+  string title = 2;
+  BookingType type = 3;
+  string confirmation_code = 4;
+  string provider = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+  string address = 8;
+  string departure_location = 9;
+  string arrival_location = 10;
+  int32 num_guests = 11;
+  int64 price_cents = 12;
+  string currency = 13;
+  string timezone = 14;
+}
+
+message UpdateBookingResponse {
+  Booking booking = 1;
+}
+
+message ListBookingsRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  PaginationRequest pagination = 2;
+}
+
+message ListBookingsResponse {
+  repeated Booking bookings = 1;
+  PaginationResponse pagination = 2;
+}
+
+message GetBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetBookingResponse {
+  Booking booking = 1;
+}
+
+message GetTripCostSummaryRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetTripCostSummaryResponse {
+  // Total cost in cents, grouped by currency.
+  repeated CurrencyTotal totals = 1;
+  int32 booking_count = 2;
+}
+
+message CurrencyTotal {
+  string currency = 1;
+  int64 total_cents = 2;
+  int32 booking_count = 3;
+}
+
+message LinkBookingToTripRequest {
+  string booking_id = 1 [(buf.validate.field).string.uuid = true];
+  string trip_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message LinkBookingToTripResponse {
+  Booking booking = 1;
+}
+
+message DeleteBookingRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message DeleteBookingResponse {}
+
+message ExtractBookingFieldRequest {
+  string booking_id = 1 [(buf.validate.field).string.uuid = true];
+  string question = 2 [(buf.validate.field).string = {min_len: 1, max_len: 1000}];
+}
+
+message ExtractBookingFieldResponse {
+  string answer = 1;
+  map<string, string> extracted_fields = 2;
+}

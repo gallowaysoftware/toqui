@@ -1,0 +1,50 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya - The Organized Barcelona Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": ["auth", "selection", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "restaurant_recs", "itinerary", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Itinerary missing explicit Sagrada Familia tour item on Day 3",
+      "description": "When the AI built the 5-day itinerary incorporating existing bookings, Day 3 (June 17) does not have an explicit itinerary item for the booked Sagrada Familia tour at 10:00 AM. The tour is referenced contextually in the lunch item description ('After the Sagrada Familia') but there is no standalone item with the correct time. An organized user like Priya would expect their pre-booked activities to appear as explicit time-blocked items in the itinerary.",
+      "expected": "Day 3 should have 'Sagrada Familia: Skip-the-Line Guided Tour with Tower Access' as the first item at 10:00 AM",
+      "actual": "Day 3 starts with a lunch item that references Sagrada Familia only in the description text",
+      "api_command": "GetItinerary after create_itinerary_items"
+    },
+    {
+      "severity": "P2",
+      "title": "Itinerary has 6 days for a 5-night trip",
+      "description": "The itinerary was created with 6 days (Day 1 through Day 6) for a trip that is June 15-20 (5 nights). Day 6 is the departure day which is reasonable, but the user asked for a '5-day itinerary' and got 6 days. This is arguably correct (arrival day + 4 full days + departure day) but slightly exceeds what was requested.",
+      "expected": "5 days as requested, or clear framing that Day 6 is departure only",
+      "actual": "6 days created"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI built the itinerary, it split the items across two separate create_itinerary_items tool calls, which caused a confusing 'slight delay' message to the user. A single call with all items would be cleaner.",
+      "severity": "minor",
+      "suggestion": "Consider batching all itinerary items into a single tool call when possible"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not explicitly include the pre-booked Sagrada Familia tour as a structured itinerary item on Day 3, despite being asked to 'include my existing bookings at the right times'",
+      "context": "The booking data for the Sagrada Familia tour (June 17, 10:00 AM) was correctly ingested and the AI could answer questions about it, but when creating the itinerary it only referenced it contextually rather than placing it as a dedicated item",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Booking ingestion and data retrieval worked flawlessly -- the AI correctly parsed all three booking confirmations (flight, hotel, activity) and could answer specific questions about terminals, check-in times, and tour details. The ExtractBookingField RPC also worked perfectly. The recommend_booking tool triggered appropriately for day trip suggestions and included FTC affiliate disclosure. Restaurant recommendations correctly used create_itinerary_items instead of recommend_booking. The main weakness was in itinerary generation: the AI did not place the pre-booked Sagrada Familia tour as an explicit item in the Day 3 itinerary, only referencing it contextually. For an organized user who wants 'everything in one place,' this is a notable gap. Companion mode responses were concise and practical with good local knowledge."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "itinerary", "activate", "companion", "sharing", "chat_history", "usage", "complete"]
+}

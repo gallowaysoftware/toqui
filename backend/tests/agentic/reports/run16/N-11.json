@@ -1,0 +1,63 @@
+{
+  "persona_id": "N-11",
+  "persona_name": "Structural — Full Lifecycle CRUD Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Kyoto)",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "verify_create",
+    "update_title_only",
+    "update_description_only",
+    "activate_trip",
+    "planning_message",
+    "ingest_booking",
+    "verify_itinerary",
+    "enable_sharing",
+    "verify_shared_view",
+    "complete_trip",
+    "list_trips",
+    "disable_sharing",
+    "verify_share_revoked",
+    "delete_trip",
+    "verify_deletion_cascade"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "UpdateTrip response omits 'themes' field, but GetTrip includes it. Minor inconsistency in response shape between update and get endpoints.",
+      "severity": "P2",
+      "suggestion": "Have UpdateTrip return the same enriched trip object as GetTrip (including themes)."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 14 lifecycle steps passed. COALESCE partial update logic works correctly — updating title preserves description and vice versa. Status transitions (PLANNING -> ACTIVE -> COMPLETED) preserve all fields. Sharing enable/disable works correctly with proper token revocation. Cascade deletion removes trip, bookings, and itinerary. Flight booking was parsed accurately with confirmation code, airline, airports, and seat extracted. The AI created well-described itinerary items for Kinkaku-ji and Fushimi Inari with practical tips."
+  },
+  "feature_coverage": [
+    "CreateTrip",
+    "GetTrip",
+    "UpdateTrip (partial — title only)",
+    "UpdateTrip (partial — description only)",
+    "UpdateTrip (status transitions: PLANNING->ACTIVE->COMPLETED)",
+    "SendMessage (CHAT_MODE_PLANNING with create_itinerary_items tool)",
+    "IngestBooking (BOOKING_TYPE_FLIGHT)",
+    "ListBookings",
+    "GetItinerary",
+    "POST /api/trips/share",
+    "GET /shared/{token}",
+    "POST /api/trips/unshare",
+    "ListTrips",
+    "DeleteTrip",
+    "Cascade deletion verification (trip + bookings + itinerary)",
+    "GET /api/usage"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing_lifecycle", "error_handling"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural REST endpoint test — no AI chat interaction. All 16 test cases passed: 4 health endpoints returned correct shapes and sub-2ms latency, 25 destination guides served correctly, authenticated endpoints enforce 401 without tokens, and the full share/unshare lifecycle works with proper token invalidation."
+  },
+  "feature_coverage": ["healthz", "health", "livez", "readyz", "guides_list", "guides_detail", "shared_invalid_token", "usage", "referral", "trip_create", "trip_share", "shared_view", "trip_unshare", "shared_revoked", "usage_no_auth", "share_no_auth", "share_invalid_trip", "unshare_no_auth", "referral_no_auth", "guides_invalid_slug"],
+  "response_shapes": {
+    "GET /healthz": {"status": "ok"},
+    "GET /health": {"status": "healthy", "components": {"database": {"status": "healthy", "latency_ms": 0}, "server": {"status": "healthy", "uptime_seconds": "number"}}},
+    "GET /livez": {"status": "alive"},
+    "GET /readyz": {"status": "ready"},
+    "GET /api/guides": "array of 25 objects with keys: slug, title, persona_name, persona_specialty, destination, country, theme, excerpt",
+    "GET /api/guides/{slug}": "object with keys: slug, title, persona_name, persona_specialty, destination, country, theme, excerpt, content, cta_text, cta_url",
+    "GET /api/usage": {"used": "integer", "limit": "integer", "tier": "string", "resets_at": "ISO8601"},
+    "GET /api/referral": {"code": "string", "link": "string", "max_rewards": "integer", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "integer", "rewards_remaining": "integer", "successful_referrals": "integer"},
+    "POST /api/trips/share": {"share_token": "string", "share_url": "string"},
+    "GET /shared/{token}": {"trip": "object", "itinerary": "object/array"},
+    "POST /api/trips/unshare": {"status": "ok"}
+  }
+}

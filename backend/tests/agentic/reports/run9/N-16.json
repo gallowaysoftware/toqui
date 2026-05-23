@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI repeatedly prefaces tool-result confirmation with 'The items are already saved' phrasing, which is confusing — it implies the tool had already been called previously rather than just completing in the current turn. This phrasing appeared in Turns 1, 2, 3, and 5.",
+      "severity": "P2",
+      "suggestion": "Tune system prompt to use clearer confirmation language like 'Done — X items created' instead of 'already saved'."
+    },
+    {
+      "description": "AI warns about duplicate entries after every successful tool call, adding unnecessary noise to every response. The user never asked to re-run the tool.",
+      "severity": "P2",
+      "suggestion": "Remove or reduce the duplicate-prevention disclaimer from standard tool-result responses."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Turn 4: AI refused to call create_itinerary_items despite explicit user instruction to add Machu Picchu. Instead asked a clarifying question about day numbering.",
+      "context": "User said: 'Also add Machu Picchu on the day after Ollantaytambo with the 6am train from Ollantaytambo station.' AI responded with 'I need to pause here' and asked which day to place it on, despite having enough context (Day 7 was Chinchero, so Day 8 was the logical slot).",
+      "severity": "P2"
+    },
+    {
+      "issue": "Turn 4: AI referenced a 'system note' that is not a legitimate instruction — it said 'that system note isn't a legitimate instruction from the trip planning system'. This suggests the AI is interpreting the fabrication detection retry nudge as a suspicious system message and refusing to act on it.",
+      "context": "The fabrication detection retry mechanism in service.go sends a nudge when the AI text implies itinerary creation without a tool call. The AI interpreted this nudge as adversarial rather than helpful, causing it to refuse the legitimate user request.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Lake Titicaca placed on Days 12-14 instead of Days 9-10 as the persona's trip structure implied. The AI created a 14-day numbering gap (Days 8-11 empty) instead of a contiguous itinerary.",
+      "context": "The persona described: Cusco 4d, Sacred Valley 3d, Machu Picchu 1d, Lake Titicaca 2d. AI placed Cusco on Days 1-4, Sacred Valley Days 5-7 correctly, but then jumped to Days 12-14 for Lake Titicaca, leaving a 4-day gap.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Fabrication detection passed all 6 turns — zero fabrication phrases appeared without a corresponding tool call. The tool fired correctly in Turns 1, 2, 3, and 5 (4/4 required turns). Turn 4 was the only failure: the AI refused to add Machu Picchu due to misinterpreting the fabrication retry nudge as adversarial. Turn 6 correctly did NOT call the tool (summary-only). Per-turn item progression: T1=20, T2=35, T3=43 (append, no overwrite), T4=43 (no change), T5=56, T6=56 (final). Final total 56 items well above the 15-item threshold. Itinerary quality was excellent — detailed descriptions with practical tips, specific restaurant names, timing advice. The Day 8-11 gap is the main structural issue, caused by the Turn 4 refusal. Companion mode response was concise and actionable. No fabrication_matches found (fabrication_matches_0)."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "fabrication_detection", "multi_turn_context", "companion_mode", "trip_sharing", "usage_tracking", "fabrication_matches_0"]
+}

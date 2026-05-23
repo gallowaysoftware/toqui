@@ -1,0 +1,21 @@
+meta {
+  name: Create Trip
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/CreateTrip
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "title": "Tokyo & Kyoto Adventure",
+    "description": "7 days exploring Japan — street food in Shibuya, temples in Kyoto, and a day trip to Nara"
+  }
+}

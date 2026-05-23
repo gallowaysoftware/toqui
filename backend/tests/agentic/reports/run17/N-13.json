@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "setup", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "All six companion-mode informational queries were answered without any itinerary tool calls. The AI correctly distinguished info queries from modification requests. Itinerary item count remained at 13 throughout (N_BEFORE=13, N_AFTER=13). Responses were concise (95-146 words), practical, and phone-friendly. The PR #201 guardrail is working as intended — the real create_itinerary_items and delete_itinerary_items tools are available but the AI chose not to call them on purely informational queries, including the previously problematic 'recommend something fun tonight' trigger."
+  },
+  "feature_coverage": ["auth", "trip_create", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

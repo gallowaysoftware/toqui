@@ -1,0 +1,62 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "fullContent field truncated on multi-tool-loop responses",
+      "description": "When the AI response spans multiple tool loop iterations (e.g., initial text + tool call + continuation text), the fullContent field in messageComplete only captures the final iteration's text, not the complete response. This means chat history stores only a fragment of what the user saw during streaming. For example, Pavel's detailed Czech beer explanation (~2000 words) was reduced to a single sentence in fullContent.",
+      "expected": "fullContent should contain the concatenation of ALL textDelta chunks across all tool loop iterations",
+      "actual": "fullContent contains only the text from the final tool loop iteration, losing the substantive content from earlier iterations",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items when AI adds items across multiple messages",
+      "description": "In step 3a, the AI added Pivovarsky dum and BeerGeek as Day 1 items. In step 3b, when asked for a full 3-day itinerary, the AI included these same venues again as Day 1 items, creating duplicates. Day 1 ended up with 6 items including both the original and new versions of Pivovarsky dum and BeerGeek.",
+      "expected": "AI should recognize items already in the itinerary and either skip duplicates or replace them",
+      "actual": "Day 1 has duplicate Pivovarsky dum and BeerGeek entries with slightly different descriptions"
+    },
+    {
+      "severity": "P2",
+      "title": "Companion mode creates new session per message instead of reusing",
+      "description": "Each companion mode message created a separate chat session (2 companion sessions for 2 messages). ListChatSessions shows 3 sessions for the Czech trip: 1 planning + 2 companion. Expected behavior would be to reuse the companion session within the same trip.",
+      "expected": "Companion messages for the same trip should share a single session unless explicitly starting a new conversation",
+      "actual": "Each companion message gets its own session, fragmenting conversation history"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI's initial selection mode response mentioned 'let me bring in someone who really knows their stuff' but did NOT actually call suggest_expert. The expert handoff only happened on the follow-up planning mode message. This creates a false promise in the first response.",
+      "severity": "P2",
+      "suggestion": "Either call suggest_expert in the same turn where the AI promises to bring in an expert, or don't mention bringing in an expert until it actually does so."
+    },
+    {
+      "description": "The AI repeated the greeting from the expert persona ('The land of fire and ice holds secrets in its trails...') at the start of the Iceland itinerary response even though Bjarni had already been introduced and was answering follow-up questions. The directive says 'do NOT introduce yourself again' but the greeting text leaked through.",
+      "severity": "P2",
+      "suggestion": "Ensure the expert greeting is only shown once during the initial handoff, not repeated on subsequent turns."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items a second time with the same 26 items in the Iceland itinerary response, which were correctly detected as duplicates and skipped. This wastes a tool loop iteration.",
+      "context": "Step 5b: After successfully creating 26 items, the AI called create_itinerary_items again with the same items, getting back 'already_exists' status with 26 skipped.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The extended profiles for CZ and IS loaded correctly and produced genuinely knowledgeable experts. Pavel (CZ craft-beer) demonstrated deep knowledge of Czech brewing traditions, specific breweries (U Medvidku since 1466, Strahov Monastery, Pivovarsky dum, BeerGeek, Lokal), beer styles (svetly lezak, tmave, polotmavy), Saaz hops, decoction mashing, and Czech beer serving culture (hladinka, snyt, mliko). Bjarni (IS hiking) provided comprehensive Laugavegur Trail details including exact distances, elevation profiles for each segment, all 5 huts by name, FI booking requirements, river crossing safety techniques, weather conditions, and a thorough gear list. The companion mode responses were appropriately concise and practical. The two-trip workflow worked perfectly with no cross-contamination. Main issue is the fullContent truncation bug which degrades chat history."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "expert_handoff", "extended_profiles", "itinerary_creation"]
+}

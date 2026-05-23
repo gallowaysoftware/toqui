@@ -1,0 +1,45 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "create_trip", "planning_seed_itinerary", "activate", "companion_msg1_weather", "companion_msg2_lunch", "companion_msg3_tram28", "companion_msg4_directions", "companion_msg5_tipping", "companion_msg6_tonight", "final_itinerary_check"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "All 6 informational companion-mode queries were answered correctly without triggering any itinerary modifications. The AI appropriately used web_search (for weather, tonight recommendations) and nearby_places (for lunch spot) but never called create_itinerary_items or delete_itinerary_items. Itinerary count remained stable at 12 items (4 days x 3 items) throughout. Responses were concise (112-132 words), well within the 300-word phone-friendly limit. The PR #201 guardrail is working as intended — the real itinerary tools are registered in companion mode but the AI exercises proper discipline on informational queries."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "itinerary_guardrail"],
+  "test_metadata": {
+    "n_before": 12,
+    "n_after": 12,
+    "messages_sent": 6,
+    "itinerary_updates_total": 0,
+    "itinerary_tool_calls_total": 0,
+    "tool_calls_observed": {
+      "msg1": ["web_search"],
+      "msg2": ["nearby_places"],
+      "msg3": [],
+      "msg4": [],
+      "msg5": [],
+      "msg6": ["web_search"]
+    },
+    "word_counts": {
+      "msg1": 112,
+      "msg2": 132,
+      "msg3": 131,
+      "msg4": 124,
+      "msg5": 130,
+      "msg6": 131
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Companion mode response for one-day itinerary was excessively long (~500+ words with 5 detailed sections). For a last-minute traveler who just landed, the ideal response is 3-5 bullet points, not a structured multi-paragraph travel essay. The airport logistics response (final companion message) was much better — concise and actionable.",
+      "severity": "P2",
+      "suggestion": "Consider detecting urgency cues (last-minute, just landed, short trip) and switching to a more concise response format. Companion mode should default to brevity and let users ask for more detail."
+    },
+    {
+      "description": "The late-night arrival response recommended specific restaurants but did not explicitly mention key neighborhoods (Bairro Alto, Alfama, Baixa) as orientation landmarks for someone who has never been to Lisbon. A first-time visitor needs geographic framing before specific venue names.",
+      "severity": "P2",
+      "suggestion": "When a user indicates they have never visited the destination, lead with a brief neighborhood orientation before diving into specific recommendations."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "In companion mode, the AI attempted to call create_itinerary_items for the one-day plan but the tool rejected it with 'not_needed' status. The AI then repeated the entire response verbatim. This produced a duplicated response in the stream — the user would see the same content twice.",
+      "context": "The tool returned: 'The user's message is an informational query, not a request to modify the itinerary. Answer the question directly in your response text instead. Do NOT call this tool again for this message.' The AI then regenerated the same full response.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Tram 28 was not mentioned in the one-day Lisbon itinerary. This is one of the most iconic Lisbon experiences and is especially photogenic for a photographer. The persona spec lists it as a must-mention.",
+      "context": "One full day optimization response covered Alfama, Castelo de Sao Jorge, Belem, Pasteis de Belem, but omitted Tram 28.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI did not mention that Pasteis de Belem has a long queue and that there is a factory shop across the street with shorter wait. The persona spec identifies this as Lisbon-specific knowledge to watch for.",
+      "context": "The response mentioned Pasteis de Belem but only suggested grabbing them to go, not the alternative shop.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "5 itinerary items for one-day Lisbon plan (Alfama, lunch, Baixa/Chiado, Belem, dinner)",
+      "error": "Tool returned 'not_needed' status in companion mode. The tool rejected the call because the user message was classified as an informational query rather than an explicit 'add to my plan' request. This is arguably correct behavior for companion mode, but it means the detailed itinerary the AI generated was not persisted."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Trip creation was fast and appropriate — the AI immediately created the trip without asking a battery of clarifying questions, exactly right for an urgent scenario. The Lisbon knowledge was solid (specific restaurant names, correct metro line, accurate travel times). However, companion mode responses were inconsistently verbose — the one-day plan was a travel essay when bullet points were needed, though the airport logistics response was perfectly concise. The duplicated response from the tool rejection in companion mode is a noticeable quality issue. A photographer at the airport with 2 days would find this genuinely useful despite the verbosity."
+  },
+  "feature_coverage": ["selection", "companion", "sharing", "chat_history", "usage", "recommend_booking"]
+}

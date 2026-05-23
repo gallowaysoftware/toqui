@@ -1,0 +1,64 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece & Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Turn timeout on complex itinerary generation with web searches",
+      "description": "When requesting a detailed 3-day Crete itinerary, the AI attempted 3 web searches (for opening hours) that all returned no_web_access, consuming time before the 90-second turn timeout fired. The itinerary was never generated on that attempt. A second, more direct request succeeded. The AI should not spend multiple tool calls on web_search when it knows the environment has no web access.",
+      "steps_to_reproduce": "Send a planning message asking for a detailed multi-day itinerary with specific site details. The AI may attempt web_search calls for opening hours before generating itinerary items.",
+      "expected": "AI generates itinerary items without attempting web searches when web access is unavailable",
+      "actual": "AI attempted 3 web searches, all returned no_web_access, then hit 90s turn timeout with no itinerary generated"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat session messageCount always returns 0",
+      "description": "ListChatSessions returns messageCount=0 for all sessions despite the planning session having 8 messages confirmed by GetChatHistory. This is a display/count bug in the session listing.",
+      "api_command": "ListChatSessions with trip_id",
+      "expected": "messageCount reflects actual message count (e.g., 8 for planning session)",
+      "actual": "messageCount=0 for all 3 sessions"
+    },
+    {
+      "severity": "P2",
+      "title": "Turn timeout on initial selection message with expert handoff",
+      "description": "The first SendMessage in selection mode created the trip and handed off to expert Dimitri, but then hit the 90s turn timeout while Dimitri was composing a detailed response. The trip was created successfully but the AI response was cut short.",
+      "expected": "AI completes response within timeout after trip creation + expert handoff",
+      "actual": "Turn timeout after expert handoff, response truncated"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI occasionally uses emoji in companion mode (floor labels like 'Floor 1' with building icon). For an academic user, plain text would be more appropriate. Minor stylistic issue.",
+      "severity": "P2",
+      "suggestion": "Consider persona-adaptive formatting — academic users may prefer plain text over emoji markers."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI attempts web_search tool calls even after receiving no_web_access responses, wasting time budget. After the first web_search returns no_web_access, the AI should not attempt additional web searches in the same turn.",
+      "context": "Step 3b: Crete itinerary request triggered 3 consecutive web_search calls, all returning no_web_access, which consumed enough time to hit the 90s turn timeout.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "Knossos Palace opening hours October 2026 academic visit",
+      "error": "no_web_access - Real-time web search is not configured in this environment"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional academic depth across all interactions. The Delphi oracle discussion covered the Pythia, adyton, pneuma theory with de Boer/Hale 2001 citation, political influence including the Amphictyonic League and Sacred Wars, and referenced scholars like Catherine Morgan, Lisa Maurizio, and Michael Scott. The Ephesus response covered the Attalid bequest, Aristonicus revolt, Mithridatic massacre, Augustan settlement, and Library of Celsus as mausoleum with references to Fergus Millar, S.R.F. Price, and Susan Alcock. The Crete itinerary was meticulously academic — Knossos with Evans controversy, Stratigraphic Museum access via BSA, Heraklion Museum with specific room references, Phaistos with stratigraphy details, and Gortyna with the Law Code and Apollo Pythios cult connection. The booking recommendation for archaeologist guides was outstanding, distinguishing commercial platforms from academic channels (EFA, Peter Sommer Travels, university contacts). The only weakness was turn timeouts on particularly complex responses and repeated web_search attempts in a no-web-access environment. Professor Whitfield would genuinely find this useful for research trip planning."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "expert_handoff", "itinerary_creation", "recommend_booking"]
+}

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+import "toqui/v1/common.proto";
+
+service LocationService {
+  rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+  rpc GetNearby(GetNearbyRequest) returns (GetNearbyResponse);
+}
+
+message UpdateLocationRequest {
+  LatLng location = 1 [(buf.validate.field).required = true];
+  string trip_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message UpdateLocationResponse {
+  repeated NearbyPlace suggestions = 1;
+}
+
+message GetNearbyRequest {
+  LatLng location = 1 [(buf.validate.field).required = true];
+  string category = 2; // restaurant, attraction, etc.
+  int32 radius_meters = 3 [(buf.validate.field).int32 = {gte: 0, lte: 50000}];
+}
+
+message GetNearbyResponse {
+  repeated NearbyPlace places = 1;
+}
+
+message NearbyPlace {
+  string name = 1;
+  string description = 2;
+  string category = 3;
+  LatLng location = 4;
+  string address = 5;
+  double distance_meters = 6;
+  double rating = 7;
+  string google_place_id = 8;
+}

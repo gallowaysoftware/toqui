@@ -1,0 +1,74 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Chat History Data Integrity Verifier",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "list_sessions", "get_history", "cross_session_isolation", "usage"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions messageCount includes tool messages but GetChatHistory excludes them",
+      "description": "ListChatSessions returns messageCount that includes tool_call and tool_result messages (e.g., planning session shows 14), but GetChatHistory for the same session only returns user and assistant role messages (e.g., planning session returns 4). This inconsistency could confuse the frontend -- showing '14 messages' for a session where the user only sees 4 conversational messages.",
+      "expected": "messageCount in ListChatSessions should match the number of messages returned by GetChatHistory, or the field should be renamed to clarify it counts internal messages too",
+      "actual": "Selection: listed=4, history=2; Planning: listed=14, history=4; Companion: listed=2, history=2",
+      "api_command": "ListChatSessions vs GetChatHistory for the same session"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count off by one relative to user messages sent",
+      "description": "Sent 4 user messages (1 selection + 2 planning + 1 companion) but /api/usage reports used=3. One message appears uncounted. Possibly selection mode messages do not count against daily usage, or multi-turn planning sessions are counted as a single usage unit. Not clearly a bug but the counting logic is opaque to the user.",
+      "expected": "4 messages used (matching the 4 SendMessage calls made)",
+      "actual": "used=3",
+      "api_command": "GET /api/usage"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions orders sessions by creation time descending (most recent first). This ordering is not documented in the API. The persona spec expected either earliest-first or most-recent-first -- the API uses most-recent-first.",
+      "severity": "P2",
+      "suggestion": "Document the ordering in the proto definition or allow a sort parameter"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Chat persistence works correctly for the core data integrity requirements. All messages round-trip through Firestore without corruption or loss. Sessions are properly isolated with no message bleed. Role alternation is correct. Timestamps are chronologically ordered. The only issues are minor: the messageCount field in ListChatSessions counts internal tool messages that are hidden from GetChatHistory, and daily usage counting appears off by one. No P0 or P1 bugs found -- the chat history system is solid."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "ListChatSessions", "GetChatHistory", "cross_session_isolation", "timestamp_ordering", "message_persistence", "usage_tracking"],
+  "session_details": {
+    "selection_session": {
+      "id": "9bd166e7-8dd6-454e-a083-566390167fd7",
+      "mode": "CHAT_MODE_SELECTION",
+      "listed_message_count": 4,
+      "history_message_count": 2,
+      "roles": ["user", "assistant"],
+      "empty_content": false,
+      "chronological_order": true
+    },
+    "planning_session": {
+      "id": "691e1613-2e1c-4caa-bea3-4017b119e062",
+      "mode": "CHAT_MODE_PLANNING",
+      "listed_message_count": 14,
+      "history_message_count": 4,
+      "roles": ["user", "assistant", "user", "assistant"],
+      "empty_content": false,
+      "chronological_order": true
+    },
+    "companion_session": {
+      "id": "652feb3c-4de4-4023-89c3-3f7a3e5295ca",
+      "mode": "CHAT_MODE_COMPANION",
+      "listed_message_count": 2,
+      "history_message_count": 2,
+      "roles": ["user", "assistant"],
+      "empty_content": false,
+      "chronological_order": true
+    }
+  }
+}

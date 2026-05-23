@@ -1,0 +1,166 @@
+{
+  "persona": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "persona_type": "structural",
+  "run": "run21",
+  "timestamp": "2026-04-12T11:52:17Z",
+  "duration_seconds": 12,
+  "backend_version": "localhost:8090",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "test_results": {
+    "phase_1_valid_forward_path": {
+      "status": "PASS",
+      "tests": [
+        {
+          "test_number": 1,
+          "description": "CreateTrip with no status field set",
+          "rpc": "CreateTrip",
+          "input": {"title": "N-14 status walk"},
+          "expected_status": "TRIP_STATUS_PLANNING",
+          "actual_status": "TRIP_STATUS_PLANNING",
+          "result": "PASS",
+          "trip_id": "2884b012-37a9-4b03-ad11-51c570c9be1e"
+        },
+        {
+          "test_number": 2,
+          "description": "CreateTrip with TRIP_STATUS_ACTIVE",
+          "rpc": "CreateTrip",
+          "input": {"title": "N-14 active start", "status": "TRIP_STATUS_ACTIVE"},
+          "expected_status": "TRIP_STATUS_ACTIVE",
+          "actual_status": "TRIP_STATUS_ACTIVE",
+          "result": "PASS",
+          "trip_id": "9d987366-1021-42a7-9f96-94cd25a89aa0",
+          "note": "PR #197 status-at-create feature confirmed working post-PR #198"
+        },
+        {
+          "test_number": 3,
+          "description": "UpdateTrip PLANNING → ACTIVE",
+          "rpc": "UpdateTrip",
+          "trip_id": "2884b012-37a9-4b03-ad11-51c570c9be1e",
+          "from_status": "TRIP_STATUS_PLANNING",
+          "to_status": "TRIP_STATUS_ACTIVE",
+          "result": "PASS"
+        },
+        {
+          "test_number": 4,
+          "description": "UpdateTrip ACTIVE → COMPLETED",
+          "rpc": "UpdateTrip",
+          "trip_id": "2884b012-37a9-4b03-ad11-51c570c9be1e",
+          "from_status": "TRIP_STATUS_ACTIVE",
+          "to_status": "TRIP_STATUS_COMPLETED",
+          "result": "PASS"
+        },
+        {
+          "test_number": 5,
+          "description": "UpdateTrip ACTIVE → COMPLETED (trip 2)",
+          "rpc": "UpdateTrip",
+          "trip_id": "9d987366-1021-42a7-9f96-94cd25a89aa0",
+          "from_status": "TRIP_STATUS_ACTIVE",
+          "to_status": "TRIP_STATUS_COMPLETED",
+          "result": "PASS"
+        }
+      ]
+    },
+    "phase_2_rejected_transitions": {
+      "status": "PASS",
+      "note": "All rejected transitions return FailedPrecondition (not Internal). PR #198 sentinel-error mapping confirmed working.",
+      "tests": [
+        {
+          "test_number": 6,
+          "description": "UpdateTrip COMPLETED → PLANNING",
+          "rpc": "UpdateTrip",
+          "trip_id": "2884b012-37a9-4b03-ad11-51c570c9be1e",
+          "from_status": "TRIP_STATUS_COMPLETED",
+          "to_status": "TRIP_STATUS_PLANNING",
+          "expected_code": "FailedPrecondition",
+          "actual_code": "FailedPrecondition",
+          "actual_message": "invalid trip status transition: completed → planning",
+          "result": "PASS"
+        },
+        {
+          "test_number": 7,
+          "description": "UpdateTrip COMPLETED → ACTIVE",
+          "rpc": "UpdateTrip",
+          "trip_id": "2884b012-37a9-4b03-ad11-51c570c9be1e",
+          "from_status": "TRIP_STATUS_COMPLETED",
+          "to_status": "TRIP_STATUS_ACTIVE",
+          "expected_code": "FailedPrecondition",
+          "actual_code": "FailedPrecondition",
+          "actual_message": "invalid trip status transition: completed → active",
+          "result": "PASS"
+        },
+        {
+          "test_number": 8,
+          "description": "UpdateTrip COMPLETED → PLANNING (trip 2)",
+          "rpc": "UpdateTrip",
+          "trip_id": "9d987366-1021-42a7-9f96-94cd25a89aa0",
+          "from_status": "TRIP_STATUS_COMPLETED",
+          "to_status": "TRIP_STATUS_PLANNING",
+          "expected_code": "FailedPrecondition",
+          "actual_code": "FailedPrecondition",
+          "actual_message": "invalid trip status transition: completed → planning",
+          "result": "PASS"
+        }
+      ]
+    },
+    "phase_3_invalid_initial_status": {
+      "status": "PASS",
+      "tests": [
+        {
+          "test_number": 9,
+          "description": "CreateTrip with TRIP_STATUS_COMPLETED",
+          "rpc": "CreateTrip",
+          "input": {"title": "Cannot start completed", "status": "TRIP_STATUS_COMPLETED"},
+          "expected_code": "InvalidArgument",
+          "actual_code": "InvalidArgument",
+          "actual_message": "invalid initial trip status: \"completed\"",
+          "result": "PASS"
+        }
+      ]
+    },
+    "phase_4_regression_guards": {
+      "status": "PASS",
+      "tests": [
+        {
+          "test_number": 10,
+          "description": "GetTrip with valid but non-existent UUID",
+          "rpc": "GetTrip",
+          "input": {"id": "00000000-0000-0000-0000-000000000000"},
+          "expected_code": "NotFound",
+          "actual_code": "NotFound",
+          "actual_message": "trip not found",
+          "result": "PASS"
+        },
+        {
+          "test_number": 11,
+          "description": "GetTrip with 'not-a-uuid'",
+          "rpc": "GetTrip",
+          "input": {"id": "not-a-uuid"},
+          "expected_code": "InvalidArgument",
+          "actual_code": "InvalidArgument",
+          "actual_message": "validation error: id: value must be a valid UUID",
+          "result": "PASS"
+        }
+      ]
+    }
+  },
+  "feature_coverage": [
+    "status_machine_enforcement",
+    "create_trip_active_status",
+    "status_error_codes"
+  ],
+  "usefulness_evaluation": {
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "overall_score": 5,
+    "would_use_again": true
+  },
+  "summary": "All 11 tests passed. PR #198 sentinel-error mapping is confirmed working: invalid status transitions return FailedPrecondition (not Internal), and invalid initial status returns InvalidArgument. PR #197 create-with-status feature also confirmed intact. No regressions detected in Phase 4 baseline checks (NotFound for missing UUID, InvalidArgument for malformed UUID).",
+  "cleanup": "Both test trips deleted successfully after all tests completed."
+}

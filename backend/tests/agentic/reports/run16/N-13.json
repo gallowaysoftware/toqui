@@ -1,0 +1,46 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "setup_trip", "setup_itinerary", "activate", "companion_msg1", "companion_msg2", "companion_msg3", "companion_msg4", "companion_msg5", "companion_msg6", "verify_itinerary", "sharing", "chat_sessions", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions returns messageCount 0 despite messages sent",
+      "description": "ListChatSessions returns messageCount: 0 for both the planning session (1 message sent) and the companion session (6 messages sent). The messages are persisted (GetChatHistory works), but the count metadata is not updated.",
+      "expected": "messageCount should reflect actual messages in each session",
+      "actual": "messageCount: 0 for both sessions",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions"
+    },
+    {
+      "severity": "P2",
+      "title": "GetItinerary returns empty immediately after planning SendMessage stream completes",
+      "description": "Calling GetItinerary immediately after the planning SendMessage stream completes (which emitted itineraryUpdate events with 21 items) returned 0 items. A second call a few seconds later returned all 21 items. This suggests a read-after-write consistency issue or the itinerary write is async and not fully committed when the stream ends.",
+      "expected": "GetItinerary should return items immediately after the SendMessage stream completes",
+      "actual": "First GetItinerary call returned 0 items; second call returned 21",
+      "api_command": "POST /toqui.v1.TripService/GetItinerary"
+    },
+    {
+      "severity": "P2",
+      "title": "Planning mode creates duplicate itinerary items",
+      "description": "The planning message generated 21 items for a 4-day Lisbon trip (expected ~12 for 3 items/day x 4 days). The AI called create_itinerary_items multiple times in the tool loop, and the second batch duplicated items from the first batch with slightly different titles (e.g., 'Explore Castelo de São Jorge' and 'Castelo de São Jorge & Moorish History'). This likely occurred because a persona handoff (suggest_expert) triggered a second round of itinerary creation.",
+      "expected": "~12 unique itinerary items (3 per day x 4 days)",
+      "actual": "21 items with many duplicates across the tool loop iterations"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The core PR #201 guardrail test passed perfectly: all 6 informational companion-mode queries received helpful, concise answers without any itinerary modifications. The AI correctly used web_search and nearby_places when relevant, but never touched create_itinerary_items or delete_itinerary_items. All responses were under 300 words and phone-friendly. The itinerary count remained at 21 before and after all companion messages. The only issues found were minor: duplicate itinerary items during planning seed (tool loop re-creation), a transient read-after-write consistency gap on GetItinerary, and stale messageCount in ListChatSessions."
+  },
+  "feature_coverage": ["auth", "trip_create", "planning_chat", "itinerary_create", "trip_activate", "companion_chat", "trip_sharing", "chat_sessions", "usage", "trip_complete"]
+}

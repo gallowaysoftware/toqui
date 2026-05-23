@@ -1,0 +1,114 @@
+{
+  "persona": "R-03",
+  "name": "Marcus — Returning User with Multiple Trips",
+  "run": 19,
+  "date": "2026-04-10",
+  "duration_seconds": 120,
+  "status": "PASS",
+  "steps": [
+    {
+      "step": 1,
+      "name": "GetCurrentUser",
+      "status": "PASS",
+      "details": "Verified identity: email=r03-run19b@toqui-test.local, user_id=16be5985-a480-44ea-b724-828e4603d9bd, tier=free"
+    },
+    {
+      "step": 2,
+      "name": "CreateTrip Moroccan Adventure + UpdateTrip to ACTIVE",
+      "status": "PASS",
+      "details": "Created trip f84759f2-bf51-47e7-89f2-4364f6ef660e, updated to TRIP_STATUS_ACTIVE. destinationCountry auto-detected as MA."
+    },
+    {
+      "step": 3,
+      "name": "CreateTrip Greek Islands Hopping (PLANNING)",
+      "status": "PASS",
+      "details": "Created trip 2a03e1af-5162-4f9d-b6a4-8584cd503462, status PLANNING. destinationCountry auto-detected as GR."
+    },
+    {
+      "step": 4,
+      "name": "ListTrips — verify 2 trips",
+      "status": "PASS",
+      "details": "Returned 2 trips with correct titles, statuses, and destination countries."
+    },
+    {
+      "step": 5,
+      "name": "Selection mode — vague reference matching 'my Greece trip'",
+      "status": "PASS",
+      "details": "AI called select_trip with correct trip ID 2a03e1af-5162-4f9d-b6a4-8584cd503462. TripSelected event emitted. Matched 'my Greece trip' to 'Greek Islands Hopping'."
+    },
+    {
+      "step": 6,
+      "name": "Planning mode — create_itinerary_items for Santorini",
+      "status": "PASS",
+      "details": "AI called create_itinerary_items with 9 items across 3 days (activities, meals, sightseeing). ItineraryUpdate event emitted with full itinerary. Minor: AI called create_itinerary_items a second time (deduped correctly with 'already_exists' — stutter bug, P2)."
+    },
+    {
+      "step": 7,
+      "name": "Trip switching — 'take me to my Morocco trip'",
+      "status": "PASS",
+      "details": "AI called select_trip with Morocco trip ID f84759f2-bf51-47e7-89f2-4364f6ef660e. TripSelected event emitted. Correctly recognized trip is ACTIVE (companion mode language)."
+    },
+    {
+      "step": 8,
+      "name": "Morocco context — best time to visit Marrakech",
+      "status": "PASS",
+      "details": "AI responded with Morocco-specific content (Marrakech, medina, souks, Atlas Mountains, riads). Correctly in companion mode ('Since you're here in April')."
+    },
+    {
+      "step": 9,
+      "name": "New trip creation — New Zealand (create_trip NOT select_trip)",
+      "status": "PASS",
+      "details": "AI correctly called create_trip (not select_trip) for the new destination. TripCreated event emitted. Trip: 'New Zealand South Island Adventure', destination_country=NZ. Also attempted web_search (gracefully handled no_web_access)."
+    },
+    {
+      "step": 10,
+      "name": "ListTrips — verify exactly 3 trips",
+      "status": "PASS",
+      "details": "Returned exactly 3 trips: New Zealand South Island Adventure (PLANNING, NZ), Greek Islands Hopping (PLANNING, GR), Moroccan Adventure (ACTIVE, MA)."
+    }
+  ],
+  "bugs": [
+    {
+      "id": "R03-001",
+      "severity": "P2",
+      "category": "ai_behavior",
+      "title": "create_itinerary_items tool called twice in same turn (stutter)",
+      "description": "In step 6, the AI called create_itinerary_items with 9 Santorini items, got the result, then called it again with identical items. The dedup logic correctly returned 'already_exists' with 0 created and 9 skipped, so no data corruption. But it wastes a tool loop iteration and tokens.",
+      "reproduction": "Send a planning mode message asking about multi-day plans. The AI may call create_itinerary_items, get the result, then re-call with the same items.",
+      "expected": "AI should call create_itinerary_items once and move on after seeing the success result.",
+      "actual": "AI called create_itinerary_items twice with identical payloads. Second call correctly deduped (0 created, 9 skipped)."
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "id": "R03-AI-001",
+      "severity": "P2",
+      "title": "Duplicate tool call stutter in itinerary creation",
+      "description": "Same as bug R03-001. The AI issued the same create_itinerary_items call twice. The dedup logic in the backend handled it gracefully, but it adds latency to the response and consumes extra tokens.",
+      "suggestion": "Consider adding a system prompt instruction: 'After create_itinerary_items returns successfully, do NOT call it again with the same items. Confirm to the user what was added.'"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": null,
+    "companion_mode": 5,
+    "overall": 5
+  },
+  "usefulness_notes": {
+    "trip_creation": "All 3 trips created correctly. create_trip vs select_trip distinction handled perfectly — AI created NZ trip instead of trying to select a non-existent one.",
+    "itinerary_quality": "Excellent 3-day Santorini itinerary: 9 items with detailed descriptions, time estimates, local tips, restaurant reservation warnings. Mix of activities, meals, and sightseeing.",
+    "companion_mode": "Morocco companion mode response was contextually aware ('Since you're here in April') with practical local knowledge about seasons, temperature, and cultural context.",
+    "overall": "Core multi-trip workflow works flawlessly: vague reference matching ('my Greece trip' → 'Greek Islands Hopping'), trip switching, new trip creation vs selection. The only issue is a P2 tool call stutter that was handled gracefully by backend dedup."
+  },
+  "key_test_results": {
+    "vague_reference_matching": "PASS — 'my Greece trip' correctly matched to 'Greek Islands Hopping'",
+    "trip_switching": "PASS — 'take me to my Morocco trip' correctly switched to Moroccan Adventure",
+    "create_vs_select": "PASS — New Zealand request correctly used create_trip, not select_trip",
+    "context_awareness": "PASS — AI maintained correct trip context after switching (Morocco companion mode, not Greece)",
+    "multi_trip_management": "PASS — 3 trips coexist with correct statuses and destinations"
+  }
+}

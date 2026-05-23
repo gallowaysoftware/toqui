@@ -1,0 +1,95 @@
+{
+  "persona": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "run": 9,
+  "date": "2026-04-09",
+  "duration_seconds": 25,
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "feature_coverage": [
+    "status_machine_enforcement",
+    "create_trip_active_status",
+    "status_error_codes"
+  ],
+  "test_results": {
+    "phase_1_valid_forward_path": {
+      "test_1_create_trip_default_planning": {
+        "result": "PASS",
+        "trip_id": "13f4649a-b861-4ff7-a62b-eca44280793b",
+        "status_returned": "TRIP_STATUS_PLANNING"
+      },
+      "test_2_create_trip_with_active": {
+        "result": "PASS",
+        "trip_id": "ab5e641f-19bc-4818-862b-9efd3b0c02c5",
+        "status_returned": "TRIP_STATUS_ACTIVE",
+        "verified_via_get_trip": true
+      },
+      "test_3_update_planning_to_active": {
+        "result": "PASS",
+        "status_returned": "TRIP_STATUS_ACTIVE"
+      },
+      "test_4_update_active_to_completed": {
+        "result": "PASS",
+        "status_returned": "TRIP_STATUS_COMPLETED"
+      },
+      "test_5_update_trip2_active_to_completed": {
+        "result": "PASS",
+        "status_returned": "TRIP_STATUS_COMPLETED"
+      }
+    },
+    "phase_2_rejected_transitions": {
+      "test_6_completed_to_planning": {
+        "result": "PASS",
+        "expected_code": "failed_precondition",
+        "actual_code": "FailedPrecondition",
+        "message": "invalid trip status transition: completed → planning"
+      },
+      "test_7_completed_to_active": {
+        "result": "PASS",
+        "expected_code": "failed_precondition",
+        "actual_code": "FailedPrecondition",
+        "message": "invalid trip status transition: completed → active"
+      },
+      "test_8_trip2_completed_to_planning": {
+        "result": "PASS",
+        "expected_code": "failed_precondition",
+        "actual_code": "FailedPrecondition",
+        "message": "invalid trip status transition: completed → planning"
+      }
+    },
+    "phase_3_invalid_initial_status": {
+      "test_9_create_trip_completed": {
+        "result": "PASS",
+        "expected_code": "invalid_argument",
+        "actual_code": "InvalidArgument",
+        "message": "invalid initial trip status: \"completed\""
+      }
+    },
+    "phase_4_regression_guards": {
+      "test_10_get_trip_nonexistent_uuid": {
+        "result": "PASS",
+        "expected_code": "not_found",
+        "actual_code": "NotFound",
+        "message": "trip not found"
+      },
+      "test_11_get_trip_invalid_uuid": {
+        "result": "PASS",
+        "expected_code": "invalid_argument",
+        "actual_code": "InvalidArgument",
+        "message": "validation error: id: value must be a valid UUID"
+      }
+    }
+  },
+  "usefulness_evaluation": {
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "overall_score": 5,
+    "would_use_again": true,
+    "comments": "All 11 tests passed. PR #198 sentinel error codes are correctly mapped: FailedPrecondition for invalid status transitions, InvalidArgument for invalid initial status. PR #197 create-with-ACTIVE feature works correctly. No regressions detected."
+  }
+}

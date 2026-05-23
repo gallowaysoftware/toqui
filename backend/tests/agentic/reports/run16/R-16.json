@@ -1,0 +1,51 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage count off-by-one: shows 6 but 7 messages sent",
+      "description": "GET /api/usage returns {\"used\":6} but chat history shows 7 user messages (14 total messages = 7 user + 7 assistant). One message appears uncounted.",
+      "expected": "used: 7",
+      "actual": "used: 6",
+      "api_command": "GET /api/usage"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat session mode shows COMPANION despite starting in SELECTION",
+      "description": "ListChatSessions returns the single session with mode CHAT_MODE_COMPANION, but the session was originally created in CHAT_MODE_SELECTION and used across selection, planning, and companion modes. The mode field appears to reflect the last-used mode rather than the creation mode, which could confuse clients trying to categorize sessions.",
+      "expected": "Session mode reflects creation mode (CHAT_MODE_SELECTION) or session tracks mode transitions",
+      "actual": "Session mode shows CHAT_MODE_COMPANION (last-used mode)",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The recommend_booking tool returns generic search URLs (e.g., skyscanner.com/transport/flights/anywhere/anywhere/anytime) rather than pre-populated search links with the user's actual origin, destination, and dates. An academic booking a Heraklion-to-Izmir flight gets a generic 'search anywhere' page.",
+      "severity": "P1",
+      "suggestion": "Pre-populate affiliate links with destination/date parameters when available from trip context."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "On the first message (selection mode), the AI proactively created a full 13-item itinerary AND triggered expert handoff AND triggered 3 recommend_booking calls. While impressive, this front-loads an enormous amount of content before the user has had a chance to refine preferences.",
+      "context": "The first SendMessage in CHAT_MODE_SELECTION triggered create_trip, suggest_expert, two create_itinerary_items calls, and three recommend_booking calls — all in one response.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional performance for an academic history persona. The AI demonstrated genuine depth: it discussed the Pythia's pneuma theory with correct citations (de Boer and Hale 2001, Oppé, Amandry, Lehoux), engaged with the Evans/Knossos reconstruction controversy citing Cathy Gere and Helga Reusch by name, explained the Attalid bequest and Library of Celsus as heroön with architectural analysis, and proactively added Didyma as a comparative oracle site. The itinerary allocated realistic academic time (4-5 hours at sites, full days at museums) and included site-specific research targets (travertine deposits, fault line intersections, lustral basins). Companion mode was appropriately concise and practical. Istanbul recommendations correctly focused on Hagia Sophia, Archaeological Museum, and Hippodrome rather than tourist shopping. Book recommendations were specific and scholarly (Johnston, Eidinow, Scott, Gere, Hamilakis). The only weakness was companion mode could have been slightly more concise — still longer than ideal for on-the-ground quick answers."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "recommend_booking", "companion", "trip_sharing", "trip_unshare", "chat_history", "usage", "trip_lifecycle"]
+}

@@ -1,0 +1,33 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India (Delhi, Agra, Jaipur, Varanasi, Rishikesh)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Chat history only returned 6 messages (3 user + 3 assistant) despite sending 6 user messages total. The 3 planning-mode messages (accommodation, food, Agra activities) appear missing from GetChatHistory. They may have been stored but the API may be paginating or truncating.",
+      "severity": "P2",
+      "suggestion": "Investigate whether GetChatHistory has a default page size that limits returned messages, or whether planning-mode messages sent with the same session_id are being dropped."
+    },
+    {
+      "description": "AI re-attempted to create itinerary items that already existed during the full itinerary build, resulting in two redundant create_itinerary_items tool calls that returned 'already_exists'. This is a minor token waste.",
+      "severity": "P2",
+      "suggestion": "The AI should check tool results and avoid re-calling create_itinerary_items with the same items after getting an already_exists response."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Budget enforcement was excellent throughout. The AI consistently respected the $10/day constraint, provided prices in both INR and USD, flagged the Taj Mahal entry as exceeding the daily budget and offered cheaper alternatives (Mehtab Bagh, rooftop cafes), recommended Sleeper Class trains and General class (never AC), suggested free activities like Langar meals and temple visits, and gave accurate street food prices (Kachori at 50 INR, Thali at 100-150 INR). The expert handoff to Arjun (India budget specialist) happened immediately and retained full budget context. Companion mode responses were concise and actionable. The 21-day itinerary covered all 5 cities with 44 items, all budget-appropriate. Vegetarian awareness was strong — all food recommendations were vegetarian without being asked repeatedly. No patronizing 'consider upgrading' advice was given."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary", "expert_handoff"]
+}

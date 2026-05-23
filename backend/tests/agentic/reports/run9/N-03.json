@@ -1,0 +1,204 @@
+{
+  "persona": "N-03",
+  "name": "REST Endpoint Exerciser",
+  "run": 9,
+  "date": "2026-04-09",
+  "duration_seconds": 25,
+  "summary": "All 16 test cases passed. Every REST endpoint returned correct HTTP status codes, well-formed JSON, and appropriate error responses. No HTTP 500s observed. The trip sharing lifecycle (share, fetch, unshare, verify-invalidated) works correctly. Auth enforcement is solid across all authenticated endpoints.",
+  "bugs": [],
+  "ux_issues": [],
+  "ai_issues": [],
+  "tool_failures": [],
+  "test_results": {
+    "phase_1_health": {
+      "status": "PASS",
+      "tests": [
+        {
+          "step": 1,
+          "endpoint": "GET /healthz",
+          "status": "PASS",
+          "http_status": 200,
+          "response_time_ms": 0.8,
+          "response_shape": {"status": "string"},
+          "response_body": {"status": "ok"}
+        },
+        {
+          "step": 2,
+          "endpoint": "GET /health",
+          "status": "PASS",
+          "http_status": 200,
+          "response_time_ms": 0.8,
+          "response_shape": {"status": "string", "components": {"database": {"status": "string", "latency_ms": "number"}, "server": {"status": "string", "uptime_seconds": "number"}}},
+          "response_body": {"status": "healthy", "components": {"database": {"status": "healthy", "latency_ms": 0}, "server": {"status": "healthy"}}}
+        },
+        {
+          "step": 3,
+          "endpoint": "GET /livez",
+          "status": "PASS",
+          "http_status": 200,
+          "response_time_ms": 0.3,
+          "response_shape": {"status": "string"},
+          "response_body": {"status": "alive"}
+        },
+        {
+          "step": 4,
+          "endpoint": "GET /readyz",
+          "status": "PASS",
+          "http_status": 200,
+          "response_time_ms": 0.7,
+          "response_shape": {"status": "string"},
+          "response_body": {"status": "ready"}
+        }
+      ]
+    },
+    "phase_2_public": {
+      "status": "PASS",
+      "tests": [
+        {
+          "step": 5,
+          "endpoint": "GET /api/guides",
+          "status": "PASS",
+          "http_status": 200,
+          "guides_count": 25,
+          "response_shape": {"guides": "[{slug, title, persona_name, persona_specialty, destination, country, theme, excerpt, cta_text, cta_url}]", "total": "number"},
+          "notes": "25 guides returned, all have slug and title fields"
+        },
+        {
+          "step": 6,
+          "endpoint": "GET /api/guides/tokyo-food",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "content": "string", "cta_text": "string", "cta_url": "string"},
+          "notes": "Title matches list entry. Content field is non-empty (detailed food guide text)."
+        },
+        {
+          "step": 7,
+          "endpoint": "GET /shared/nonexistent-token-12345",
+          "status": "PASS",
+          "http_status": 404,
+          "response_body": "not found",
+          "notes": "Returns 404 as expected, not 500"
+        }
+      ]
+    },
+    "phase_3_authenticated": {
+      "status": "PASS",
+      "tests": [
+        {
+          "step": 8,
+          "endpoint": "GET /api/usage",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"used": "number", "limit": "number", "tier": "string", "resets_at": "string (ISO 8601)"},
+          "response_body": {"used": 0, "limit": 10, "tier": "free", "resets_at": "2026-04-10T00:00:00Z"},
+          "notes": "used=0 >= 0, limit=10 > 0, resets_at is valid timestamp. Also returns tier field."
+        },
+        {
+          "step": 9,
+          "endpoint": "GET /api/referral",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"code": "string", "link": "string", "max_rewards": "number", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "number", "rewards_remaining": "number", "successful_referrals": "number"},
+          "referral_code": "0FB86CC0",
+          "notes": "Code is non-empty 8-char hex string. Response includes full reward tracking fields."
+        }
+      ]
+    },
+    "phase_4_sharing": {
+      "status": "PASS",
+      "trip_id": "822f7870-c333-4503-ba2a-fbf65e87d955",
+      "tests": [
+        {
+          "step": 10,
+          "endpoint": "POST /api/trips/share",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"share_token": "string", "share_url": "string"},
+          "share_token": "pQX0GBEUD6loukKFOnPXAh",
+          "notes": "Returns both share_token and share_url"
+        },
+        {
+          "step": 11,
+          "endpoint": "GET /shared/{token}",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"trip": {"title": "string", "description": "string", "destination_country": "string", "status": "string"}, "itinerary": "array"},
+          "notes": "Trip title is 'REST Test Trip' as expected. destination_country auto-resolved to 'ES'. Itinerary is empty array."
+        },
+        {
+          "step": 12,
+          "endpoint": "POST /api/trips/unshare",
+          "status": "PASS",
+          "http_status": 200,
+          "response_shape": {"status": "string"},
+          "response_body": {"status": "ok"}
+        },
+        {
+          "step": 13,
+          "endpoint": "GET /shared/{token} (after unshare)",
+          "status": "PASS",
+          "http_status": 404,
+          "response_body": "not found",
+          "notes": "Token correctly invalidated after unshare. Old token no longer accessible."
+        }
+      ]
+    },
+    "phase_5_errors": {
+      "status": "PASS",
+      "tests": [
+        {
+          "step": 14,
+          "endpoint": "GET /api/usage (no auth)",
+          "status": "PASS",
+          "http_status": 401,
+          "response_body": "unauthorized",
+          "notes": "Correctly returns 401, not 500"
+        },
+        {
+          "step": 15,
+          "endpoint": "POST /api/trips/share (no auth)",
+          "status": "PASS",
+          "http_status": 401,
+          "response_body": "unauthorized",
+          "notes": "Correctly returns 401, not 500"
+        },
+        {
+          "step": 16,
+          "endpoint": "POST /api/trips/share (auth, invalid trip_id)",
+          "status": "PASS",
+          "http_status": 404,
+          "response_body": "trip not found",
+          "notes": "Correctly returns 404, not 500. Error message is descriptive."
+        }
+      ]
+    }
+  },
+  "usefulness_scores": {
+    "trip_creation": "N/A (structural test)",
+    "itinerary_quality": "N/A (structural test)",
+    "persona_handoff": "N/A (structural test)",
+    "booking_parsing": "N/A (structural test)",
+    "companion_mode": "N/A (structural test)",
+    "overall": 5
+  },
+  "api_documentation": {
+    "health_endpoints": {
+      "GET /healthz": {"response": {"status": "ok"}, "auth": false},
+      "GET /health": {"response": {"status": "healthy", "components": {"database": {"status": "healthy", "latency_ms": 0}, "server": {"status": "healthy", "uptime_seconds": "number"}}}, "auth": false},
+      "GET /livez": {"response": {"status": "alive"}, "auth": false},
+      "GET /readyz": {"response": {"status": "ready"}, "auth": false}
+    },
+    "public_endpoints": {
+      "GET /api/guides": {"response": {"guides": "array of guide objects", "total": "number"}, "guide_fields": ["slug", "title", "persona_name", "persona_specialty", "destination", "country", "theme", "excerpt", "cta_text", "cta_url"], "auth": false},
+      "GET /api/guides/{slug}": {"response": "guide object with content field added", "auth": false},
+      "GET /shared/{token}": {"response": {"trip": "object", "itinerary": "array"}, "trip_fields": ["title", "description", "destination_country", "status"], "auth": false}
+    },
+    "authenticated_endpoints": {
+      "GET /api/usage": {"response": {"used": "number", "limit": "number", "tier": "string", "resets_at": "ISO 8601 timestamp"}, "auth": true},
+      "GET /api/referral": {"response": {"code": "string", "link": "string", "max_rewards": "number", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "number", "rewards_remaining": "number", "successful_referrals": "number"}, "auth": true},
+      "POST /api/trips/share": {"request": {"trip_id": "UUID"}, "response": {"share_token": "string", "share_url": "string"}, "auth": true},
+      "POST /api/trips/unshare": {"request": {"trip_id": "UUID"}, "response": {"status": "ok"}, "auth": true}
+    }
+  },
+  "notes": "All 16 test cases passed with zero issues. The REST API surface is solid: health endpoints respond in under 1ms, public endpoints return well-formed JSON, auth enforcement returns 401 consistently, and the sharing lifecycle works correctly with proper token invalidation on unshare. The shared trip response auto-resolves destination_country to 'ES' from the description mentioning Spain, which is a nice feature. The /api/usage endpoint also returns a 'tier' field not mentioned in the persona spec, which is a useful addition."
+}

@@ -1,0 +1,69 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Structural — Chat History Data Integrity",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "list_sessions", "get_history", "cross_session_isolation", "usage"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage counter off by one",
+      "description": "Sent 4 user messages (1 selection, 2 planning, 1 companion) but GET /api/usage reports used=3. One message was not counted toward the daily usage limit.",
+      "expected": "used=4",
+      "actual": "used=3",
+      "api_command": "GET /api/usage"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI repeatedly called create_itinerary_items with identical items despite receiving already_exists response",
+      "context": "During planning Message B ('Add those to my itinerary please'), the AI called create_itinerary_items 3 times with the same 14 items, each time receiving already_exists/skipped_count=14. The tool result explicitly said 'Do NOT call this tool again with the same items' but the AI ignored this instruction. This wastes tokens and API calls.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Chat history data integrity is solid. All messages persisted correctly with proper roles, content, timestamps, and session isolation. The core data layer (Firestore persistence, session management, history retrieval) works reliably. The AI quality is decent but it wastes tokens by re-calling tools unnecessarily."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "list_sessions", "get_history", "cross_session_isolation", "usage"],
+  "session_message_counts": {
+    "selection_session": {
+      "session_id": "186574eb-7786-423b-8b9e-0dd004b66e4a",
+      "mode": "CHAT_MODE_SELECTION",
+      "total_messages": 2,
+      "user_messages": 1,
+      "assistant_messages": 1
+    },
+    "planning_session": {
+      "session_id": "7af4ce7c-674d-445c-ae74-805a8ba69463",
+      "mode": "CHAT_MODE_PLANNING",
+      "total_messages": 4,
+      "user_messages": 2,
+      "assistant_messages": 2
+    },
+    "companion_session": {
+      "session_id": "25ec5367-3502-4130-a534-9ef4b845f91a",
+      "mode": "CHAT_MODE_COMPANION",
+      "total_messages": 2,
+      "user_messages": 1,
+      "assistant_messages": 1
+    }
+  },
+  "data_integrity_checks": {
+    "no_empty_messages": true,
+    "roles_alternate_correctly": true,
+    "sessions_isolated": true,
+    "timestamps_chronological": true,
+    "session_listing_complete": true,
+    "session_ordering": "most_recent_first",
+    "all_content_persisted_accurately": true
+  }
+}

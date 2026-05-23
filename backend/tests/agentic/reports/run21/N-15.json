@@ -1,0 +1,42 @@
+{
+  "persona_id": "N-15",
+  "persona_name": "UpdateItinerary Day-Metadata Round Trip (Structural)",
+  "run": "run21",
+  "status": "PASS",
+  "completed_steps": [
+    "Phase 1: CreateTrip — created 'N-15 day-metadata roundtrip' with id f0e568d5-9fee-4d65-ae65-701a4b4ae7b3, status=TRIP_STATUS_PLANNING.",
+    "Phase 2: Single-day write + read — UpdateItinerary with 1 day (day_number=1, date='2026-09-01', summary='Arrival in Lisbon', 2 items). GetItinerary verified: day_number=1, summary='Arrival in Lisbon' (NOT 'Day 1' fallback), date='2026-09-01', 2 items with correct titles and order_in_day.",
+    "Phase 3: Multi-day write + read — UpdateItinerary with 3 days (Arrival in Lisbon, Sintra day trip, Belém and the waterfront). GetItinerary verified: all 3 days returned with correct summaries, dates (2026-09-01, 2026-09-02, 2026-09-03), and item counts (2, 3, 2). Items in correct order_in_day.",
+    "Phase 4: Summary-only and date-only edge cases — UpdateItinerary with Day 1 (summary='Summary only', no date) and Day 2 (no summary, date='2026-09-05'). GetItinerary verified: Day 1 summary='Summary only' with empty date, Day 2 summary='Day 2' (fallback) with date='2026-09-05'. Both edge cases handled correctly.",
+    "Phase 5: Empty itinerary truncate semantics — UpdateItinerary with days=[]. GetItinerary returned zero days, zero items. Truncate-on-empty semantics confirmed.",
+    "Phase 6: Replacement overwrites prior metadata — Re-created 3-day Lisbon itinerary (7 items), then replaced with fresh 2-day itinerary (summaries 'New plan day 1'/'New plan day 2', dates 2026-10-01/2026-10-02, 2 items). GetItinerary confirmed: only 2 days present, all old Lisbon content fully gone, no stale items from prior write."
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "trip_creation": 0,
+    "itinerary_quality": 0,
+    "persona_handoff": 0,
+    "booking_parsing": 0,
+    "companion_mode": 0,
+    "overall": 5,
+    "notes": "Structural test — no AI involved. All AI scores 0 (not applicable). overall_score=5: all 6 phases passed with zero P1/P2 violations."
+  },
+  "feature_coverage": [
+    "update_itinerary",
+    "day_summary_roundtrip",
+    "day_date_roundtrip",
+    "replace_semantics",
+    "CreateTrip",
+    "GetItinerary",
+    "UpdateItinerary (single-day write + read)",
+    "UpdateItinerary (multi-day write + read, 3 days with 7 items)",
+    "UpdateItinerary (summary-only, no date — edge case)",
+    "UpdateItinerary (date-only, no summary — fallback to 'Day N')",
+    "UpdateItinerary (empty days — truncate-on-empty semantics)",
+    "UpdateItinerary (full replacement — old items fully purged)"
+  ],
+  "summary": "All 6 phases passed with zero bugs. PR #198 day-metadata round-trip is fully functional: ItineraryDay.summary and ItineraryDay.date both survive write-read cycles correctly. Summary-only (no date) returns empty date. Date-only (no summary) falls back to 'Day N'. Empty days array truncates all items. Full replacement semantics work — a new UpdateItinerary completely replaces the prior itinerary with no stale data leaking through."
+}

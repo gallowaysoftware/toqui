@@ -1,0 +1,34 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "setup_trips", "selection_match", "planning_itinerary", "trip_switching", "companion_morocco", "new_trip_creation", "verify_3_trips", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI called create_itinerary_items a second time with identical items after already creating them successfully. The dedup logic caught it (skipped_count: 12), but it wastes a tool loop iteration and tokens.",
+      "severity": "P2",
+      "suggestion": "After receiving a successful tool result for create_itinerary_items, the AI should not re-call the same tool with the same items. Consider adding stronger post-tool-call instructions in the system prompt."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Redundant create_itinerary_items tool call — AI created 12 items successfully, then called the same tool again with identical items in the same turn.",
+      "context": "Step 5: Santorini itinerary planning. The first call succeeded (created_count: 12), then the AI generated text confirming the items, then called create_itinerary_items again with the same 12 items. Server-side dedup returned skipped_count: 12.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The multi-trip workflow performed excellently. Vague reference matching ('my Greece trip' to 'Greek Islands Hopping') worked instantly with no disambiguation needed. Trip switching ('take me to my Morocco trip') correctly selected the existing trip rather than creating a new one. New trip creation ('New Zealand') correctly created a fresh trip rather than matching existing ones. The Santorini itinerary was detailed, well-structured across 3 days with 12 items including meals, sightseeing, and activities. Companion mode for Morocco gave contextually relevant Marrakech advice. The only minor issue was a redundant tool call that was gracefully handled by server-side dedup."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_switching", "multi_trip", "itinerary_creation", "sharing", "chat_history", "usage"]
+}

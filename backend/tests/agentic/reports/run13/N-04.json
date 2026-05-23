@@ -1,0 +1,80 @@
+{
+  "persona_id": "N-04",
+  "persona_name": "Booking Field Extractor",
+  "status": "COMPLETED",
+  "trip_destination": "Multiple Destinations",
+  "completed_steps": ["auth", "create_trip", "ingest_bookings", "list_bookings", "extract_fields", "negative_test"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 7 booking artifacts ingested successfully with correct types and parsed fields. All 7 ExtractBookingField queries returned specific, accurate answers matching the raw artifact text. The negative test correctly identified irrelevant questions without hallucinating. Multi-hostel disambiguation (Hanoi-specific check-in time) worked perfectly. Booking field extraction is production-quality."
+  },
+  "feature_coverage": ["create_trip", "ingest_booking", "list_bookings", "extract_booking_field", "negative_extraction_test"],
+  "extraction_results": {
+    "flight_terminal_departure": {
+      "question": "What terminal and what time does my outbound flight depart?",
+      "answer": "Your outbound flight, DL 472, departs from New York (JFK) Terminal 4 at 6:45 PM EDT.",
+      "expected_terminal": "Terminal 4",
+      "expected_time": "6:45 PM EDT",
+      "pass": true
+    },
+    "hotel_cancellation": {
+      "question": "What is the cancellation policy?",
+      "answer": "You can cancel for free until June 12, 2026, at 11:59 PM CEST. If you cancel after this date, the first night's charge (EUR 289.00) will apply. In case of a no-show, the full stay will be charged.",
+      "expected_deadline": "June 12, 2026",
+      "expected_penalty": "EUR 289.00 first night",
+      "pass": true
+    },
+    "activity_meeting_point": {
+      "question": "What is the meeting point and what should I bring?",
+      "answer": "The meeting point is at the Nativity Facade entrance (Carrer de la Marina side), specifically at C/ de la Marina, 253, 08013 Barcelona. You should look for the guide holding an orange Barcelona Expert Tours sign and arrive 15 minutes early. What to bring: Valid photo ID, Comfortable walking shoes, Sunscreen and water bottle, This confirmation, Shoulders and knees must be covered.",
+      "expected_location": "Nativity Facade entrance, C/ de la Marina, 253",
+      "expected_items": ["photo ID", "comfortable walking shoes", "sunscreen", "water bottle"],
+      "pass": true
+    },
+    "car_rental_insurance_fuel": {
+      "question": "What insurance is included and what is the fuel policy?",
+      "answer": "The insurance included is Super CDW (zero excess) and Theft Protection. The fuel policy is Full-to-Full.",
+      "expected_insurance": "Super CDW (zero excess) + Theft Protection",
+      "expected_fuel": "Full-to-Full",
+      "pass": true
+    },
+    "hostel_hanoi_checkin": {
+      "question": "What time is check-in at the Hanoi hostel?",
+      "answer": "Check-in at the Hanoi Old Quarter Hostel is between 2:00 PM and 10:00 PM.",
+      "expected_time": "2:00 PM - 10:00 PM",
+      "correctly_disambiguated": true,
+      "pass": true
+    },
+    "ryokan_meals_dinner": {
+      "question": "What meals are included and what time is dinner?",
+      "answer": "The meal plan includes Kaiseki Dinner and Traditional Japanese Breakfast. Dinner is served in-room at 6:00 PM or 6:30 PM, with guests needing to confirm their preference at check-in.",
+      "expected_meals": "Kaiseki Dinner + Traditional Japanese Breakfast",
+      "expected_dinner_time": "6:00 PM or 6:30 PM",
+      "pass": true
+    },
+    "tour_tastings_dietary": {
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "answer": "The tour includes 12 tastings across 3 markets and 4 street food stands. Dietary accommodations available with advance notice include vegetarian, gluten-free, and vegan substitutions for most stops.",
+      "expected_tastings": 12,
+      "expected_dietary": ["vegetarian", "gluten-free", "vegan"],
+      "pass": true
+    },
+    "negative_test": {
+      "question": "What is the hotel wifi password?",
+      "booking_type": "flight",
+      "answer": "The provided text is a flight booking confirmation and does not contain any information about a hotel or its Wi-Fi password.",
+      "hallucinated": false,
+      "pass": true
+    }
+  }
+}

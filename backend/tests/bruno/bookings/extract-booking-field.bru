@@ -1,0 +1,27 @@
+meta {
+  name: Extract Booking Field
+  type: grpc
+  seq: 6
+}
+
+grpc {
+  url: {{host}}/toqui.v1.BookingService/ExtractBookingField
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Uses AI to extract a specific field from a booking's raw text.
+  question is a natural-language query answered from the booking content.
+  Returns the extracted answer plus a map of all fields parsed from the booking.
+}
+
+body:json {
+  {
+    "booking_id": "<booking-id-from-ingest>",
+    "question": "What is the check-in date?"
+  }
+}

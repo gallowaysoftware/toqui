@@ -1,0 +1,20 @@
+meta {
+  name: Get Booking
+  type: grpc
+  seq: 4
+}
+
+grpc {
+  url: {{host}}/toqui.v1.BookingService/GetBooking
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "id": "<booking-id-from-ingest>"
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extractor",
+  "run": 17,
+  "timestamp": "2026-04-10T17:19:00Z",
+  "duration_seconds": 65,
+  "summary": "All 7 booking artifacts ingested successfully via IngestBooking. ListBookings returned 7 bookings with correct types, non-empty raw_text, and AI-parsed summaries. All 7 ExtractBookingField queries returned specific, accurate answers cross-referenced against source artifacts. Negative test (irrelevant hotel wifi question on flight booking) correctly declined to hallucinate. Multi-hostel disambiguation for Hanoi check-in time was accurate. One minor observation: hostel multi-property booking has empty hotelDetails in the structured response (properties stored in detailsJson instead).",
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Hostel multi-property booking returns empty hotelDetails object in ListBookings/IngestBooking response. The 3-property data is only available in detailsJson as a JSON string, not in the structured hotelDetails proto field. Frontend consumers would need to parse detailsJson to get property-level details for multi-stop hostel bookings.",
+      "rpc": "IngestBooking / ListBookings",
+      "booking": "hostel (6a966a6e)"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "phases": {
+    "phase1_ingest": {
+      "status": "PASS",
+      "details": "All 7 bookings ingested successfully",
+      "bookings": {
+        "flight": {
+          "booking_id": "cb207d68-2987-4b48-8cee-0c6852e63477",
+          "type_submitted": "BOOKING_TYPE_FLIGHT",
+          "type_returned": "BOOKING_TYPE_FLIGHT",
+          "confirmation_code": "DL7829X",
+          "provider": "Delta Air Lines",
+          "status": "PASS"
+        },
+        "hotel": {
+          "booking_id": "4c487b0f-c0b1-445b-877a-34fab8af6aa7",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_returned": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "HAB-2026-9831",
+          "provider": "Hotel Arts Barcelona",
+          "status": "PASS"
+        },
+        "activity": {
+          "booking_id": "1804b391-9225-432c-b724-5253cb31965c",
+          "type_submitted": "BOOKING_TYPE_ACTIVITY",
+          "type_returned": "BOOKING_TYPE_ACTIVITY",
+          "confirmation_code": "SF-44921",
+          "provider": "Barcelona Expert Tours",
+          "status": "PASS"
+        },
+        "car_rental": {
+          "booking_id": "72abcb6b-c6dc-4332-85db-bfeee037aca4",
+          "type_submitted": "BOOKING_TYPE_CAR_RENTAL",
+          "type_returned": "BOOKING_TYPE_CAR_RENTAL",
+          "confirmation_code": "R-8847321",
+          "provider": "Hertz",
+          "status": "PASS"
+        },
+        "hostel": {
+          "booking_id": "6a966a6e-b2af-445e-9e38-9c62f7406da0",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_returned": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "VBH-20260601",
+          "provider": "Hostelworld",
+          "status": "PASS"
+        },
+        "ryokan": {
+          "booking_id": "f0321a1d-deed-41f1-b9c6-81127d7253fd",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_returned": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "RYO-K-5521",
+          "provider": "Gion Nanba Ryokan",
+          "status": "PASS"
+        },
+        "tour": {
+          "booking_id": "34f03abe-9523-450d-8f32-1076fa6b8be2",
+          "type_submitted": "BOOKING_TYPE_TOUR",
+          "type_returned": "BOOKING_TYPE_TOUR",
+          "confirmation_code": "OAXF-2026-112",
+          "provider": "SABORES DE OAXACA FOOD TOURS",
+          "status": "PASS"
+        }
+      }
+    },
+    "phase2_list_verify": {
+      "status": "PASS",
+      "total_bookings": 7,
+      "all_have_booking_id": true,
+      "all_have_raw_text": true,
+      "all_have_summary": true,
+      "all_types_match": true
+    },
+    "phase3_extract_fields": {
+      "test_9_flight_terminal_departure": {
+        "status": "PASS",
+        "question": "What terminal and what time does my outbound flight depart?",
+        "answer": "Your outbound flight (DL 472) departs from Terminal 4 at JFK airport at 6:45 PM EDT on June 15, 2026.",
+        "expected_terminal": "Terminal 4",
+        "expected_time": "6:45 PM EDT",
+        "terminal_correct": true,
+        "time_correct": true,
+        "specificity": "high"
+      },
+      "test_10_hotel_cancellation": {
+        "status": "PASS",
+        "question": "What is the cancellation policy?",
+        "answer": "Free cancellation is available until June 12, 2026 (11:59 PM CEST). If cancelled after this time, the first night (EUR 289.00) will be charged. In the case of a no-show, the full stay will be charged.",
+        "expected_deadline": "June 12, 2026",
+        "expected_penalty": "EUR 289.00 (first night)",
+        "deadline_correct": true,
+        "penalty_correct": true,
+        "specificity": "high"
+      },
+      "test_11_activity_meeting_point": {
+        "status": "PASS",
+        "question": "What is the meeting point and what should I bring?",
+        "answer": "The meeting point is at the Nativity Facade entrance (Carrer de la Marina side), located at C/ de la Marina, 253, 08013 Barcelona; look for a guide with an orange 'Barcelona Expert Tours' sign and arrive 15 minutes early. You should bring a valid photo ID, comfortable walking shoes, sunscreen, a water bottle, and your booking confirmation. Additionally, ensure your shoulders and knees are covered as a dress code is enforced.",
+        "expected_meeting_point": "Nativity Facade entrance, Carrer de la Marina side",
+        "expected_items": ["photo ID", "comfortable walking shoes", "sunscreen", "water bottle", "confirmation", "covered shoulders/knees"],
+        "meeting_point_correct": true,
+        "items_correct": true,
+        "specificity": "high"
+      },
+      "test_12_car_insurance_fuel": {
+        "status": "PASS",
+        "question": "What insurance is included and what is the fuel policy?",
+        "answer": "The rental includes Super CDW (Collision Damage Waiver) with zero excess and Theft Protection. The fuel policy is 'Full-to-Full', meaning the car is provided with a full tank and should be returned with a full tank to avoid extra charges.",
+        "expected_insurance": "Super CDW (zero excess) + Theft Protection",
+        "expected_fuel_policy": "Full-to-Full",
+        "insurance_correct": true,
+        "fuel_policy_correct": true,
+        "specificity": "high"
+      },
+      "test_13_hostel_hanoi_checkin": {
+        "status": "PASS",
+        "question": "What time is check-in at the Hanoi hostel?",
+        "answer": "Check-in at the Hanoi Old Quarter Hostel is on Monday, June 1, 2026, between 2:00 PM and 10:00 PM.",
+        "expected_time": "2:00 PM - 10:00 PM",
+        "expected_hostel": "HANOI OLD QUARTER HOSTEL",
+        "time_correct": true,
+        "correct_hostel_disambiguated": true,
+        "no_city_confusion": true,
+        "specificity": "high"
+      },
+      "test_14_ryokan_meals_dinner": {
+        "status": "PASS",
+        "question": "What meals are included and what time is dinner?",
+        "answer": "The stay includes a Kaiseki dinner and a traditional Japanese breakfast. Dinner is served in-room at either 6:00 PM or 6:30 PM (preference to be confirmed at check-in).",
+        "expected_meals": "Kaiseki dinner + traditional Japanese breakfast",
+        "expected_dinner_time": "6:00 PM or 6:30 PM",
+        "meals_correct": true,
+        "dinner_time_correct": true,
+        "specificity": "high"
+      },
+      "test_15_tour_tastings_dietary": {
+        "status": "PASS",
+        "question": "How many food tastings are included and what dietary accommodations are available?",
+        "answer": "The tour includes 12 food tastings across 3 markets and 4 street food stands. Regarding dietary accommodations, the tour can provide vegetarian and gluten-free options with at least 48 hours' notice, and vegan substitutions are available for most stops.",
+        "expected_tasting_count": 12,
+        "expected_dietary": ["vegetarian", "gluten-free", "vegan substitutions"],
+        "tasting_count_correct": true,
+        "dietary_correct": true,
+        "specificity": "high"
+      }
+    },
+    "phase4_negative_test": {
+      "test_16_irrelevant_question": {
+        "status": "PASS",
+        "question": "What is the hotel wifi password?",
+        "booking_type": "BOOKING_TYPE_FLIGHT",
+        "answer": "The provided source text is a flight confirmation for Delta Air Lines and does not contain information regarding a hotel wifi password.",
+        "hallucinated": false,
+        "correctly_declined": true
+      }
+    }
+  },
+  "usefulness_scores": {
+    "booking_ingestion": 5,
+    "field_extraction_accuracy": 5,
+    "multi_property_disambiguation": 5,
+    "hallucination_resistance": 5,
+    "type_classification": 5,
+    "overall": 5
+  },
+  "notes": "Exceptionally clean run. All 16 test cases passed. The AI extraction pipeline is highly accurate across all 7 booking types. Multi-hostel disambiguation worked perfectly — the AI correctly isolated Hanoi-specific check-in times without confusing with Hue or Saigon properties. Negative test showed strong hallucination resistance. The only minor finding is P2: multi-property hostel bookings don't populate the structured hotelDetails proto field, requiring clients to parse detailsJson for property-level data."
+}

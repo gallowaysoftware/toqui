@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-15",
+  "persona_name": "UpdateItinerary Day-Metadata Round Trip",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon",
+  "completed_steps": ["auth", "create_trip", "single_day_write_read", "multi_day_write_read", "summary_only_date_only", "empty_truncate", "replacement_overwrite"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Structural test only — no AI was used. All six phases passed: single-day summary+date round-trip, multi-day round-trip (3 days with distinct summaries/dates/item counts), summary-only and date-only partial metadata, empty-days truncation to zero items, and full replacement semantics (3-day overwritten by 2-day with no stale data). PR #198 day_summary and day_date metadata persistence is working correctly."
+  },
+  "feature_coverage": ["update_itinerary", "day_summary_roundtrip", "day_date_roundtrip", "replace_semantics"]
+}

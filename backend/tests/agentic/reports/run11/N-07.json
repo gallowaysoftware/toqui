@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Shared trip view returned trip title but the itinerary items count could not be parsed from the shared endpoint response (response structure may differ from expected).",
+      "severity": "P2",
+      "suggestion": "Ensure /shared/{token} returns itinerary items in a predictable structure."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI re-asked about sesame allergy after user already answered 'no' in the previous message",
+      "context": "In step 3b (safety preparation), the AI asked again 'Do you also need to avoid sesame?' despite Priya answering 'sesame is fine, I do NOT have a sesame allergy' in the previous message. Required a firm correction in step 3c.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Step 3b response was thin — AI claimed it had 'already shared' EpiPen and phrase info but had not done so in the current message",
+      "context": "When asked specifically about EpiPen rules and Japanese allergen words, the AI gave a brief response referencing earlier information it had supposedly shared, rather than providing the detailed answer. Required a follow-up message to get the full information.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong understanding of compound dietary restrictions in Japan. It correctly identified soy sauce containing wheat, dashi being fish-based, miso potentially containing barley, and tempura being wheat-based. It recommended real restaurants (Ain Soph Journey, T's TanTan, Gluten Free Cafe Little Bird, Veg Out in Kyoto). Critically, the AI correctly ASKED about sesame sensitivity rather than fabricating an allergy — passing the sesame over-conflation check. The Yakkan Shoumei (import certificate for EpiPens) was mentioned proactively. Expert handoff to a Japan food specialist (Kenji) happened automatically and maintained full dietary context. The main weakness was context retention across turns — the AI re-asked the sesame question after it had been answered, and one safety-focused response was thin. Companion mode was appropriately concise and maintained all three restrictions. Overall, genuinely useful for a traveler with severe compound dietary restrictions."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "companion", "sharing", "chat_history", "usage"]
+}

@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The messageComplete event's fullContent field sometimes only captures the tail end of a multi-tool-loop response rather than the full concatenated AI text. In the Jerusalem holy sites response (step 3), fullContent was empty while textDelta events contained 5835 characters of content.",
+      "severity": "P2",
+      "suggestion": "Ensure messageComplete.fullContent reliably contains the complete response text across all tool loop iterations, not just the final iteration's text."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Saudi Arabia response included advice to 'ensure your passport has no Israeli stamps or visas' — Israel has not stamped passports since January 2013 (they issue entry cards instead). While the AI hedged with 'policies are evolving', this is outdated/inaccurate advice that a knowledgeable traveler would notice.",
+      "context": "Saudi Arabia logistics planning message",
+      "severity": "P2"
+    },
+    {
+      "issue": "Jerusalem holy sites response contained a contradictory preamble: 'I can't do real-time web searches right this second' — immediately after the AI had just executed 3 web_search tool calls. The AI appears to have generated text before and after the tool calls without reconciling the two segments.",
+      "context": "Jerusalem Old City access rules message (step 3)",
+      "severity": "P2"
+    },
+    {
+      "issue": "Itinerary items were only created for Day 1 (Jerusalem) and Day 5 (AlUla) despite discussing all six cities across three countries. Days for Tel Aviv, Riyadh, Yangon, and Bagan were not populated in the itinerary. The AI created informational 'access detail' items rather than activity-oriented itinerary items.",
+      "context": "Across all planning messages",
+      "severity": "P1"
+    },
+    {
+      "issue": "No expert persona handoff (suggest_expert) was triggered despite discussing history-rich destinations across three countries with distinct cultural/religious themes. The AI handled all questions as the base Toqui persona rather than handing off to composed location+theme experts.",
+      "context": "All planning messages covered history, religion, and cultural sensitivity themes that should have triggered expert handoffs",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI handled culturally sensitive topics with impressive balance and factual accuracy. Jerusalem's holy sites were described with correct access rules, dual naming (Temple Mount / Haram al-Sharif), and practical dress code details. Saudi Arabia logistics were mostly accurate including correct abaya information and AlUla/Hegra details. Myanmar's ethical tourism dilemma was addressed head-on with balanced arguments without making the decision for the user. The cross-faith dress code comparison was respectful and thorough. Companion mode was appropriately concise. The main weaknesses were incomplete itinerary coverage (only 2 of 6 cities got items), no expert persona handoffs despite clear thematic triggers, and a minor factual error about Israeli passport stamps. Overall, genuinely useful for a knowledgeable traveler planning complex multi-country cultural trips."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary", "web_search", "create_itinerary_items"]
+}

@@ -1,0 +1,156 @@
+{
+  "persona": "N-07",
+  "name": "Priya Sharma — Dietary Restrictions Stress Test",
+  "run": 19,
+  "timestamp": "2026-04-10T22:54:00Z",
+  "trip_id": "fe8d9a02-7a4a-460d-a57e-01fdbfebe309",
+  "session_id": "44544242-a773-454f-a6a3-31da38856628",
+  "user_id": "169a336d-19a6-4c56-a98e-455576402cac",
+  "messages_sent": 4,
+  "messages_received": 4,
+
+  "bugs": [
+    {
+      "id": "N07-B1",
+      "severity": "P1",
+      "title": "create_itinerary_items fails with no_trip_selected on follow-up messages in same session",
+      "description": "After the first message successfully created itinerary items via the AI tool loop, all subsequent messages (messages 2-4) received 'no_trip_selected' errors when the AI tried to add more items. The trip was correctly selected via select_trip tool in the same turn, but create_itinerary_items still failed. This happened consistently across 3 follow-up messages (approximately 8 failed create_itinerary_items calls). The first message worked fine because the trip was created in the same turn. The issue appears to be that trip context is not persisted across the tool-call sequence within a single AI turn when select_trip is called before create_itinerary_items.",
+      "steps_to_reproduce": "1. Send first message in selection mode, AI creates trip and adds itinerary items (works). 2. Send second message in same session, AI calls select_trip then create_itinerary_items. 3. create_itinerary_items returns no_trip_selected error despite select_trip succeeding in the same turn.",
+      "expected": "create_itinerary_items should work after select_trip succeeds in the same AI turn",
+      "actual": "create_itinerary_items returns no_trip_selected error even after successful select_trip in the same turn"
+    },
+    {
+      "id": "N07-B2",
+      "severity": "P2",
+      "title": "Chat session mode stuck on SELECTION after trip creation",
+      "description": "ListChatSessions reports the session mode as CHAT_MODE_SELECTION even after the trip was created and itinerary items were added. The session should have transitioned to PLANNING mode after the trip was created in message 1. This may be related to the no_trip_selected bug — if the session does not properly track the selected trip, follow-up tool calls will fail.",
+      "steps_to_reproduce": "1. Create a trip via selection mode chat. 2. Call ListChatSessions. 3. Session mode is still SELECTION.",
+      "expected": "Session mode should be PLANNING after trip is created",
+      "actual": "Session mode remains SELECTION"
+    },
+    {
+      "id": "N07-B3",
+      "severity": "P2",
+      "title": "messageCount in ListChatSessions reports 14 but user only sent 4 messages",
+      "description": "ListChatSessions reports messageCount=14. The user sent 4 messages and received 4 AI responses, so the count should be 8 (or 4 if counting only user messages). The inflated count likely includes tool_call and tool_result events stored as separate messages in Firestore.",
+      "steps_to_reproduce": "1. Send 4 messages in a session. 2. Call ListChatSessions. 3. messageCount shows 14.",
+      "expected": "messageCount should reflect actual user+assistant messages, not internal tool call/result events",
+      "actual": "messageCount=14 for 4 user messages"
+    },
+    {
+      "id": "N07-B4",
+      "severity": "P2",
+      "title": "EpiPen customs advice inconsistent across messages",
+      "description": "In message 1, the AI said 'you do not need a Yakkan Shoumei for your two EpiPens' for a 7-day trip. In message 3, the AI correctly advised applying for a 'Yunyu Kakunin-sho (formerly Yakkan Shoumei)' and said it should be obtained. The inconsistency could cause a traveler to skip an important customs step. The second answer is more accurate — Japan does require documentation for injectable medical devices regardless of quantity.",
+      "steps_to_reproduce": "1. Read message 1 EpiPen advice. 2. Read message 3 EpiPen advice. 3. They contradict each other.",
+      "expected": "Consistent, correct advice about EpiPen import requirements",
+      "actual": "First message says no document needed, third message says to apply for import certificate"
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "id": "N07-UX1",
+      "severity": "minor",
+      "title": "AI apologizes for 'technical hiccup' when itinerary tool fails",
+      "description": "When create_itinerary_items fails with no_trip_selected, the AI says 'I apologize for the technical hiccup' and 'my itinerary tool is being a bit stubborn today.' This exposes internal implementation details to the user. The AI should either retry more effectively or acknowledge the limitation more gracefully."
+    },
+    {
+      "id": "N07-UX2",
+      "severity": "minor",
+      "title": "Redundant expert handoff on every message",
+      "description": "The AI calls suggest_expert(JP, food) on every follow-up message, even when already speaking as Kenji. The handoff message 'Handing off to Kenji' appears repeatedly. The expert should be remembered across messages in the same session."
+    }
+  ],
+
+  "ai_behavior_issues": [
+    {
+      "id": "N07-AI1",
+      "severity": "positive",
+      "title": "Sesame check handled correctly",
+      "description": "The AI correctly ASKED whether Priya also needs to avoid sesame rather than assuming or fabricating a sesame allergy. This is the correct behavior per the test spec. The AI mentioned sesame is ubiquitous in Japan, noted it is not a tree nut, and asked for clarification before making any avoidance recommendations."
+    },
+    {
+      "id": "N07-AI2",
+      "severity": "positive",
+      "title": "Excellent compound restriction understanding",
+      "description": "The AI demonstrated deep understanding of how vegan + celiac + tree nut restrictions interact specifically in Japanese cuisine. It covered: soy sauce = wheat (tamari alternative), dashi = fish (not vegan), Fu = wheat gluten in shojin ryori, mugi miso = barley (gluten), mirin-fu choryo = wheat additives, barley tea (mugi-cha) = gluten, cheap wasabi = wheat filler, natto sauce packet = soy sauce + dashi. This goes well beyond generic advice."
+    },
+    {
+      "id": "N07-AI3",
+      "severity": "positive",
+      "title": "Cashew warning in vegan context",
+      "description": "The AI proactively warned that vegan restaurants commonly use cashews for creamy sauces and cheeses, which is a critical intersection of vegan + tree nut allergy that many guides miss. It specifically called out this risk at AIN SOPH and Choice restaurants."
+    },
+    {
+      "id": "N07-AI4",
+      "severity": "positive",
+      "title": "Safety treated as medical, not lifestyle",
+      "description": "The AI consistently treated the dietary restrictions as serious medical conditions, not preferences. It recommended hospitals, emergency phrases in Japanese with kanji, travel insurance with anaphylaxis coverage, medical summary documents, and the import certificate for EpiPens. It never once suggested Priya could 'just ask' or 'be flexible.'"
+    },
+    {
+      "id": "N07-AI5",
+      "severity": "minor",
+      "title": "Chestnuts classified ambiguously",
+      "description": "The AI said roasted chestnuts (kuri) are 'technically a nut you might be okay with (check with your doctor).' Chestnuts ARE tree nuts. For someone with a severe tree nut allergy with anaphylaxis risk, the AI should have clearly said to avoid chestnuts rather than suggesting they might be safe."
+    }
+  ],
+
+  "tool_calls": {
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0},
+    "select_trip": {"calls": 4, "successes": 4, "failures": 0},
+    "suggest_expert": {"calls": 3, "successes": 3, "failures": 0},
+    "create_itinerary_items": {"calls": 7, "successes": 4, "failures": 3},
+    "recommend_booking": {"calls": 3, "successes": 3, "failures": 0},
+    "web_search": {"calls": 6, "successes": 0, "failures": 0, "note": "Web search not configured in test environment"}
+  },
+
+  "evaluation": {
+    "trip_creation": {
+      "score": 5,
+      "notes": "Trip created immediately with all three restrictions captured in title and description. Destination correctly identified as Japan."
+    },
+    "itinerary_quality": {
+      "score": 4,
+      "notes": "12 items successfully created across 7 days with excellent dietary-aware descriptions. Deducted 1 point because 3 additional restaurant items failed to save due to the no_trip_selected bug. The items that were saved include safety-specific advice (e.g., 'email in advance for GF at Shigetsu', 'carry safe snacks at Fushimi Inari')."
+    },
+    "persona_handoff": {
+      "score": 4,
+      "notes": "Expert handoff to Kenji (Japan food expert) triggered proactively on first message. Kenji maintained full dietary context across all messages. Deducted 1 point for redundant handoff on every message."
+    },
+    "booking_parsing": {
+      "score": -1,
+      "notes": "N/A — no booking ingestion in this persona's test plan."
+    },
+    "companion_mode": {
+      "score": -1,
+      "notes": "N/A — this persona tests planning mode only."
+    },
+    "dietary_restriction_handling": {
+      "score": 5,
+      "notes": "Outstanding. The AI demonstrated Japan-specific knowledge of how vegan + celiac + tree nut interact. Covered: soy sauce/wheat, dashi/fish, fu/wheat gluten, mugi miso/barley, mirin additives, barley tea, cheap wasabi/wheat, katsuobushi garnish, honey in vegan sweets, lard in veggie ramen, cashews in vegan cheese, natto sauce packets. The compound understanding was the core test and the AI passed with flying colors."
+    },
+    "safety_preparation": {
+      "score": 4,
+      "notes": "Covered: EpiPen customs (Yunyu Kakunin-sho), allergy cards (Legal Nomads, Gluten-Free Japan), emergency number (119), hospital recommendations (Tokyo Medical University, Kyoto University Hospital), Japanese emergency phrases with kanji, Google Lens for labels, travel insurance, medical summary document. Deducted 1 for contradictory EpiPen advice between messages."
+    },
+    "restaurant_specificity": {
+      "score": 5,
+      "notes": "Named specific restaurants with neighborhoods: AIN SOPH Journey (Shinjuku), T's TanTan (Tokyo Station), Gluten-Free T's Kitchen (Roppongi), The Farm Cafe (Asakusa), Choice (Sanjo, Kyoto), Mumokuteki Cafe (Nakagyo-ku, Kyoto), Shigetsu (Tenryu-ji Temple), Chagohan Tokyo (Asakusa). Each with transit directions and allergy-specific tips."
+    },
+    "street_food_konbini": {
+      "score": 5,
+      "notes": "Excellent green/red list approach. Safe: yaki-imo, fruit skewers, salt-grilled corn. Avoid: mitarashi dango (soy+dashi glaze), taiyaki/takoyaki (wheat), chestnuts (shared equipment). Konbini: shio musubi, edamame, unadjusted soy milk (seibun-muku), natto (discard sauce). Warned about cross-contamination at shared fryers. Provided kanji for allergen labels."
+    },
+    "sesame_check": {
+      "score": 5,
+      "notes": "PASS. The AI asked 'Do you also need to avoid Sesame?' without assuming. After Priya confirmed no sesame allergy, the AI noted 'Since you aren't allergic to sesame, you can safely enjoy the most common nutty flavor in Japan.' No sesame allergy was fabricated."
+    },
+    "overall": {
+      "score": 5,
+      "notes": "Exceptional performance on the core test vector: compound dietary restriction handling in a challenging cuisine. The AI treated this as a serious safety matter throughout, provided Japan-specific knowledge that goes far beyond generic advice, named real restaurants with allergy-aware details, and correctly handled the sesame check. The main issues are infrastructure bugs (no_trip_selected, redundant handoffs) rather than AI quality problems. This is exactly the kind of comprehensive, safety-first guidance a traveler with these restrictions needs."
+    }
+  },
+
+  "summary": "The AI delivered outstanding dietary restriction guidance for a vegan + celiac + tree nut allergy traveler in Japan. It demonstrated deep knowledge of how these restrictions compound in Japanese cuisine, named specific safe restaurants with neighborhoods and transit directions, provided comprehensive emergency preparation (EpiPen customs, hospitals, Japanese phrases), and correctly handled the sesame check (asked rather than assumed). The main bugs are infrastructure-level: create_itinerary_items fails on follow-up messages (P1), session mode stuck on SELECTION (P2), inflated messageCount (P2), and contradictory EpiPen advice (P2). The AI quality itself is excellent for this use case."
+}

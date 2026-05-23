@@ -1,0 +1,61 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip public view returns empty JSON",
+      "description": "GET /shared/{token} returns an empty JSON object {} instead of trip details (title, itinerary, etc.). The share token was generated successfully and unshare worked, but the public view endpoint returned no data.",
+      "steps_to_reproduce": "1. POST /api/trips/share with trip_id → get share_token. 2. GET /shared/{share_token} → returns {}",
+      "expected": "JSON with trip title, description, destination, itinerary items",
+      "actual": "Empty JSON object {}",
+      "api_command": "curl -s http://localhost:8090/shared/TTxP9GUvkFPrkKTIQwcNwv"
+    },
+    {
+      "severity": "P2",
+      "title": "fullContent in messageComplete only contains final text segment",
+      "description": "The messageComplete event's fullContent field only contains the last text segment of the response, not the complete concatenated response. For example, in planning mode the fullContent was 'It looks like those items are already saved in your itinerary...' instead of the full multi-paragraph response that included the itinerary breakdown. This was observed in the planning step where the AI produced a long response with tool calls interspersed.",
+      "expected": "fullContent should contain the complete response text across all textDelta events",
+      "actual": "fullContent only contains the text after the last tool result"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "In selection mode, the AI created the trip quickly (good) but then ended with a generic clarifying question 'Does that sound like a good starting point?' instead of immediately jumping into recommendations. For a user at the airport with 2 hours to boarding, the AI should skip pleasantries and go straight to actionable advice.",
+      "severity": "P2",
+      "suggestion": "When urgency signals are present (at the airport, flight boards soon, zero plans), the AI should skip clarifying questions and immediately provide a lean itinerary or key recommendations."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not mention that Portugal eats dinner late (9-11pm is normal) when giving late-night arrival food advice. This is culturally relevant context that would reassure a traveler landing at 10pm that restaurants will still be open.",
+      "context": "Companion mode message about eating at 10pm in Lisbon",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not mention Tram 28 in the one-day plan, which is one of the most iconic Lisbon experiences and particularly photogenic for a photographer.",
+      "context": "One full day optimization question in companion mode",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not mention Pasteis de Belem in the one-day companion response, even though it was included in the itinerary. The pastel de nata at Pasteis de Belem is arguably the single most iconic food experience in Lisbon.",
+      "context": "One full day optimization question — the AI listed 5 items from the itinerary but omitted the Belem stop which includes Pasteis de Belem",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI handled the last-minute travel scenario well overall. Trip creation was instant with no unnecessary questions. The itinerary was lean and photographer-aware (miradouros, Alfama, Belem). Companion mode responses were concise and practical — the airport logistics answer was excellent with specific metro line, travel times, and departure recommendation. The recommend_booking tool was used appropriately for hotel search. Minor gaps: no mention of Tram 28, no cultural context about late dining in Portugal, and the one-day summary omitted the Belem/pasteis de nata stop. Response brevity was good — no travel essays, mostly bullet points."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "recommend_booking", "create_itinerary_items"]
+}

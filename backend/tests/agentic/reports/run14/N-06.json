@@ -1,0 +1,56 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "run_id": "run-14",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "accommodation", "food", "transport", "activity_budget", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Itinerary items not persisted despite tool reporting success",
+      "description": "create_itinerary_items tool returned created_count of 21, 14, and 9 (44 total items) across 3 tool calls, but GetItinerary returns 0 items. The itineraryUpdate stream events also contain 0 items. The shared trip view also shows 0 itinerary items. Items appear to be created in-memory but not written to the database.",
+      "steps_to_reproduce": "1. Create trip via selection mode. 2. Send planning message asking for day-by-day itinerary. 3. Observe tool results show created_count > 0. 4. Call GetItinerary — returns empty items array.",
+      "expected": "GetItinerary returns 44 items matching what create_itinerary_items reported creating",
+      "actual": "GetItinerary returns 0 items. itineraryUpdate stream events also have 0 items.",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.TripService/GetItinerary -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\": \"e32329c6-dd34-4674-b42b-16ed1f16701b\"}'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Planning mode responses are very long (3000-4000+ chars) for multi-topic questions. For a budget traveler who asks about both accommodation and food in one message, the response can be overwhelming. Consider offering progressive disclosure.",
+      "severity": "P2",
+      "suggestion": "Allow users to ask follow-up questions for details rather than front-loading everything."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Jaipur-Varanasi transport upper range ($8.40) not explicitly flagged as budget concern",
+      "context": "When asked about Jaipur to Varanasi transport, the AI quoted Sleeper Class at 400-700 INR ($4.80-$8.40). The upper range consumes 84% of the daily $10 budget. While the AI mentioned it saves accommodation cost (overnight train), it did not explicitly flag that this single expense could nearly exhaust the daily budget.",
+      "severity": "P2"
+    },
+    {
+      "issue": "No expert persona handoff triggered during budget-focused planning",
+      "context": "Despite discussing food, architecture, and local culture across multiple messages, the AI never triggered suggest_expert to hand off to a local India expert or food expert. The persona spec expected budget context to survive persona switches, but no switches occurred to test this.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "44 items across 3 tool calls for 21-day India itinerary",
+      "error": "Tool reported success (created_count: 21, 14, 9) but items not persisted to database. GetItinerary returns empty. itineraryUpdate stream events contain 0 items."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness throughout, correctly flagging the Taj Mahal entry fee as exceeding the $10/day budget and suggesting Mehtab Bagh as an alternative. Food recommendations were authentic, vegetarian, and accurately priced in INR. Transport suggestions correctly focused on Sleeper Class trains. Companion mode responses were appropriately concise and practical. The main issue is a P1 bug where itinerary items are not actually persisted despite the tool reporting success. No expert handoff was triggered, so budget retention across persona switches could not be tested."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_lifecycle"]
+}

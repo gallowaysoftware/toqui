@@ -1,0 +1,82 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Trip title/description not updated after Venice-to-Cinque-Terre swap",
+      "description": "After message 7 removed Venice and replaced it with Cinque Terre, the trip title remained '10 Days in Italy: Rome, Florence, Venice' and the description still says 'covering Rome, Florence, and Venice.' The AI did not call UpdateTrip to reflect the destination change.",
+      "expected": "Trip title should be updated to reflect Cinque Terre replacing Venice",
+      "actual": "Trip title and description still reference Venice after the swap"
+    },
+    {
+      "severity": "P2",
+      "title": "Stale Venice reference in Tuscan Day Trip description",
+      "description": "After message 7 removed Venice, the original Day 7 'Tuscan Day Trip' item description still contains 'Return to Florence for your train to Venice.' The delete_itinerary_items call removed the Venice-specific items but left this Florence-area item with a stale Venice reference in its text.",
+      "expected": "Item descriptions referencing Venice should be updated or the item recreated without the Venice reference",
+      "actual": "Description says 'Return to Florence for your train to Venice' even though Venice was cut from the itinerary"
+    },
+    {
+      "severity": "P2",
+      "title": "AI referenced Venice in message 8 response despite Venice being cut in message 7",
+      "description": "In the train pass response (message 8), the AI said 'For your specific itinerary of Rome, Florence, and Venice' even though Venice was removed in message 7 and replaced with Cinque Terre. This is a context retention failure where the AI reverted to the original destination list.",
+      "expected": "AI should reference 'Rome, Florence, and Cinque Terre' in all responses after message 7",
+      "actual": "AI said 'Rome, Florence, and Venice' in message 8"
+    },
+    {
+      "severity": "P2",
+      "title": "create_itinerary_items called with empty array in message 6",
+      "description": "In message 6 (Cinque Terre inquiry), the AI called create_itinerary_items with an empty items array '[]', which returned an error 'at least one item is required'. The AI should either not call the tool or include actual items.",
+      "expected": "AI should not call create_itinerary_items with an empty array",
+      "actual": "Tool called with empty array, returned error"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Day 3 is extremely overloaded with both Rome sightseeing (Trevi Fountain, Pantheon, Evening Stroll) AND a Pompeii day trip. The AI warned about this but still added all items to the same day. The itinerary would benefit from the AI suggesting to dedicate the full day to Pompeii or splitting the day differently.",
+      "severity": "minor",
+      "suggestion": "When adding a day trip to an already-planned day, the AI should offer to move existing items to other days rather than piling everything on one day."
+    },
+    {
+      "description": "Free tier daily message limit of 10 is too restrictive for a rapid-fire conversation test requiring 10+ messages. The companion mode testing was cut short after only 1 message due to the limit.",
+      "severity": "minor",
+      "suggestion": "Consider counting the initial trip creation message separately or allowing slightly more messages for planning-heavy sessions."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Context retention failure: AI referenced Venice instead of Cinque Terre in message 8, one message after Venice was explicitly removed in message 7.",
+      "context": "Message 8 train pass answer said 'For your specific itinerary of Rome, Florence, and Venice' despite Venice being cut in message 7.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Vegetarian preference was acknowledged in message 3 and reflected in subsequent recommendations and companion mode. This is a positive finding — context was retained correctly for dietary preferences across all turns.",
+      "context": "Companion mode message about arriving in Rome correctly referenced vegetarian preference."
+    },
+    {
+      "issue": "Final summary (message 10) correctly integrated all 9 prior modifications: Rome 4 days, Florence 3 days, Cinque Terre 3 days, Pompeii day trip, wine tasting, vegetarian throughout, no Venice. This is a strong positive result.",
+      "context": "Message 10 had zero Venice references and included all requested changes."
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "{\"items\":[]}",
+      "error": "at least one item is required — AI called tool with empty array in message 6"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI handled 10 rapid-fire messages impressively well, building a detailed 10-day Italy itinerary and correctly executing the critical Venice-to-Cinque-Terre swap using both delete_itinerary_items and create_itinerary_items. The final summary in message 10 was comprehensive and contradiction-free. The main weakness was a context retention failure in message 8 where the AI referenced Venice instead of Cinque Terre, and the trip title was never updated to reflect the destination change. Companion mode was limited to one message due to the free-tier daily limit, but that message correctly referenced the vegetarian preference. Overall, a genuinely useful planning experience for an iterative, modification-heavy planner."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "delete_itinerary_items", "recommend_booking", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

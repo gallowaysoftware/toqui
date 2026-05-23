@@ -1,0 +1,69 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Structural — Chat History Data Integrity",
+  "status": "COMPLETED",
+  "run_id": "run15",
+  "trip_destination": "Portugal",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "activate",
+    "companion",
+    "session_listing",
+    "history_verification",
+    "cross_session_isolation",
+    "sharing",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "First message in planning session not persisted to chat history",
+      "description": "When sending the first message to a new planning session (no session_id provided, server creates session), the user message and full assistant response are not persisted in GetChatHistory. The session was created (sessionCreated event received, session_id f0a29f57-8e7d-4a03-8f70-893506374f50), but GetChatHistory for that session only returns 2 messages (the second user message and its response). The first message that triggered session creation, along with the AI's substantial response including create_itinerary_items tool calls, is completely missing from the history.",
+      "steps_to_reproduce": "1. Send message A to CHAT_MODE_PLANNING with trip_id but NO session_id. Server returns sessionCreated with new session_id. 2. Send message B to same session with the session_id from step 1. 3. Call GetChatHistory for that session. Only message B and its response appear. Message A and its response are missing.",
+      "expected": "GetChatHistory should return 4 messages: message A (user), message A response (assistant), message B (user), message B response (assistant).",
+      "actual": "GetChatHistory returns only 2 messages: message B (user) and message B response (assistant). Message A and its full assistant response (including tool calls that created 21 itinerary items) are lost.",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/GetChatHistory -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer $TOKEN' -d '{\"trip_id\": \"TRIP_ID\", \"session_id\": \"SESSION_ID\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "ListChatSessions lastMessageAt not updated after subsequent messages",
+      "description": "The planning session's lastMessageAt timestamp equals its createdAt timestamp (2026-04-10T14:16:13.722219Z), despite a second message being sent to the session after creation. The lastMessageAt field should reflect the time of the most recent message, not just the session creation time.",
+      "expected": "lastMessageAt should be updated to reflect the timestamp of the last message sent in the session.",
+      "actual": "lastMessageAt equals createdAt for the planning session even though message B was sent later.",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/ListChatSessions -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer $TOKEN' -d '{\"trip_id\": \"TRIP_ID\"}'"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "This was a structural data integrity test. Trip creation and itinerary generation worked well. The critical finding is that the first message in a newly-created planning session is not persisted to chat history, which is a significant data loss bug. Session listing and cross-session isolation both work correctly. All messages that were persisted had non-empty content and correct role alternation. Companion mode responses were relevant and concise."
+  },
+  "feature_coverage": [
+    "GetCurrentUser",
+    "SendMessage (CHAT_MODE_SELECTION)",
+    "SendMessage (CHAT_MODE_PLANNING)",
+    "SendMessage (CHAT_MODE_COMPANION)",
+    "GetTrip",
+    "UpdateTrip (activate)",
+    "UpdateTrip (complete)",
+    "ListTrips",
+    "GetItinerary",
+    "ListChatSessions",
+    "GetChatHistory",
+    "trip sharing (share/view/unshare)",
+    "usage stats",
+    "cross-session isolation"
+  ]
+}

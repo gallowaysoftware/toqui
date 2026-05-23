@@ -1,0 +1,55 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Chat History Data Integrity Verifier",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "session_listing", "history_verification", "cross_session_isolation", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage count off by one",
+      "description": "Sent 4 messages total (1 selection + 2 planning + 1 companion) but /api/usage reports used=3. Either selection-mode messages are not counted toward the daily limit, or there is an off-by-one error in the usage tracking. If selection-mode exclusion is intentional, it should be documented.",
+      "expected": "used=4 (one per SendMessage call)",
+      "actual": "used=3",
+      "api_command": "GET /api/usage"
+    },
+    {
+      "severity": "P2",
+      "title": "ListChatSessions field naming: lastMessageAt vs updated_at",
+      "description": "ListChatSessions returns 'lastMessageAt' field on sessions, but the proto/docs reference 'updated_at'. The field is functionally correct (lastMessageAt >= createdAt for all sessions) but the naming may cause confusion for frontend consumers expecting 'updated_at'.",
+      "expected": "updated_at field on session objects",
+      "actual": "lastMessageAt field on session objects"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI re-created all 28 itinerary items on second planning message despite them already existing",
+      "context": "When asked 'Add those to my itinerary please', the AI called create_itinerary_items again with all 28 items. The backend correctly detected duplicates and returned skipped_count=28, but the AI wasted a tool call and produced a confusing 'loop' response. The AI should have recognized items were already created from the previous tool result.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural data integrity test, not a usefulness evaluation. All scores are 0 because usefulness was not assessed. All 6 phases of the chat history verification passed: 3 sessions created across selection/planning/companion modes, all messages persisted with correct content, roles alternate properly, no empty messages, timestamps are chronologically ordered within sessions, and sessions are fully isolated with no message bleed."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "ListChatSessions", "GetChatHistory", "session_isolation", "message_persistence", "role_alternation", "timestamp_ordering", "usage_tracking"],
+  "test_data": {
+    "trip_id": "235da89d-2bab-49e1-9942-2970efcaa876",
+    "selection_session_id": "068fba00-8d90-49e4-8219-6fd54be783dd",
+    "planning_session_id": "7df7aa4f-eb1d-408e-a4ad-45ced11667fa",
+    "companion_session_id": "5f19a7e8-3bf5-4591-92e7-26fe32944141",
+    "selection_message_count": 2,
+    "planning_message_count": 4,
+    "companion_message_count": 2,
+    "total_sessions": 3,
+    "session_ordering": "most_recent_first"
+  }
+}
