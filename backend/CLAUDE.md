@@ -39,13 +39,9 @@ These principles are not aspirational. They are engineering requirements. Code t
 
 ## Project Structure
 
-This is a 5-repo project under `github.com/gallowaysoftware`:
-
-- **toqui-backend** (this repo) — Go backend, ConnectRPC API, AI orchestration
-- **toqui** — Expo React Native app (web + iOS + Android)
-- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure
-- **toqui-site** — Astro static marketing site (Cloudflare Pages)
-- **toqui-admin** — Vite React admin panel (Cloudflare Pages)
+Backend half of the unified Toqui monorepo. Lives at `/backend/` in
+`gallowaysoftware/toqui`. The Expo React Native frontend is at the repo
+root.
 
 ## Architecture
 
@@ -1027,17 +1023,6 @@ Token counts are accumulated across tool loop iterations. Usage is parsed from C
 - **Response caching**: popular destination intros cached for 1 hour (configurable via `LLM_CACHE_TTL`)
 - **Per-user rate limiting**: 10 requests per 60 seconds via ConnectRPC interceptor
 - **GCP project separation**: toqui-staging vs toqui-prod — billing differentiation at the infra level
-
-## Cross-Repo Consistency
-
-**IMPORTANT**: This project spans 5 repos. When making changes that affect shared documentation (architecture, deployment, CI/CD, security patterns, staging/prod status), update CLAUDE.md in ALL repos to keep them consistent:
-
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md` (this file)
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-admin/CLAUDE.md`
-
 
 ## Data Lifecycle
 
