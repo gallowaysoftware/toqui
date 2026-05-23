@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Turn 6 summary response was text-only (no tool call), which is correct behavior. However Day 11 only has 1 item (transit day) which feels thin compared to other days. A minor gap in coverage.",
+      "severity": "P2",
+      "suggestion": "Could proactively suggest activities for transit/travel days like scenic stops or arrival activities."
+    },
+    {
+      "description": "Selection mode response included a raw tool call syntax at the end of the text: '{suggest_expert(themes=[\"history\", \"architecture\"], region_code=\"PE\")}' — this leaked internal tool syntax into user-visible text instead of actually calling the tool.",
+      "severity": "P2",
+      "suggestion": "The suggest_expert call should be a proper tool invocation, not inline text in the response."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "In the selection mode response, the AI printed a raw suggest_expert function call as text instead of invoking it as a tool. The text '{suggest_expert(themes=[\"history\", \"architecture\"], region_code=\"PE\")}' appeared verbatim in the response.",
+      "context": "Selection mode, first message. The AI correctly called create_trip and create_itinerary_items as tools, but attempted suggest_expert as inline text.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Excellent fabrication detection performance across all 6 turns. create_itinerary_items fired on every turn that requested items (Turns 1-5) and correctly did NOT fire on the summary-only Turn 6. Item progression: 4 (initial) -> 12 (Turn 1) -> 23 (Turn 2) -> 29 (Turn 3, appended food to existing days without overwrite) -> 30 (Turn 4, Machu Picchu) -> 34 (Turn 5, Lake Titicaca) -> 34 (Turn 6, no change). Final itinerary: 34 items across all 14 days. No fabrication bugs detected — the 3 fabrication-phrase matches (Turns 2, 3, 4) all had corresponding tool calls. The AI built a comprehensive, well-structured research itinerary covering Lima, Cusco, Sacred Valley, Machu Picchu, and Lake Titicaca with culturally relevant food and activity suggestions."
+  },
+  "feature_coverage": ["create_trip", "create_itinerary_items", "fabrication_detection", "multi_turn_context", "selection", "planning", "fabrication_matches_3"]
+}

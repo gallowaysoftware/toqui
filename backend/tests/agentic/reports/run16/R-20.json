@@ -1,0 +1,56 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives + Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items created for helicopter tour",
+      "description": "Day 9 has two nearly identical helicopter tour items: 'Private Helicopter Tour: The Vision Flight' and 'Private Luxury Helicopter Tour'. The AI called create_itinerary_items twice in the same response with overlapping content. The deduplication logic caught identical items but these had slightly different titles/descriptions so both were persisted.",
+      "expected": "A single helicopter tour item on Day 9",
+      "actual": "Two helicopter tour items on Day 9 with slightly different titles",
+      "api_command": "SendMessage (planning mode, Dubai dining + helicopter tour message)"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history missing 2 of 5 user messages",
+      "description": "GetChatHistory returned 8 messages (4 user + 4 assistant) but 5 user messages were sent via SendMessage. The 'private dining in Maldives' (step 3a) and 'Dubai dining + helicopter' (step 3b) messages and their responses are missing from the persisted history. Only selection, seaplane logistics, and both companion messages were preserved.",
+      "expected": "10 messages (5 user + 5 assistant)",
+      "actual": "8 messages (4 user + 4 assistant)",
+      "api_command": "GetChatHistory with session_id 4997b5fd-e2f3-4bda-b23c-6b4ba96f4274"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI assumed Toronto (YYZ) as departure city without asking. The persona is based in London. While the recommend_booking tool may default to a Canadian city, the AI should have asked or used London as the departure given the persona context.",
+      "severity": "P2",
+      "suggestion": "AI should either ask for departure city or infer from persona context (London-based investment banker)."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI suggested Booking.com links for ultra-luxury Maldives resorts. The persona explicitly notes that suggesting 'check Booking.com' for Soneva Fushi would be tone-deaf, as these properties are best booked through travel advisors or direct.",
+      "context": "The recommend_booking tool generated Booking.com affiliate links for Waldorf Astoria Ithaafushi and Atlantis The Royal. While this is the tool's default behavior, the AI did not caveat that direct booking or a luxury travel advisor would yield better rates and villa availability.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Second expert handoff on message 2 was redundant — same expert (Julian) was already active from message 1",
+      "context": "The AI called suggest_expert again with the same region_code (MV) and themes (food, luxury, romance) on the second planning message, resulting in a duplicate personaSwitch event for the same expert already in conversation.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional luxury calibration throughout. It correctly identified ultra-luxury properties (Waldorf Astoria Ithaafushi Stella Maris villas, Soneva Fushi Water Retreats, Atlantis The Royal Sky Pool Villas), knew property-specific dining experiences (Terra treetop pods, Flying Sauces zipline dining, Cinema Paradiso), understood Maldives logistics (seaplane vs yacht transfer by atoll, daylight-only seaplane ops), and recommended genuinely exclusive Dubai dining (Tresind Studio, Moonrise 12-seat counter, Orfali Bros). Companion mode responses were appropriately concise and anniversary-aware. The itinerary had luxury pacing with breathing room between activities. Minor deductions for duplicate itinerary items and the redundant expert handoff."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "itinerary", "recommend_booking", "suggest_expert", "create_itinerary_items", "web_search"]
+}

@@ -1,0 +1,168 @@
+{
+  "persona_id": "N-20",
+  "persona_name": "Free Tier Limit Enforcement (Structural)",
+  "status": "COMPLETED",
+  "timestamp": "2026-04-13T16:55:00Z",
+  "user_id": "ab60076f-065c-406d-b2ee-f9658300bef5",
+  "trip_id": "cb4da30f-778f-424f-812c-d2a5dafa0da6",
+  "session_id": "3d9b9c3c-7415-41ee-9e41-2f6b98723ae0",
+  "trip_destination": "JP",
+  "overall_result": "PASS",
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "N20-UX-01",
+      "severity": "P2",
+      "title": "Trip trial auto-activation bypasses free tier limits on creation",
+      "description": "When a trip is created via CreateTrip RPC, trial_started_at and trial_ends_at are automatically set (3-day trial), which causes tripUnlocked=true and the expert gate to be completely bypassed. This means new free-tier users effectively get 3 days of unlimited expert access before any limits kick in. This may be intentional product behavior but is undocumented in the persona test spec, which assumes limits apply immediately.",
+      "steps_to_reproduce": "1. Create trip via CreateTrip RPC as free-tier user. 2. Check trips table -- trial_started_at and trial_ends_at are auto-populated. 3. Send messages with suggest_expert -- gate is bypassed, expert_calls stays at 0.",
+      "expected": "Persona spec assumes free tier limits apply immediately on trip creation",
+      "actual": "3-day trial auto-activates, expert gate bypassed for trial duration"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "phases": {
+    "phase_1_expert_handoff_limit": {
+      "result": "PASS",
+      "details": {
+        "trip_created": true,
+        "trip_title": "Limit Test \u2014 Japan Planning",
+        "trip_destination": "JP",
+        "trip_status": "TRIP_STATUS_PLANNING",
+        "trial_removed_for_clean_test": true,
+        "expert_handoffs_attempted": 6,
+        "expert_handoffs_succeeded": 5,
+        "expert_handoff_1_food": {
+          "result": "PASS",
+          "persona_name": "Kenji",
+          "specialties": ["food"],
+          "expert_calls_after": 1
+        },
+        "expert_handoff_2_adventure": {
+          "result": "PASS",
+          "persona_name": "Kenji",
+          "specialties": ["adventure", "hiking"],
+          "expert_calls_after": 2
+        },
+        "expert_handoff_3_history": {
+          "result": "PASS",
+          "persona_name": "Kenji",
+          "specialties": ["history"],
+          "expert_calls_after": 3
+        },
+        "expert_handoff_4_distilleries": {
+          "result": "PASS",
+          "persona_name": "Kenji",
+          "specialties": ["distilleries"],
+          "expert_calls_after": 4
+        },
+        "expert_handoff_5_nightlife": {
+          "result": "PASS",
+          "persona_name": "Ren",
+          "specialties": ["nightlife"],
+          "expert_calls_after": 5
+        },
+        "expert_handoff_6_art_blocked": {
+          "result": "PASS",
+          "gate_error": "trip_pro_required",
+          "gate_message": "This trip has used all 5 free expert consultations. Upgrade to Trip Pro ($19) to unlock unlimited access to all 800+ expert personas for this trip.",
+          "expert_calls_after": 5,
+          "no_persona_switch": true,
+          "ai_graceful_degradation": "AI continued answering about art without expert persona, added itinerary items via create_itinerary_items tool",
+          "ai_mentioned_trip_pro_upgrade": true
+        },
+        "message_says_5_not_3": true,
+        "counter_persisted_in_db": true,
+        "blocked_call_no_increment": true
+      }
+    },
+    "phase_2_daily_message_limit": {
+      "result": "PASS",
+      "details": {
+        "messages_sent_total": 10,
+        "daily_limit": 10,
+        "usage_at_limit": {
+          "used": 10,
+          "limit": 10,
+          "tier": "free",
+          "resets_at": "2026-04-14T00:00:00Z"
+        },
+        "11th_message_blocked": true,
+        "error_code": "ResourceExhausted",
+        "error_message": "you have reached your daily message limit of 10 messages; it resets at 2026-04-14T00:00:00Z. Upgrade to Voyager for unlimited messages + priority AI model, or Explorer for unlimited messages \u2014 visit your account settings to learn more.",
+        "upsell_mentions_explorer": true,
+        "upsell_mentions_voyager": true,
+        "upsell_differentiates_tiers": true,
+        "usage_not_incremented_on_rejection": true
+      }
+    },
+    "phase_3_other_endpoints": {
+      "result": "PASS",
+      "details": {
+        "checkout_status": {
+          "result": "PASS",
+          "unlocked": false,
+          "price_cents": 1900,
+          "currency": "CAD"
+        },
+        "feedback_submit": {
+          "result": "PASS",
+          "feedback_id": "cf6cd467-efef-4467-bb1d-2b9fff5fe7e8",
+          "status": "received"
+        },
+        "referral_code": {
+          "result": "PASS",
+          "code": "9FFE0A1C",
+          "max_rewards": 10,
+          "successful_referrals": 0,
+          "rewards_remaining": 10
+        },
+        "referral_redeem_invalid": {
+          "result": "PASS",
+          "error": "invalid referral code"
+        }
+      }
+    }
+  },
+  "pr_verification": {
+    "pr_277_expert_gate_persistence": {
+      "status": "VERIFIED",
+      "evidence": "expert_calls counter correctly increments in DB (trips table) after each successful suggest_expert call. Counter persists across 5 sequential messages in the same session. Blocked 6th call does not increment counter. Counter value matches between DB query and /api/usage?trip_id endpoint."
+    },
+    "pr_283_daily_message_limit_upsell": {
+      "status": "VERIFIED",
+      "evidence": "ResourceExhausted error on 11th message includes clear upsell text differentiating Explorer ('unlimited messages') from Voyager ('unlimited messages + priority AI model'). Reset time is included. Usage counter does not increment on rejected message."
+    }
+  },
+  "feature_coverage": [
+    "expert_gate_persistence",
+    "expert_gate_counter_increment",
+    "expert_gate_limit_5",
+    "expert_gate_trip_pro_required_error",
+    "expert_gate_blocked_call_no_increment",
+    "expert_gate_correct_count_in_message",
+    "expert_gate_graceful_degradation",
+    "daily_message_limit_free_tier",
+    "daily_message_limit_resource_exhausted",
+    "daily_message_limit_upsell_explorer_voyager",
+    "daily_message_limit_reset_time",
+    "daily_message_limit_no_increment_on_reject",
+    "usage_endpoint_basic",
+    "usage_endpoint_with_trip_id",
+    "usage_endpoint_expert_calls_used",
+    "checkout_status_unlocked_false",
+    "feedback_submission",
+    "referral_code_generation",
+    "referral_invalid_code_rejection"
+  ],
+  "evaluation": {
+    "expert_gate_enforcement": 5,
+    "daily_limit_enforcement": 5,
+    "upsell_quality": 5,
+    "endpoint_coverage": 5,
+    "overall": 5,
+    "notes": "All free tier limits enforced correctly. Expert handoff gate triggers at exactly 5 uses with correct messaging (says '5' not '3'). Counter persists in DB across messages. Blocked calls do not increment counter. Daily message limit enforced at 10 with proper ResourceExhausted error and tier-differentiated upsell (Explorer vs Voyager). Usage counter does not increment on rejected messages. All auxiliary endpoints (checkout status, feedback, referral) work correctly for free-tier users."
+  },
+  "run_id": "run21"
+}

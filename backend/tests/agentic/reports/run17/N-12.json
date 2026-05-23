@@ -1,0 +1,95 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "run_id": "run17",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning_jerusalem",
+    "planning_saudi",
+    "planning_myanmar",
+    "planning_dress_codes",
+    "activate",
+    "companion_shwedagon",
+    "companion_bagan",
+    "companion_tipping",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history truncates assistant messages that follow tool results",
+      "description": "GetChatHistory returns assistant messages for the Saudi and Myanmar planning responses with only the tail-end content (the text after the final tool_result event). The substantive body of the response (which preceded the tool calls) is missing from the persisted history. Messages 6 and 8 in the history started with the final paragraph rather than the full response.",
+      "expected": "Full assistant message content including all text before and after tool calls",
+      "actual": "Only the text chunk emitted after the last tool_result is persisted for multi-tool-call messages",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/GetChatHistory -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\": \"TRIP_ID\", \"session_id\": \"SESSION_ID\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count shows 7 but 8 messages were sent",
+      "description": "Sent 8 SendMessage requests (1 selection + 4 planning + 3 companion) but GET /api/usage reports used=7. Possible off-by-one in counting or the selection-mode message may not be counted.",
+      "expected": "used=8",
+      "actual": "used=7"
+    },
+    {
+      "severity": "P2",
+      "title": "Western Wall head covering guidance slightly inaccurate for men",
+      "description": "In the Jerusalem response, the AI mentioned head covering for women at the Western Wall but did not mention that men are required to wear a kippah (head covering) at the Western Wall. The cross-faith comparison table mentioned men should remove hats at Church of the Holy Sepulchre but omitted the kippah requirement for men at the Western Wall.",
+      "expected": "AI should mention that men must wear a kippah (provided free at the site) to approach the Western Wall",
+      "actual": "No mention of male head covering requirement at the Western Wall in either the detailed Jerusalem response or the cross-faith comparison"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI attempted 4 web searches that all returned 'no_web_access' before responding. While it gracefully degraded, this adds latency to the streaming response with no user benefit. The retry behavior (3-4 searches per message) is excessive.",
+      "severity": "P2",
+      "suggestion": "After the first web_search returns no_web_access, cache that status for the session and skip further web_search calls"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert handoff happened automatically in the first message without user request",
+      "context": "The first selection-mode message triggered a suggest_expert call to 'Elias' (history/architecture/adventure expert). While the handoff was relevant, the user did not ask for an expert. For a culturally sensitive multi-country trip, the global orchestrator Toqui might have been more appropriate to maintain neutrality across regions.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Day 3 itinerary item references 'Dome of the Rock' but not 'Al-Aqsa Mosque' or 'Haram al-Sharif'",
+      "context": "The itinerary item for Day 3 says 'Focus on the Western Wall, Church of the Holy Sepulchre, and the Dome of the Rock' — using only the Israeli/tourist naming convention. The detailed text response correctly used dual naming 'Temple Mount / Haram al-Sharif' but the itinerary item did not maintain this balance.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "Temple Mount visiting hours non-Muslims 2026 security rules",
+      "error": "Real-time web search is not configured in this environment"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI delivered an exceptionally strong performance on the hardest cultural sensitivity test in the suite. It correctly stated that abaya is not legally required for foreign women in Saudi Arabia (since 2019), that non-Muslims can visit Temple Mount/Haram al-Sharif but cannot enter the mosques, that Bagan temple climbing is restricted, and presented both sides of the Myanmar ethical tourism debate without editorializing. The cross-faith dress code comparison was practical and respectful. The only factual gap was omitting the kippah requirement for men at the Western Wall, and one itinerary item used only 'Dome of the Rock' rather than maintaining dual naming. Companion mode responses were appropriately concise and actionable. As a documentary filmmaker, I would genuinely use this tool for pre-production research."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "trip_sharing",
+    "chat_history",
+    "usage",
+    "trip_lifecycle",
+    "expert_handoff",
+    "itinerary_creation",
+    "web_search_graceful_degradation"
+  ]
+}

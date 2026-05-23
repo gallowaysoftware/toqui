@@ -1,0 +1,28 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "setup", "selection", "planning", "trip_switching", "new_trip_creation", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items twice in the same response with identical items. The second call was correctly rejected as duplicates (already_exists), but wasted a tool loop iteration.",
+      "context": "Step 5 — Santorini planning message. The AI generated text, called create_itinerary_items (11 items created), then called it again with the same 11 items. The backend correctly returned skipped_count=11 with status already_exists.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "All critical multi-trip workflows passed cleanly. Vague trip reference matching ('my Greece trip' to 'Greek Islands Hopping') worked perfectly. Trip switching via chat selection mode was seamless. New trip creation correctly distinguished NZ as a new destination rather than matching existing trips. The 3-day Santorini itinerary was well-structured with sensible activities, meals, and timing. The only minor issue was a duplicate tool call in the itinerary creation step, which the backend handled gracefully."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_switching", "multi_trip", "vague_reference_matching", "new_trip_creation", "sharing", "chat_history", "usage"]
+}

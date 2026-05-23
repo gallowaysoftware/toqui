@@ -1,0 +1,89 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "run_id": "run-11",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingestion",
+    "booking_extraction",
+    "activate",
+    "companion",
+    "sharing",
+    "chat_history",
+    "usage",
+    "complete",
+    "final_state"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI error on first planning message then recovers on retry",
+      "description": "The first planning mode message requesting the Oaxaca itinerary returned 'no response from AI — please try again' error after partial text output. The AI began responding with text but then errored out. The retry succeeded. This may indicate a timeout or token limit issue when generating long itinerary tool calls.",
+      "expected": "AI completes the response with itinerary items on the first attempt",
+      "actual": "AI returned partial text then error 'no response from AI — please try again'; retry succeeded",
+      "api_command": "buf curl SendMessage with CHAT_MODE_PLANNING"
+    },
+    {
+      "severity": "P2",
+      "title": "AI called create_itinerary_items twice with identical items",
+      "description": "After successfully creating 13 itinerary items, the AI called create_itinerary_items a second time with the exact same items. The backend correctly deduplicated (returned 'already_exists' with skipped_count=13), but the duplicate tool call is wasteful and confusing.",
+      "expected": "AI calls create_itinerary_items once and confirms the result",
+      "actual": "AI called create_itinerary_items twice with identical payloads; second call returned already_exists"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The recommend_booking tool returns generic GetYourGuide search URLs rather than specific bookable experiences. The user gets a search page rather than a curated recommendation.",
+      "severity": "P2",
+      "suggestion": "Consider returning top-rated specific activity links or at least filtering by ratings/price range"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not call suggest_expert for Mexico food expert handoff despite explicit request",
+      "context": "User explicitly asked 'Can you connect me with a Mexico food expert?' but the AI answered the food questions directly (very well) without triggering suggest_expert. The persona test specifically checks for expert handoff via personaSwitch event.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Chat session mode shows COMPANION even though session started in SELECTION mode",
+      "context": "ListChatSessions returned mode=CHAT_MODE_COMPANION for the single session, but the session was created during SELECTION mode and used across all three modes. The mode field appears to reflect the last-used mode rather than the creation mode.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 1,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent food knowledge — it correctly listed all seven moles of Oaxaca, distinguished artisanal from industrial mezcal production, named five agave varieties (espadin, tobala, tepextate, madrecuixe, arroqueno), and provided culturally specific Dia de Muertos food details. Itinerary items were food-focused and practical. Booking ingestion parsed the tour confirmation perfectly with all structured fields. Companion mode responses were concise and practical with specific restaurant recommendations. The main gap was the failure to trigger suggest_expert for a food persona handoff despite explicit request, which is a core feature regression. The duplicate itinerary tool call and initial AI error were minor but notable."
+  },
+  "feature_coverage": [
+    "selection",
+    "create_trip",
+    "planning",
+    "create_itinerary_items",
+    "recommend_booking",
+    "booking_ingestion",
+    "extract_booking_field",
+    "list_bookings",
+    "activate",
+    "companion",
+    "sharing",
+    "unsharing",
+    "chat_history",
+    "list_sessions",
+    "usage",
+    "complete",
+    "get_trip",
+    "get_itinerary",
+    "list_trips"
+  ]
+}

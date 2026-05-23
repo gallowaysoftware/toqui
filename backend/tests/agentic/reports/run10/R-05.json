@@ -1,0 +1,39 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Iceland itinerary initial creation only produced 1 generic item ('Laugavegur Trail Hike') instead of a day-by-day breakdown. Required a follow-up message to get the full 7-day itinerary. The Czech trip correctly created 12 items on the first ask.",
+      "severity": "P2",
+      "suggestion": "When the AI has enough context (trail name, duration, bookend city), it should proactively create a multi-day itinerary on first request rather than requiring a second prompt."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items twice in the same turn for the Czech itinerary — first creating 12 items, then attempting the same 12 again (correctly deduped as already_exists). This wastes a tool loop iteration.",
+      "context": "Step 3a planning message for Czech beer itinerary",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI called create_itinerary_items during companion mode (adding Lokal Dlouhaaa to itinerary) without being asked to add it. In companion mode, itinerary additions should only fire on explicit 'add to my plan' requests.",
+      "context": "Companion mode message asking for beer recommendation near Old Town Square",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated impressive depth on both extended location profiles (CZ and IS) and niche themes (craft-beer and hiking). Czech beer recommendations included specific venues like Pivovarsky dum, Zly Casy, U Fleku, and used proper Czech terminology (tmave pivo, hladinka, snyt, svetly lezak). The Laugavegur Trail itinerary correctly mapped the 4 segments (Landmannalaugar to Hrafntinnusker, Hrafntinnusker to Alftavatn, etc.) and mentioned hut booking urgency. The two-trip workflow worked flawlessly — trips stayed completely independent. Extended profiles are loading correctly. Minor issues: Iceland itinerary required a follow-up to get full detail, and the AI made unnecessary duplicate tool calls."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "extended_profiles", "extended_themes", "expert_handoff"]
+}

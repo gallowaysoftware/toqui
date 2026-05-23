@@ -1,0 +1,50 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy",
+  "completed_steps": ["auth", "selection", "planning", "activate", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history only stores last 5 turns (10 messages) out of 11 planning turns",
+      "description": "After sending 1 selection message and 10 planning messages (all using the same session_id), GetChatHistory returns only 10 messages (5 user + 5 assistant). The first ~5-6 planning turns appear to be missing from history. This could be a Firestore retention limit or a query pagination issue.",
+      "expected": "All 10+ planning turns (20+ messages) should be retrievable from chat history",
+      "actual": "Only 10 messages (5 turns) returned from GetChatHistory",
+      "api_command": "GetChatHistory with trip_id and session_id, limit=50"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip title/description not updated after major itinerary modification",
+      "description": "After cutting Venice and replacing with Cinque Terre in message 7, the trip title still reads 'Italy Heritage Trip: Rome, Florence & Venice' and description still mentions Venice. The AI updated itinerary items correctly but did not update the trip metadata to reflect the destination change.",
+      "expected": "Trip title/description should reflect current destinations (Rome, Florence, Cinque Terre) after major modification",
+      "actual": "Title still says 'Rome, Florence & Venice' after Venice was removed"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Free tier message limit (10/day) is too low for the rapid-fire iterative planning style. A user who thinks out loud and iterates through 10 messages in planning mode exhausts their daily limit before they can test companion mode or send any more messages.",
+      "severity": "P2",
+      "suggestion": "Consider counting tool-heavy planning turns differently, or allow a higher limit for planning-mode messages specifically."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Message 10 (final summary request) triggered itinerary item creation/updates instead of providing a text summary of the complete itinerary. The AI re-created itinerary items rather than summarizing them in text.",
+      "context": "User asked 'Give me the complete final itinerary with all the changes we have made' and the AI responded by calling create_itinerary_items again. The itinerary items were already correct from previous turns.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "The AI handled the rapid-fire modification test impressively well. The critical Venice-to-Cinque-Terre swap in message 7 was executed perfectly — delete_itinerary_items removed all Venice items and create_itinerary_items added Cinque Terre activities. Vegetarian preferences were consistently maintained across all 10 turns with 8 vegetarian-tagged items in the final itinerary. The Pompeii day trip, wine tasting, and budget awareness were all integrated correctly. The main gap was that companion mode could not be tested due to the free tier message limit being exhausted by the 10 planning messages, and the final summary request triggered itinerary rebuilding rather than a text recap."
+  },
+  "feature_coverage": ["selection", "planning", "itinerary_creation", "itinerary_deletion", "itinerary_modification", "trip_activate", "trip_sharing", "trip_unsharing", "chat_history", "usage_tracking", "trip_complete"]
+}

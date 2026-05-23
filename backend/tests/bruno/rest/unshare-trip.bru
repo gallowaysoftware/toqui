@@ -1,0 +1,27 @@
+meta {
+  name: Unshare Trip
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://{{host}}/api/trips/unshare
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>"
+  }
+}
+
+docs {
+  Disables public sharing for a trip. The share token is revoked immediately —
+  any existing /shared/<token> links will return 404.
+  Audit-logged as trip.unshare.
+}

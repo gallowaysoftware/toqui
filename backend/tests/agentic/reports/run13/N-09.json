@@ -1,0 +1,59 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Venice itinerary items not fully deleted after cut request",
+      "description": "After message 7 explicitly asked to 'cut Venice entirely' and give those 3 days to Cinque Terre, the AI called delete_itinerary_items but failed to remove all Venice-related items. After the initial deletion (msg7), 2 Venice items remained: 'Lunch near Gardens' on Day 7 (description mentions 'heading to Venice') and 'Dinner in Venice' on Day 8. After message 10 resolved other conflicts and added wine tasting, 1 Venice item still remained: 'Dinner in Venice (Vegetarian-Friendly)' on Day 8. The delete_itinerary_items tool was called but did not capture all Venice-related items, likely due to items not having 'Venice' in their title (only in description) or the AI not identifying them as Venice items.",
+      "steps_to_reproduce": "1. Create 10-day Italy trip with Rome/Florence/Venice. 2. Build itinerary for all 3 cities. 3. Send: 'cut Venice entirely, give those 3 days to Cinque Terre'. 4. Check GetItinerary for remaining Venice items.",
+      "expected": "Zero Venice-related items in the itinerary after deletion request",
+      "actual": "1 Venice item remained in final itinerary (Day 8: 'Dinner in Venice (Vegetarian-Friendly)')",
+      "api_command": "GetItinerary after delete_itinerary_items for Venice"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI got stuck in a loop asking about the Pompeii/Day 3 conflict across messages 6, 9, and had to be resolved in message 10. It asked the same question 3 times across different turns rather than making a reasonable default decision or just noting the conflict once.",
+      "severity": "P2",
+      "suggestion": "After presenting the conflict once and not getting a direct answer, the AI should note it as unresolved and move forward with the user's current request rather than blocking on the same question repeatedly."
+    },
+    {
+      "description": "Message 9 asked to add a wine tasting but the AI refused to act on it, instead re-asking about the Pompeii conflict. The user's explicit request to add wine tasting was ignored.",
+      "severity": "P2",
+      "suggestion": "The AI should process the user's current request (add wine tasting) and separately remind about the unresolved conflict, not block the current request."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI created itinerary items only for Rome (days 1-4) in message 2, then added Florence and Venice items in message 4 (the Pompeii message) instead of when the user asked about Florence/Venice. The full itinerary was built across fragmented turns.",
+      "context": "Message 2 asked for Rome 4/Florence 3/Venice 3 split, but only Rome items were created. Florence and Venice items appeared bundled with the Pompeii discussion.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not call create_itinerary_items when asked to add wine tasting in message 9. It only discussed the Pompeii conflict instead. The wine tasting was only added when explicitly combined with the Pompeii resolution in message 10.",
+      "context": "Message 9: 'Can you add a wine tasting experience in Tuscany?' — no tool call made",
+      "severity": "P2"
+    },
+    {
+      "issue": "fullContent in message 4 (Pompeii request) talked about Florence and Venice itinerary being mapped out, but the user's actual request was about adding Pompeii. The AI seems to have conflated the tool loop iterations.",
+      "context": "The AI created Florence items, Venice items, AND a Pompeii item all in message 4, with the fullContent discussing Florence/Venice completion rather than the Pompeii request.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI created a solid 10-day Italy itinerary and correctly retained the vegetarian preference across all turns (13 vegetarian-labeled items in final itinerary). Trip creation in selection mode was instant and accurate. However, modification handling was mixed: the Venice-to-Cinque Terre swap was mostly executed but left 1 stale Venice item, and the AI got stuck repeatedly asking about the Pompeii/Day 3 conflict instead of processing other requests. The final itinerary structure (Rome 4 / Florence 3 / Cinque Terre 3 with Pompeii day trip and wine tasting) was correct in intent. Companion mode response was practical and budget-appropriate with vegetarian recommendations. Hit the 10-message daily limit (free tier) which limited companion mode testing to 1 message."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary_create", "itinerary_delete", "trip_lifecycle"]
+}

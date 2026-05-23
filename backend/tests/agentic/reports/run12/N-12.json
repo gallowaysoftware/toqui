@@ -1,0 +1,53 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty JSON object",
+      "description": "GET /shared/{token} returns '{}' (empty JSON object) instead of trip data including title, description, itinerary, and destination countries. The endpoint returns 200 OK but no useful content.",
+      "expected": "JSON object with trip title, description, destination_countries, itinerary items",
+      "actual": "Empty JSON object '{}'",
+      "api_command": "curl -s http://localhost:8090/shared/ZR3wggbnFEj9diBdBQyWRV"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When the AI response exceeds MAX_TOKENS, the error message 'response truncated (MAX_TOKENS) — try a more specific request' is sent as a stream error event, but the partial response text is not preserved in chat history. The user loses the entire response and must rephrase. This occurred when asking for a comparative cross-faith dress code summary across three countries.",
+      "severity": "P1",
+      "suggestion": "Save partial responses to chat history even when truncated, or increase token limits for complex multi-country comparative queries."
+    },
+    {
+      "description": "Itinerary items were only created for Jerusalem Day 3 (3 items). No itinerary items were created for Saudi Arabia (Riyadh, AlUla) or Myanmar (Yangon, Bagan) despite detailed planning discussions covering those legs. The AI discussed these destinations thoroughly but did not call create_itinerary_items for them.",
+      "severity": "P1",
+      "suggestion": "The AI should proactively create itinerary items when discussing day-by-day plans for each country leg, not only when explicitly listing site visits."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Cross-faith comparative response exceeded MAX_TOKENS limit, causing truncation. The AI attempted a markdown table comparing all three faiths which was too verbose for the token budget.",
+      "context": "Asked for a comprehensive comparative summary of dress codes and etiquette across Jewish, Islamic, and Buddhist sites. The AI started a detailed table format that exceeded the response token limit.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not create itinerary items for Saudi Arabia or Myanmar legs despite detailed planning conversations about those destinations. Only Jerusalem sites were added to the itinerary.",
+      "context": "After discussing AlUla/Hegra logistics and Myanmar/Bagan details, no create_itinerary_items tool calls were made for those destinations. The AI discussed plans in text only.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional cultural sensitivity and factual accuracy across all three complex destinations. It correctly handled dual naming for Temple Mount/Haram al-Sharif, accurately stated the abaya is no longer legally required in Saudi Arabia, acknowledged the Myanmar coup and ethical tourism dilemma without editorializing, and confirmed Bagan climbing restrictions. The companion mode responses were appropriately concise and practical. The main weaknesses were: itinerary items were only created for Jerusalem (not Saudi Arabia or Myanmar), and a cross-faith comparative query exceeded the token limit. For a culturally literate documentary filmmaker persona, the depth of cultural knowledge was genuinely impressive and would be useful for real trip planning."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_lifecycle"]
+}

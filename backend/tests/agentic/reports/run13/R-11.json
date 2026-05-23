@@ -1,0 +1,35 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "run_id": "run-13",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingestion", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Planning message 3 response referenced 'previous turn' content that was not visible in the fullContent field, saying 'I provided a booking link and specific recommendations... in my previous response' when it was actually in the same turn's tool result. This could confuse users if the tool result text is not surfaced in the UI.",
+      "severity": "P2",
+      "suggestion": "Ensure the AI references booking recommendations inline rather than referring to 'previous response' when the tool result was in the same turn."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not proactively call suggest_expert on the first selection-mode message despite the topic being heavily food/Mexico focused. It mentioned wanting to bring in an expert but did not actually call the tool until the second message.",
+      "context": "First message in selection mode described a detailed food-focused Mexico trip. AI created the trip but only verbally mentioned wanting to connect with an expert without calling suggest_expert.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Excellent food-focused experience. The AI created a comprehensive 10-day itinerary with 25 food-specific items spanning markets, fine dining, cooking classes, mezcal distilleries, and street food across both CDMX and Oaxaca. Expert handoff to 'Mateo' (food + distilleries specialist) worked well and the persona demonstrated genuine depth -- distinguishing CDMX and Oaxacan cuisine, knowing artisanal vs industrial mezcal production with specific agave varieties (espadin, tobala, tepeztate, madrecuixe, arroqueno), and providing culturally rich Dia de Muertos food traditions including pan de muerto, mole negro, calabaza en tacha, and specific bakery recommendations. Booking parsing extracted all fields flawlessly including tour stops, guide name, and meeting point. The companion mode responses were appropriately detailed for a food-focused traveler while remaining practical."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingestion", "booking_extraction", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete", "expert_handoff", "recommend_booking", "itinerary_creation"]
+}

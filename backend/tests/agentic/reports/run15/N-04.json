@@ -1,0 +1,202 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extractor",
+  "run": 15,
+  "date": "2026-04-10",
+  "trip_id": "6f837895-ce8f-480e-945a-0b79b719e952",
+  "status": "PASS",
+  "summary": "All 7 booking artifacts ingested successfully. All 7 field extractions returned accurate, specific answers cross-referenced against raw artifacts. Negative test correctly identified irrelevant question. Two minor issues: activity type reclassified from ACTIVITY to TOUR during ingestion, and hostel multi-stop booking has empty hotelDetails proto field despite correct detailsJson.",
+  "bugs": [
+    {
+      "id": "N04-B01",
+      "severity": "P1",
+      "category": "type_misclassification",
+      "title": "Activity booking reclassified as BOOKING_TYPE_TOUR during ingestion",
+      "description": "Submitted activity-confirmation.txt with type BOOKING_TYPE_ACTIVITY. The AI parser reclassified it as BOOKING_TYPE_TOUR. While the Sagrada Familia tour could arguably be classified as either, the backend should respect the user-submitted type or at minimum preserve the submitted type alongside the AI-inferred one. This means ListBookings shows 2 TOUR bookings and 0 ACTIVITY bookings, which is misleading.",
+      "rpc": "IngestBooking",
+      "expected": "type=BOOKING_TYPE_ACTIVITY preserved from request",
+      "actual": "type=BOOKING_TYPE_TOUR (AI overrode submitted type)",
+      "booking_id": "3c4bfe9a-9182-4537-917c-23a357225ad4"
+    },
+    {
+      "id": "N04-B02",
+      "severity": "P2",
+      "category": "incomplete_structured_data",
+      "title": "Hostel multi-stop booking has empty hotelDetails proto field",
+      "description": "The hostel multi-stop booking (VBH-20260601) was ingested as BOOKING_TYPE_HOTEL but the proto hotelDetails field is empty {}. The detailed information IS present in detailsJson (all 3 properties with dates, rates, room types). This means clients relying on the typed proto fields get no structured data, while clients parsing detailsJson get full data. The hotelDetails proto likely cannot represent multi-property bookings.",
+      "rpc": "IngestBooking",
+      "expected": "hotelDetails populated, or at least first property's details used",
+      "actual": "hotelDetails: {} (empty)",
+      "booking_id": "7f4673ac-1fde-489b-bc62-13c53e284b55"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "phases": {
+    "phase1_ingest": {
+      "status": "PASS",
+      "details": "All 7 artifacts ingested successfully. Each returned a booking with non-empty id, confirmation_code, provider, title, and rawSource.",
+      "bookings": {
+        "flight": {
+          "booking_id": "e59ed39c-d63c-4ef7-a339-b859ae252565",
+          "type_submitted": "BOOKING_TYPE_FLIGHT",
+          "type_stored": "BOOKING_TYPE_FLIGHT",
+          "confirmation_code": "DL7829X",
+          "match": true
+        },
+        "hotel": {
+          "booking_id": "9b608fc5-1897-4580-b3d4-7980f6157057",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "HAB-2026-9831",
+          "match": true
+        },
+        "activity": {
+          "booking_id": "3c4bfe9a-9182-4537-917c-23a357225ad4",
+          "type_submitted": "BOOKING_TYPE_ACTIVITY",
+          "type_stored": "BOOKING_TYPE_TOUR",
+          "confirmation_code": "SF-44921",
+          "match": false,
+          "note": "AI reclassified ACTIVITY as TOUR"
+        },
+        "car_rental": {
+          "booking_id": "5db17b8b-c28c-4e6b-998e-9d827a7e48bf",
+          "type_submitted": "BOOKING_TYPE_CAR_RENTAL",
+          "type_stored": "BOOKING_TYPE_CAR_RENTAL",
+          "confirmation_code": "R-8847321",
+          "match": true
+        },
+        "hostel": {
+          "booking_id": "7f4673ac-1fde-489b-bc62-13c53e284b55",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "VBH-20260601",
+          "match": true
+        },
+        "ryokan": {
+          "booking_id": "0107c8cc-c9b0-4910-8780-205203ab7dcd",
+          "type_submitted": "BOOKING_TYPE_HOTEL",
+          "type_stored": "BOOKING_TYPE_HOTEL",
+          "confirmation_code": "RYO-K-5521",
+          "match": true
+        },
+        "tour": {
+          "booking_id": "67584515-5fdf-42e8-b722-d33f1a6c636d",
+          "type_submitted": "BOOKING_TYPE_TOUR",
+          "type_stored": "BOOKING_TYPE_TOUR",
+          "confirmation_code": "OAXF-2026-112",
+          "match": true
+        }
+      }
+    },
+    "phase2_list": {
+      "status": "PASS",
+      "total_bookings": 7,
+      "types": {
+        "BOOKING_TYPE_FLIGHT": 1,
+        "BOOKING_TYPE_HOTEL": 3,
+        "BOOKING_TYPE_CAR_RENTAL": 1,
+        "BOOKING_TYPE_TOUR": 2,
+        "BOOKING_TYPE_ACTIVITY": 0
+      },
+      "all_have_id": true,
+      "all_have_raw_source": true,
+      "all_have_title": true
+    },
+    "phase3_extract": {
+      "status": "PASS",
+      "extractions": {
+        "flight_terminal_departure": {
+          "question": "What terminal and what time does my outbound flight depart?",
+          "answer": "The outbound flight (DL 472) departs from Terminal 4 at JFK at 6:45 PM EDT on Monday, June 15, 2026.",
+          "expected_terminal": "Terminal 4",
+          "expected_time": "6:45 PM EDT",
+          "terminal_correct": true,
+          "time_correct": true,
+          "verdict": "PASS"
+        },
+        "hotel_cancellation": {
+          "question": "What is the cancellation policy?",
+          "answer": "Free cancellation is available until June 12, 2026 (11:59 PM CEST). Cancellations after this time result in a charge for the first night (EUR 289.00), and no-shows are charged for the full stay.",
+          "expected_deadline": "June 12, 2026",
+          "expected_penalty": "EUR 289.00 (first night)",
+          "deadline_correct": true,
+          "penalty_correct": true,
+          "verdict": "PASS"
+        },
+        "activity_meeting_point": {
+          "question": "What is the meeting point and what should I bring?",
+          "answer": "The meeting point is at the Nativity Facade entrance on the Carrer de la Marina side (Address: C/ de la Marina, 253, 08013 Barcelona). You should look for a guide holding an orange 'Barcelona Expert Tours' sign and arrive 15 minutes before the 10:00 AM start time. You are required to bring a valid photo ID, comfortable walking shoes, sunscreen, a water bottle, and your booking confirmation. Additionally, you must wear clothing that covers your shoulders and knees to comply with the enforced dress code.",
+          "expected_location": "Nativity Facade entrance (Carrer de la Marina side)",
+          "expected_items": ["photo ID", "comfortable shoes", "sunscreen", "water bottle", "confirmation", "covered shoulders/knees"],
+          "location_correct": true,
+          "items_correct": true,
+          "verdict": "PASS"
+        },
+        "car_rental_insurance_fuel": {
+          "question": "What insurance is included and what is the fuel policy?",
+          "answer": "The reservation includes Super CDW (Collision Damage Waiver) with zero excess and Theft Protection. The fuel policy is Full-to-Full.",
+          "expected_insurance": "Super CDW (zero excess) + Theft Protection",
+          "expected_fuel": "Full-to-Full",
+          "insurance_correct": true,
+          "fuel_correct": true,
+          "verdict": "PASS"
+        },
+        "hostel_hanoi_checkin": {
+          "question": "What time is check-in at the Hanoi hostel?",
+          "answer": "Check-in at the Hanoi Old Quarter Hostel is between 2:00 PM and 10:00 PM on Monday, June 1, 2026.",
+          "expected_time": "2:00 PM - 10:00 PM",
+          "expected_hostel": "Hanoi Old Quarter Hostel",
+          "time_correct": true,
+          "correct_hostel_identified": true,
+          "no_city_confusion": true,
+          "verdict": "PASS"
+        },
+        "ryokan_meals_dinner": {
+          "question": "What meals are included and what time is dinner?",
+          "answer": "The reservation includes a Kaiseki Dinner (served in-room at 6:00 PM or 6:30 PM) and a Traditional Japanese breakfast (served in the dining room between 7:30 AM and 9:00 AM).",
+          "expected_meals": "Kaiseki dinner + traditional Japanese breakfast",
+          "expected_dinner_time": "6:00 PM or 6:30 PM",
+          "meals_correct": true,
+          "dinner_time_correct": true,
+          "verdict": "PASS"
+        },
+        "tour_tastings_dietary": {
+          "question": "How many food tastings are included and what dietary accommodations are available?",
+          "answer": "The tour includes 12 tastings across 3 markets and 4 street food stands. Dietary accommodations include vegetarian and gluten-free options, as well as vegan substitutions for most stops, provided notice is given at least 48 hours before the tour.",
+          "expected_tastings": 12,
+          "expected_dietary": ["vegetarian", "gluten-free", "vegan"],
+          "tastings_correct": true,
+          "dietary_correct": true,
+          "verdict": "PASS"
+        }
+      }
+    },
+    "phase4_negative": {
+      "status": "PASS",
+      "question": "What is the hotel wifi password?",
+      "booking_type": "BOOKING_TYPE_FLIGHT",
+      "answer": "The provided text is a flight confirmation for Delta Air Lines and does not contain information regarding a hotel or a wifi password.",
+      "hallucinated": false,
+      "correctly_identified_irrelevant": true,
+      "verdict": "PASS"
+    }
+  },
+  "evaluation": {
+    "booking_ingestion": 5,
+    "field_extraction_accuracy": 5,
+    "type_classification": 4,
+    "multi_property_handling": 3,
+    "negative_test_robustness": 5,
+    "overall": 5
+  },
+  "evaluation_notes": {
+    "booking_ingestion": "All 7 artifacts ingested cleanly with correct confirmation codes, providers, and titles extracted.",
+    "field_extraction_accuracy": "Every extraction returned specific, accurate answers matching the raw artifacts. No vague non-answers, no hallucinations.",
+    "type_classification": "6/7 types preserved correctly. Activity was reclassified as Tour by the AI parser, overriding the user-submitted type.",
+    "multi_property_handling": "Multi-stop hostel booking stored all 3 properties in detailsJson but hotelDetails proto field was empty. Field extraction still works correctly despite this.",
+    "negative_test_robustness": "AI correctly identified the question as irrelevant to the flight booking without hallucinating hotel information.",
+    "overall": "Excellent extraction accuracy across all 7 booking types. The two bugs found are structural (type override, empty proto field) rather than AI quality issues."
+  }
+}

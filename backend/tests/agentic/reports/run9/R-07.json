@@ -1,0 +1,95 @@
+{
+  "persona": "R-07",
+  "name": "Structural Test — UpdateTrip COALESCE Regression",
+  "run": 9,
+  "date": "2026-04-09",
+  "overall_result": "PASS",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Create Trip with Full Details",
+      "result": "PASS",
+      "details": {
+        "action": "CreateTrip + GetTrip",
+        "trip_id": "8a289abe-2017-4b21-be59-2f8fa8dc0582",
+        "assertions": {
+          "title": { "expected": "COALESCE Regression Test Trip", "actual": "COALESCE Regression Test Trip", "pass": true },
+          "description": { "expected": "This trip tests that partial updates do not wipe unrelated fields.", "actual": "This trip tests that partial updates do not wipe unrelated fields.", "pass": true },
+          "status": { "expected": "TRIP_STATUS_PLANNING", "actual": "TRIP_STATUS_PLANNING", "pass": true }
+        }
+      }
+    },
+    {
+      "step": 2,
+      "name": "Update ONLY Status to ACTIVE",
+      "result": "PASS",
+      "details": {
+        "action": "UpdateTrip(status=ACTIVE) + GetTrip",
+        "fields_sent": ["status"],
+        "assertions": {
+          "status": { "expected": "TRIP_STATUS_ACTIVE", "actual": "TRIP_STATUS_ACTIVE", "pass": true },
+          "title": { "expected": "COALESCE Regression Test Trip", "actual": "COALESCE Regression Test Trip", "pass": true, "note": "preserved (not wiped)" },
+          "description": { "expected": "This trip tests that partial updates do not wipe unrelated fields.", "actual": "This trip tests that partial updates do not wipe unrelated fields.", "pass": true, "note": "preserved (not wiped)" }
+        }
+      }
+    },
+    {
+      "step": 3,
+      "name": "Update ONLY the Title",
+      "result": "PASS",
+      "details": {
+        "action": "UpdateTrip(title='Updated Title Only') + GetTrip",
+        "fields_sent": ["title"],
+        "assertions": {
+          "title": { "expected": "Updated Title Only", "actual": "Updated Title Only", "pass": true },
+          "status": { "expected": "TRIP_STATUS_ACTIVE", "actual": "TRIP_STATUS_ACTIVE", "pass": true, "note": "preserved (not reset to PLANNING)" },
+          "description": { "expected": "This trip tests that partial updates do not wipe unrelated fields.", "actual": "This trip tests that partial updates do not wipe unrelated fields.", "pass": true, "note": "preserved (not wiped)" }
+        }
+      }
+    },
+    {
+      "step": 4,
+      "name": "Update Status to COMPLETED",
+      "result": "PASS",
+      "details": {
+        "action": "UpdateTrip(status=COMPLETED) + GetTrip",
+        "fields_sent": ["status"],
+        "assertions": {
+          "status": { "expected": "TRIP_STATUS_COMPLETED", "actual": "TRIP_STATUS_COMPLETED", "pass": true },
+          "title": { "expected": "Updated Title Only", "actual": "Updated Title Only", "pass": true, "note": "preserved from step 3" },
+          "description": { "expected": "This trip tests that partial updates do not wipe unrelated fields.", "actual": "This trip tests that partial updates do not wipe unrelated fields.", "pass": true, "note": "preserved from step 1" }
+        }
+      }
+    },
+    {
+      "step": 5,
+      "name": "Verify via ListTrips",
+      "result": "PASS",
+      "details": {
+        "action": "ListTrips",
+        "trip_found": true,
+        "assertions": {
+          "status": { "expected": "TRIP_STATUS_COMPLETED", "actual": "TRIP_STATUS_COMPLETED", "pass": true },
+          "title": { "expected": "Updated Title Only", "actual": "Updated Title Only", "pass": true },
+          "description": { "expected": "This trip tests that partial updates do not wipe unrelated fields.", "actual": "This trip tests that partial updates do not wipe unrelated fields.", "pass": true }
+        }
+      }
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness": {
+    "notes": "N/A — this is a structural regression test, not a conversational persona. No AI interaction."
+  },
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": "N/A",
+    "persona_handoff": "N/A",
+    "booking_parsing": "N/A",
+    "companion_mode": "N/A",
+    "overall": 5
+  },
+  "summary": "All 5 steps passed. COALESCE partial update logic is working correctly: updating only status preserves title and description, updating only title preserves status and description. The PLANNING -> ACTIVE -> COMPLETED status transition chain works. ListTrips confirms final state matches. Zero field-wiping detected. No regressions."
+}

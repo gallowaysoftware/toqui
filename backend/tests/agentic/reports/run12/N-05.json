@@ -1,0 +1,43 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural — Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo & Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "share_enable", "shared_view_access", "share_disable", "share_revocation_verify", "share_re-enable", "token_rotation_verify", "old_token_still_invalid", "content_completeness", "chat_history", "usage"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "First itinerary creation attempt returned 'no response from AI' error",
+      "description": "The first SendMessage requesting a day-by-day itinerary returned a partial text response followed by an error event: {\"error\":{\"message\":\"no response from AI — please try again\"}}. The AI began generating text but apparently failed to complete the tool call within the timeout. Retry succeeded on the next attempt.",
+      "steps_to_reproduce": "Send a planning mode message asking for a 7-day itinerary with specific day assignments. The first attempt may time out before the AI completes the create_itinerary_items tool call.",
+      "expected": "AI completes itinerary creation on the first attempt",
+      "actual": "First attempt failed with 'no response from AI' error after partial text generation; second attempt succeeded"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared view bookings only show type, title, and provider. No dates, confirmation codes, or detailed info are included. While this may be intentional for privacy, shared trip viewers cannot see when the traveler will be at the ryokan, which limits the shared view's utility for coordinating with friends or family.",
+      "severity": "P2",
+      "suggestion": "Consider adding check-in/check-out dates to the shared booking view (but omit confirmation codes and payment info for security)."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "SendMessage (create_itinerary_items)",
+      "input": "Build me a day-by-day itinerary with 2 days in Tokyo, a day trip to Hakone, and 4 days in Kyoto.",
+      "error": "no response from AI — please try again (first attempt only; retry succeeded)"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "Trip sharing lifecycle works correctly and securely. Token revocation is properly enforced — old tokens return 404 after unsharing and remain invalid even after re-sharing with a new token. New tokens are different from old ones, preventing bookmarked-URL resurrection attacks. The shared view includes full itinerary content (35 items across 7 days with Tokyo, Hakone, Kyoto, and Nara references) and booking metadata. No private data (user IDs, auth tokens, emails) leaked through the shared view. The only issue was a transient AI timeout on the first itinerary creation attempt."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingest", "trip_sharing_enable", "shared_view_read", "trip_sharing_disable", "share_revocation", "trip_sharing_re-enable", "token_rotation", "old_token_invalidation", "chat_history", "usage"]
+}

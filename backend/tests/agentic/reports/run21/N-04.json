@@ -1,0 +1,104 @@
+{
+  "persona_id": "N-04",
+  "persona_name": "Booking Field Extraction Gauntlet",
+  "status": "COMPLETED",
+  "trip_destination": "Multiple Destinations",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "ingest_flight",
+    "ingest_hotel",
+    "ingest_activity",
+    "ingest_car_rental",
+    "ingest_hostel",
+    "ingest_ryokan",
+    "ingest_tour",
+    "list_bookings_verify_7",
+    "extract_flight_terminal_departure",
+    "extract_hotel_cancellation",
+    "extract_activity_meeting_point",
+    "extract_car_rental_insurance_fuel",
+    "extract_hostel_hanoi_checkin",
+    "extract_ryokan_meals_dinner",
+    "extract_tour_tastings_dietary",
+    "negative_test_hotel_wifi_from_flight"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 7 booking artifacts were ingested and parsed correctly. ExtractBookingField returned accurate, specific answers for all 7 targeted questions, correctly disambiguating Hanoi from other hostels in the multi-stop booking. The negative test (asking about hotel wifi from a flight confirmation) was handled cleanly with no hallucination. Booking parsing and field extraction are production-ready."
+  },
+  "feature_coverage": [
+    "IngestBooking",
+    "ListBookings",
+    "ExtractBookingField",
+    "CreateTrip"
+  ],
+  "extraction_results": {
+    "Q9_flight_terminal_departure": {
+      "question": "What terminal and what time does my outbound flight depart?",
+      "answer": "Your outbound flight (DL 472) departs from JFK Terminal 4 at 6:45 PM EDT on Monday, June 15, 2026.",
+      "expected_terminal": "Terminal 4",
+      "expected_time": "6:45 PM EDT",
+      "verdict": "PASS"
+    },
+    "Q10_hotel_cancellation": {
+      "question": "What is the cancellation policy?",
+      "answer": "Free cancellation is available until June 12, 2026 (11:59 PM CEST). If cancelled after this date, the first night (EUR 289.00) will be charged, and no-shows will be charged for the full stay.",
+      "expected": "Free cancellation until June 12 2026, EUR 289 penalty after, full stay for no-show",
+      "verdict": "PASS"
+    },
+    "Q11_activity_meeting_point": {
+      "question": "What is the meeting point and what should I bring?",
+      "answer": "The meeting point is at the Nativity Facade entrance on the Carrer de la Marina side (Address: C/ de la Marina, 253, 08013 Barcelona). You should look for a guide holding an orange 'Barcelona Expert Tours' sign and arrive 15 minutes early. You should bring a valid photo ID (passport or national ID), comfortable walking shoes, sunscreen, a water bottle, and your booking confirmation (printed or on your phone). Additionally, you must ensure your shoulders and knees are covered as the dress code is strictly enforced.",
+      "expected_meeting_point": "Nativity Facade entrance, Carrer de la Marina side",
+      "expected_items": "Photo ID, comfortable shoes, sunscreen, water bottle, confirmation, dress code (shoulders+knees covered)",
+      "verdict": "PASS"
+    },
+    "Q12_car_rental_insurance_fuel": {
+      "question": "What insurance is included and what's the fuel policy?",
+      "answer": "The insurance included in the reservation consists of Super CDW (Collision Damage Waiver) with zero excess and Theft Protection. The fuel policy is Full-to-Full.",
+      "expected_insurance": "Super CDW (zero excess) + Theft Protection",
+      "expected_fuel": "Full-to-Full",
+      "verdict": "PASS"
+    },
+    "Q13_hostel_hanoi_checkin": {
+      "question": "What time is check-in at the Hanoi hostel?",
+      "answer": "Check-in at the Hanoi Old Quarter Hostel is scheduled for Monday, June 1, 2026, from 2:00 PM to 10:00 PM.",
+      "expected": "2:00 PM - 10:00 PM at Hanoi Old Quarter Hostel (not confused with Hue or Saigon)",
+      "correctly_disambiguated": true,
+      "verdict": "PASS"
+    },
+    "Q14_ryokan_meals_dinner": {
+      "question": "What meals are included and what time is dinner?",
+      "answer": "The booking includes a Kaiseki Dinner and a Traditional Japanese breakfast. Dinner is served in-room at either 6:00 PM or 6:30 PM, with guests asked to confirm their preference at check-in.",
+      "expected_meals": "Kaiseki Dinner + Traditional Japanese breakfast (half-board)",
+      "expected_dinner_time": "6:00 PM or 6:30 PM",
+      "verdict": "PASS"
+    },
+    "Q15_tour_tastings_dietary": {
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "answer": "The tour includes 12 food tastings across 3 markets and 4 street food stands. Dietary accommodations are available for vegetarian and gluten-free diets with at least 48 hours' notice, and vegan substitutions can be made at most stops.",
+      "expected_tastings": "12",
+      "expected_dietary": "Vegetarian, gluten-free with 48h notice; vegan substitutions at most stops",
+      "verdict": "PASS"
+    },
+    "Q16_negative_test": {
+      "question": "What is the hotel's wifi password?",
+      "booking_type": "BOOKING_TYPE_FLIGHT",
+      "answer": "The provided text is a flight confirmation for Delta Air Lines and does not contain information regarding a hotel or a wifi password.",
+      "hallucinated": false,
+      "verdict": "PASS"
+    }
+  },
+  "run_id": "run21"
+}

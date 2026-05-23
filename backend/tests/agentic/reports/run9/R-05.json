@@ -1,0 +1,87 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic + Iceland",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions messageCount always 0",
+      "description": "ListChatSessions returns messageCount=0 for sessions that have 8 persisted messages. GetChatHistory correctly returns all messages, so the count field appears to be a stale or unimplemented counter.",
+      "expected": "messageCount should reflect actual persisted message count",
+      "actual": "messageCount=0 for both sessions despite messages existing",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions {trip_id: CZ_TRIP_ID}"
+    },
+    {
+      "severity": "P2",
+      "title": "suggest_expert first call failed with no_destination error",
+      "description": "During the CZ selection mode message, the AI called suggest_expert with {themes: [craft-beer]} but without region_code. The tool returned an error 'no_destination'. The AI then retried with region_code: CZ and it succeeded. The trip already had destination_country=CZ set, so the tool should have been able to infer the destination from trip context.",
+      "expected": "suggest_expert should infer destination from active trip context when region_code is omitted",
+      "actual": "Returns no_destination error, requiring AI to retry with explicit region_code",
+      "api_command": "suggest_expert({themes: ['craft-beer']})"
+    },
+    {
+      "severity": "P2",
+      "title": "Iceland expert handoff used adventure+nature themes instead of hiking",
+      "description": "When requesting an Iceland hiking expert, the AI called suggest_expert with themes ['adventure','nature'] instead of ['hiking']. This produced an expert named Sigrun described as 'wilderness, glaciers, and untamed natural wonders' rather than a hiking-specific expert. The hiking theme exists in the extended theme set but was not used.",
+      "expected": "suggest_expert should use 'hiking' theme for hiking-specific requests",
+      "actual": "Used 'adventure' and 'nature' themes, producing a generalist nature expert rather than a hiking specialist"
+    },
+    {
+      "severity": "P2",
+      "title": "First Iceland planning message stream truncated after expert handoff",
+      "description": "The first planning message for Iceland (requesting day-by-day itinerary + expert) returned personaSwitch and toolResult events but no textDelta or messageComplete. The stream appears to have been truncated after the suggest_expert tool result. A follow-up message successfully generated the itinerary.",
+      "steps_to_reproduce": "Send planning message requesting both expert handoff and itinerary creation in one message",
+      "expected": "Stream should continue after expert handoff with text response and itinerary creation",
+      "actual": "Stream ended after suggest_expert toolResult with no text or itinerary"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When nearby_places fails due to no location data in companion mode, the error message says 'Ask them to enable location sharing in the app' — this is a developer-facing message exposed to the AI rather than a user-friendly prompt.",
+      "severity": "minor",
+      "suggestion": "Return a user-friendly message like 'Location not available. Share your location for nearby recommendations.'"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert persona Tomas was correctly created as a Czech craft-beer specialist with deep knowledge. However, the expert greeting used first-person perspective about small pivovarnas in Bohemia, which is excellent for immersion.",
+      "context": "CZ craft-beer expert handoff",
+      "severity": "P2"
+    },
+    {
+      "issue": "Iceland first selection message did NOT trigger suggest_expert proactively. The persona spec says 'This should trigger suggest_expert for an Iceland / hiking expert' but Toqui responded directly with Laugavegur trail knowledge without handing off. Expert handoff only happened on explicit follow-up request.",
+      "context": "Iceland selection mode - first message",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "suggest_expert",
+      "input": "{\"themes\": [\"craft-beer\"]}",
+      "error": "no_destination — Cannot resolve an expert without a destination country. Retry with region_code succeeded."
+    },
+    {
+      "tool": "nearby_places",
+      "input": "{\"query\": \"craft beer pub hospoda\", \"radius\": 1500}",
+      "error": "no_location — User location not available (expected in test environment, no real location data)"
+    },
+    {
+      "tool": "web_search",
+      "input": "{\"query\": \"Laugavegur Trail 4-day itinerary...\"}",
+      "error": "no_web_access — Real-time web search not configured in this environment (expected in test environment)"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent domain knowledge for both Czech craft beer and Iceland hiking — two extended location/theme combinations. The CZ expert Tomas provided specific brewery names (Matuska, Unetice, Zly Casy, Pivovarsky dum), beer terminology (tankovna, svetly lezak, tmavy), and regions beyond Prague (Plzen, Ceske Budejovice). The Iceland itinerary correctly structured the 4-day Laugavegur trek with proper hut stages (Hrafntinnusker, Alftavatn, Emstrur, Thorsmork) and Reykjavik bookends. Companion mode responses were appropriately concise and culturally specific. The two-trip workflow was clean — creating the Iceland trip did not interfere with the Czech trip. Main deductions: expert handoff was not proactive for Iceland (had to explicitly request it), and the hiking theme was mapped to adventure+nature instead of the dedicated hiking theme."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "multi_trip", "expert_handoff", "extended_locations", "extended_themes"]
+}

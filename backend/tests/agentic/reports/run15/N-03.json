@@ -1,0 +1,39 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing_flow", "error_handling"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural REST endpoint test persona with no AI chat interaction. All 16 test steps passed: 4 health endpoints returned correct shapes and fast response times (<3ms), 3 public endpoints (25 guides, guide detail, invalid share token 404) worked correctly, 2 authenticated endpoints (usage and referral) returned proper response shapes, the full trip sharing lifecycle (share->fetch->unshare->verify-invalidation) worked perfectly, and all 3 error handling cases returned appropriate HTTP status codes (401 for no-auth, 404 for invalid trip). No bugs found."
+  },
+  "feature_coverage": ["health_endpoints", "guides_api", "usage_api", "referral_api", "trip_sharing", "error_handling"],
+  "response_shapes": {
+    "GET /healthz": {"status": "ok"},
+    "GET /health": {"components": {"database": {"latency_ms": "number", "status": "string"}, "server": {"status": "string", "uptime_seconds": "number"}}, "status": "string"},
+    "GET /livez": {"status": "alive"},
+    "GET /readyz": {"status": "ready"},
+    "GET /api/guides": {"guides": "[array of 25 objects with slug, title, persona_name, persona_specialty, destination, country, theme, excerpt, cta_text, cta_url]"},
+    "GET /api/guides/{slug}": {"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "content": "string", "cta_text": "string", "cta_url": "string"},
+    "GET /shared/{invalid}": "not found (HTTP 404)",
+    "GET /api/usage": {"used": "integer", "limit": "integer", "tier": "string", "resets_at": "ISO timestamp"},
+    "GET /api/referral": {"code": "string", "link": "string", "max_rewards": "integer", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "integer", "rewards_remaining": "integer", "successful_referrals": "integer"},
+    "POST /api/trips/share": {"share_token": "string", "share_url": "string"},
+    "GET /shared/{valid}": {"trip": {"title": "string", "description": "string", "destination_country": "string", "status": "string"}, "itinerary": "array"},
+    "POST /api/trips/unshare": {"status": "ok"},
+    "GET /api/usage (no auth)": "unauthorized (HTTP 401)",
+    "POST /api/trips/share (no auth)": "unauthorized (HTTP 401)",
+    "POST /api/trips/share (invalid trip)": "trip not found (HTTP 404)"
+  }
+}

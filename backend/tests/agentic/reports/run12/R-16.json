@@ -1,0 +1,62 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "suggest_expert fails with no_destination in selection mode despite destination_countries being set on trip",
+      "description": "During selection mode, the AI called suggest_expert immediately after create_trip, but it failed with 'no_destination' error even though create_trip had just set destination_countries to [GR, TR]. The expert handoff only succeeded in the next planning mode message when region_code was explicitly passed.",
+      "expected": "suggest_expert should be able to resolve the destination from the trip context set by create_trip in the same turn",
+      "actual": "suggest_expert returned {\"error\":\"no_destination\",\"message\":\"Cannot resolve an expert without a destination country.\"}"
+    },
+    {
+      "severity": "P2",
+      "title": "AI calls create_itinerary_items twice with identical items in same turn",
+      "description": "In the Crete itinerary planning message, the AI called create_itinerary_items successfully (9 items created), then called it again with the same 9 items. The backend dedup logic correctly returned skipped_count:9, but the duplicate call wastes a tool loop iteration and tokens.",
+      "expected": "AI should not re-call create_itinerary_items with identical items after receiving a successful result",
+      "actual": "AI called create_itinerary_items twice; second call returned status:already_exists with 9 skipped"
+    },
+    {
+      "severity": "P2",
+      "title": "Companion mode itinerary creation rejected as not_needed for Istanbul recommendations",
+      "description": "In companion mode, the AI attempted to add Istanbul itinerary items (days 10-11) via create_itinerary_items, but the backend returned status:not_needed saying 'The user's message is an informational query'. The persona explicitly asked for must-visit sites for 2 days, which could reasonably warrant itinerary items being created. The gate seems too aggressive.",
+      "expected": "Companion mode should allow itinerary creation when user asks for a multi-day plan at a new destination",
+      "actual": "Backend rejected the tool call with status:not_needed"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI response in the Crete itinerary message contains duplicated content — the first half describes the itinerary, then after the tool result, the AI repeats essentially the same summary. This makes the response feel bloated.",
+      "severity": "P2",
+      "suggestion": "After a successful tool call, the AI should summarize briefly rather than restating the full itinerary description it already provided before the tool call."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Response duplication after tool calls — the AI sometimes generates pre-tool-call content describing what it will do, then post-tool-call content restating what was done, leading to redundant paragraphs in the full response.",
+      "context": "Observed in both the Crete itinerary message and the Istanbul companion message. The fullContent field concatenates both segments.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "suggest_expert",
+      "input": "{\"themes\":[\"history\",\"art\"]}",
+      "error": "{\"error\":\"no_destination\",\"message\":\"Cannot resolve an expert without a destination country. Ask the user where they're going first.\"} — failed in selection mode despite trip having destination_countries set"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI delivered genuinely impressive academic-level historical content across all test vectors. The Delphi Oracle discussion correctly cited de Boer and Hale's 2001 ethylene findings, discussed the adyton layout debate with Plutarch references, and covered interstate arbitration beyond the Croesus anecdote. The Ephesus content included the Attalid bequest, Aristonicus revolt, publicani taxation, and the Library of Celsus with its four allegorical statues named correctly. The Evans reconstruction controversy was handled with proper historiographical depth. Book recommendations were specific and appropriate (Fontenrose, Parke & Wormell, Morgan). The Greece history expert handoff to 'Eleni' worked smoothly. Istanbul recommendations correctly prioritized Hagia Sophia, Archaeological Museums, Hippodrome, and Topkapi over shopping. The itinerary had realistic time allocations (4-5h Knossos, 3-4h museum). Minor issues: duplicate tool calls, response content duplication, and companion mode itinerary gate being too restrictive."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "expert_handoff", "itinerary_creation", "recommend_booking", "usage"]
+}

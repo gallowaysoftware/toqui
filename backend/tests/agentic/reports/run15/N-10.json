@@ -1,0 +1,79 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Stream ends with 'no response from AI' after tool calls in planning mode",
+      "description": "During planning mode message about photography spots, the AI successfully executed web_search, create_itinerary_items (adding 4 items), and suggest_expert (handoff to Beatriz). Beatriz's response generated substantial text deltas with excellent photography advice, then a second create_itinerary_items call added 3 more items. After the second tool result, the stream terminated with error: 'no response from AI — please try again'. The text content was generated but no messageComplete event was emitted, so the message was not persisted to chat history.",
+      "steps_to_reproduce": "1. Create trip in selection mode. 2. Send planning mode message that triggers expert handoff + multiple tool calls. 3. Observe stream ends with error after second tool loop iteration.",
+      "expected": "Stream completes with messageComplete event containing the full response",
+      "actual": "Stream error: 'no response from AI — please try again' after tool results from second iteration",
+      "api_command": "buf curl SendMessage with CHAT_MODE_PLANNING, photography-related message triggering expert handoff + itinerary creation"
+    },
+    {
+      "severity": "P2",
+      "title": "Garbled text generation at end of selection mode response",
+      "description": "The first selection mode response contained garbled text near the end: '...the real \"off-the-menu\" secrets.menu\" spots.\" \\nsecret\" spots that aren\\'t on the tourist traps.\"' — this appears to be a generation artifact where the model stuttered and produced duplicate/corrupted text fragments.",
+      "expected": "Clean, coherent text without repetition artifacts",
+      "actual": "Garbled text with repeated fragments: 'secrets.menu\" spots.\" \\nsecret\" spots'"
+    },
+    {
+      "severity": "P2",
+      "title": "Itinerary grows too large for a 2-day trip (17 items)",
+      "description": "After selection mode (10 items) and one planning mode message (7 more items added), the itinerary ballooned to 17 items across 2 days (9 on Day 1, 8 on Day 2). For a last-minute traveler with only one real full day, this is excessive. The AI kept adding new items without removing or consolidating overlapping ones (e.g., both 'Explore Alfama District' and 'Morning Street Photography: Rua da Adiça' cover the same area at the same time).",
+      "expected": "AI should consolidate or replace overlapping items when adding new ones, keeping 5-8 items max for a compressed 2-day trip",
+      "actual": "17 items with significant overlap, no consolidation"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The selection mode response was quite long for someone at the airport about to board. While the content was good and included immediate survival tips, it could be more concise for the urgency of the situation. The response included a full 2-day plan summary plus questions about accommodation — the plan summary could be shorter since the itinerary items capture the detail.",
+      "severity": "minor",
+      "suggestion": "For urgent/last-minute trip creation, prioritize brevity. The immediate next-step info (getting from airport to city, late-night food) should be prominent, with the full plan available in the itinerary view."
+    },
+    {
+      "description": "Day 2 itinerary includes both 'Sunset at Praca do Comercio' and 'Golden Hour at Cais do Ginjal' as order 4 items — these conflict since the user needs to be at the airport by 4pm. The itinerary doesn't account for the early departure constraint.",
+      "severity": "moderate",
+      "suggestion": "When a user mentions an early departure, the AI should avoid scheduling sunset activities on the departure day."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert handoff triggered during planning mode photography question, which is good, but the Beatriz persona then added MORE itinerary items instead of just giving photography advice. This inflated the itinerary from 14 to 17 items.",
+      "context": "Planning mode message about photography spots triggered suggest_expert to Beatriz, who then called create_itinerary_items adding 3 more photography-specific items on top of the 4 already added earlier in the same turn.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Companion mode responses maintained excellent brevity and were highly actionable — bullet points, specific names, addresses, and practical tips. This is exactly what the persona needed.",
+      "context": "All three companion messages (late-night arrival, one-day plan, airport logistics) were concise and practical.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "{\"query\":\"best street photography spots Lisbon 2026 morning light golden hour\"}",
+      "error": "Web search not configured in this environment — returned fallback message. AI handled gracefully by using built-in knowledge."
+    },
+    {
+      "tool": "SendMessage (planning mode)",
+      "input": "Photography spots message in CHAT_MODE_PLANNING",
+      "error": "Stream terminated with 'no response from AI — please try again' after multiple tool iterations (web_search + create_itinerary_items + suggest_expert + create_itinerary_items). Message not persisted to chat history."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI excelled at the core use case: helping a last-minute traveler who just landed with zero plans. Trip creation was instant with no unnecessary clarifying questions. Companion mode responses were outstanding — concise, actionable bullet points with specific names, addresses, and practical local knowledge (Portugal eating late, metro to airport, Uber vs taxi). The expert handoff to a photography specialist was a nice touch. The main weakness was itinerary bloat — 17 items for a 2-day trip with significant overlap and sunset activities scheduled on the departure day. The planning mode stream error (no response from AI) is a real bug but did not block the overall flow."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation", "recommend_booking"]
+}

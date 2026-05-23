@@ -1,0 +1,54 @@
+{
+  "persona_id": "N-13",
+  "persona_name": "Leila — Companion Info-Query Guardrail",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "self-setup", "companion-msg-1", "companion-msg-2", "companion-msg-3", "companion-msg-4", "companion-msg-5", "companion-msg-6", "itinerary-count-verify"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 2",
+      "description": "AI called create_itinerary_items on message 2 ('I'm near Praça do Comércio — what's a good lunch spot around here?'). The server-side guardrail blocked the call and returned status=not_needed, so no items were actually created. However, the AI should not have attempted the tool call on an informational query. The prompt discipline failed but the backend safety net caught it.",
+      "expected": "No toolCall for create_itinerary_items on an informational lunch spot query",
+      "actual": "toolCall with toolName=create_itinerary_items was emitted in the stream, blocked by server-side guardrail"
+    },
+    {
+      "severity": "P1",
+      "title": "companion mode tool called on info query 6",
+      "description": "AI called create_itinerary_items on message 6 ('Recommend something fun to do tonight.'). The server-side guardrail blocked the call and returned status=not_needed, so no items were actually created. This is the exact trigger that caused issues in Run 5 N-01 msg5. The prompt still does not distinguish 'recommend' from 'add' reliably. Backend safety net caught it.",
+      "expected": "No toolCall for create_itinerary_items on an informational recommendation query",
+      "actual": "toolCall with toolName=create_itinerary_items was emitted in the stream, blocked by server-side guardrail"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Messages 2 and 6 produced duplicate response content. After the server-side guardrail rejected the create_itinerary_items tool call, the AI repeated its entire answer (recommending the same restaurant/Fado venue twice in one message). This looks broken to the user.",
+      "severity": "P2",
+      "suggestion": "When the tool result indicates not_needed, the AI should seamlessly continue rather than re-stating its recommendation. This may require tuning the tool rejection message or adding post-processing to deduplicate."
+    },
+    {
+      "description": "Message 2 included 'My apologies, I misspoke. I should not have added that to your itinerary directly without you asking.' — this is confusing because nothing was actually added. The AI's self-correction text implies a mutation happened when it didn't.",
+      "severity": "P2",
+      "suggestion": "The AI should not apologize for an action that was blocked. The guardrail message should instruct the AI to continue naturally without acknowledging the failed tool call."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI attempted to call create_itinerary_items on 2 out of 6 purely informational companion-mode queries (messages 2 and 6). Prompt discipline is insufficient — the AI still conflates 'recommend' and 'what's a good X' with 'add to my plan'.",
+      "context": "Messages 2 and 6 triggered toolCall events. Server-side guardrail blocked both. Messages 1, 3, 4, 5 correctly avoided the tool.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The companion mode provides genuinely useful, concise answers to informational queries about Lisbon. The AI correctly answered all 6 questions with helpful local knowledge. However, on 2 of 6 messages the AI attempted to call create_itinerary_items (blocked by server-side guardrail), and the resulting duplicate response text and false apology degrade the UX. The itinerary was never mutated (N_BEFORE=12, N_AFTER=12), so the backend safety net works, but the prompt needs further tuning to prevent unnecessary tool calls on info queries."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "itinerary-guardrail"]
+}

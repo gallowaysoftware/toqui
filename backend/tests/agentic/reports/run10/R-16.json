@@ -1,0 +1,56 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece & Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI no-response error on first Crete itinerary attempt",
+      "description": "First attempt to request the Crete itinerary returned 'no response from AI — please try again' error after initial textDelta chunks were streamed. The AI started generating text but then the stream terminated with an error. Retry succeeded.",
+      "steps_to_reproduce": "Send a planning mode message requesting a detailed Crete itinerary with Evans controversy discussion in the same message",
+      "expected": "Complete response with itinerary items",
+      "actual": "Partial text streamed then error: 'no response from AI — please try again'",
+      "api_command": "buf curl SendMessage with Crete itinerary request"
+    },
+    {
+      "severity": "P2",
+      "title": "AI attempted duplicate itinerary creation",
+      "description": "After successfully creating 7 Crete itinerary items, the AI called create_itinerary_items again with the exact same items in a second tool call within the same response. The backend correctly detected duplicates and returned 'already_exists' with 0 created, but the AI should not have made the duplicate call.",
+      "expected": "AI calls create_itinerary_items once and confirms creation",
+      "actual": "AI called create_itinerary_items twice with identical items; second call returned already_exists"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode responses are quite long for an in-the-field context. The Evans controversy response was excellent in depth but could be more concise for someone standing at a site wanting quick context. Planning-length responses in companion mode.",
+      "severity": "P2",
+      "suggestion": "Companion mode responses should be shorter and more actionable, with an option to 'tell me more' for depth"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not trigger recommend_booking tool when asked for guided archaeological tours at Delphi",
+      "context": "User explicitly asked for a recommendation for a guided archaeological tour at Delphi led by an actual archaeologist. The AI gave general advice about how to find guides but did not call the recommend_booking tool to provide specific bookable tour options with affiliate links.",
+      "severity": "P1"
+    },
+    {
+      "issue": "AI did not proactively suggest a second expert handoff for Turkey leg",
+      "context": "When discussing Ephesus and Istanbul (Turkey destinations), the AI continued responding as the Greece history expert Elias rather than suggesting a Turkey history specialist. The persona remained Greece-focused for Turkey content.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated impressive depth of historical knowledge across all topics tested: the Delphic Oracle (Pythia, adyton, pneuma theory, de Boer and Hale), Minoan archaeology (Evans controversy, Knossos reconstructions), the Attalid bequest and Roman provincial administration, and the Library of Celsus as funerary monument. Expert handoff to a Greece history specialist worked well. Book recommendations included genuine academic works (Parke and Wormell, Mitchell). The main gaps were: failure to trigger recommend_booking for Delphi tours, no second expert handoff for Turkey, and companion mode responses that were planning-length rather than concise field companion answers. For an academic user, the depth of knowledge was genuinely helpful and went well beyond tourist-level summaries."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_completion"]
+}

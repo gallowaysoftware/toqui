@@ -1,0 +1,45 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila — Food Blogger",
+  "status": "COMPLETED",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "booking_extract", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history may not return all messages for long sessions",
+      "description": "Planning session had 3 user messages sent (1 selection + 2 planning) but GetChatHistory returned only 4 messages (2 user + 2 assistant). The 3rd planning message (Dia de Muertos question) and its response appear to be missing. Could be a pagination issue or the selection-mode message being stored separately.",
+      "expected": "6+ messages in planning session (3 user + 3 assistant)",
+      "actual": "4 messages returned (2 user + 2 assistant)",
+      "api_command": "GetChatHistory with session_id 4997db8d-8bd6-47f4-99dd-2983464f937d"
+    },
+    {
+      "severity": "P2",
+      "title": "Shared trip view does not expose itinerary days in expected structure",
+      "description": "GET /shared/{token} returned the trip title but the response structure did not contain itinerary.days as a top-level array. The itinerary may be nested differently or omitted from the shared view.",
+      "expected": "Shared trip view includes itinerary with days and items",
+      "actual": "Trip title present but itinerary days parsing returned 0",
+      "api_command": "GET /shared/U4jR4czoijTCsj09ag0WcU"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI generated 16 itinerary items in the very first message (selection mode). While impressive, this front-loads a lot of content before the user has had a chance to provide preferences or constraints. A more conversational approach might ask 1-2 clarifying questions first.",
+      "severity": "P2",
+      "suggestion": "Consider having the AI ask about budget range, accommodation preferences, or dietary restrictions before generating a full itinerary on the first message."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional food expertise across the board. The AI correctly distinguished CDMX food culture from Oaxacan food culture, demonstrated deep knowledge of mezcal production (artisanal vs ancestral, specific agave varieties including espadin, tobala, tepeztate, madrecuishe, jabali), provided culturally rich Dia de Muertos food traditions (pan de muerto with carita, mole negro, tamales de chepil, nicuatole), and gave practical blogger-specific tips (lighting, photography etiquette, market hours). The expert persona Ximena felt authentic and deeply knowledgeable. Companion mode responses were appropriately concise with actionable details. Booking ingestion parsed the tour booking perfectly including all 3 market stops and guide name. All 24 itinerary items across 10 days were food-specific with practical details like neighborhood names, walking times, and reservation requirements."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_create", "booking_ingest", "booking_extract", "recommend_booking", "activate", "companion", "sharing", "chat_history", "usage", "complete"]
+}

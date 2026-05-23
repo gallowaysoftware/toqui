@@ -1,0 +1,57 @@
+{
+  "persona_id": "N-03",
+  "persona_name": "Structural — REST Endpoint Exerciser",
+  "status": "COMPLETED",
+  "trip_destination": "Spain",
+  "completed_steps": ["auth", "health_endpoints", "public_endpoints", "authenticated_endpoints", "trip_sharing_lifecycle", "error_handling"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "GET /shared/{invalid-token} returns plain text 'not found' instead of a JSON error object like {\"error\":\"not found\"}. This is inconsistent with other endpoints that return JSON. Frontend would need special handling for non-JSON error responses from this endpoint.",
+      "severity": "P2",
+      "suggestion": "Return JSON error response like {\"error\":\"not found\",\"code\":404} for consistency with other REST endpoints."
+    },
+    {
+      "description": "GET /api/usage without auth returns plain text 'unauthorized' instead of a JSON error object. Same inconsistency as the shared endpoint.",
+      "severity": "P2",
+      "suggestion": "Return JSON error responses for all REST endpoints, e.g. {\"error\":\"unauthorized\",\"code\":401}."
+    },
+    {
+      "description": "POST /api/trips/share with invalid trip_id returns plain text 'trip not found' (HTTP 404) rather than a JSON error body.",
+      "severity": "P2",
+      "suggestion": "Standardize all REST error responses to JSON format."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural REST endpoint test with no AI interaction. All 16 test cases passed. No bugs found. Minor UX issue: error responses from REST endpoints return plain text instead of JSON, which is inconsistent."
+  },
+  "feature_coverage": ["healthz", "health", "livez", "readyz", "guides_list", "guides_detail", "shared_invalid_token", "usage", "referral", "trip_create", "trip_share", "shared_valid_token", "trip_unshare", "shared_after_unshare", "auth_enforcement_usage", "auth_enforcement_share"],
+  "response_shapes": {
+    "GET /healthz": {"status": "string"},
+    "GET /health": {"status": "string", "components": {"database": {"status": "string", "latency_ms": "number"}, "server": {"status": "string", "uptime_seconds": "number"}}},
+    "GET /livez": {"status": "string"},
+    "GET /readyz": {"status": "string"},
+    "GET /api/guides": {"guides": "[{slug, title, persona_name, persona_specialty, destination, country, theme, excerpt, cta_text, cta_url}]", "total": "number (25)"},
+    "GET /api/guides/{slug}": {"slug": "string", "title": "string", "persona_name": "string", "persona_specialty": "string", "destination": "string", "country": "string", "theme": "string", "excerpt": "string", "content": "string", "cta_text": "string", "cta_url": "string"},
+    "GET /api/usage": {"used": "number", "limit": "number", "tier": "string", "resets_at": "ISO8601"},
+    "GET /api/referral": {"code": "string", "link": "string", "max_rewards": "number", "referee_reward_granted": "boolean", "referrer_reward_granted": "boolean", "rewards_earned": "number", "rewards_remaining": "number", "successful_referrals": "number"},
+    "POST /api/trips/share": {"share_token": "string", "share_url": "string"},
+    "GET /shared/{token}": {"trip": {"title": "string", "description": "string", "status": "string"}, "itinerary": "array"},
+    "POST /api/trips/unshare": {"status": "string"}
+  },
+  "timing": {
+    "healthz_ms": 1.3,
+    "health_ms": 0.9,
+    "livez_ms": 0.5,
+    "readyz_ms": 1.3
+  }
+}

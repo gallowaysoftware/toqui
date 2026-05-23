@@ -1,0 +1,65 @@
+{
+  "persona": "N-15",
+  "name": "UpdateItinerary Day-Metadata Round Trip",
+  "type": "structural",
+  "date": "2026-04-10",
+  "run": "run19",
+  "user_id": "11f6d3f8-0edc-483a-85f9-0c23ffddd65d",
+  "email": "n15-run19b@toqui-test.local",
+  "trip_id": "cd28e0cc-ce28-4876-901f-d14111433270",
+  "status": "pass",
+  "duration_seconds": 30,
+  "feature_coverage": [
+    "update_itinerary",
+    "day_summary_roundtrip",
+    "day_date_roundtrip",
+    "replace_semantics"
+  ],
+  "phases": {
+    "phase1_identity": {
+      "status": "pass",
+      "details": "GetCurrentUser returned expected email n15-run19b@toqui-test.local"
+    },
+    "phase2_single_day": {
+      "status": "pass",
+      "details": "UpdateItinerary with 1 day (day_number=1, date=2026-09-01, summary='Arrival in Lisbon', 2 items) wrote and read back correctly. GetItinerary returned summary='Arrival in Lisbon' (not fallback 'Day 1'), date='2026-09-01', and both items with correct titles/descriptions."
+    },
+    "phase3_multi_day": {
+      "status": "pass",
+      "details": "UpdateItinerary with 3 days all round-tripped correctly. Day 1: summary='Arrival in Lisbon', date='2026-09-01', 2 items. Day 2: summary='Sintra day trip', date='2026-09-02', 3 items. Day 3: summary='Belém and the waterfront', date='2026-09-03', 2 items. Unicode characters (é, ó) preserved correctly."
+    },
+    "phase4_summary_only_and_date_only": {
+      "status": "pass",
+      "details": "Day 1 with summary='Summary only' and no date: GetItinerary returned summary='Summary only', date omitted (empty string). Day 2 with no summary and date='2026-09-05': GetItinerary returned summary='Day 2' (correct fallback), date='2026-09-05'. Both behaved as expected."
+    },
+    "phase5_empty_truncation": {
+      "status": "pass",
+      "details": "UpdateItinerary with days:[] cleared all itinerary data. GetItinerary returned itinerary with tripId only and no days array — complete truncation confirmed."
+    },
+    "phase6_replacement_overwrites": {
+      "status": "pass",
+      "details": "After truncation, UpdateItinerary with fresh 2-day plan (New plan day 1/2, dates 2026-10-15/16, 4 new items). GetItinerary returned only the new 2 days with correct summaries, dates, and items. No stale data from Phase 3's 3-day itinerary."
+    }
+  },
+  "bugs": [],
+  "ux_issues": [],
+  "warnings": [
+    {
+      "severity": "info",
+      "description": "ItineraryDay.id changes between UpdateItinerary response and subsequent GetItinerary response for the same day. For example, UpdateItinerary returned day id '2c15ad3d-...' but GetItinerary returned '544063d2-...' for the same day_number=1. This suggests day rows are regenerated on read or the day grouping produces new UUIDs. Not a functional bug since items retain stable IDs, but clients should not cache day IDs across calls.",
+      "rpc": "GetItinerary vs UpdateItinerary",
+      "phase": "phase3"
+    }
+  ],
+  "ai_issues": [],
+  "tool_failures": [],
+  "scores": {
+    "update_itinerary_roundtrip": 5,
+    "day_summary_preservation": 5,
+    "day_date_preservation": 5,
+    "empty_truncation": 5,
+    "replace_semantics": 5,
+    "overall": 5
+  },
+  "summary": "All 6 phases passed. UpdateItinerary correctly preserves day summary and date fields through write-read cycles. Single-day, multi-day, summary-only, date-only, empty truncation, and full replacement all work as expected. The 'Day N' fallback is correctly applied only when no summary is provided. Unicode characters round-trip properly. One informational note: ItineraryDay IDs are non-stable across UpdateItinerary/GetItinerary calls (items IDs are stable)."
+}

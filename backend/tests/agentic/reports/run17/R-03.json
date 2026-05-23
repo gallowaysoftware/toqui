@@ -1,0 +1,34 @@
+{
+  "persona_id": "R-03",
+  "persona_name": "Marcus — Returning User with Multiple Trips",
+  "status": "COMPLETED",
+  "trip_destination": "Greece, Morocco, New Zealand",
+  "completed_steps": ["auth", "setup_trips", "selection_trip_matching", "planning_itinerary", "trip_switching", "new_trip_creation", "chat_history", "usage_check"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI response text contained garbled output in Morocco trip switch response: 'Fill meand dunes? Give-me-all-the-stars desert?' — appears to be a generation artifact.",
+      "severity": "P2",
+      "suggestion": "May be a transient LLM generation issue; monitor for recurrence."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items 3 times in a single turn for the Santorini planning message. The first call successfully created 9 items, but the AI then called it twice more with the same items (both returned 'already_exists' with 0 created). This resulted in a repetitive response with 3 paragraphs essentially saying the same thing.",
+      "context": "Phase 2b: Planning mode message asking about 3 days in Santorini. The AI's final response was triple the expected length because it appended confirmations after each redundant tool call.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The multi-trip workflow is solid. Vague reference matching ('my Greece trip' to 'Greek Islands Hopping') worked flawlessly. Trip switching correctly identified Morocco without creating a new trip, and New Zealand correctly triggered create_trip instead of select_trip. The 3-day Santorini itinerary was excellent in quality with 9 well-structured items across sightseeing, meals, and activities. The only notable issues were a triple tool-call loop producing a repetitive response and a minor garbled text artifact in the Morocco switch response."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_matching", "trip_switching", "trip_creation_via_chat", "itinerary_creation", "chat_history", "usage_tracking"]
+}

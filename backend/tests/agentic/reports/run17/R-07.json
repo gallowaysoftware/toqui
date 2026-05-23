@@ -1,0 +1,22 @@
+{
+  "persona_id": "R-07",
+  "persona_name": "Structural Test — UpdateTrip COALESCE Regression",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "create_trip", "update_status_active", "update_title_only", "update_status_completed", "list_trips"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural regression test — no AI interaction. All 5 COALESCE partial-update assertions passed: updating status preserves title/description, updating title preserves status/description, and the full PLANNING->ACTIVE->COMPLETED lifecycle completes without field wiping."
+  },
+  "feature_coverage": ["create_trip", "get_trip", "update_trip_partial", "list_trips", "status_transitions"]
+}

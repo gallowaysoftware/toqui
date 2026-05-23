@@ -1,0 +1,54 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria & James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives + Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Session mode shows CHAT_MODE_SELECTION even though messages were sent in planning and companion modes. ListChatSessions returns only one session with mode 'CHAT_MODE_SELECTION' despite containing messages from all three modes.",
+      "severity": "P2",
+      "suggestion": "Consider creating separate sessions per mode, or updating the session mode as the conversation progresses."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not trigger recommend_booking for the helicopter tour on the first request (step 3c). It only generated text descriptions and itinerary items. The recommend_booking tool was only triggered when the user explicitly asked for 'booking options' a second time (step 3d).",
+      "context": "User asked 'can you recommend a helicopter tour of the Palm and Dubai Frame' but AI only described operators in text without generating affiliate links.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI suggested Tasting Table (buffet restaurant) for first dinner at Waldorf Astoria in companion mode. While practical for jet lag, this is a mid-range recommendation inconsistent with ultra-luxury persona calibration. A luxury traveler at the Waldorf Astoria Ithaafushi would expect a recommendation for one of the resort's signature restaurants (e.g., Li Long, The Ledge, Terra) rather than the main buffet.",
+      "context": "Companion mode arrival message. Victoria is staying at one of the most expensive resorts in the world and the AI recommends the buffet.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not mention seaplane transfer costs ($500+ per person) or the logistics of booking seaplane timing with the resort when discussing Maldives resort comparisons. This is important practical knowledge for luxury Maldives travel that the persona spec specifically calls out.",
+      "context": "Step 3a resort comparison. The persona spec notes the AI should know about seaplane transfers costing $500+ per person.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not proactively trigger suggest_expert for a Maldives or Dubai specialist despite the conversation being deeply destination-specific. No persona handoff occurred during the entire session.",
+      "context": "Multiple planning messages about Maldives resorts and Dubai dining should have triggered expert handoff to a luxury travel specialist.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI attempted to re-create itinerary items that already existed (step 3c), receiving an 'already_exists' response. While the deduplication worked server-side, this shows the AI lost track of what it had already created.",
+      "context": "After creating Dubai itinerary items, the AI attempted to create the same 6 items again in the same response.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong luxury calibration for most of the session. It correctly identified top-tier properties (Soneva Fushi Cinema Paradiso, St. Regis whale-shark bar, Waldorf 11 dining venues), recommended exclusively high-end Dubai restaurants (Tresind Studio, Ossiano, STAY by Yannick Alleno, Il Ristorante Niko Romito), and created a well-paced 9-day itinerary with appropriate breathing room. The recommend_booking tool worked correctly for both hotel and activities. The main weaknesses were: no expert persona handoff despite deep destination-specific conversations, a buffet restaurant suggestion in companion mode that was slightly below the luxury tier, and the AI not proactively mentioning seaplane transfer logistics/costs. The itinerary correctly handled the Maldives-to-Dubai transition and the AI knew about direct Emirates/Flydubai routes. Anniversary context was well-maintained throughout with romantic elements woven into recommendations. Overall a very good luxury travel planning experience."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "recommend_booking", "create_itinerary_items", "delete_itinerary_items", "web_search"]
+}

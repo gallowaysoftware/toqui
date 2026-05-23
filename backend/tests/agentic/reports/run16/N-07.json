@@ -1,0 +1,34 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya Sharma — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Itinerary has duplicate entries across multiple create_itinerary_items calls (e.g., T's TanTan appears 3+ times on Day 1, Littlebird appears on both Day 2 and Day 3). When the AI is asked for a full 7-day itinerary after already having created initial items, it creates new items without deduplicating against existing ones.",
+      "severity": "P2",
+      "suggestion": "The AI or the backend should detect and merge duplicate itinerary items, or the AI should be prompted to check existing itinerary before adding new items."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "First message response is very long — combines Toqui's initial response, expert handoff, Kenji's full response, itinerary creation, AND sesame safety check all in one message. This could overwhelm a user on mobile.",
+      "context": "The initial selection mode message produced a single response that is ~3000+ words covering trip creation, restaurant recs, expert handoff, itinerary items, safety warnings, and a sesame clarification question.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional understanding of compound dietary restrictions in Japan. It correctly identified the dashi/fish stock trap for vegans, wheat in soy sauce for celiacs, warned about cashew-based vegan cheese for nut allergies, recommended tamari as a GF soy sauce alternative, warned about Fu (wheat gluten) in Shojin Ryori, provided specific restaurant names (T's TanTan, Littlebird, Ain Soph, Shigetsu, Choice Kyoto), addressed EpiPen customs requirements, provided emergency Japanese phrases, listed English-speaking hospitals, and critically ASKED about sesame sensitivity rather than fabricating it. Companion mode responses were concise and actionable with real-time Japanese translation help. The only weakness was itinerary item duplication across multiple calls. This is genuinely life-safety-grade travel advice."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation"]
+}

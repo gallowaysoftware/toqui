@@ -1,0 +1,47 @@
+Subject: Hertz Reservation Confirmed - R-8847321
+
+HERTZ CAR RENTAL - RESERVATION CONFIRMATION
+============================================
+Reservation Number: R-8847321
+Gold Plus Rewards #: 78432190
+Renter: Elena Martinez
+
+PICK-UP
+  Location: Barcelona-El Prat Airport (BCN)
+  Address: Terminal 1, Arrivals Level, Hertz Counter
+  Date: Saturday, June 20, 2026
+  Time: 10:00 AM CEST
+  Counter hours: 6:00 AM - 11:00 PM daily
+
+DROP-OFF (One-Way)
+  Location: Lisbon Humberto Delgado Airport (LIS)
+  Address: Arrivals Hall, Hertz Desk
+  Date: Monday, June 22, 2026
+  Time: 4:00 PM WEST
+  After-hours drop: Key drop box available at the rental return area
+
+VEHICLE
+  Category: Compact SUV (IFAR)
+  Example: Peugeot 2008 or similar
+  Transmission: Manual (automatic available at counter, subject to availability + surcharge)
+  Fuel: Diesel | Policy: Full-to-Full
+  Seats: 5 | Luggage: 2 large + 1 small
+
+RATE BREAKDOWN
+  2 days x EUR 67.00/day:         EUR 134.00
+  One-way cross-border fee:        EUR 85.00
+  Airport surcharge (12%):         EUR 16.08
+  Road tax Spain/Portugal:         EUR 12.50
+  Super CDW (zero excess):        EUR 29.00/day = EUR 58.00
+  Theft Protection:               EUR 11.00/day = EUR 22.00
+  VAT (21%):                       EUR 68.89
+  TOTAL:                          EUR 396.47
+  Payment: Visa ending in 4821 (hold placed; final charge at drop-off)
+
+INCLUDED: Unlimited mileage within Iberian Peninsula. 24/7 roadside assistance: +34 91 749 77 71 (Spain), +351 21 942 63 00 (Portugal).
+
+REQUIRED AT PICK-UP: Valid driver's license held 1+ year, passport, credit card in driver's name.
+
+CROSS-BORDER: Spain-to-Portugal travel is permitted with this reservation. No Vignette needed for Portugal motorways (electronic tolling - register at portotolls.com or pay at post office within 5 days).
+
+Modify or cancel free of charge up to 48 hours before pick-up at hertz.com or call +34 91 749 77 71.

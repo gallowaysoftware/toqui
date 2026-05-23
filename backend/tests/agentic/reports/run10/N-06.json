@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions returns messageCount=0 even though GetChatHistory returns 22 messages for the session. The message count in the session list appears inaccurate.",
+      "severity": "P2",
+      "suggestion": "Ensure messageCount in ListChatSessions reflects the actual number of messages persisted in the session."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Day 1 itinerary description says 'Expect to pay $5-10 for a bed' but the user's accommodation budget is under $5/night (to leave room for food/transport within $10/day total). The $10 upper bound for a bed alone would consume the entire daily budget.",
+      "context": "Day 1 itinerary item 'Delhi Arrival & Old Delhi Charm' in create_itinerary_items call",
+      "severity": "P2"
+    },
+    {
+      "issue": "Day 4 itinerary bundles travel to Agra ($3-7), Taj Mahal entry ($13-14), AND Mehtab Bagh ($3-4) plus accommodation on the same day. Even with the Taj flagged as over-budget, the combined day cost far exceeds $10 without explicit daily budget math showing how to manage it.",
+      "context": "Day 4 itinerary items in create_itinerary_items call",
+      "severity": "P2"
+    },
+    {
+      "issue": "Jaipur to Varanasi Sleeper Class quoted at INR 400-650 (~$5-$8). While Sleeper is the correct class, $8 for transport alone would consume 80% of the daily budget. The AI mentioned this saves a night's accommodation but did not explicitly calculate that the combined daily spend (transport + food) would be within $10.",
+      "context": "Jaipur to Varanasi transport recommendation",
+      "severity": "P2"
+    },
+    {
+      "issue": "No expert persona handoff occurred during the entire planning session despite the trip involving Indian food and history themes. The AI handled everything as Toqui rather than handing off to a local expert.",
+      "context": "Phase 7 test: expert handoff with budget retention could not be evaluated because suggest_expert was never called",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness throughout the session. It correctly flagged the Taj Mahal as exceeding the $10/day budget and suggested Mehtab Bagh as an alternative. Food recommendations were all vegetarian with accurate INR prices. Transport recommendations correctly focused on Sleeper and General class trains. The 21-day itinerary was comprehensive with 45 items featuring many free activities. However, no expert handoff occurred despite food and history themes being relevant, and some daily cost totals implicitly exceeded the $10 budget without explicit math. Companion mode responses were concise and practical."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

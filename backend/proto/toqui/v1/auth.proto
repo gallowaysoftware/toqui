@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc GoogleLogin(GoogleLoginRequest) returns (GoogleLoginResponse);
+  // Note: FacebookLogin and AppleLogin RPCs were removed when the project
+  // transitioned to self-hostable OSS (email+password default, Google OAuth
+  // optional). Do not reuse those names. Proto3 doesn't support `reserved`
+  // inside services, so this comment is the contract.
+
+  rpc EmailRegister(EmailRegisterRequest) returns (EmailRegisterResponse);
+  rpc EmailLogin(EmailLoginRequest) returns (EmailLoginResponse);
+  rpc GetAuthProviders(GetAuthProvidersRequest) returns (GetAuthProvidersResponse);
+
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+
+  // Privacy / data lifecycle
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+  rpc ExportData(ExportDataRequest) returns (ExportDataResponse);
+}
+
+message GoogleLoginRequest {
+  string code = 1 [(buf.validate.field).string.min_len = 1];
+  string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
+  string code_verifier = 3;  // PKCE code verifier (optional, for S256 challenge)
+  reserved 4;
+  reserved "attribution";
+}
+
+message GoogleLoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+  reserved 4, 5;
+  reserved "consent_pending", "age_verification_required";
+}
+
+// FacebookLoginRequest / FacebookLoginResponse / AppleLoginRequest /
+// AppleLoginResponse were removed alongside the FacebookLogin / AppleLogin
+// RPCs. The transition to self-hostable OSS standardized on local
+// email+password (always available) with optional Google OAuth.
+
+message EmailRegisterRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string password = 2 [(buf.validate.field).string.min_len = 12, (buf.validate.field).string.max_len = 200];
+  string name = 3 [(buf.validate.field).string.min_len = 1, (buf.validate.field).string.max_len = 100];
+}
+
+message EmailRegisterResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+}
+
+message EmailLoginRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string password = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).string.max_len = 200];
+}
+
+message EmailLoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+}
+
+message GetAuthProvidersRequest {}
+
+message GetAuthProvidersResponse {
+  bool email_password = 1;  // always true
+  bool google_oauth = 2;    // env-gated (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET set)
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+}
+
+message GetCurrentUserRequest {}
+
+message GetCurrentUserResponse {
+  User user = 1;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string avatar_url = 4;
+  google.protobuf.Timestamp created_at = 5;
+  reserved 7;
+  reserved "age_verified_at";
+}
+
+// Account deletion — GDPR Article 17 (Right to Erasure)
+message DeleteAccountRequest {
+  // Require explicit confirmation to prevent accidental deletion
+  bool confirm = 1 [(buf.validate.field).bool.const = true];
+}
+
+message DeleteAccountResponse {
+  string request_id = 1;
+  string message = 2; // e.g., "Your account deletion has been initiated..."
+}
+
+// Data export — GDPR Article 20 (Right to Data Portability)
+message ExportDataRequest {}
+
+message ExportDataResponse {
+  string request_id = 1;
+  string message = 2; // e.g., "Your data export is being prepared..."
+}

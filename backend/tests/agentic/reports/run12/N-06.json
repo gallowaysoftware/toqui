@@ -1,0 +1,54 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions returns messageCount=0 even though 8 messages were sent in the session. The session exists but count is inaccurate.",
+      "severity": "P2",
+      "suggestion": "Ensure messageCount is incremented or computed correctly when messages are persisted to Firestore."
+    },
+    {
+      "description": "The AI called create_itinerary_items a third time with the same 42 items it had already created, resulting in a 'skipped_count: 42, status: already_exists' response. This wastes a tool loop iteration and tokens.",
+      "severity": "P2",
+      "suggestion": "The system prompt or tool loop should prevent the AI from re-calling create_itinerary_items with items it just created."
+    },
+    {
+      "description": "Days 19, 20, and 21 are all identical 'Departure / Buffer Day' entries with the same description. Three buffer days at the end feels like padding rather than useful planning.",
+      "severity": "P2",
+      "suggestion": "Consider having the AI distribute buffer time or suggest alternative activities rather than generating duplicate filler entries."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Day 5 itinerary has both Taj Mahal (~$13) and Agra Fort (~$8) totaling ~$21, more than double the $10 daily budget. While each was individually flagged as exceeding budget, the AI did not flag the combined daily total or suggest splitting them across two days.",
+      "context": "Day 5 itinerary: 'Sunrise at the Taj Mahal (Mughal)' + 'Explore Agra Fort (Mughal)'. Combined cost ~$21 vs $10 budget.",
+      "severity": "P1"
+    },
+    {
+      "issue": "For Jaipur-Varanasi transport, the AI recommended General class (unreserved) but did not mention the key budget strategy of taking overnight sleeper trains to save a night's accommodation. The persona test spec expected this advice.",
+      "context": "Asked 'How should I get from Jaipur to Varanasi? I want the cheapest option even if it takes forever.' AI recommended General class but missed the strategic advice about overnight trains saving accommodation costs.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI did not test whether Varanasi food recommendations mention that Varanasi is largely vegetarian by default. This was not tested because the persona ran out of messages near the free tier limit (8/10 used).",
+      "context": "Phase 4 of the persona spec asks to verify AI knows Varanasi is largely vegetarian. Could not test due to message budget constraints.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness throughout the conversation, flagging expensive attractions (Taj Mahal at $13, Agra Fort at $8, City Palace at $8-9) and consistently suggesting free alternatives like exterior views, Mehtab Bagh, and Gurudwara Bangla Sahib langar. Food recommendations were excellent with specific INR prices all under $3. Transport recommendations correctly suggested general class trains at 80-150 INR. The main gap was failing to flag that Day 5's combined attractions total $21 (over 2x the daily budget). Companion mode was concise and practical with real-world advice about auto-rickshaw scams. The 42-item itinerary covered all 21 days across Delhi, Agra, Jaipur, Varanasi, and Rishikesh with predominantly free activities."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "usage", "itinerary", "trip_lifecycle"]
+}

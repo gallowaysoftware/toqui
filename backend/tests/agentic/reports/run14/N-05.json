@@ -1,0 +1,33 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural — Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "trip_destination": "Japan",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "share_enable", "shared_view_verify", "share_disable", "revocation_verify", "re_share", "new_token_verify", "old_token_still_invalid", "content_completeness", "chat_history", "usage"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Shared view 'itinerary' field is a flat array of day objects rather than nested under an 'itinerary.days' key like the authenticated GetItinerary RPC returns. This inconsistency means the frontend must handle two different response shapes for itinerary data.",
+      "severity": "P2",
+      "suggestion": "Normalize the shared view response to use the same { itinerary: { days: [...] } } shape as GetItinerary for frontend consistency."
+    },
+    {
+      "description": "Shared view bookings include only type, title, and provider. No dates, confirmation code, or details are exposed. This is good for privacy but may limit usefulness for shared trip viewers who want to see when accommodation is booked.",
+      "severity": "P2",
+      "suggestion": "Consider exposing check-in/check-out dates in the shared view (without financial details) so trip viewers can see the schedule."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All seven phases of the trip sharing lifecycle test passed without any bugs. Token revocation works correctly (old tokens return 404 after unshare). Re-sharing generates a new unique token and does not resurrect old tokens. The shared view contains complete itinerary data (16 items across 7 days with Tokyo, Kyoto, and Hakone references) plus the ryokan booking. No sensitive data (user IDs, auth tokens, emails) leaked in the shared view. The AI created an excellent 16-item itinerary covering all requested locations on the first attempt."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingest", "trip_sharing", "share_revocation", "share_re_enable", "shared_view_content", "chat_history", "usage"]
+}

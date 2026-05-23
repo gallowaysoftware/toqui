@@ -1,0 +1,219 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "toqui/v1/common.proto";
+
+service TripService {
+  rpc CreateTrip(CreateTripRequest) returns (CreateTripResponse);
+  rpc GetTrip(GetTripRequest) returns (GetTripResponse);
+  rpc ListTrips(ListTripsRequest) returns (ListTripsResponse);
+  rpc UpdateTrip(UpdateTripRequest) returns (UpdateTripResponse);
+  rpc DeleteTrip(DeleteTripRequest) returns (DeleteTripResponse);
+  rpc GetItinerary(GetItineraryRequest) returns (GetItineraryResponse);
+  rpc UpdateItinerary(UpdateItineraryRequest) returns (UpdateItineraryResponse);
+  rpc CloneTrip(CloneTripRequest) returns (CloneTripResponse);
+  // Targeted move of a single itinerary item to a new day/position.
+  rpc ReorderItineraryItem(ReorderItineraryItemRequest) returns (ReorderItineraryItemResponse);
+  // List pre-built trip templates available for cloning.
+  rpc ListTripTemplates(ListTripTemplatesRequest) returns (ListTripTemplatesResponse);
+}
+
+message Trip {
+  string id = 1;
+  string user_id = 2;
+  string title = 3;
+  string description = 4;
+  TripStatus status = 5;
+  string start_date = 6;
+  string end_date = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // Auto-tagged by AI from trip description and chat conversations
+  repeated string themes = 10;
+  // Primary destination country (ISO 3166-1 alpha-2) for persona matching.
+  // Retained for backward compatibility — for multi-country trips this is the
+  // first entry of destination_countries.
+  string destination_country = 11;
+  bool is_unlocked = 12;
+  // All destination countries for multi-country trips (e.g. ["GR", "TR"]).
+  // ISO 3166-1 alpha-2 codes. Single-country trips will have one entry.
+  repeated string destination_countries = 13;
+  // Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+  optional int64 budget_cents = 14;
+  // ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+  string currency = 15;
+  // Free-text notes / user annotations. Optional.
+  string notes = 16;
+  // Cover image URL for trip cards. May be auto-assigned from destination or user-uploaded.
+  string cover_image_url = 17;
+  // IANA timezone for the trip's primary destination (e.g. "Europe/Athens").
+  // Used by the frontend to display local times.
+  string timezone = 18;
+  // Whether this trip is a pre-built template available for cloning.
+  bool is_template = 19;
+}
+
+enum TripStatus {
+  TRIP_STATUS_UNSPECIFIED = 0;
+  TRIP_STATUS_PLANNING = 1;
+  TRIP_STATUS_ACTIVE = 2;
+  TRIP_STATUS_COMPLETED = 3;
+}
+
+message Itinerary {
+  string trip_id = 1;
+  repeated ItineraryDay days = 2;
+}
+
+message ItineraryDay {
+  string id = 1;
+  int32 day_number = 2;
+  string date = 3;
+  string summary = 4;
+  repeated ItineraryItem items = 5;
+}
+
+message ItineraryItem {
+  string id = 1;
+  int32 order_in_day = 2;
+  string type = 3;
+  string title = 4;
+  string description = 5;
+  LatLng location = 6;
+  google.protobuf.Timestamp start_time = 7;
+  google.protobuf.Timestamp end_time = 8;
+  map<string, string> metadata = 9;
+  // Estimated cost in cents (e.g. 2500 = $25.00). Optional.
+  optional int64 estimated_cost_cents = 10;
+  // ISO 4217 currency code for the cost (e.g. "USD", "EUR"). Optional.
+  string cost_currency = 11;
+}
+
+message CreateTripRequest {
+  string title = 1 [(buf.validate.field).string = {min_len: 1, max_len: 512}];
+  string description = 2 [(buf.validate.field).string.max_len = 5000];
+  string start_date = 3;
+  string end_date = 4;
+  // Optional initial status. Defaults to TRIP_STATUS_PLANNING when unset.
+  // Clients can set this to TRIP_STATUS_ACTIVE to skip the planning phase
+  // and enter companion mode directly (e.g. a traveller who is already on
+  // the ground when they create the trip).
+  TripStatus status = 5;
+  // Trip budget in cents (e.g. 200000 = $2000.00). Optional.
+  optional int64 budget_cents = 6;
+  // ISO 4217 currency code for the budget (e.g. "USD", "EUR"). Defaults to "USD".
+  string currency = 7;
+}
+
+message CreateTripResponse {
+  Trip trip = 1;
+}
+
+message GetTripRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetTripResponse {
+  Trip trip = 1;
+}
+
+message ListTripsRequest {
+  TripStatus status = 1;
+  PaginationRequest pagination = 2;
+  // Optional full-text search query. When non-empty, results are filtered to
+  // trips matching the query against title, description, and destination
+  // country, and ranked by relevance instead of creation date.
+  string query = 3 [(buf.validate.field).string.max_len = 512];
+}
+
+message ListTripsResponse {
+  repeated Trip trips = 1;
+  PaginationResponse pagination = 2;
+}
+
+message UpdateTripRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string title = 2 [(buf.validate.field).string.max_len = 512];
+  string description = 3 [(buf.validate.field).string.max_len = 5000];
+  TripStatus status = 4;
+  string start_date = 5;
+  string end_date = 6;
+  // Trip budget in cents. Optional — omit or set to 0 to leave unchanged.
+  optional int64 budget_cents = 7;
+  // ISO 4217 currency code. Optional — omit or leave empty to keep current value.
+  string currency = 8;
+  // Free-text notes / user annotations. Optional — omit or leave empty to keep current value.
+  string notes = 9 [(buf.validate.field).string.max_len = 10000];
+  // Cover image URL. Optional — omit or leave empty to keep current value.
+  string cover_image_url = 10 [(buf.validate.field).string.max_len = 2048];
+  // IANA timezone. Optional — omit or leave empty to keep current value.
+  string timezone = 11 [(buf.validate.field).string.max_len = 64];
+}
+
+message UpdateTripResponse {
+  Trip trip = 1;
+}
+
+message DeleteTripRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message DeleteTripResponse {}
+
+message GetItineraryRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetItineraryResponse {
+  Itinerary itinerary = 1;
+}
+
+message UpdateItineraryRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  // Full rewrite semantics: the provided itinerary REPLACES all existing
+  // items for the trip. An empty Itinerary.days clears the itinerary.
+  // Clients that want to add a single item should call SendMessage with
+  // create_itinerary_items instead — this RPC is for bulk management.
+  Itinerary itinerary = 2 [(buf.validate.field).required = true];
+}
+
+message UpdateItineraryResponse {
+  Itinerary itinerary = 1;
+}
+
+message CloneTripRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional new title for the cloned trip. Defaults to "Copy of <original>".
+  string title = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message CloneTripResponse {
+  Trip trip = 1;
+}
+
+message ReorderItineraryItemRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  string item_id = 2 [(buf.validate.field).string.uuid = true];
+  // Target day number to move the item to.
+  int32 target_day = 3 [(buf.validate.field).int32.gte = 0];
+  // Target position within the day (1-indexed). Defaults to 1 if unset.
+  int32 target_position = 4 [(buf.validate.field).int32.gte = 0];
+}
+
+message ReorderItineraryItemResponse {
+  ItineraryItem item = 1;
+}
+
+message ListTripTemplatesRequest {
+  PaginationRequest pagination = 1;
+}
+
+message ListTripTemplatesResponse {
+  repeated Trip templates = 1;
+  PaginationResponse pagination = 2;
+}

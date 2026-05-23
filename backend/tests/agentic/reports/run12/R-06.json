@@ -1,0 +1,62 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya — The Organized Barcelona Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": ["auth", "selection", "planning", "bookings", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI duplicates create_itinerary_items call with identical data",
+      "description": "When recommending the Montserrat day trip, the AI called create_itinerary_items twice with the exact same item. The second call was correctly deduplicated by the backend (returned skipped_count=1), but the redundant tool call wastes tokens and adds latency.",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING asking about Montserrat day trip"
+    },
+    {
+      "severity": "P2",
+      "title": "AI response contains repetitive tail text",
+      "description": "In the restaurant recommendation response (step 3c), the AI's fullContent ends with three repetitions of essentially the same sentence confirming the itinerary items were added. The text 'The restaurants I recommended... have already been added to your itinerary' appears twice after the main response. This looks like a tool-loop artifact where the AI restates confirmation after seeing tool results.",
+      "api_command": "SendMessage in CHAT_MODE_PLANNING asking for restaurant recommendations"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Shared trip itinerary is returned as a flat array rather than the nested days/items structure used by GetItinerary. The shared endpoint returns 6 top-level itinerary items (one per day) instead of the full 19 items with day groupings. This means a shared trip viewer sees less detail than the trip owner.",
+      "severity": "P2",
+      "suggestion": "Align the /shared/{token} itinerary format with GetItinerary's nested days/items structure so shared trip viewers see the full itinerary."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not trigger recommend_booking for restaurant suggestions (correct behavior). Verified that the tool only fires for bookable items like tours and transport.",
+      "severity": "P2",
+      "context": "This is actually a POSITIVE finding — the AI correctly differentiates between restaurant recommendations (no affiliate tool) and bookable activities (affiliate tool)."
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Booking ingestion and data retrieval work excellently. All three booking types (flight, hotel, activity) were parsed correctly with accurate field extraction. The AI correctly answered specific booking questions (terminal, check-in time) from ingested data. The architecture expert handoff to Javier was smooth and knowledgeable. The 5-day itinerary intelligently incorporated existing bookings at correct times and filled gaps with relevant activities matching stated preferences (architecture, food, shopping, beach). Companion mode responses were concise and practical. FTC affiliate disclosure was present in recommend_booking responses. Minor issues: duplicate tool calls and repetitive response text."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "booking_ingestion",
+    "extract_booking_field",
+    "recommend_booking",
+    "ftc_disclosure",
+    "expert_handoff",
+    "create_itinerary",
+    "companion",
+    "sharing",
+    "unsharing",
+    "chat_history",
+    "usage",
+    "trip_lifecycle"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya — The Organized Barcelona Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": ["auth", "selection", "booking_ingestion", "booking_retrieval", "extract_booking_field", "planning", "recommend_booking", "itinerary_build", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Companion mode fullContent duplicates pre-tool text",
+      "description": "When the AI generates text before a tool call in companion mode, and the tool rejects the call (returning 'not_needed'), the AI regenerates similar text. The fullContent field concatenates both the pre-tool and post-tool text, resulting in duplicate content. In this test, the greeting 'Bienvenida a Barcelona...' appeared twice in fullContent.",
+      "steps_to_reproduce": "1. Send a message in CHAT_MODE_COMPANION asking 'What should I do this afternoon?'. 2. The AI generates intro text, calls create_itinerary_items, which returns status=not_needed. 3. AI generates new response text. 4. fullContent contains both the pre-tool text and the post-tool text.",
+      "expected": "fullContent should contain only the final response text, not the pre-tool draft",
+      "actual": "fullContent contains duplicated greeting text from both before and after the tool rejection"
+    },
+    {
+      "severity": "P2",
+      "title": "AI called create_itinerary_items in companion mode for informational query",
+      "description": "When asked 'What should I do this afternoon?' in companion mode, the AI called create_itinerary_items to add items to the itinerary. The tool correctly rejected this with a 'not_needed' status, but the AI should not have attempted the tool call for an informational question in companion mode. The persona says companion mode should only fire create_itinerary_items on explicit 'add to my plan' requests.",
+      "expected": "AI answers the informational question directly without calling create_itinerary_items",
+      "actual": "AI called create_itinerary_items which was rejected with 'not_needed' status"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Restaurant recommendation response in planning mode had a confusing ending. After recommending Can Majo and Arrosseria Xativa with full details, the AI appended a second paragraph saying 'I already added these in the previous turn' which was inaccurate - this was the first time these were mentioned. The AI created the items in the SAME turn but the fullContent made it sound like they were from a prior conversation.",
+      "severity": "minor",
+      "suggestion": "The AI's tool-loop continuation message should say 'I just added these to your itinerary' not 'I already added these in the previous turn'"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI corrected arrival date from June 15 to June 16 based on flight timing, which is helpful but changes the user's stated 5-day framework. The flight arrives June 16 at 8:55 AM, and the hotel check-in date is June 15, creating a slight mismatch the AI tried to resolve.",
+      "context": "When building the 5-day itinerary, the AI noted the flight arrives June 16 despite check-in being June 15. This is actually good contextual reasoning, but could confuse a user who considers June 15 as day 1.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Booking ingestion and retrieval were excellent - all three bookings parsed correctly with accurate field extraction. The AI accurately answered specific booking questions (terminal, check-in time, tour date) from context. The recommend_booking tool fired correctly for day trips with proper FTC disclosure, and correctly did NOT fire for restaurant suggestions. The 5-day itinerary was comprehensive (23 items across 5 days) and respected the stated preference against alcohol. Companion mode responses were practical and concise. The main issues are minor: duplicate text in fullContent when a tool call is rejected in companion mode, and the AI unnecessarily attempting create_itinerary_items for informational companion queries."
+  },
+  "feature_coverage": ["selection", "planning", "booking_ingestion", "booking_retrieval", "extract_booking_field", "recommend_booking", "ftc_disclosure", "itinerary_creation", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

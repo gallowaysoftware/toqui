@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gallowaysoftware/toqui-backend/tests/agentic/report-schema.json",
+  "title": "Agentic Test Report",
+  "description": "Schema every agentic test persona must emit at the end of its run. The orchestrator validates outputs against this schema before synthesis; invalid reports are rejected and the agent is re-prompted.",
+  "type": "object",
+  "required": [
+    "persona_id",
+    "persona_name",
+    "status",
+    "completed_steps",
+    "bugs",
+    "ux_issues",
+    "ai_behavior_issues",
+    "tool_failures",
+    "usefulness_evaluation",
+    "feature_coverage"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "persona_id": {
+      "type": "string",
+      "description": "Short stable ID matching the persona filename (e.g. 'R-02', 'N-13').",
+      "pattern": "^[RN]-[0-9]{2}$"
+    },
+    "persona_name": {
+      "type": "string",
+      "description": "Human-readable persona name, e.g. 'Jake (Last-Minute Lisbon)'.",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "COMPLETED",
+        "PARTIAL",
+        "ABORTED_IDENTITY_MISMATCH",
+        "ABORTED_SERVER_DOWN",
+        "ABORTED_BUDGET_EXHAUSTED",
+        "ABORTED_OTHER"
+      ]
+    },
+    "trip_destination": {
+      "type": "string",
+      "description": "Where the persona planned to go (empty string for structural tests)."
+    },
+    "completed_steps": {
+      "type": "array",
+      "description": "Ordered list of test steps the agent actually completed.",
+      "items": {"type": "string"}
+    },
+    "bugs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "description"],
+        "additionalProperties": true,
+        "properties": {
+          "severity": {"type": "string", "enum": ["P0", "P1", "P2"]},
+          "title": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "steps_to_reproduce": {"type": "string"},
+          "expected": {"type": "string"},
+          "actual": {"type": "string"},
+          "api_command": {"type": "string"}
+        }
+      }
+    },
+    "ux_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description"],
+        "additionalProperties": true,
+        "properties": {
+          "severity": {"type": "string"},
+          "description": {"type": "string", "minLength": 1},
+          "suggestion": {"type": "string"}
+        }
+      }
+    },
+    "ai_behavior_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issue"],
+        "additionalProperties": true,
+        "properties": {
+          "issue": {"type": "string", "minLength": 1},
+          "context": {"type": "string"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "P2"]}
+        }
+      }
+    },
+    "tool_failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool"],
+        "additionalProperties": true,
+        "properties": {
+          "tool": {"type": "string", "minLength": 1},
+          "input": {"type": "string"},
+          "error": {"type": "string"}
+        }
+      }
+    },
+    "usefulness_evaluation": {
+      "type": "object",
+      "required": [
+        "overall_score",
+        "trip_creation_score",
+        "itinerary_quality_score",
+        "persona_handoff_score",
+        "booking_parsing_score",
+        "companion_mode_score",
+        "would_use_again",
+        "narrative"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "overall_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "trip_creation_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "itinerary_quality_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "persona_handoff_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "booking_parsing_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "companion_mode_score": {"type": "integer", "minimum": 0, "maximum": 5},
+        "would_use_again": {"type": "boolean"},
+        "narrative": {"type": "string", "minLength": 1}
+      }
+    },
+    "feature_coverage": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Optional orchestrator-provided run identifier (e.g. 'run-6')."
+    }
+  }
+}

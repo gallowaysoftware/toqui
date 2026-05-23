@@ -1,0 +1,70 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece + Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "SendMessage returns 'no response from AI' mid-stream",
+      "description": "During planning mode step 3b (Crete itinerary request), the AI began generating text deltas but then returned an error object {'message': 'no response from AI -- please try again'} instead of completing the response. The stream had 2 textDelta events followed by the error. Retrying the same request succeeded, suggesting an intermittent AI provider issue or timeout.",
+      "steps_to_reproduce": "Send a long planning message requesting a detailed Crete itinerary in CHAT_MODE_PLANNING",
+      "expected": "Complete streaming response with itinerary items",
+      "actual": "Two textDelta fragments then error: 'no response from AI -- please try again'",
+      "api_command": "buf curl SendMessage with Crete itinerary request"
+    },
+    {
+      "severity": "P2",
+      "title": "messageComplete missing fullContent field when AI uses only tool calls",
+      "description": "On the retry of step 3b, the AI called create_itinerary_items three times and produced tool results, but the messageComplete event had no fullContent field (empty string). The AI created 16 itinerary items correctly but never produced a text response confirming what was created. Users would see items appear but no explanation text.",
+      "expected": "messageComplete should include fullContent with text confirming the itinerary items created",
+      "actual": "messageComplete had empty fullContent despite successful tool calls"
+    },
+    {
+      "severity": "P2",
+      "title": "AI called create_itinerary_items with duplicate items on third tool loop iteration",
+      "description": "During step 3b retry, the AI called create_itinerary_items 3 times. The third call was an exact duplicate of the second (11 items for days 1-3, 9-12), which the backend correctly rejected with 'All 11 requested items are already in the user's itinerary'. While the deduplication worked, the AI wasted a tool loop iteration.",
+      "expected": "AI should not re-submit items it already created in the same turn",
+      "actual": "Third tool call was an exact duplicate, returned 0 created items"
+    },
+    {
+      "severity": "P2",
+      "title": "Delphi days (4-5) missing from itinerary",
+      "description": "The AI created itinerary items for Athens (days 1-3), Crete (days 6-8), and Turkey (days 9-12), but never created items for Delphi (days 4-5) despite Delphi being a central focus of the trip and discussed at length. The user explicitly described a 12-day itinerary with Delphi as days 4-5.",
+      "expected": "Itinerary should include days 4-5 for Delphi with items like Temple of Apollo, Delphi Museum, Treasury of the Athenians",
+      "actual": "Days 4 and 5 are absent from the itinerary. Only 10 of 12 days have items."
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode response about restaurant recommendation started with an apology about accidentally trying to add an itinerary item, indicating the AI attempted to call create_itinerary_items for a dinner suggestion when only asked for a recommendation. The self-correction was good but the initial attempt was unnecessary.",
+      "severity": "minor",
+      "suggestion": "In companion mode, the AI should default to suggesting rather than adding to itinerary unless the user explicitly asks to add something."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Expert persona did not switch when transitioning from Greece to Turkey discussion",
+      "context": "When discussing Ephesus (Turkey), the AI did not trigger suggest_expert for a Turkey history specialist. It stayed on the Greece expert from the Delphi discussion. While the response was still academically strong, the persona system should ideally hand off to a Turkey-specific expert.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not proactively create Delphi itinerary items despite extended discussion",
+      "context": "The user spent an entire message discussing Delphi at academic depth, but the AI never called create_itinerary_items for Delphi days. The user had to explicitly request itinerary creation for Crete in a subsequent message. For an academic trip where Delphi is the primary research destination, this is a notable gap.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated impressive academic depth on Delphi (ethylene theory, de Boer and Hale, adyton, Plutarch) and Ephesus (Attalid bequest, Library of Celsus as funerary monument). The Greece history expert persona 'Eleni' engaged substantively with scholarly questions. However, the itinerary had gaps -- Delphi days were never created despite being the trip's research focus, and one SendMessage call failed mid-stream. The recommend_booking tool correctly produced an archaeologist-guided tour suggestion with FTC disclosure. Companion mode was responsive with good cultural depth on the Elgin Marbles debate. Overall a strong academic travel companion with some reliability and completeness issues."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "recommend_booking", "expert_handoff", "itinerary_creation"]
+}

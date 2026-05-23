@@ -1,0 +1,68 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "itinerary_explicit", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Response content duplicated after companion gate rejects tool call",
+      "description": "When the AI calls create_itinerary_items in companion mode and the companion gate returns status:not_needed, the tool loop retries and the AI regenerates the response. The fullContent field in messageComplete contains the response text twice — the pre-tool-call text plus the post-rejection regenerated text. This happened on messages 2 and 5 (both food recommendation and evening activity).",
+      "steps_to_reproduce": "1. Send a message in CHAT_MODE_COMPANION that might trigger food or activity recommendations. 2. AI calls create_itinerary_items. 3. Companion gate returns not_needed. 4. AI regenerates response. 5. fullContent contains both the original and regenerated text.",
+      "expected": "fullContent should contain only the final response text (post-rejection), not the pre-rejection text appended",
+      "actual": "fullContent contains the pre-rejection text + the post-rejection text concatenated, effectively doubling the response length",
+      "api_command": "buf curl SendMessage with mode CHAT_MODE_COMPANION"
+    },
+    {
+      "severity": "P1",
+      "title": "AI attempts create_itinerary_items unsolicited in companion mode",
+      "description": "On messages 2 (food near Khao San Road) and 5 (evening activity), the AI proactively called create_itinerary_items without the user asking to add anything to the itinerary. The companion gate correctly blocked both attempts (returning status:not_needed), but the AI should not be attempting this tool call at all in companion mode for informational queries. This wastes a tool loop iteration and causes the response duplication bug above.",
+      "expected": "AI should only call create_itinerary_items in companion mode when user explicitly requests adding to itinerary",
+      "actual": "AI called create_itinerary_items on 2 of 5 informational queries"
+    },
+    {
+      "severity": "P1",
+      "title": "Companion mode response exceeds 200 word target on food recommendation",
+      "description": "Message 2 (food near Khao San Road) response was approximately 230 words (excluding the duplicated portion). The persona spec requires companion mode responses to be under 200 words for on-the-ground mobile users. The response included full addresses, price categories, and tips for 3 restaurants — useful detail but too verbose for companion mode.",
+      "expected": "Under 200 words",
+      "actual": "~230 words (pre-duplication)"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The 'Here's the Muay Thai fight for your itinerary:' text leaked into message 5's response before the tool call was made, showing the AI pre-committed to adding an itinerary item before the companion gate rejected it. This creates a disjointed user experience where the AI says it will add something but then doesn't.",
+      "severity": "P2",
+      "suggestion": "System prompt should more strongly instruct the AI not to announce itinerary additions in companion mode unless the user explicitly asks"
+    },
+    {
+      "description": "Tipping advice (message 4) was good but missed massage/spa tipping (50-100 baht) and explicitly noting no tipping at street food stalls, both highly relevant for a Thailand trip",
+      "severity": "P2",
+      "suggestion": "Could be addressed by having the Thailand persona profile include key cultural tipping norms"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI proactively attempts itinerary creation in companion mode for informational queries",
+      "context": "Messages 2 and 5 triggered create_itinerary_items calls despite being informational queries ('what's near Khao San Road?' and 'recommend something fun'). The companion gate saved the day, but the AI should learn not to call this tool for informational queries in companion mode.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Geographic reasoning was good but slightly off — 'big gold temple near Khao San Road' identified as Wat Pho/Grand Palace area instead of Wat Saket (Golden Mount)",
+      "context": "Wat Saket (Golden Mount) is the most prominent gold temple very close to Khao San Road. Wat Pho and Grand Palace are plausible but slightly further. The AI provided reasonable guesses and practical navigation help, so this is minor.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode performed well overall. Responses were mostly concise (4 of 5 under 200 words), Thailand-specific, and actionable. The AI gave concrete recommendations (specific restaurants, Muay Thai venue, practical transport tips) rather than generic advice. The companion gate correctly blocked unsolicited itinerary creation, though the AI attempting it caused response duplication. The explicit itinerary add worked perfectly. Main issues are the response duplication bug after companion gate rejection and the AI being too eager to call create_itinerary_items on informational queries."
+  },
+  "feature_coverage": ["companion", "create_trip", "activate_trip", "complete_trip", "itinerary_creation", "companion_gate", "trip_sharing", "chat_history", "usage_tracking"]
+}

@@ -1,0 +1,28 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Mode Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand (Bangkok)",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "chat_history", "sharing", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI proactively created 3 itinerary items in companion mode on Message 5 ('recommend something fun for tonight') without the user explicitly requesting items be added to the itinerary. The persona spec requires companion mode to be reactive, not planning-oriented. Itinerary items should only be created when the user explicitly says 'add to my itinerary' or similar.",
+      "context": "Message 5 asked 'recommend something fun for tonight'. The AI called create_itinerary_items with 3 items (Chinatown Food Crawl, Live Music at Ad Here the 13th, Friday Night Muay Thai Fights) and said 'I've added these to your plan!' without being asked to. Messages 1-4 correctly did NOT create itinerary items.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Companion mode responses were excellent in quality: concise (all under 150 words), highly specific to Bangkok and Khao San Road area, with real place names, prices in THB, and practical tips. The geographic reasoning for the 'lost near gold temple' query was strong, offering 3 plausible temples with navigation landmarks. Cultural advice (tipping) was Thailand-specific and accurate. The one significant issue is the AI proactively creating itinerary items on Message 5 when only asked for a recommendation, not to add to the plan. This is a behavioral regression in companion mode — the AI should only create itinerary items on explicit request, which it correctly did on Message 6."
+  },
+  "feature_coverage": ["companion", "chat_history", "sharing", "usage", "itinerary"]
+}

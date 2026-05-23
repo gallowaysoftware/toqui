@@ -42,13 +42,12 @@ These principles are not aspirational. They are engineering requirements. Code t
 
 ## Project Structure
 
-This is a 5-repo project under `github.com/gallowaysoftware`:
+Monorepo with two top-level apps:
 
-- **toqui** (this repo) — Expo React Native app (web + iOS + Android)
-- **toqui-backend** — Go backend, ConnectRPC API, AI orchestration
-- **toqui-terraform** — Terraform GCP + Cloudflare infrastructure (CI auto-plans on PR, auto-applies on merge)
-- **toqui-site** — Astro static marketing site (Cloudflare Pages)
-- **toqui-admin** — Vite React admin panel (Cloudflare Pages)
+- **`/` (Expo React Native app)** — web + iOS + Android frontend. Most of this CLAUDE.md.
+- **`/backend/` (Go API)** — ConnectRPC service. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for backend-specific architecture and dev commands.
+
+The third repo in the project, **toqui-site**, is the transition page at `toqui.travel` (separate Astro site, separate Cloudflare Pages deploy).
 
 ### Directory Layout
 
@@ -168,7 +167,7 @@ pnpm build:android:prod   # EAS Build Android (production profile)
 pnpm submit:ios           # EAS Submit iOS
 pnpm submit:android       # EAS Submit Android
 pnpm typecheck            # TypeScript type checking
-pnpm generate             # Regenerate proto bindings from ../toqui-backend
+pnpm generate             # Regenerate proto bindings from ./backend/proto
 pnpm lint                 # ESLint (typescript-eslint type-checked)
 pnpm test                 # Unit tests (Vitest)
 ```
@@ -177,9 +176,9 @@ pnpm test                 # Unit tests (Vitest)
 
 The app connects to the backend API via `EXPO_PUBLIC_API_URL` (default: `http://localhost:8090`).
 
-To run the backend locally:
+To run the backend locally (from the repo root):
 ```bash
-cd ../toqui-backend
+cd backend
 docker compose up -d postgres firestore   # Start Postgres + Firestore emulator
 make migrate-up                            # Run migrations
 CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8081" make run
@@ -357,7 +356,7 @@ Common failure causes in this repo:
 
 When modifying chat-related components, hooks, or AI behavior, test against the live backend before merging:
 
-1. Start the backend locally: `cd ../toqui-backend && make run`
+1. Start the backend locally: `cd backend && make run`
 2. Test AI flows with `buf curl` or `grpcurl` against `localhost:8090` to verify tool calls, persona switches, and itinerary creation work correctly
 3. Verify the frontend renders tool results (itinerary updates, persona switches, recommendations) properly
 
@@ -365,19 +364,7 @@ When modifying chat-related components, hooks, or AI behavior, test against the 
 
 **MANDATORY**: Before merging any PR, spawn a parallel adversarial review agent to audit all changes in the PR.
 
-## Cross-Repo Consistency
+## Related Docs
 
-**IMPORTANT**: This project spans 5 repos. When making changes that affect shared documentation, update CLAUDE.md in ALL repos:
-
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui/CLAUDE.md` (this file)
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-terraform/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-site/CLAUDE.md`
-- `/Users/pequalsnp/src/github.com/gallowaysoftware/toqui-admin/CLAUDE.md`
-
-## Related Repos
-
-- **toqui-backend** (`github.com/gallowaysoftware/toqui-backend`) — Go API server
-- **toqui-terraform** (`github.com/gallowaysoftware/toqui-terraform`) — Terraform infrastructure
-- **toqui-site** (`github.com/gallowaysoftware/toqui-site`) — Astro marketing site
-- **toqui-admin** (`github.com/gallowaysoftware/toqui-admin`) — Vite React admin panel
+- [`backend/CLAUDE.md`](backend/CLAUDE.md) — Go API architecture, env config, sqlc/proto codegen, AI provider abstraction.
+- [`backend/README.md`](backend/README.md) — backend dev quickstart.

@@ -1,0 +1,247 @@
+{
+  "persona": "N-09",
+  "name": "Marco — Rapid-Fire Italy Planner",
+  "run": 21,
+  "timestamp": "2026-04-13T16:50:30Z",
+  "status": "completed_with_minor_issues",
+  "environment": "local",
+  "target": "localhost:8090",
+  "trip_id": "09320e68-8ae9-4fae-8499-84765a10fa38",
+  "session_id": "77f4cd38-0c76-4261-b892-d604a2202db1",
+  "user_id": "3b1de414-3887-4407-8aca-57974ae60728",
+
+  "summary": "10-message rapid-fire conversation test completed successfully. The AI demonstrated strong context retention across all 10 turns, correctly handling the major Venice-to-Cinque-Terre restructure (msg 7), maintaining vegetarian preferences throughout, and providing substantive logistics advice. Message 10 final summary was mostly delivered before a Gemini API error + Claude rate limit during the tool loop retry terminated the stream. The final itinerary state in the database is correct and consistent.",
+
+  "messages_sent": 10,
+  "messages_with_ai_response": 9,
+  "messages_failed": 1,
+
+  "message_log": [
+    {
+      "number": 1,
+      "mode": "selection",
+      "content": "I want to plan 10 days in Italy — Rome, Florence, and Venice. Help me build an itinerary.",
+      "tools_called": ["create_trip", "create_itinerary_items"],
+      "result": "Trip created with 4 anchor itinerary items. Trip auto-transitioned to planning mode.",
+      "pass": true
+    },
+    {
+      "number": 2,
+      "mode": "planning",
+      "content": "Actually, let's do Rome 4 days, Florence 3 days, Venice 3 days.",
+      "tools_called": ["create_itinerary_items"],
+      "result": "Full 10-day itinerary populated with 15 new items (19 total). Correct 4-3-3 split.",
+      "pass": true
+    },
+    {
+      "number": 3,
+      "mode": "planning",
+      "content": "Oh I should mention — I'm vegetarian.",
+      "tools_called": ["delete_itinerary_items", "create_itinerary_items", "suggest_expert"],
+      "result": "Deleted 4 non-vegetarian food items, replaced with vegetarian alternatives. Expert handoff to 'Alessandro' (Italian food specialist). Excellent vegetarian tips per city.",
+      "pass": true
+    },
+    {
+      "number": 4,
+      "mode": "planning",
+      "content": "I just read about Pompeii. Can you add a day trip to Pompeii from Rome? Maybe on day 3?",
+      "tools_called": ["create_itinerary_items"],
+      "result": "Pompeii day trip added to day 3 with vegetarian-aware description (Pizza Margherita in Naples). Existing day 3 items reorganized.",
+      "pass": true
+    },
+    {
+      "number": 5,
+      "mode": "planning",
+      "content": "My budget is about $150/day for hotels and food.",
+      "tools_called": ["recommend_booking"],
+      "result": "Detailed budget breakdown (accommodation ~€80-90, food ~€40-45). Specific price checks for recommended restaurants. Budget-friendly neighborhood suggestions. FTC affiliate disclosure included.",
+      "pass": true
+    },
+    {
+      "number": 6,
+      "mode": "planning",
+      "content": "I also really want to see Cinque Terre!",
+      "tools_called": ["create_itinerary_items"],
+      "result": "Cinque Terre day trip added. AI reorganized Florence days to fit it in. Vegetarian food suggestion (Trofie al Pesto) included.",
+      "pass": true
+    },
+    {
+      "number": 7,
+      "mode": "planning",
+      "content": "Let's cut Venice entirely. Give those 3 days to Cinque Terre instead. Rome 4, Florence 3, Cinque Terre 3.",
+      "tools_called": ["delete_itinerary_items", "update_trip", "create_itinerary_items"],
+      "result": "CRITICAL TEST PASSED. Deleted 6 Venice items (train, St. Mark's, gondola, Murano/Burano, Cannaregio food tour, CT day trip). Updated trip title/description to 'Rome, Florence, Cinque Terre'. Created 7 new Cinque Terre items (transport, hiking, boat tour, Manarola evening, pesto class). Verified via GetItinerary: zero Venice items remain.",
+      "pass": true
+    },
+    {
+      "number": 8,
+      "mode": "planning",
+      "content": "What's the best train pass for this itinerary?",
+      "tools_called": [],
+      "result": "Correctly recommended point-to-point tickets over Eurail pass for this specific itinerary. Detailed cost comparison. Cinque Terre Card suggestion. Practical tips (Trenitalia app, booking strategy). Budget-aware advice.",
+      "pass": true
+    },
+    {
+      "number": 9,
+      "mode": "planning",
+      "content": "Can you add a wine tasting experience in Tuscany?",
+      "tools_called": ["create_itinerary_items"],
+      "result": "Added wine tasting near Lucca on Day 7 (between Florence and Cinque Terre). Vegetarian Tuscan lunch included. Budget note (~€60-90). FTC affiliate disclosure.",
+      "pass": true
+    },
+    {
+      "number": 10,
+      "mode": "planning",
+      "content": "Give me the complete final itinerary with all the changes we've made.",
+      "tools_called": [],
+      "result": "Comprehensive summary was streaming correctly (Rome days 1-4, Florence days 5-6, Cinque Terre days 7-10). Included all modifications: Pompeii, wine tasting, vegetarian highlights, budget reminders. Stream terminated by Gemini 400 error + Claude 429 rate limit during tool loop continuation. The summary text was mostly delivered before the error.",
+      "pass": false,
+      "error": "Gemini API 400 (function call turn ordering) + Claude 429 rate limit on fallback. Stream terminated before messageComplete event."
+    }
+  ],
+
+  "bugs": [
+    {
+      "severity": "P2",
+      "category": "itinerary_consistency",
+      "title": "Florence Duomo item stranded on Day 8 (Cinque Terre day)",
+      "description": "After the Venice-to-Cinque-Terre restructure in message 7, the 'Florence Duomo & Baptistery' item remains on Day 8 which is now a Cinque Terre hiking day. The AI mentioned in message 6 that it moved the Duomo to the morning before the Venice train, but when Venice was cut in message 7, this item was not relocated to a Florence day. It should be on Day 5 or 6.",
+      "steps_to_reproduce": "Send messages 1-7 as described, then call GetItinerary. Day 8 contains 'Florence Duomo & Baptistery' alongside 'Hiking: Vernazza to Monterosso' and 'Sunset in Vernazza'.",
+      "expected": "Florence Duomo should be on Day 5 or 6 (Florence days), not Day 8 (Cinque Terre day).",
+      "actual": "Florence Duomo is on Day 8 with Cinque Terre hiking activities."
+    },
+    {
+      "severity": "P2",
+      "category": "ai_provider",
+      "title": "Gemini 400 error during tool loop causes fallback cascade failure",
+      "description": "Message 10 triggered a Gemini API 400 error ('Please ensure that function call turn comes immediately after a user turn or after a function response turn') during a tool loop continuation. The Claude fallback then hit a 429 rate limit. This caused the message 10 stream to terminate without a messageComplete event, though most of the summary text was already delivered.",
+      "steps_to_reproduce": "Send 10 rapid-fire messages in a planning session with many tool calls. The accumulated conversation context appears to cause Gemini to reject the tool loop continuation request.",
+      "expected": "Message 10 should complete successfully with a full summary.",
+      "actual": "Stream terminated with error after delivering most of the summary text but before messageComplete."
+    }
+  ],
+
+  "ux_issues": [
+    {
+      "severity": "minor",
+      "title": "Day 4 has 4 items with unclear ordering",
+      "description": "After message 7 restructured the itinerary, Day 4 in Rome has Borghese Gallery (order 1), Villa Borghese Gardens (order 2), Armando al Pantheon lunch (order 2), and Pantheon/Trevi walking tour (order 3). Two items share order_in_day=2, making the intended sequence ambiguous. The lunch should likely come before the afternoon garden visit."
+    },
+    {
+      "severity": "minor",
+      "title": "Message responses contain duplicated text",
+      "description": "Several AI responses (messages 2, 3, 6, 7) contain duplicated concluding text, likely from the tool loop continuation appending additional response text after the initial response. For example, message 7 ends with the full summary text repeated as a confirmation paragraph."
+    }
+  ],
+
+  "ai_behavior_issues": [
+    {
+      "severity": "minor",
+      "title": "Carbonara recommended in message 2 before vegetarian preference stated",
+      "description": "In message 2, the AI suggested 'first real Roman carbonara' in Trastevere. This is before the user mentioned being vegetarian (message 3), so it's not technically wrong, but the AI also did not proactively ask about dietary preferences."
+    }
+  ],
+
+  "context_retention": {
+    "vegetarian_preference": {
+      "introduced_at": 3,
+      "retained_through": 10,
+      "violations": 0,
+      "notes": "All food recommendations from message 3 onward were vegetarian-appropriate. Pompeii day trip (msg 4) mentioned Pizza Margherita. Wine tasting (msg 9) specified vegetarian Tuscan lunch. Cinque Terre items featured pesto and focaccia. PASS."
+    },
+    "budget_awareness": {
+      "introduced_at": 5,
+      "retained_through": 10,
+      "violations": 0,
+      "notes": "Budget referenced in wine tasting recommendation (msg 9), Cinque Terre hotel advice (msg 7), and train pass advice (msg 8). Final summary included budget reminders. PASS."
+    },
+    "venice_removal": {
+      "introduced_at": 7,
+      "retained_through": 10,
+      "violations": 0,
+      "notes": "No Venice references after message 7 in AI responses. Trip title updated. Itinerary verified: 0 Venice items. Final summary correctly listed Rome, Florence, Cinque Terre only. PASS."
+    },
+    "pompeii_retention": {
+      "introduced_at": 4,
+      "retained_through": 10,
+      "violations": 0,
+      "notes": "Pompeii day trip remained on Day 3 through all subsequent modifications. Present in final itinerary and final summary. PASS."
+    },
+    "wine_tasting_retention": {
+      "introduced_at": 9,
+      "retained_through": 10,
+      "violations": 0,
+      "notes": "Wine tasting added to Day 7 in message 9, present in final itinerary. Final summary included wine tasting on Day 7 near Lucca. PASS."
+    }
+  },
+
+  "tool_usage": {
+    "create_trip": {"calls": 1, "success": 1},
+    "create_itinerary_items": {"calls": 14, "success": 14, "notes": "High call count due to tool loop continuations and de-duplication attempts. Many calls were skipped (already_exists)."},
+    "delete_itinerary_items": {"calls": 3, "success": 3, "notes": "Properly used for vegetarian swap (msg 3), Venice removal (msg 7), and Cinque Terre day trip removal during restructure (msg 7)."},
+    "update_trip": {"calls": 1, "success": 1, "notes": "Correctly updated trip title and description when Venice was removed."},
+    "suggest_expert": {"calls": 1, "success": 1, "notes": "Handed off to Alessandro (Italian food expert) when vegetarian preference was mentioned."},
+    "recommend_booking": {"calls": 1, "success": 1, "notes": "Used for budget hotel search with FTC disclosure."}
+  },
+
+  "chat_history_verification": {
+    "list_sessions": {
+      "status": "pass",
+      "session_count": 1,
+      "message_count_reported": 19
+    },
+    "get_history": {
+      "status": "pass",
+      "messages_returned": 16,
+      "user_messages": 8,
+      "assistant_messages": 8,
+      "ordering_correct": true,
+      "notes": "Messages in correct chronological order (issue #232 PASS). First 2 messages (selection mode msg 1 + response) are in a separate session context. Message 10 AI response not saved due to stream error. Conversation summarization appears to be working as the context was maintained across all 10 turns despite growing conversation length (issue #250)."
+    }
+  },
+
+  "final_itinerary_state": {
+    "total_items": 24,
+    "total_days": 10,
+    "rome_days": [1, 2, 3, 4],
+    "florence_days": [5, 6],
+    "cinque_terre_days": [7, 8, 9, 10],
+    "transition_day_7": "Florence to Cinque Terre via Lucca wine tasting",
+    "venice_items_remaining": 0,
+    "pompeii_present": true,
+    "wine_tasting_present": true,
+    "vegetarian_items": 6,
+    "anomaly": "Florence Duomo & Baptistery on Day 8 (Cinque Terre day)"
+  },
+
+  "trip_metadata": {
+    "title": "10 Days in Italy: Rome, Florence, Cinque Terre",
+    "description": "A 10-day journey from the ancient history of Rome to the Renaissance art of Florence and the colorful coastal villages of Cinque Terre.",
+    "status": "TRIP_STATUS_PLANNING",
+    "destination_country": "IT",
+    "themes": ["history", "food"]
+  },
+
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": 5,
+    "booking_parsing": null,
+    "companion_mode": null,
+    "context_retention": 5,
+    "modification_handling": 4,
+    "overall": 4,
+    "notes": "Trip creation and persona handoff were flawless. Context retention across 10 turns was excellent — vegetarian preference, budget, Pompeii, and Venice removal all tracked correctly. Modification handling was strong (Venice removal + Cinque Terre addition was the hardest test and passed), but the Florence Duomo stranded on Day 8 is a minor gap. Itinerary quality is high overall but has the Day 8 anomaly and some ordering ambiguity on Day 4. The Gemini API error on message 10 is an infrastructure issue, not an AI behavior issue. Overall score of 4/5 reflects a very strong performance with minor itinerary consistency issues."
+  },
+
+  "issue_relevance": {
+    "issue_250_conversation_summarization": {
+      "status": "pass",
+      "notes": "AI maintained full context across all 10 messages with no contradictions or omissions. The final summary (message 10, despite stream error) correctly referenced all modifications from the preceding 9 messages. This suggests conversation summarization is working effectively for conversations of this length."
+    },
+    "issue_232_history_ordering": {
+      "status": "pass",
+      "notes": "GetChatHistory returned 16 messages in correct chronological order. All timestamps are monotonically increasing. No ordering anomalies detected."
+    }
+  }
+}

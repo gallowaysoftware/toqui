@@ -1,0 +1,50 @@
+{
+  "persona_id": "N-09",
+  "persona_name": "Marco — Rapid-Fire Italy Planner",
+  "status": "COMPLETED",
+  "trip_destination": "Italy (Rome, Florence, Cinque Terre)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Chat history corruption after heavy tool usage breaks both AI providers",
+      "description": "After 7 messages with extensive tool calls (including multiple delete_itinerary_items and create_itinerary_items in a single turn), message 8 fails on both providers. Gemini returns 400 'Function call is missing a thought_signature in functionCall parts' for delete_itinerary_items at position 50. Claude returns 400 'tool_use ids were found without tool_result blocks immediately after: lenxy5rs, xk100qn9'. This forces starting a new session to continue the conversation, losing all prior context.",
+      "steps_to_reproduce": "1. Send 7 planning messages with heavy tool usage (create/delete itinerary items). 2. On message 8, both Gemini and Claude fail with 400 errors related to chat history serialization of tool calls/results.",
+      "expected": "Message 8 should succeed and the AI should continue the conversation with full context.",
+      "actual": "Both providers return 400 errors. Gemini: thought_signature missing. Claude: tool_use/tool_result mismatch at position 49/50 in message history.",
+      "api_command": "buf curl SendMessage with session_id from prior 7 messages"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Trip title still says 'Rome, Florence, & Venice' after Venice was cut from the itinerary and replaced with Cinque Terre. The AI updated the itinerary but never called UpdateTrip to change the title/description.",
+      "severity": "P2",
+      "suggestion": "When the AI makes a major destination change (removing/adding a city), it should also update the trip title and description to reflect the change."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI added a day trip to Caserta (family heritage) without being asked, taking up day 4 of the Rome portion. While creative, Marco's persona never mentioned wanting to visit Caserta or explore family roots in a specific town.",
+      "context": "The AI inferred Italian heritage from 'Italian grandparents' and proactively added a Caserta day trip. This is arguably helpful but unsolicited.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "SendMessage (both providers)",
+      "input": "Message 8 in the same session after 7 prior messages with heavy tool usage",
+      "error": "Gemini: 400 'Function call is missing a thought_signature in functionCall parts' at position 50. Claude: 400 'tool_use ids found without tool_result blocks immediately after' at position 49."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI handled rapid-fire modifications impressively well through 7 messages, correctly removing Venice, adding Cinque Terre, maintaining vegetarian preferences, adding Pompeii and wine tasting, and providing excellent train pass advice. The itinerary quality was outstanding with 35 well-structured items across 10 days. However, a critical P1 bug caused both AI providers to fail after 7 messages of heavy tool usage, requiring a new session and losing conversational context. The final summary in message 10 (sent in a new session) correctly reflected all modifications without Venice and with all additions. Companion mode was helpful but limited to 1 message due to hitting the daily limit."
+  },
+  "feature_coverage": ["selection", "planning", "create_itinerary_items", "delete_itinerary_items", "suggest_expert", "recommend_booking", "web_search", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_completion", "itinerary_verification"]
+}

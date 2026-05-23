@@ -1,0 +1,203 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extractor",
+  "run": 9,
+  "date": "2026-04-09",
+  "duration_minutes": 5,
+  "trip_id": "419eaeb7-9360-4f3b-ab92-074156f9ffe8",
+  "user_id": "b28247b9-fd3e-439c-a931-628a0454540b",
+  "summary": "All 16 test steps passed. 7 bookings ingested successfully with correct type classification and AI-parsed structured fields. All 7 field extraction questions returned accurate, specific answers matching the raw artifacts. Multi-hostel disambiguation (Hanoi vs Hue vs Saigon) worked correctly. Negative test (irrelevant question) correctly identified the mismatch without hallucinating.",
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Hostel multi-property booking (VBH-20260601) returns empty hotelDetails {} in ListBookings response despite having 3 properties with structured data in detailsJson. Frontend would need to parse detailsJson to show hostel details, unlike single-property hotels where hotelDetails is populated.",
+      "step": 8,
+      "context": "ListBookings returns hotelDetails: {} for hostel booking but detailsJson contains full multi-property data"
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "test_steps": [
+    {
+      "step": 1,
+      "action": "CreateTrip",
+      "result": "PASS",
+      "details": "Trip 'Booking Gauntlet Trip' created with status TRIP_STATUS_PLANNING"
+    },
+    {
+      "step": 2,
+      "action": "IngestBooking (flight)",
+      "result": "PASS",
+      "booking_id": "6fde9132-edea-4f84-af29-1be546e1c29a",
+      "details": "Flight DL7829X ingested. AI parsed: airline, 2 legs with terminals/times/seats, fare breakdown, baggage policy"
+    },
+    {
+      "step": 3,
+      "action": "IngestBooking (hotel)",
+      "result": "PASS",
+      "booking_id": "260ffba0-7276-4922-9364-0b7b176f2e82",
+      "details": "Hotel Arts Barcelona HAB-2026-9831 ingested. Structured hotelDetails populated correctly"
+    },
+    {
+      "step": 4,
+      "action": "IngestBooking (activity)",
+      "result": "PASS",
+      "booking_id": "4114914e-1b05-4f43-8c06-aa6ced495b21",
+      "details": "Sagrada Familia tour SF-44921 ingested. activityDetails populated with operator, location, date, time, price"
+    },
+    {
+      "step": 5,
+      "action": "IngestBooking (car_rental)",
+      "result": "PASS",
+      "booking_id": "8bfa709c-5a72-42af-ba4e-b2fcad14420d",
+      "details": "Hertz R-8847321 ingested. carRentalDetails populated with pickup/dropoff locations and times, car type"
+    },
+    {
+      "step": 6,
+      "action": "IngestBooking (hostel)",
+      "result": "PASS",
+      "booking_id": "4eade320-3d80-4b96-aadc-d909467ac944",
+      "details": "Hostelworld VBH-20260601 ingested as BOOKING_TYPE_HOTEL. AI parsed all 3 properties into detailsJson.properties array"
+    },
+    {
+      "step": 7,
+      "action": "IngestBooking (ryokan)",
+      "result": "PASS",
+      "booking_id": "952daf4f-19e1-4cc6-a680-c0911a122d1e",
+      "details": "Gion Nanba Ryokan RYO-K-5521 ingested as BOOKING_TYPE_HOTEL. hotelDetails populated correctly"
+    },
+    {
+      "step": 8,
+      "action": "IngestBooking (tour)",
+      "result": "PASS",
+      "booking_id": "23359541-73d3-48ea-b6e0-7c8fc2ca904f",
+      "details": "Oaxaca tour OAXF-2026-112 ingested. tourDetails populated with operator, stops array, guide, meeting point"
+    },
+    {
+      "step": 9,
+      "action": "ListBookings",
+      "result": "PASS",
+      "details": "Returned 7 bookings. Types: 1 FLIGHT, 3 HOTEL, 1 ACTIVITY, 1 CAR_RENTAL, 1 TOUR. All have non-empty booking_id, confirmationCode, title, rawSource. Types match submission."
+    },
+    {
+      "step": 10,
+      "action": "ExtractBookingField (flight: terminal + departure time)",
+      "result": "PASS",
+      "expected": "Terminal 4, 6:45 PM EDT",
+      "actual": "Your outbound flight departs from Terminal 4 at JFK at 6:45 PM EDT on Monday, June 15, 2026.",
+      "extracted_fields": {
+        "outbound_departure_terminal": "Terminal 4",
+        "outbound_departure_time": "6:45 PM EDT",
+        "outbound_departure_date": "Monday, June 15, 2026",
+        "outbound_departure_airport": "New York (JFK)"
+      },
+      "details": "Exact match on terminal (4) and time (6:45 PM EDT). Bonus: included date and airport."
+    },
+    {
+      "step": 11,
+      "action": "ExtractBookingField (hotel: cancellation policy)",
+      "result": "PASS",
+      "expected": "Free cancellation until June 12, 2026 (11:59 PM CEST). After: first night EUR 289. No-show: full stay.",
+      "actual": "Free cancellation is available until June 12, 2026 at 11:59 PM CEST. If cancelled after June 12, the first night (EUR 289.00) will be charged. In the case of a no-show, the full stay will be charged.",
+      "extracted_fields": {
+        "free_cancellation_deadline": "June 12, 2026 at 11:59 PM CEST",
+        "late_cancellation_fee": "EUR 289.00 (first night)",
+        "no_show_fee": "Full stay charged"
+      },
+      "details": "All three policy tiers correctly extracted with specific dates and amounts."
+    },
+    {
+      "step": 12,
+      "action": "ExtractBookingField (activity: meeting point + what to bring)",
+      "result": "PASS",
+      "expected": "Nativity Facade entrance, Carrer de la Marina side, orange sign. Bring: ID, shoes, sunscreen, confirmation, covered shoulders/knees.",
+      "actual": "Meeting Point: Nativity Facade entrance on Carrer de la Marina side. Look for orange 'Barcelona Expert Tours' sign. Arrive 15 min early. Bring: Valid photo ID, comfortable walking shoes, sunscreen and water bottle, confirmation, clothing covering shoulders and knees.",
+      "extracted_fields": {
+        "meeting_point": "Nativity Facade entrance, Carrer de la Marina side",
+        "meeting_address": "C/ de la Marina, 253, 08013 Barcelona",
+        "guide_identifier": "Orange 'Barcelona Expert Tours' sign",
+        "items_to_bring": "5 items correctly listed"
+      },
+      "details": "Complete and accurate. All 5 items to bring listed. Meeting point specific with address."
+    },
+    {
+      "step": 13,
+      "action": "ExtractBookingField (car rental: insurance + fuel policy)",
+      "result": "PASS",
+      "expected": "Super CDW (zero excess) + Theft Protection. Fuel: Full-to-Full.",
+      "actual": "Two insurance products: (1) Super CDW with zero excess at EUR 29.00/day (EUR 58.00 total), (2) Theft Protection at EUR 11.00/day (EUR 22.00 total). Fuel policy: Full-to-Full.",
+      "extracted_fields": {
+        "insurance_super_cdw": "Super CDW (zero excess) - EUR 29.00/day = EUR 58.00 total",
+        "insurance_theft_protection": "Theft Protection - EUR 11.00/day = EUR 22.00 total",
+        "fuel_policy": "Full-to-Full",
+        "cdw_excess": "Zero excess"
+      },
+      "details": "Both insurance types and fuel policy correctly extracted with pricing details."
+    },
+    {
+      "step": 14,
+      "action": "ExtractBookingField (hostel: Hanoi check-in time)",
+      "result": "PASS",
+      "expected": "2:00 PM - 10:00 PM (Hanoi Old Quarter Hostel only, not Hue or Saigon)",
+      "actual": "Check-in at Hanoi Old Quarter Hostel is between 2:00 PM and 10:00 PM on Monday, June 1, 2026.",
+      "extracted_fields": {
+        "property": "Hanoi Old Quarter Hostel",
+        "check_in_window_start": "2:00 PM",
+        "check_in_window_end": "10:00 PM",
+        "check_in_date": "Monday, June 1, 2026",
+        "booking_ref": "VBH-HAN-001"
+      },
+      "details": "Correctly disambiguated Hanoi from Hue (1:00 PM-11:00 PM) and Saigon (2:00 PM-midnight). No location mixing."
+    },
+    {
+      "step": 15,
+      "action": "ExtractBookingField (ryokan: meals + dinner time)",
+      "result": "PASS",
+      "expected": "Kaiseki dinner (in-room, 6:00 PM or 6:30 PM) + Traditional Japanese breakfast (dining room, 7:30-9:00 AM)",
+      "actual": "Two meals included under half-board: (1) Kaiseki Dinner served in-room at 6:00 PM or 6:30 PM, (2) Traditional Japanese Breakfast in dining room 7:30 AM - 9:00 AM.",
+      "extracted_fields": {
+        "meal_plan": "Half-board (Kaiseki Dinner + Traditional Japanese Breakfast)",
+        "dinner_type": "Kaiseki (multi-course seasonal, Kyoto autumn specialties)",
+        "dinner_time_options": "6:00 PM or 6:30 PM",
+        "dinner_location": "In-room",
+        "breakfast_type": "Traditional Japanese",
+        "breakfast_time": "7:30 AM - 9:00 AM",
+        "breakfast_location": "Dining room"
+      },
+      "details": "Both meals, times, and locations correctly extracted. Bonus: noted half-board plan and dietary restriction notice."
+    },
+    {
+      "step": 16,
+      "action": "ExtractBookingField (tour: tastings count + dietary)",
+      "result": "PASS",
+      "expected": "12 tastings. Dietary: vegetarian, gluten-free with advance notice; vegan for most stops.",
+      "actual": "12 tastings across 3 markets and 4 street food stands. Vegetarian and gluten-free with 48-hour notice. Vegan substitutions for most stops.",
+      "extracted_fields": {
+        "number_of_tastings": "12",
+        "tasting_locations": "3 markets and 4 street food stands",
+        "dietary_accommodations": "vegetarian, gluten-free, vegan (most stops)",
+        "advance_notice_required": "48 hours",
+        "dietary_contact_email": "hola@saboresoaxaca.mx"
+      },
+      "details": "Exact tasting count (12) and all three dietary options correctly extracted with 48-hour notice requirement."
+    },
+    {
+      "step": 17,
+      "action": "ExtractBookingField (negative: hotel wifi on flight booking)",
+      "result": "PASS",
+      "expected": "Should indicate info not present in flight confirmation. Must NOT hallucinate.",
+      "actual": "There is no hotel information in this booking. This is a Delta Air Lines flight confirmation, which contains no hotel reservation or wifi password details.",
+      "details": "Correctly identified the mismatch. No hallucination. Clearly stated this is a flight confirmation with no hotel data."
+    }
+  ],
+  "usefulness_scores": {
+    "booking_ingestion": 5,
+    "field_extraction_accuracy": 5,
+    "structured_parsing": 5,
+    "multi_property_disambiguation": 5,
+    "hallucination_resistance": 5,
+    "overall": 5
+  },
+  "notes": "Exceptional performance across all 16 test steps. The booking ingestion pipeline correctly parsed all 7 diverse booking types into structured fields (detailsJson, flightDetails, hotelDetails, carRentalDetails, activityDetails, tourDetails). The ExtractBookingField RPC returned highly specific, accurate answers for all 7 extraction questions, never falling back to vague generic advice. The multi-hostel disambiguation test (Hanoi vs Hue vs Saigon) was handled perfectly. The negative test showed strong hallucination resistance. One minor UX note: the hostel multi-property booking returns empty hotelDetails in the proto response, requiring frontend to parse detailsJson directly."
+}

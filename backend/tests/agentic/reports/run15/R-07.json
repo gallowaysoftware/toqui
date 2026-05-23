@@ -1,0 +1,54 @@
+{
+  "persona_id": "R-07",
+  "persona_name": "Structural Test - UpdateTrip COALESCE Regression",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "create_trip", "update_status_active", "update_title_only", "update_status_completed", "list_trips"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All COALESCE partial update assertions passed. Updating only status preserved title and description. Updating only title preserved status and description. Full lifecycle PLANNING->ACTIVE->COMPLETED worked correctly with no field wiping. ListTrips confirmed final state."
+  },
+  "feature_coverage": ["auth", "create_trip", "update_trip_partial", "get_trip", "list_trips", "status_transitions"],
+  "assertions": {
+    "step1_create": {
+      "pass": true,
+      "title": "COALESCE Regression Test Trip",
+      "description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "status": "TRIP_STATUS_PLANNING"
+    },
+    "step2_update_status_only": {
+      "pass": true,
+      "status": "TRIP_STATUS_ACTIVE",
+      "title_preserved": true,
+      "description_preserved": true
+    },
+    "step3_update_title_only": {
+      "pass": true,
+      "title": "Updated Title Only",
+      "status_preserved": true,
+      "description_preserved": true
+    },
+    "step4_update_status_completed": {
+      "pass": true,
+      "status": "TRIP_STATUS_COMPLETED",
+      "title_preserved": true,
+      "description_preserved": true
+    },
+    "step5_list_trips": {
+      "pass": true,
+      "final_title": "Updated Title Only",
+      "final_description": "This trip tests that partial updates do not wipe unrelated fields.",
+      "final_status": "TRIP_STATUS_COMPLETED"
+    }
+  }
+}

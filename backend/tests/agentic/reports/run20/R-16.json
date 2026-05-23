@@ -1,0 +1,103 @@
+{
+  "persona": "R-16",
+  "name": "Professor Eleanor Whitfield — History Academic",
+  "run": 20,
+  "status": "PASS",
+  "focus": "no_trip_selected fix retest",
+  "steps": [
+    {
+      "step": 1,
+      "name": "GetCurrentUser",
+      "status": "PASS",
+      "details": "Identity confirmed: r16-run20@toqui-test.local, user_id=1afe6ef7-e6e7-4d1e-9543-64c085f9c549, tier=free"
+    },
+    {
+      "step": 2,
+      "name": "Selection mode — create Greece+Turkey trip",
+      "status": "PASS",
+      "details": "create_trip fired successfully (trip_id=2a1c0ca6-5701-4990-a5bb-329e2d890c7d). create_itinerary_items fired TWICE in the same turn, creating 6+8=14 items. suggest_expert fired, handing off to 'Dimitris' (Greek history/architecture). web_search attempted (no_web_access in local env). Session: d5970935-a2df-4988-b92b-e78ae003f2cc.",
+      "tool_calls": ["create_trip", "web_search", "create_itinerary_items", "create_itinerary_items", "suggest_expert"]
+    },
+    {
+      "step": 3,
+      "name": "Planning mode msg 2 — Delphi Oracle (KEY CHECK)",
+      "status": "PASS",
+      "details": "KEY FIX VERIFIED: create_itinerary_items called 4 times and SUCCEEDED (1+1+2+0 = 4 net new items). Zero 'no_trip_selected' errors. The trip_id was correctly resolved from req.Msg.TripId. Also fired 2 recommend_booking calls with FTC disclosure. AI provided excellent academic depth on the Pythia, pneuma theory, adyton architecture, and political influence.",
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items", "create_itinerary_items", "create_itinerary_items", "recommend_booking", "recommend_booking"]
+    },
+    {
+      "step": 4,
+      "name": "Planning mode msg 3 — Crete detailed itinerary (KEY CHECK)",
+      "status": "PASS",
+      "details": "KEY FIX VERIFIED: create_itinerary_items created 4 new Crete items successfully. AI also intelligently deleted 3 generic placeholder items and replaced them with detailed versions. recommend_booking fired for car rental with FTC disclosure. delete_itinerary_items also succeeded (deleted=3). Second create_itinerary_items call returned skipped=4 (dedup, not error).",
+      "tool_calls": ["create_itinerary_items", "recommend_booking", "delete_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 5,
+      "name": "Planning mode msg 4 — Ephesus Greek-to-Roman transition (KEY CHECK)",
+      "status": "PASS",
+      "details": "KEY FIX VERIFIED: create_itinerary_items called 3 times, created 3 new Ephesus items on first call. Subsequent calls were dedup (skipped=3), not errors. Zero 'no_trip_selected' errors. AI discussed the Attalid bequest, Roman provincial administration, Library of Celsus, and Great Theatre with appropriate academic depth.",
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 6,
+      "name": "Recommend private archaeological tour at Delphi",
+      "status": "PASS",
+      "details": "recommend_booking fired with FTC disclosure ('This is a partner link. Toqui may earn a commission at no extra cost to you.'). Also created 1 additional itinerary item (Private Scholarly Tour of Delphi Sanctuary). AI response discussed licensed archaeologist guides and Greek regulations.",
+      "tool_calls": ["recommend_booking", "create_itinerary_items"]
+    },
+    {
+      "step": 7,
+      "name": "GetItinerary — verify all items persisted",
+      "status": "PASS",
+      "details": "23 items persisted across all 12 days. Run 19 had only 8 items (all from step 2). This confirms the fix works: items from steps 2, 3, 4, 5, and 6 are ALL persisted. Breakdown: Day 1 (2), Day 2 (2), Day 3 (2), Day 4 (3), Day 5 (1), Day 6 (1), Day 7 (2), Day 8 (1), Day 9 (5), Day 10 (1), Day 11 (2), Day 12 (1)."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "UX-01",
+      "severity": "P2",
+      "title": "Duplicate itinerary items attempted on tool loop iterations",
+      "description": "The AI frequently calls create_itinerary_items multiple times in the same turn with identical items. The dedup logic correctly handles this (skipped_count), but it wastes tool loop iterations and tokens. Steps 3 and 5 both showed this pattern."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "observation": "Academic depth is excellent",
+      "details": "The AI (as Dimitris) provided scholarly-grade content: pneuma theory with de Boer/Hale citations, boustrophedon writing, Evans reconstruction debates, Minoan column base engineering, Attalid bequest context. Appropriate for a history professor persona."
+    },
+    {
+      "observation": "Proactive tool usage",
+      "details": "The AI proactively called create_itinerary_items, recommend_booking, delete_itinerary_items, and suggest_expert without being explicitly prompted for each. It also intelligently replaced generic items with detailed ones."
+    },
+    {
+      "observation": "FTC disclosure consistently included",
+      "details": "All recommend_booking calls included the affiliate disclosure text in the response, both as tool result metadata and in the AI's natural language response."
+    }
+  ],
+  "tool_calls": {
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0},
+    "create_itinerary_items": {"calls": 14, "successes": 14, "failures": 0, "items_created": 22, "items_skipped": 10, "note": "All calls succeeded. Skips are dedup, not errors."},
+    "delete_itinerary_items": {"calls": 1, "successes": 1, "failures": 0, "items_deleted": 3},
+    "suggest_expert": {"calls": 1, "successes": 1, "failures": 0},
+    "recommend_booking": {"calls": 5, "successes": 5, "failures": 0},
+    "web_search": {"calls": 1, "successes": 0, "failures": 1, "note": "Expected failure: no web access in local env"}
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_recommendations": 4,
+    "academic_depth": 5,
+    "overall": 5
+  },
+  "regression_comparison": {
+    "run_19_items_persisted": 8,
+    "run_20_items_persisted": 23,
+    "run_19_no_trip_selected_errors": "Steps 3-5 all failed",
+    "run_20_no_trip_selected_errors": 0,
+    "verdict": "FIXED — The no_trip_selected bug is resolved. All create_itinerary_items calls across messages 2-5 succeeded."
+  },
+  "summary": "PASS. The no_trip_selected fix is confirmed working. In Run 19, only 8 itinerary items (from the initial selection mode message) were persisted because subsequent planning mode messages failed with 'no_trip_selected'. In Run 20, all 23 items across 5 messages were persisted successfully. The fix (selectedTripID persistence + req.Msg.TripId fallback) correctly resolves the trip ID across the copy-and-clear cycle. AI behavior as the history expert persona was excellent — scholarly depth, proactive tool usage, and consistent FTC disclosure. No bugs found."
+}

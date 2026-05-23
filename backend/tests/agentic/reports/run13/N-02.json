@@ -1,0 +1,55 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Chat History Verifier",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "activate",
+    "companion",
+    "list_sessions",
+    "get_history_selection",
+    "get_history_planning",
+    "get_history_companion",
+    "cross_session_isolation",
+    "usage",
+    "complete"
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "ListChatSessions returns sessions in descending order (most recent first) but the field is named 'lastMessageAt' not 'updatedAt'. The persona spec expected 'updated_at >= created_at' but the field is 'lastMessageAt'. Inconsistency in naming vs proto conventions.",
+      "severity": "P2",
+      "suggestion": "Consider documenting the ordering convention (descending by creation time) and ensuring field naming is consistent with the proto style."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Planning Message A response claimed itinerary items were already added from 'last response', but this was the first message in the planning session. The AI hallucinated a previous itinerary action that didn't happen in this session.",
+      "context": "First planning message asked for a rough itinerary for Lisbon and Porto. AI responded: 'It looks like I already added those items to your itinerary in my last response!' -- but no itinerary items were created.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Chat persistence and session management work flawlessly. All messages round-trip correctly through Firestore, sessions are properly isolated, and ListChatSessions/GetChatHistory return accurate data. The only issue is an AI hallucination about having already created itinerary items when none were created in the planning session."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "list_chat_sessions",
+    "get_chat_history",
+    "session_isolation",
+    "usage"
+  ]
+}

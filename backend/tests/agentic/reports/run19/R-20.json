@@ -1,0 +1,161 @@
+{
+  "persona": "R-20",
+  "name": "Victoria and James — Luxury Anniversary Couple",
+  "run": "run19",
+  "timestamp": "2026-04-10T22:27:00Z",
+  "environment": "local",
+  "model_observed": "gemini",
+
+  "steps_completed": [
+    "GetCurrentUser",
+    "Selection mode: create_trip",
+    "Planning mode: Maldives resort comparison (luxury calibration)",
+    "Planning mode: Maldives private dining + overwater villa booking",
+    "Planning mode: Dubai helicopter tour + fine dining",
+    "GetItinerary verification",
+    "GetTrip verification"
+  ],
+
+  "bugs": [],
+
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Trip themes auto-tagged as ['food'] only, missing 'luxury' and 'romance' despite the trip description explicitly mentioning ultra-luxury anniversary celebration. Theme detection should capture the dominant themes from the trip context.",
+      "step": "GetTrip verification",
+      "evidence": "GetTrip returned themes: ['food'] for a trip titled '10th Anniversary: Maldives & Dubai Luxury' with description about ultra-luxury anniversary."
+    },
+    {
+      "severity": "P2",
+      "description": "Itinerary items added via second tool loop iteration returned 'already_exists' status (skipped_count: 4) even though the items were not yet in the itinerary. The dedup logic appears overly aggressive — matching on day_number alone rather than exact title/description. Items were eventually present when verified via GetItinerary.",
+      "step": "Dubai helicopter tour + fine dining",
+      "evidence": "create_itinerary_items returned {created_count: 0, skipped_count: 4, status: 'already_exists'} for Nobu, helicopter tour, Zuma, and Tresind Studio items, but GetItinerary shows all 4 items present."
+    },
+    {
+      "severity": "P2",
+      "description": "AI response in final message had repetitive/stuttered structure — the same information about helicopter tour booking and itinerary additions was stated 3 times in different phrasing within a single response. The tool loop continuation produced a response that repeated already-stated content.",
+      "step": "Dubai helicopter tour + fine dining",
+      "evidence": "fullContent included 3 separate blocks about the helicopter tour link and itinerary additions being added, each essentially restating the same information."
+    }
+  ],
+
+  "ai_behavior_issues": [
+    {
+      "severity": "P2",
+      "description": "Itinerary mixes resorts inconsistently — Day 1 references Cheval Blanc seaplane/Majordomo but accommodation is Soneva Jani Chapter Two. Day 3 has Waldorf Astoria Stella Maris as an 'Option' but also Treetop Dining at Terra (which is a Waldorf Astoria restaurant). The itinerary conflates multiple resorts without clearly establishing which resort the couple is actually staying at.",
+      "step": "Maldives private dining + overwater villa booking",
+      "evidence": "Day 1: Cheval Blanc seaplane transfer + Soneva Jani accommodation. Day 3: Waldorf Astoria villa + Waldorf dining. Day 5: Cheval Blanc Guerlain Spa. The AI presented multiple resort options but didn't consolidate into a single coherent stay."
+    }
+  ],
+
+  "tool_calls": {
+    "create_trip": {
+      "called": true,
+      "success": true,
+      "notes": "Trip created with correct title, description, both destination countries (MV, AE). Luxury/anniversary context captured in description."
+    },
+    "suggest_expert": {
+      "called": true,
+      "success": true,
+      "notes": "Proactively handed off to 'Julian' — luxury + romance specialist. Handoff was natural and appropriate."
+    },
+    "recommend_booking": {
+      "called": true,
+      "count": 7,
+      "success": true,
+      "notes": "Called for flights (Skyscanner), Maldives hotels x3 (Booking.com), helicopter tour (GetYourGuide). All included FTC affiliate disclosure.",
+      "ftc_disclosure_present": true
+    },
+    "create_itinerary_items": {
+      "called": true,
+      "count": 4,
+      "success": true,
+      "notes": "Created 15 total items across 9 days. Mix of transport, activity, meal, accommodation, and shopping types."
+    },
+    "web_search": {
+      "called": true,
+      "count": 4,
+      "success": false,
+      "notes": "Web search not configured in local test environment. AI gracefully fell back to existing knowledge."
+    }
+  },
+
+  "luxury_calibration": {
+    "score": 5,
+    "max": 5,
+    "notes": "Every recommendation defaulted to highest tier without prompting. Maldives: Cheval Blanc Randheli, Soneva Jani Chapter Two, Waldorf Astoria Ithaafushi Stella Maris, St. Regis Vommuli John Jacob Astor Estate — all top-tier, no mid-range properties. Dubai: Bulgari Resort (private island), Atlantis The Royal (Royal Mansion). Dining: Tresind Studio (2 Michelin stars), Nobu at Atlantis Royal, Zuma DIFC, Il Ristorante (Niko Romito). Activities: private seaplane, private helicopter, private yacht, private desert safari, Guerlain spa. Zero mid-range or mass-market recommendations."
+  },
+
+  "usefulness_evaluation": {
+    "trip_creation": {
+      "score": 5,
+      "max": 5,
+      "notes": "Trip created with precise title capturing anniversary + both destinations + luxury theme. Description is accurate. Both MV and AE destination countries set."
+    },
+    "itinerary_quality": {
+      "score": 4,
+      "max": 5,
+      "notes": "15 items across 9 days with luxury pacing (1-2 activities per day, breathing room, late mornings). Good mix of romantic moments (sandbank lunch, stargazing, sunset yacht cruise, farewell dinner). Deducted 1 point for resort inconsistency (mixing Cheval Blanc, Soneva, Waldorf across Maldives days without clear consolidation)."
+    },
+    "persona_handoff": {
+      "score": 5,
+      "max": 5,
+      "notes": "Proactive handoff to 'Julian' (luxury + romance expert) was seamless and appropriate for the trip context. Julian maintained consistent luxury expertise throughout all subsequent messages."
+    },
+    "booking_parsing": {
+      "score": "N/A",
+      "max": 5,
+      "notes": "No booking ingestion tested in this persona (R-20 focuses on luxury calibration, not booking parsing)."
+    },
+    "companion_mode": {
+      "score": "N/A",
+      "max": 5,
+      "notes": "Companion mode not tested in this persona."
+    },
+    "overall": {
+      "score": 5,
+      "max": 5,
+      "notes": "Exceptional luxury calibration. The AI demonstrated deep knowledge of ultra-luxury properties (specific villa names, architectural details, service differentiators), fine dining (Michelin stars, seat counts, reservation strategies), and curated experiences (private seaplane, helicopter, yacht, desert safari). FTC disclosures present on all affiliate links. Recommendations never dipped below top tier. The expert persona 'Julian' maintained consistent luxury authority throughout."
+    }
+  },
+
+  "key_findings": {
+    "luxury_properties_mentioned": [
+      "Cheval Blanc Randheli (LVMH)",
+      "Soneva Jani Chapter Two Water Reserves",
+      "Waldorf Astoria Ithaafushi Stella Maris",
+      "St. Regis Vommuli John Jacob Astor Estate",
+      "Ritz-Carlton Maldives Fari Islands",
+      "Bulgari Resort Dubai (Jumeirah Bay Island)",
+      "Atlantis The Royal (Royal Mansion)",
+      "Four Seasons Dubai Jumeirah Beach"
+    ],
+    "dining_mentioned": [
+      "Tresind Studio (2 Michelin stars, 20 seats)",
+      "Nobu Dubai at Atlantis The Royal",
+      "Zuma Dubai DIFC",
+      "Il Ristorante Niko Romito (2 Michelin stars)",
+      "Terra Waldorf Astoria (treetop pods)",
+      "Ossiano (aquarium dining)"
+    ],
+    "specific_knowledge_demonstrated": [
+      "Cheval Blanc designed by Jean-Michel Gathy",
+      "Soneva Jani retractable roofs and private water slides",
+      "Waldorf Stella Maris accessible only by private boat",
+      "St. Regis shaped like a lobster, bar like a whale shark",
+      "Tresind Studio reservations open 30 days in advance at midnight",
+      "Bulgari Resort on seahorse-shaped island with private marina",
+      "Emirates A380 onboard shower and lounge"
+    ],
+    "mid_range_recommendations": 0,
+    "ftc_disclosures_present": true,
+    "romantic_elements_in_itinerary": [
+      "Private sandbank anniversary lunch (Day 2)",
+      "Piano Deck private lagoon dinner with live musician (Day 4)",
+      "Private overwater stargazing with Krug champagne (Day 4)",
+      "Couples Guerlain Spa immersion (Day 5)",
+      "Private yacht sunset cruise (Day 9)",
+      "Farewell anniversary dinner at Il Ristorante (Day 9)"
+    ]
+  }
+}

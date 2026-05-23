@@ -1,0 +1,97 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Structural — Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_gettrip_nonexistent", "test2_gettrip_malformed", "test3_create_empty_title", "test4_create_oversized_title", "test5_invalid_status_transition", "test6_sendmessage_empty", "test7_sendmessage_oversized", "test8_delete_nonexistent_booking", "test9_ingest_empty_rawtext", "test10_list_zero_trips"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural/adversarial test — usefulness scores are not applicable. All 10 edge-case test vectors passed: validation interceptor correctly catches malformed UUIDs, empty/oversized strings, and invalid status transitions. Delete on non-existent booking is idempotent (returns empty success). ListTrips on empty collection returns valid empty response. Error codes are precise (invalid_argument vs not_found vs failed_precondition) with descriptive messages."
+  },
+  "feature_coverage": ["validation", "error_handling", "status_transitions", "idempotent_delete", "empty_collection"],
+  "test_results": [
+    {
+      "test": 1,
+      "description": "GetTrip with non-existent UUID",
+      "expected": "NOT_FOUND error",
+      "actual": "not_found: trip not found",
+      "pass": true
+    },
+    {
+      "test": 2,
+      "description": "GetTrip with malformed ID",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: id: value must be a valid UUID",
+      "pass": true
+    },
+    {
+      "test": 3,
+      "description": "CreateTrip with empty title",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: title: value length must be at least 1 characters",
+      "pass": true
+    },
+    {
+      "test": 4,
+      "description": "CreateTrip with oversized title (513 chars)",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: title: value length must be at most 512 characters",
+      "pass": true
+    },
+    {
+      "test": 5,
+      "description": "Invalid status transition COMPLETED -> PLANNING",
+      "expected": "Rejection or documentation of behavior",
+      "actual": "failed_precondition: invalid trip status transition: completed -> planning",
+      "pass": true,
+      "notes": "State machine is enforced. PLANNING->ACTIVE->COMPLETED is the valid forward path. Backward transitions are rejected with failed_precondition error code, which is the correct gRPC code for this scenario."
+    },
+    {
+      "test": 6,
+      "description": "SendMessage with empty content",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: content: value length must be at least 1 characters",
+      "pass": true
+    },
+    {
+      "test": 7,
+      "description": "SendMessage with oversized content (10001 chars)",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: content: value length must be at most 10000 characters",
+      "pass": true
+    },
+    {
+      "test": 8,
+      "description": "DeleteBooking on non-existent ID",
+      "expected": "NOT_FOUND or idempotent success",
+      "actual": "Empty success response (idempotent delete)",
+      "pass": true,
+      "notes": "Delete is idempotent — returns empty success for non-existent IDs. This is a valid design choice."
+    },
+    {
+      "test": 9,
+      "description": "IngestBooking with empty raw_text",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: raw_text: value length must be at least 1 characters",
+      "pass": true
+    },
+    {
+      "test": 10,
+      "description": "ListTrips with zero trips",
+      "expected": "Success with empty trips array",
+      "actual": "Success with pagination:{} and no trips array (empty collection)",
+      "pass": true,
+      "notes": "Returns pagination object with no trips field rather than an empty array. This is standard protobuf behavior — empty repeated fields are omitted from JSON serialization."
+    }
+  ]
+}

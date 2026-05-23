@@ -1,0 +1,155 @@
+{
+  "persona": "N-01",
+  "name": "Jake — Companion Mode Power User",
+  "destination": "Bangkok, Thailand",
+  "run": 21,
+  "timestamp": "2026-04-12T11:50:00Z",
+  "trip_id": "fc452f6d-ca56-4b45-b2aa-c033e453c7fc",
+  "session_id": "a277f65f-3843-43ef-8695-5a061d4b4459",
+  "bugs": [
+    {
+      "id": "N01-R21-B01",
+      "severity": "P1",
+      "title": "Companion gate LLM classifier misclassifies explicit 'add to my itinerary' as INFO",
+      "description": "When the user sent 'actually, add that temple visit to my itinerary for tomorrow morning', the AI correctly called create_itinerary_items with a well-formed Wat Saket item. However, the CompanionGate LLM classifier (tool_companion_gate.go) classified the user message as INFO instead of MODIFY, causing the tool to return status=not_needed. No itinerary item was persisted. The AI responded with 'I've noted that for your morning plan!' — misleading the user into thinking the item was saved.",
+      "steps_to_reproduce": "1. Create trip with TRIP_STATUS_ACTIVE. 2. Send 5 companion mode messages discussing temples, food, and activities. 3. Send 'actually, add that temple visit to my itinerary for tomorrow morning'. 4. Observe tool_result has status=not_needed. 5. Call GetItinerary — empty.",
+      "expected": "CompanionGate classifier returns MODIFY for a message containing 'add ... to my itinerary'. Item is persisted to database.",
+      "actual": "Classifier returned INFO. Tool returned not_needed. Itinerary remains empty despite user's explicit request.",
+      "regression": true,
+      "regression_history": "Same bug observed in runs 9, 10, 11, 12, 13, 14. The companion gate classifier consistently fails on this exact user message pattern despite the MODIFY examples in its prompt including 'add that to my plan' and 'put the temple visit on day 2'.",
+      "suggestion": "The fast-tier LLM classifier is unreliable for this classification task. Consider adding a deterministic keyword pre-check (regex for 'add.*itinerary', 'add.*plan', 'save.*itinerary', 'put.*itinerary', 'schedule.*itinerary') that short-circuits to MODIFY before falling through to the LLM classifier. This would catch the most common explicit modification requests without relying on LLM judgment."
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "N01-R21-UX01",
+      "severity": "P1",
+      "title": "AI confirms itinerary save that did not actually happen",
+      "description": "After create_itinerary_items returned not_needed, the AI responded 'I've noted that for your morning plan!' — implying the item was saved. GetItinerary confirms nothing was persisted. The user has no way to know the save failed silently. This is a trust-breaking UX issue.",
+      "suggestion": "When the tool result indicates not_needed, the AI should inform the user that the item could not be added and suggest trying again or offer to add it in planning mode."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "id": "N01-R21-AI01",
+      "severity": "PASS",
+      "title": "No unsolicited itinerary creation in companion mode (messages 1-5)",
+      "description": "Across all 5 informational companion mode messages, the AI did NOT attempt to call create_itinerary_items. This is a significant improvement over runs 9-14 where the AI frequently attempted unsolicited itinerary creation on informational queries (messages 1, 2, and 5 in particular). The system prompt tuning appears to have resolved the proactive tool-call regression.",
+      "verdict": "PASS — major improvement from previous runs"
+    },
+    {
+      "id": "N01-R21-AI02",
+      "severity": "PASS",
+      "title": "Geographic reasoning for 'big gold temple' is excellent",
+      "description": "When told 'I think I'm lost, I'm near a big gold temple', the AI provided two contextually appropriate guesses: Wat Bowonniwet (flat, nearby) and Wat Saket/Golden Mount (on a hill, further away). It differentiated between them with visual cues (hill vs flat) and provided practical navigation advice (tuk-tuk/motorbike taxi costs, landmark roads). The follow-up question 'Are you seeing a hill or is it flat ground?' was a smart clarifying question. Excellent geographic reasoning.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "N01-R21-AI03",
+      "severity": "PASS",
+      "title": "Cultural advice is Thailand-specific and accurate",
+      "description": "Tipping etiquette response covered: no tip at street food, 10% service charge check at restaurants, rounding up for taxis/Grab, 50-100 THB for massage therapists, 20-50 THB for hotel porters. All advice is Thailand-specific and accurate. Pro tip about carrying 20 THB notes was a practical addition.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "N01-R21-AI04",
+      "severity": "PASS",
+      "title": "Evening recommendations are contextually excellent",
+      "description": "The AI recognized that April 12 is the eve of Songkran and tailored all recommendations accordingly. Suggestions included: Songkran pre-party at Khao San, Muay Thai at Rajadamnern Stadium, Tichuca Rooftop Bar (with dress code note about no flip-flops), and Jodd Fairs night market. All are appropriate for a solo 26-year-old traveler, none require advance booking (or the AI noted how to book on the spot). The Songkran awareness was a strong contextual signal.",
+      "verdict": "PASS — date-aware recommendations are a highlight"
+    },
+    {
+      "id": "N01-R21-AI05",
+      "severity": "PASS",
+      "title": "Food recommendations are specific and local",
+      "description": "Response included 4 named restaurants near Khao San Road with specific dish recommendations (Pad Kaprao, Mango Sticky Rice, Khao Soi, falafel). Named specific streets and sois. Included insider tip about Soi Rambuttri. Not generic — concrete and actionable.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "N01-R21-AI06",
+      "severity": "PASS",
+      "title": "Arrival advice is practical and concise",
+      "description": "First response covered SIM card (AIS/DTAC), ATM withdrawal (with 220 THB fee warning), Airport Rail Link with price and station names, taxi/Grab options with floor levels, and hydration advice. Actionable, concise, and ordered by priority.",
+      "verdict": "PASS"
+    }
+  ],
+  "tool_calls": [
+    {
+      "message": 4,
+      "tool": "web_search",
+      "status": "no_web_access",
+      "note": "AI attempted web_search for tipping etiquette but web search is not configured in local env. Fell back to knowledge base gracefully. Not a bug — expected in local test environment."
+    },
+    {
+      "message": 6,
+      "tool": "create_itinerary_items",
+      "status": "blocked_by_companion_gate",
+      "input": {
+        "items": [
+          {
+            "day_number": 2,
+            "title": "Morning Visit to Wat Saket (The Golden Mount)",
+            "description": "Allow 1-1.5 hours. Climb the 300+ steps to the top for 360-degree views of Bangkok. Since it's the first day of Songkran, expect locals making merit. Dress modestly (shoulders and knees covered). 15 min walk or short tuk-tuk ride back to Khao San area.",
+            "location_name": "Wat Saket (The Golden Mount), Bangkok, Thailand",
+            "type": "sightseeing",
+            "order_in_day": 1
+          }
+        ]
+      },
+      "result": {
+        "status": "not_needed",
+        "message": "The user's message is an informational query, not a request to modify the itinerary."
+      },
+      "note": "AI correctly called the tool with a well-formed item. The companion gate blocked it. This is a companion gate classification bug, not an AI behavior issue."
+    }
+  ],
+  "conciseness": {
+    "msg1_words": 126,
+    "msg2_words": 145,
+    "msg3_words": 154,
+    "msg4_words": 129,
+    "msg5_words": 144,
+    "msg6_words": 124,
+    "all_under_200": true,
+    "all_under_250": true,
+    "verdict": "PASS — all 6 responses under 200 words. Companion mode conciseness is excellent."
+  },
+  "response_times": {
+    "msg1_seconds": 8.03,
+    "msg2_seconds": 9.51,
+    "msg3_seconds": 10.06,
+    "msg4_seconds": 5.22,
+    "msg5_seconds": 6.81,
+    "msg6_seconds": 9.94,
+    "average_seconds": 8.26,
+    "verdict": "ACCEPTABLE — average 8.3s per response. Message 4 (tipping) was fastest at 5.2s. Message 3 (geographic reasoning) was slowest at 10.1s. All under the 15s threshold for companion mode."
+  },
+  "itinerary_verification": {
+    "items_after_msgs_1_to_5": 0,
+    "items_after_msg_6": 0,
+    "itinerary_update_events_msgs_1_to_5": 0,
+    "itinerary_update_events_msg_6": 0,
+    "verdict": "PARTIAL PASS — messages 1-5 correctly produced zero itinerary items (PASS). Message 6 should have produced 1 item but did not due to companion gate bug (FAIL)."
+  },
+  "chat_history_verification": {
+    "total_messages": 12,
+    "user_messages": 6,
+    "assistant_messages": 6,
+    "verdict": "PASS — all 12 messages (6 user + 6 assistant) persisted correctly in chat history."
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "trip_creation_note": "CreateTrip with TRIP_STATUS_ACTIVE worked perfectly, immediately entering companion mode",
+    "itinerary_quality": 1,
+    "itinerary_quality_note": "No itinerary items were actually created despite user's explicit request; companion gate blocked the only attempt",
+    "persona_handoff": "N/A",
+    "persona_handoff_note": "Not tested in this persona (no expert handoff scenario)",
+    "booking_parsing": "N/A",
+    "booking_parsing_note": "Not tested — Jake is a spontaneous traveler with no bookings",
+    "companion_mode": 4,
+    "companion_mode_note": "Reactive, concise, contextually aware responses. Only flaw is the itinerary creation failure on explicit request. AI behavior in companion mode is excellent — it no longer proactively creates itinerary items on informational queries (improvement from runs 9-14).",
+    "overall": 4,
+    "overall_note": "Strong companion mode experience. The AI is concise, geographically literate, culturally specific, and date-aware (Songkran). The persistent companion gate bug is the only significant issue, and it is a backend tool-gating problem, not an AI behavior problem."
+  },
+  "summary": "Companion mode behavior has significantly improved since runs 9-14. The AI no longer proactively calls create_itinerary_items on informational queries (0 spurious tool calls across 5 messages, compared to 2-3 in prior runs). Response conciseness is excellent (all under 200 words). Geographic reasoning, cultural specificity, and date-awareness (Songkran) are highlights. The one remaining P1 bug is the companion gate LLM classifier misclassifying 'add that temple visit to my itinerary for tomorrow morning' as INFO instead of MODIFY — this has reproduced in every run since run 9. A deterministic keyword pre-check would resolve it."
+}

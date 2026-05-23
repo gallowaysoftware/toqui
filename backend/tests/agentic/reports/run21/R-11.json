@@ -1,0 +1,112 @@
+{
+  "persona": "R-11",
+  "name": "Camila — Food Blogger (Mexico City + Oaxaca)",
+  "run": 21,
+  "status": "PASS",
+  "focus": "Food expert handoff, itinerary generation, booking ingestion, recommend_booking with FTC disclosure, cultural depth",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Selection mode — create food trip + expert handoff + initial itinerary",
+      "status": "PASS",
+      "details": "Single message in CHAT_MODE_SELECTION triggered create_trip (title='Camila's Culinary Mexico', destination_countries=['MX']), suggest_expert (handed off to 'Ximena' — Expert in regional Mexican flavors and market traditions), and TWO create_itinerary_items calls (6 CDMX items + 5 Oaxaca items = 11 total). Expert persona correctly typed as PERSONA_TYPE_LOCAL_SPECIALIST with specialty 'food' and accent color #006847. Session created: 2e20997f-5ed4-4f9d-a84c-41d3425adddf.",
+      "api_command": "buf curl SendMessage with CHAT_MODE_SELECTION",
+      "tool_calls": ["create_trip", "suggest_expert", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 2,
+      "name": "Booking ingestion — tour-booking.txt (Sabores de Oaxaca)",
+      "status": "PASS",
+      "details": "IngestBooking correctly parsed the tour booking artifact. All fields extracted: type=BOOKING_TYPE_TOUR, confirmationCode='OAXF-2026-112', provider='SABORES DE OAXACA FOOD TOURS', title='Oaxaca Street Food & Markets Walking Tour', tourDetails populated with tourOperator, tourName, numParticipants=2, meetingPoint (full address), 3 stops (Benito Juarez Market, 20 de Noviembre Market, Mercado de Abastos), date='2026-12-08', startTime='10:00', duration='4 hours', guideName='Chef Roberto Mendoza', price='$149.80'. Booking also auto-added to itinerary as unscheduled item.",
+      "api_command": "grpcurl IngestBooking with tour-booking.txt raw_text"
+    },
+    {
+      "step": 3,
+      "name": "Planning mode — booking recommendations + itinerary expansion",
+      "status": "PASS",
+      "details": "Asked for food tours and cooking classes in $80-150 budget. AI called web_search (2x, no_web_access expected), recommend_booking (3x — mole class, mezcal tasting, Dia de Muertos tour), and create_itinerary_items (3x — added 9 new items including Itanoni, Nighttime Tlayuda Tour, Mezcaloteca, Criollo, In Situ Mezcaleria, Alfonsina, Sabores de Oaxaca scheduled into Day 5). All 3 recommend_booking calls included FTC disclosure ('Affiliate disclosure: I may earn a small commission if you book through this link') in the AI's response text. AI also proactively noted the booking date mismatch (Dec 8 vs late October trip).",
+      "api_command": "buf curl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["web_search", "web_search", "recommend_booking", "recommend_booking", "recommend_booking", "create_itinerary_items", "create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 4,
+      "name": "Planning mode — cultural depth (Dia de Muertos food traditions)",
+      "status": "PASS",
+      "details": "Asked about Dia de Muertos food traditions with explicit request for cultural context. AI provided exceptional depth covering: (1) Specific Oaxacan foods — Pan de Yema with 'carita' figurine (distinguished from CDMX sugar-dusted version), Mole Negro as centerpiece, Tamales de Muerto in banana leaves, Chocolate de Agua, Nicuatole with cochineal; (2) Ofrenda role — concept of spirits consuming 'anima/aroma' of food, Four Elements framework, scent trail with copal and cempasuchil; (3) CDMX vs Oaxaca cultural divide — artisanal vs commercial, Comparsas, Xoxocotlan vigil intimacy; (4) Photography tips — carita close-up, molinillo espumado action shot, tapetes de arena, candlelight at Panteon, marigold arch framing. AI also added 4 more items to the itinerary (Pan de Muerto bakery visit, Nicuatole tasting, Plaza de Muertos photography, Ofrenda photography at Santo Domingo, Muerteada of San Agustin Etla).",
+      "api_command": "buf curl SendMessage with CHAT_MODE_PLANNING",
+      "tool_calls": ["create_itinerary_items", "create_itinerary_items"]
+    },
+    {
+      "step": 5,
+      "name": "GetItinerary — verify all items persisted",
+      "status": "PASS",
+      "details": "25 items persisted across 10 days + 1 unscheduled booking. Breakdown: Unscheduled (1 — booking), Day 1 (1 — El Califa de Leon), Day 2 (2 — Mercado de la Merced, Mercado de San Juan), Day 3 (2 — Quintonil, Pulqueria Las Duelistas), Day 4 (1 — Pujol), Day 5 (2 — Itanoni, Tlayuda Tour), Day 6 (3 — Mercado Benito Juarez, Chocolate Class, In Situ Mezcal), Day 7 (2 — Mole Workshop, Criollo Dinner), Day 8 (4 — Santiago Matatlan, Mezcaloteca, Pan de Muerto Bakery, Nicuatole Tasting), Day 9 (6 — 7 Moles Class, Dia de Muertos Vigil, Market Photography, Private Mezcal Tasting, Ofrenda Photography, Muerteada Photography), Day 10 (1 — Alfonsina Farewell).",
+      "api_command": "grpcurl GetItinerary"
+    },
+    {
+      "step": 6,
+      "name": "ListBookings — verify booking persisted",
+      "status": "PASS",
+      "details": "1 booking persisted: BOOKING_TYPE_TOUR, OAXF-2026-112, all tour details intact including 3 stops, guide name, meeting point, and price."
+    }
+  ],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "id": "UX-01",
+      "severity": "P2",
+      "title": "Duplicate itinerary item attempts on tool loop iterations",
+      "description": "The AI called create_itinerary_items multiple times within the same turn with overlapping items. The server-side dedup logic correctly handled this (skipped_duplicates), but it wastes tool loop iterations and tokens."
+    },
+    {
+      "id": "UX-02",
+      "severity": "P2",
+      "title": "AI detected booking date mismatch but did not offer to fix it",
+      "description": "The AI correctly noticed that the Sabores de Oaxaca tour was booked for December 8 but the trip is planned for late October. It mentioned this to the user but did not proactively offer to reschedule or note it as a conflict in the itinerary. This is a helpful observation but could be more actionable."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "observation": "Exceptional CDMX vs Oaxaca food culture distinction",
+      "details": "The AI (as Ximena) clearly differentiated between CDMX and Oaxacan food cultures: CDMX got markets (Merced, San Juan), fine dining (Pujol, Quintonil), and pulquerias; Oaxaca got mole workshops, mezcal distilleries, chocolate classes, and Dia de Muertos food traditions. The persona explicitly discussed Oaxacan-specific items like Pan de Yema, Nicuatole, Tejate, Tasajo, and Cecina rather than treating 'Mexican food' as monolithic."
+    },
+    {
+      "observation": "Deep mezcal knowledge with specific agave varieties",
+      "details": "The AI mentioned specific agave varieties (Tepeztate, Tobala) at In Situ Mezcaleria, referenced Ulises Torrentera by name, and distinguished between artisanal palenque production (pit-roasting, tahona grinding) and commercial mezcal. Mentioned specific distilleries (Gracias a Dios, El Rey Zapoteco) in Santiago Matatlan."
+    },
+    {
+      "observation": "Practical itinerary details included",
+      "details": "Items included time allowances ('Allow 3-4 hours'), neighborhood names (Roma Norte, Condesa, Centro Historico, San Rafael, Polanco), transportation tips ('45 min drive from Oaxaca City', '10 min Uber'), reservation requirements ('Book 4 months ahead', 'Book exactly when the window opens'), and cost context ('cash only', 'standing room only')."
+    },
+    {
+      "observation": "FTC disclosure consistently included",
+      "details": "All 3 recommend_booking calls included affiliate disclosure text both in the tool result metadata and in the AI's natural language response ('Affiliate disclosure: I may earn a small commission if you book through this link')."
+    },
+    {
+      "observation": "Proactive tool usage across all categories",
+      "details": "The AI proactively called create_trip, suggest_expert, create_itinerary_items (7 calls total, creating 25 items), recommend_booking (3 calls), and web_search (2 calls) without being explicitly prompted for each tool. It also noticed the booking date conflict unprompted."
+    },
+    {
+      "observation": "Budget-appropriate recommendations",
+      "details": "Recommendations aligned with the $80-150 per activity budget: cooking classes, walking tours, mezcal tastings, and market experiences. No $500+ private chef suggestions. Fine dining (Pujol, Quintonil, Criollo) was appropriately positioned as splurge-worthy within a food blogger's budget."
+    }
+  ],
+  "tool_calls": {
+    "create_trip": {"calls": 1, "successes": 1, "failures": 0},
+    "create_itinerary_items": {"calls": 7, "successes": 7, "failures": 0, "items_created": 25, "items_skipped": 5, "note": "All calls succeeded. Skips are dedup, not errors."},
+    "suggest_expert": {"calls": 1, "successes": 1, "failures": 0},
+    "recommend_booking": {"calls": 3, "successes": 3, "failures": 0},
+    "web_search": {"calls": 2, "successes": 0, "failures": 2, "note": "Expected failure: no web access in local env"},
+    "IngestBooking": {"calls": 1, "successes": 1, "failures": 0}
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": 5,
+    "booking_parsing": 5,
+    "booking_recommendations": 4,
+    "cultural_depth": 5,
+    "overall": 5
+  },
+  "summary": "PASS. All 6 test vectors passed. Trip creation correctly captured food/culinary themes with MX destination. Expert handoff to 'Ximena' (MX food specialist) fired proactively with appropriate persona type and specialties. Itinerary generation produced 25 food-specific items across 10 days covering markets, cooking classes, mezcal distilleries, fine dining, street food, and Dia de Muertos experiences — no generic sightseeing. Booking ingestion correctly parsed all fields from tour-booking.txt including tour operator, stops, guide name, and meeting point. Booking recommendations triggered recommend_booking 3x with FTC disclosure. Cultural depth was exceptional: the AI distinguished CDMX vs Oaxacan food cultures, mentioned specific Dia de Muertos foods (Pan de Yema with carita, Mole Negro, Nicuatole, Chocolate de Agua), explained the ofrenda's role with cultural nuance, and provided photography tips. Mezcal knowledge included specific agave varieties (Tepeztate, Tobala) and artisanal vs industrial production distinction. The food expert persona felt authentic and deeply knowledgeable rather than guidebook-like."
+}

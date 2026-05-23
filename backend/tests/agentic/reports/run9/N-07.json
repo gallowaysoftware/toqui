@@ -1,0 +1,76 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Gemini gemini-3-flash model returns 404 NOT_FOUND",
+      "description": "When the AI provider attempts to use the primary Gemini model, it gets a 404 error: 'Publisher Model projects/toqui-staging/locations/us-central1/publishers/google/models/gemini-3-flash was not found or your project does not have access to it.' This forces fallback to Claude, which then hits rate limits more easily. The model name 'gemini-3-flash' appears to be incorrect or not yet available.",
+      "expected": "Primary Gemini model should be accessible",
+      "actual": "404 NOT_FOUND for gemini-3-flash, falling back to Claude which then 429s",
+      "api_command": "SendMessage in CHAT_MODE_COMPANION"
+    },
+    {
+      "severity": "P2",
+      "title": "ListChatSessions returns messageCount=0 despite 12 messages",
+      "description": "ListChatSessions shows messageCount=0 for the session, but GetChatHistory returns 12 messages for the same session. The messageCount field appears to not be populated or updated.",
+      "expected": "messageCount should reflect actual number of messages (12)",
+      "actual": "messageCount=0",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/ListChatSessions -d '{\"trip_id\": \"715c7c7c-7548-45f0-b72e-780c99dc18f5\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "messageComplete.fullContent truncated on multi-segment AI responses",
+      "description": "When the AI generates a long response with tool calls followed by text (step 3b), the fullContent in messageComplete only contains the final text segment, not the full response including the explanatory text before and after tool results. The textDelta events contain all the content, but fullContent is incomplete.",
+      "expected": "fullContent should contain the complete AI response text",
+      "actual": "fullContent only contained final segment: 'The items are already saved — I called create_itinerary_items...' instead of the full Day 1-2 itinerary walkthrough"
+    },
+    {
+      "severity": "P2",
+      "title": "Turn timeout on large itinerary generation",
+      "description": "First attempt to generate a 7-day detailed itinerary timed out with 'turn timeout: AI provider did not respond within 1m30s'. The AI started responding but the tool call for create_itinerary_items with 7 days of items took too long. Had to break the request into smaller chunks (Days 1-2).",
+      "expected": "AI should handle full itinerary generation within timeout, or the timeout should be configurable for complex tool calls",
+      "actual": "Timeout after 90 seconds during itinerary generation"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "When companion mode tries nearby_places but no location is cached, the error is returned as a tool result but the AI gracefully falls back to known restaurants. The UX could benefit from a clearer message to the user about enabling location sharing.",
+      "severity": "minor",
+      "suggestion": "Show a gentle inline prompt to enable location sharing when nearby_places returns no_location"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Sesame cross-reactivity handled correctly - AI ASKED about sesame allergy rather than assuming it",
+      "context": "The AI said: 'One more thing: do you also need to avoid sesame? I ask because sesame is now a mandatory-labelled allergen in Japan... Some people with tree nut allergies also react to sesame, but it is not universal.' This is the correct behavior per the persona spec.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "vegan gluten-free nut-free restaurants Tokyo Japan 2025 2026",
+      "error": "Web search not configured in this environment - returned no_web_access. AI gracefully fell back to knowledge."
+    },
+    {
+      "tool": "nearby_places",
+      "input": "vegan gluten-free restaurant Shinjuku, radius 1000",
+      "error": "no_location - user location not available in test environment. AI fell back to known restaurants."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the dietary restrictions stress test. The AI demonstrated deep understanding of how vegan, celiac, and tree nut allergy interact in Japan specifically. It proactively warned about dashi (fish stock), soy sauce containing wheat, tamari as the GF alternative, and cross-contamination risks. The Yakkan Shoumei (import certificate for EpiPens) was correctly identified with detailed application instructions. Japanese allergy vocabulary was provided with kanji, romanization, and translations. The sesame cross-reactivity check was handled perfectly - the AI asked rather than assumed. Restaurant recommendations were specific and actionable (AIN SOPH, T's TanTan, Saido). The only deductions were for companion mode rate limiting (Gemini 404 + Claude 429) which required retries, and the turn timeout on the first itinerary attempt. This is genuinely the kind of AI travel assistance that could prevent a medical emergency."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

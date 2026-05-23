@@ -1,0 +1,143 @@
+{
+  "persona": "N-02",
+  "name": "Structural — Chat History Data Integrity",
+  "run": 19,
+  "date": "2026-04-10",
+  "duration_seconds": 180,
+  "status": "PASS",
+  "summary": "All chat history data integrity checks passed. Three sessions created across selection, planning, and companion modes. Messages persisted correctly with proper role alternation (user/assistant). Session isolation verified — no cross-session leakage. ListChatSessions returns all 3 sessions with correct metadata. GetChatHistory returns correct messages per session with expected content keywords.",
+  "phases": {
+    "phase1_selection": {
+      "status": "PASS",
+      "session_id": "33d13d8a-00a8-4b52-8ebc-eb6d896f106e",
+      "trip_id": "67ecee62-5f69-4569-8de9-d6c4cc560f75",
+      "details": "SendMessage in CHAT_MODE_SELECTION created trip '10 Days in Portugal' via create_trip tool. Session created with sessionCreated event. Trip created with tripCreated event."
+    },
+    "phase2_planning": {
+      "status": "PASS",
+      "session_id": "619873d7-f31f-413a-8132-5d5c063829c3",
+      "details": "New planning session created (no session_id sent). AI called create_itinerary_items with 12 items on first message. Follow-up message in same session worked correctly (same session_id returned in messageComplete). AI redundantly called create_itinerary_items 2 more times on follow-up but dedup logic correctly returned already_exists."
+    },
+    "phase3_companion": {
+      "status": "PASS",
+      "session_id": "6ebd5173-cd2e-46de-8a58-aeaf962bf131",
+      "details": "Trip updated to ACTIVE. New companion session created. AI called nearby_places tool (returned no results) but still provided useful restaurant recommendations from its knowledge. Response was contextually appropriate for Alfama."
+    },
+    "phase4_session_listing": {
+      "status": "PASS",
+      "details": "ListChatSessions returned 3 sessions with correct modes (SELECTION, PLANNING, COMPANION), non-empty IDs, createdAt, lastMessageAt timestamps, and message counts (4, 14, 4). Note: message counts include tool call/result messages stored in Firestore, not just user/assistant messages returned by GetChatHistory.",
+      "sessions_found": 3,
+      "session_details": [
+        {
+          "id": "33d13d8a-00a8-4b52-8ebc-eb6d896f106e",
+          "mode": "CHAT_MODE_SELECTION",
+          "message_count": 4
+        },
+        {
+          "id": "619873d7-f31f-413a-8132-5d5c063829c3",
+          "mode": "CHAT_MODE_PLANNING",
+          "message_count": 14
+        },
+        {
+          "id": "6ebd5173-cd2e-46de-8a58-aeaf962bf131",
+          "mode": "CHAT_MODE_COMPANION",
+          "message_count": 4
+        }
+      ]
+    },
+    "phase5_message_history": {
+      "status": "PASS",
+      "selection_session": {
+        "message_count": 2,
+        "roles": ["user", "assistant"],
+        "role_alternation": "PASS",
+        "no_empty_messages": "PASS",
+        "contains_portugal": true
+      },
+      "planning_session": {
+        "message_count": 4,
+        "roles": ["user", "assistant", "user", "assistant"],
+        "role_alternation": "PASS",
+        "no_empty_messages": "PASS",
+        "contains_lisbon": true,
+        "contains_itinerary": true
+      },
+      "companion_session": {
+        "message_count": 2,
+        "roles": ["user", "assistant"],
+        "role_alternation": "PASS",
+        "no_empty_messages": "PASS",
+        "contains_alfama": true
+      }
+    },
+    "phase6_cross_session_isolation": {
+      "status": "PASS",
+      "details": "All messages in each session have the correct session_id. No planning messages appear in companion history. No companion messages appear in planning history. No selection messages appear in either planning or companion history."
+    }
+  },
+  "bugs": [
+    {
+      "id": "N02-B1",
+      "severity": "P2",
+      "category": "ai_behavior",
+      "title": "AI response stutter in selection mode",
+      "description": "The AI response in selection mode contains a stutter/repetition artifact: 'Iisbon and Porto? Iporto? (LIS) or Porto (OPO)? I(OPO)? (OPO)? I)? I can also look into **travel insurance**—always a good \"just in case\" for international hopsack for international trips!' — This is garbled text that appears to be a generation artifact.",
+      "rpc": "ChatService/SendMessage",
+      "session_id": "33d13d8a-00a8-4b52-8ebc-eb6d896f106e",
+      "reproduction": "Send a selection mode message about Portugal trip planning. The response text had repetitive garbled content near the end."
+    },
+    {
+      "id": "N02-B2",
+      "severity": "P2",
+      "category": "ai_behavior",
+      "title": "AI redundantly calls create_itinerary_items on follow-up message",
+      "description": "When the user said 'Add those to my itinerary please', the AI called create_itinerary_items twice with 16 items each time, despite the items already existing (first call also returned already_exists for all 16). The dedup logic correctly prevented duplicate creation, but the AI wasted 2 tool calls (and tokens) re-calling the same tool with the same items. The tool result message explicitly said 'Do NOT call this tool again with the same items' but the AI ignored this instruction.",
+      "rpc": "ChatService/SendMessage",
+      "session_id": "619873d7-f31f-413a-8132-5d5c063829c3",
+      "reproduction": "In planning mode, after AI has already created itinerary items, say 'Add those to my itinerary please'. AI calls create_itinerary_items multiple times despite all items already existing."
+    },
+    {
+      "id": "N02-B3",
+      "severity": "P2",
+      "category": "ai_behavior",
+      "title": "Repetitive/concatenated response content in planning follow-up",
+      "description": "The fullContent of the planning follow-up message contains what appears to be 3 concatenated responses: (1) 'I've already added the full 10-day plan...', (2) 'I've added the full 10-day plan to your itinerary...' with hotel links, (3) 'I've confirmed that your 10-day itinerary...', (4) 'All of your activities...'. This repetitive content is caused by the tool loop continuing to generate text after redundant tool calls. The stored message in GetChatHistory correctly shows only the final consolidated response, but the stream sent all 4 segments.",
+      "rpc": "ChatService/SendMessage",
+      "session_id": "619873d7-f31f-413a-8132-5d5c063829c3",
+      "reproduction": "Same as N02-B2 — the repeated tool calls produce repeated text segments in the stream."
+    },
+    {
+      "id": "N02-B4",
+      "severity": "P2",
+      "category": "data_integrity",
+      "title": "messageCount discrepancy between ListChatSessions and GetChatHistory",
+      "description": "ListChatSessions reports messageCount=4 for the selection session, but GetChatHistory returns only 2 messages (1 user + 1 assistant). Similarly, the companion session reports messageCount=4 but GetChatHistory returns 2 messages. The planning session reports messageCount=14 but GetChatHistory returns 4 messages. This suggests messageCount includes tool_call and tool_result messages stored internally but filtered from GetChatHistory. This is not necessarily a bug (tool messages may be intentionally hidden), but the discrepancy could confuse clients that use messageCount for display.",
+      "rpc": "ChatService/ListChatSessions + GetChatHistory",
+      "reproduction": "Compare messageCount from ListChatSessions with actual message count from GetChatHistory for any session with tool calls."
+    }
+  ],
+  "ux_issues": [],
+  "tool_failures": [
+    {
+      "tool": "nearby_places",
+      "session": "companion",
+      "details": "nearby_places returned no results for 'restaurants open late near Alfama Lisbon' within 1000m. The AI gracefully recovered and provided recommendations from its own knowledge, so no user-facing failure."
+    }
+  ],
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 5,
+    "persona_handoff": null,
+    "booking_parsing": null,
+    "companion_mode": 4,
+    "overall": 4,
+    "notes": "Core data integrity tests all pass — session creation, message persistence, role alternation, session isolation are all working correctly. The AI stutter in selection mode and redundant tool calling in planning mode are the main quality issues. The messageCount discrepancy between ListChatSessions and GetChatHistory is a design concern worth documenting."
+  },
+  "data_integrity": {
+    "empty_messages": "NONE — all messages have non-empty content",
+    "role_alternation_violations": "NONE — all sessions show correct user/assistant alternation",
+    "session_isolation": "PASS — no cross-session message leakage detected",
+    "message_persistence": "PASS — all sent messages retrievable via GetChatHistory",
+    "session_metadata": "PASS — all sessions have valid IDs, modes, timestamps"
+  }
+}

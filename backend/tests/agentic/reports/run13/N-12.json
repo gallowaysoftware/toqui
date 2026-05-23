@@ -1,0 +1,38 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty JSON object",
+      "description": "GET /shared/{token} returns '{}' instead of trip details (title, description, itinerary, etc.). The share token was successfully created and the endpoint returned 200, but the response body contained no trip data.",
+      "steps_to_reproduce": "1. POST /api/trips/share with trip_id. 2. GET /shared/{share_token} (no auth). 3. Observe empty JSON object.",
+      "expected": "JSON object with trip title, description, destination_countries, and itinerary",
+      "actual": "Empty JSON object: {}",
+      "api_command": "curl -s http://localhost:8090/shared/omB1BmCpPrVyIJwrvVYp8T"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not call create_itinerary_items despite extensive day-by-day planning discussions across 5 planning messages",
+      "context": "Across the Jerusalem, Israel security, Saudi Arabia, Myanmar, and cross-faith etiquette messages, the AI provided rich text-based planning content but never called the create_itinerary_items tool to create structured itinerary items. GetItinerary returned an empty itinerary. The AI discussed day-by-day plans in text but didn't persist them as structured items.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 2,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional cultural sensitivity and factual accuracy across all three politically and religiously complex destinations. It correctly handled dual naming (Temple Mount / Haram al-Sharif), accurately stated that the abaya is no longer legally required for foreign women in Saudi Arabia (2019 reforms), correctly noted that Bagan temple climbing is restricted (since 2019), and presented both sides of the Myanmar ethical tourism debate without editorializing. It addressed the persona's specific identity (British-Nigerian mixed heritage woman) with practical, non-patronizing advice about border scrutiny and cultural dynamics. The cross-faith dress code comparison was thorough and respectful, covering Jewish, Islamic, and Buddhist practices without ranking faiths. The major gap was failing to create structured itinerary items despite extensive day-by-day planning, leaving the itinerary empty."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

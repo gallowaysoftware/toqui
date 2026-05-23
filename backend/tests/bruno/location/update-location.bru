@@ -1,0 +1,32 @@
+meta {
+  name: Update Location
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}/toqui.v1.LocationService/UpdateLocation
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Caches the user's current location server-side (30 min TTL, never persisted to DB).
+  Used by companion mode to make location-aware recommendations.
+  Optionally associates the location with a specific trip.
+  Returns nearby place suggestions based on the provided position.
+  location is a nested LatLng message — not flat lat/lng fields.
+}
+
+body:json {
+  {
+    "location": {
+      "latitude": 35.6762,
+      "longitude": 139.6503
+    },
+    "trip_id": "<trip-id-optional>"
+  }
+}

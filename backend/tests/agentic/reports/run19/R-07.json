@@ -1,0 +1,39 @@
+{
+  "persona_id": "R-07",
+  "persona_name": "Update regression (COALESCE partial updates)",
+  "run": "run19",
+  "status": "PASS",
+  "completed_steps": [
+    "Step 1: GetCurrentUser — verified email r07-run19b@toqui-test.local matches expected",
+    "Step 2: CreateTrip — created 'COALESCE Regression Test Trip' with description, got id 0699bbf4-10c7-4f98-bb76-c2c991c63a86",
+    "Step 3: GetTrip — verified title, description, status=TRIP_STATUS_PLANNING all present",
+    "Step 4: UpdateTrip(status=ACTIVE only) + GetTrip — status changed to ACTIVE, title and description PRESERVED",
+    "Step 5: UpdateTrip(title='Updated Title Only' only) + GetTrip — title updated, status=ACTIVE PRESERVED, description PRESERVED",
+    "Step 6: UpdateTrip(status=COMPLETED only) + GetTrip — status changed to COMPLETED, title='Updated Title Only' PRESERVED, description PRESERVED",
+    "Step 7: ListTrips — found trip with final state: title='Updated Title Only', description intact, status=TRIP_STATUS_COMPLETED"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "trip_creation": 0,
+    "itinerary_quality": 0,
+    "persona_handoff": 0,
+    "booking_parsing": 0,
+    "companion_mode": 0,
+    "overall": 0,
+    "notes": "Structural regression test — no AI involved. All scores 0 (not applicable)."
+  },
+  "feature_coverage": [
+    "GetCurrentUser",
+    "CreateTrip",
+    "GetTrip",
+    "UpdateTrip (partial update — status only)",
+    "UpdateTrip (partial update — title only)",
+    "UpdateTrip (partial update — status only, second transition)",
+    "ListTrips",
+    "COALESCE partial update preservation (3 distinct partial updates verified)"
+  ],
+  "summary": "All 7 steps passed. COALESCE partial updates work correctly: updating status alone preserves title and description, updating title alone preserves status and description, and a second status update preserves the previously-updated title. No field wipe regressions detected."
+}

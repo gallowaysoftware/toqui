@@ -1,0 +1,43 @@
+{
+  "persona_id": "R-16",
+  "persona_name": "Professor Eleanor Whitfield — History Academic",
+  "status": "COMPLETED",
+  "trip_destination": "Greece & Turkey",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions returns messageCount=0 for sessions with messages",
+      "description": "ListChatSessions returns messageCount=0 for both the planning session (which has 10 messages per GetChatHistory) and the companion session (which has 4 messages). The messageCount field is not populated.",
+      "expected": "messageCount should reflect actual message count",
+      "actual": "messageCount=0 for all sessions",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions with trip_id"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The fullContent field in messageComplete sometimes contains a duplicated trailing paragraph that repeats content already streamed. For example, in the Crete itinerary response, the fullContent ended with a redundant 'It looks like those Crete itinerary items are already in your trip plan!' which was a second AI continuation after the tool result, creating an awkward reading experience.",
+      "severity": "P2",
+      "suggestion": "Ensure the tool loop continuation does not produce redundant confirmations that echo what was already said."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "recommend_booking tool was not called when asked about guided tours at Delphi with an archaeologist guide",
+      "context": "The AI provided helpful textual advice about finding specialist guides (contacting Ephorate of Antiquities, universities, academic tour operators) but did not trigger the recommend_booking tool. The persona spec expected this tool to fire. The AI explicitly said it could not book such a niche service through its standard booking tools.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional performance for an academic user. The AI demonstrated genuinely impressive historical depth: the Delphi oracle discussion covered the adyton, pneuma theory, de Boer and Hale 2001 ethylene hypothesis (with publication journal), Pythia ritual, political influence on colonization (Cyrene example), Sacred Wars, and the wooden walls oracle. The Ephesus discussion accurately covered the Attalid bequest (133 BCE), Province of Asia (129 BCE), Aristonicus revolt, neokoros title, and the Library of Celsus as political statement with euergetism context. The Knossos response addressed Arthur Evans' controversial reconstructions, the Prince of the Lilies composite issue, and provided 10 academic book recommendations including Cathy Gere's critical study. The expert handoff to Elias (Greek history specialist) was seamless and the persona maintained academic register throughout. Itinerary showed appropriate time allocations (4-5 hours at Knossos, 3 hours at Phaistos) for academic study. Companion mode was appropriately concise. This would genuinely be useful for an academic traveler."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "expert_handoff", "itinerary_creation", "chat_history", "usage"]
+}

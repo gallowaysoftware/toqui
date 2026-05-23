@@ -1,0 +1,43 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingestion", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions messageCount always 0",
+      "description": "ListChatSessions returns messageCount=0 for the session despite GetChatHistory returning 10 messages (5 user + 5 assistant). The messageCount field appears to not be updated as messages are added.",
+      "expected": "messageCount should reflect actual message count (10)",
+      "actual": "messageCount=0",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions with trip_id"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "In the initial selection mode message, the AI produced a very long response (4707 chars) with itinerary items, booking recommendations, and web searches all in one turn. For a first interaction this could feel overwhelming. A more conversational flow that asks clarifying questions first (travel dates, budget, accommodation preferences) before diving into a full itinerary would feel more natural.",
+      "severity": "P2",
+      "suggestion": "Consider having the AI ask 1-2 clarifying questions before building a full itinerary in selection mode, especially when the user provides a detailed prompt."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "First message in selection mode triggered create_trip, suggest_expert, create_itinerary_items (x2), web_search (x3), and recommend_booking (x4) all at once -- 11 tool calls in a single turn. While thorough, this is aggressive for a first interaction and may be expensive in token usage.",
+      "context": "Selection mode, first message describing the full trip",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Outstanding culinary travel companion. The AI demonstrated deep knowledge of regional Mexican cuisine, correctly distinguishing CDMX from Oaxacan food traditions. The mezcal response included espadin, tobala, artesanal vs ancestral vs industrial categories, tahona milling, and palenque recommendations -- well beyond guidebook depth. Dia de Muertos food traditions were culturally rich with specific dishes (pan de yema vs CDMX pan de muerto, mole negro, calaveritas). Cooking class recommendations respected the $80-150 budget. Expert handoff to Alejandro (distilleries/history specialist) was appropriate. Booking ingestion parsed the Oaxaca food tour perfectly with all fields extracted. Companion mode was noticeably more concise than planning mode with actionable street-level recommendations. The 10-day itinerary with 24 food-specific items across all days was comprehensive. Only minor issues: companion mode could be slightly more concise, and the first interaction was overly aggressive with 11 tool calls."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "booking_ingestion", "booking_extraction", "trip_sharing", "chat_history", "usage", "expert_handoff", "itinerary_creation", "recommend_booking", "web_search"]
+}

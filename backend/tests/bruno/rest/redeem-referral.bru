@@ -1,0 +1,27 @@
+meta {
+  name: Redeem Referral
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://{{host}}/api/referral/redeem
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "code": "<referral-code>"
+  }
+}
+
+docs {
+  Redeems a referral code. Both the referrer and this user receive a
+  free trip unlock (Trip Pro) when the referred user creates their first trip.
+  Capped at 10 rewards per user. Audit-logged.
+}

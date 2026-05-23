@@ -1,0 +1,22 @@
+{
+  "persona_id": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "phase1_valid_forward_path", "phase2_rejected_transitions", "phase3_invalid_initial_status", "phase4_regression_guards"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 11 status machine tests passed. Phase 1: CreateTrip defaults to PLANNING, CreateTrip with ACTIVE works (PR #197 verified), PLANNING->ACTIVE->COMPLETED transitions succeed. Phase 2: All 3 invalid transitions from COMPLETED correctly return failed_precondition (PR #198 sentinel error mapping verified). Phase 3: CreateTrip with COMPLETED status returns invalid_argument. Phase 4: Non-existent UUID returns not_found, invalid UUID returns invalid_argument via buf.validate."
+  },
+  "feature_coverage": ["status_machine_enforcement", "create_trip_active_status", "status_error_codes"]
+}

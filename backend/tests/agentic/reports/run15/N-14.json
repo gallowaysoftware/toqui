@@ -1,0 +1,43 @@
+{
+  "persona_id": "N-14",
+  "persona_name": "Status Machine Enforcement",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "create_trip_default", "create_trip_active", "forward_transitions", "rejected_transitions", "invalid_initial_status", "regression_guards"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 11 status machine tests passed. PR #198 sentinel error codes are correctly mapped: invalid transitions return failed_precondition, invalid initial status returns invalid_argument. PR #197 create-with-ACTIVE feature works. Regression guards (not_found, invalid UUID validation) unchanged."
+  },
+  "feature_coverage": ["status_machine_enforcement", "create_trip_active_status", "status_error_codes"],
+  "test_details": {
+    "phase_1_valid_forward_path": {
+      "test_1_create_default": {"result": "PASS", "status_returned": "TRIP_STATUS_PLANNING"},
+      "test_2_create_active": {"result": "PASS", "status_returned": "TRIP_STATUS_ACTIVE"},
+      "test_3_planning_to_active": {"result": "PASS"},
+      "test_4_active_to_completed": {"result": "PASS"},
+      "test_5_active_to_completed_trip2": {"result": "PASS"}
+    },
+    "phase_2_rejected_transitions": {
+      "test_6_completed_to_planning": {"result": "PASS", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 planning"},
+      "test_7_completed_to_active": {"result": "PASS", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 active"},
+      "test_8_completed_to_planning_trip2": {"result": "PASS", "code": "failed_precondition", "message": "invalid trip status transition: completed \u2192 planning"}
+    },
+    "phase_3_invalid_initial_status": {
+      "test_9_create_completed": {"result": "PASS", "code": "invalid_argument", "message": "invalid initial trip status: \"completed\""}
+    },
+    "phase_4_regression_guards": {
+      "test_10_nonexistent_uuid": {"result": "PASS", "code": "not_found"},
+      "test_11_invalid_uuid": {"result": "PASS", "code": "invalid_argument"}
+    }
+  }
+}

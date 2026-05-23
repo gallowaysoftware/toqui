@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package toqui.v1;
+
+option go_package = "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1";
+
+import "buf/validate/validate.proto";
+
+service PersonaService {
+  // List all available personas (global + user-unlocked)
+  rpc ListPersonas(ListPersonasRequest) returns (ListPersonasResponse);
+  // Get a specific persona by ID
+  rpc GetPersona(GetPersonaRequest) returns (GetPersonaResponse);
+  // Set the user's default persona preference
+  rpc SetDefaultPersona(SetDefaultPersonaRequest) returns (SetDefaultPersonaResponse);
+  // Resolve which persona to use for a given context (location, trip themes, mode)
+  rpc ResolvePersona(ResolvePersonaRequest) returns (ResolvePersonaResponse);
+}
+
+message Persona {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string avatar_url = 4;
+  string greeting = 5;
+  PersonaType type = 6;
+  string region_code = 7;           // e.g., "JP", "IT", "GB"
+  string locale_name = 8;           // e.g., "Tokyo", "Rome", "Scotland"
+  repeated string specialties = 9;  // e.g., ["food", "wine"], ["history", "art"]
+  string accent_color = 10;         // Hex color for UI theming
+  bool is_default = 11;
+}
+
+enum PersonaType {
+  PERSONA_TYPE_UNSPECIFIED = 0;
+  PERSONA_TYPE_GLOBAL = 1;           // Always available — the orchestrator (Toqui)
+  PERSONA_TYPE_LOCAL_GUIDE = 2;      // General local guide (Hana in Tokyo)
+  PERSONA_TYPE_SPECIALIST = 3;       // Topic specialist, any location (e.g., a general food expert)
+  PERSONA_TYPE_LOCAL_SPECIALIST = 4; // Location + topic (Parisian history teacher, Scottish distiller)
+}
+
+message ListPersonasRequest {
+  PersonaType type = 1;
+  string region_code = 2;
+  repeated string specialties = 3;
+}
+
+message ListPersonasResponse {
+  repeated Persona personas = 1;
+}
+
+message GetPersonaRequest {
+  string persona_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetPersonaResponse {
+  Persona persona = 1;
+}
+
+message SetDefaultPersonaRequest {
+  string persona_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message SetDefaultPersonaResponse {
+  Persona persona = 1;
+}
+
+message ResolvePersonaRequest {
+  string trip_id = 1 [(buf.validate.field).string.uuid = true];
+  double latitude = 2;
+  double longitude = 3;
+  string mode = 4;
+  // Trip themes (auto-tagged by AI, stored as dynamic strings in DB)
+  repeated string themes = 5;
+}
+
+message ResolvePersonaResponse {
+  Persona persona = 1;
+  string handoff_message = 2;
+  Persona handoff_from = 3;
+}

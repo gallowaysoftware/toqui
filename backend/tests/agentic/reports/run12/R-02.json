@@ -1,0 +1,39 @@
+{
+  "persona_id": "R-02",
+  "persona_name": "The Chens — Family Costa Rica",
+  "status": "COMPLETED",
+  "trip_destination": "Costa Rica",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Chat history only returned 10 messages (5 user + 5 assistant) despite 6 user messages being sent. The second planning message (requesting days 8-10 + safety info) and its response appear to be missing from the history returned by GetChatHistory. This may be because the first planning response stream was truncated client-side (head -100), but the message should still have been persisted server-side.",
+      "severity": "P2",
+      "suggestion": "Investigate whether incomplete stream consumption (client disconnect mid-stream) causes messages to not be persisted in Firestore."
+    },
+    {
+      "description": "Medical facility information in planning mode was somewhat generic rather than specific. The AI mentioned hospital names but acknowledged it couldn't look up real-time details. Web searches were attempted but results were vague.",
+      "severity": "P2",
+      "suggestion": "Consider caching or pre-loading medical facility data for popular tourist destinations to give more specific guidance."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "First create_itinerary_items call only covered days 1-7 (18 items) for a 10-day trip. The AI needed a follow-up message to add days 8-10. For a 10-day trip request, the AI should create all 10 days in one shot or explicitly state it will continue.",
+      "context": "Planning message 1 asked for a full 10-day itinerary. The AI created 18 items for days 1-7 only and likely mentioned remaining days in text that was cut off. A second message was needed to complete days 8-10.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI performed well as a family travel planner for Costa Rica. Trip creation was seamless with correct context injection — the AI never asked where we were going after the trip was created. The itinerary was well-structured with realistic driving times (4-5 hours Monteverde to Manuel Antonio), age-appropriate activities, and thoughtful touches like the Frog Pond Ranarium for Noah. Expert handoff to Elena (Costa Rican nature expert) was smooth and added value. Companion mode responses were appropriately concise compared to planning mode. The AI correctly flagged safety concerns about water for a non-swimmer and recommended life vests. Minor issues: itinerary initially only covered 7 of 10 days, and medical facility info was generic. Overall, genuinely helpful for family trip planning."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary", "expert_handoff", "recommend_booking", "context_retention"]
+}

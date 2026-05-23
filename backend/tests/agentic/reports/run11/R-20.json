@@ -1,0 +1,49 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria & James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives & Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Itinerary items are one-per-day across 8 days, but the trip is 9 nights (5 Maldives + 4 Dubai). Day 5 is the Maldives-to-Dubai transition day, and Day 9 is missing entirely. The AI placed 1 item per day which creates a sparse itinerary lacking the luxury pacing of a real trip (morning spa, afternoon activity, evening dining). A luxury itinerary should have 2-3 curated items per day with breathing room, not a single activity.",
+      "severity": "P2",
+      "suggestion": "AI should create richer daily schedules with multiple items per day for luxury travelers, including spa time, morning activities, and evening dining rather than just one activity."
+    },
+    {
+      "description": "The AI did not proactively suggest a couples spa treatment, despite this being a 10th wedding anniversary trip. The persona specifically mentions couples spa as an expected romantic element. The AI should weave romantic wellness experiences into the itinerary without being asked.",
+      "severity": "P2",
+      "suggestion": "When anniversary or romantic context is present, the AI should proactively suggest couples spa, romantic turndown services, and other romantic touches."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "The AI called create_itinerary_items a second time with the same Ossiano and Tresind Studio items that were already created, resulting in a dedup/skip response. This is a minor inefficiency in the tool loop -- the AI should track what it already created in the same turn.",
+      "context": "Step 3c: After creating Ossiano and Tresind Studio itinerary items, the AI called create_itinerary_items again with identical items. The backend correctly deduped them (skipped_count: 2), but the AI should not have made the redundant call.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The recommend_booking tool returned a generic Booking.com search link for the Waldorf Astoria Ithaafushi. For ultra-luxury properties, suggesting Booking.com feels tone-deaf -- the persona notes that ultra-luxury properties often require direct booking or travel advisor connections. The AI did not caveat this.",
+      "context": "Step 3b: recommend_booking returned a Booking.com affiliate link for the Waldorf Astoria. While this is how the tool works (affiliate links), the AI should have added context that for properties at this tier, direct booking through the resort or a luxury travel advisor often secures better rates, room upgrades, and amenity packages.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Tresind Studio was described as being on The Palm Jumeirah in the itinerary location, but it is actually located in the DIFC area of Dubai. Minor factual inaccuracy in the itinerary item location field.",
+      "context": "create_itinerary_items placed Tresind Studio at 'Tresind Studio, The Palm Jumeirah, Dubai, UAE' -- incorrect location.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent luxury calibration throughout the session. Resort knowledge was impressively detailed with property-specific differentiators (Soneva Fushi no-shoes policy, Waldorf Astoria private island, St. Regis whale shark architecture). Expert persona handoff to Isabelle (luxury/romance specialist) was smooth and appropriate. Dubai fine dining recommendations were strong with Tresind Studio, Ossiano, and STAY by Yannick Alleno. Companion mode was concise and practical with useful tipping guidance. The main weakness was itinerary sparsity -- only 1 item per day across 8 days for a 9-night luxury trip, missing couples spa and snorkeling activities that were discussed. The Booking.com affiliate link for an ultra-luxury property felt slightly off-brand, though this is a platform limitation rather than an AI failure."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "create_trip", "suggest_expert", "recommend_booking", "create_itinerary_items", "persona_switch"]
+}

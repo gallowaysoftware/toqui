@@ -1,0 +1,65 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James (Luxury Anniversary Couple)",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives + Dubai",
+  "run_id": "run-10",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Chat history missing messages",
+      "description": "GetChatHistory returns only 10 messages (5 user + 5 assistant) but 7 user messages were sent (6 counted by usage endpoint, plus 1 selection). Two planning-mode message pairs (Dubai fine dining + full itinerary request) are missing from Firestore chat history. Usage endpoint reports 6 used, confirming messages were processed by the server.",
+      "steps_to_reproduce": "1. Send 7 messages across selection, planning, companion modes in one session. 2. Call GetChatHistory with limit=50. 3. Only 5 user messages appear; 2 planning messages are missing.",
+      "expected": "All 7 user messages and their assistant responses should appear in chat history (14 total messages).",
+      "actual": "Only 10 messages returned (5 user + 5 assistant). Planning messages about Dubai dining and full itinerary are absent.",
+      "api_command": "GetChatHistory with session_id=24437fa6-4db1-4b1d-a1ab-851f6016c2b0, limit=50"
+    }
+  ],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "description": "Booking.com recommended for ultra-luxury Maldives resort. For properties like Soneva Fushi, Waldorf Astoria Ithaafushi, and St. Regis, suggesting Booking.com is tone-deaf to the luxury segment. These resorts are typically booked directly or through luxury travel advisors for best rates, villa availability, and resort credits.",
+      "suggestion": "For ultra-luxury properties (5-star island resorts, $1000+/night), the recommend_booking tool should note that direct resort booking or a luxury travel advisor may secure better rates and complimentary extras, rather than defaulting to Booking.com."
+    },
+    {
+      "severity": "P2",
+      "description": "Day 8 itinerary has both a private desert safari (5-6 hours, ending with private dinner) AND Dinner at STAY by Yannick Alleno. These are incompatible -- the desert safari includes a bespoke dining component that replaces a restaurant dinner. The AI's description even says 'This experience replaces a formal restaurant dinner for the evening' but still scheduled the restaurant dinner on the same day.",
+      "suggestion": "The AI should detect scheduling conflicts when one activity description explicitly states it replaces another planned activity type."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Duplicate create_itinerary_items call in private dining response",
+      "context": "After successfully creating 3 itinerary items for private dining, the AI called create_itinerary_items a second time with the exact same items. The dedup logic correctly returned 'already_exists' with 0 created, but the redundant call wastes tokens.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Expert persona greeting references Paris despite being assigned to Maldives",
+      "context": "The expert 'Isabelle' was handed off for romance/luxury/food in the Maldives context, but her greeting says 'Ah, Paris... the city whispers secrets of love and indulgence.' This is a persona composition issue -- the greeting appears to be a cached default for this expert rather than contextual to the Maldives.",
+      "severity": "P2"
+    },
+    {
+      "issue": "No mention of February weather advantages",
+      "context": "The persona specifically notes February is dry season in Maldives and pleasant in Dubai (20-25C). The AI never confirmed this is excellent timing for both destinations, which is a missed opportunity for a luxury traveler who values details.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Tresind Studio incorrectly located at One&Only Royal Mirage",
+      "context": "The AI placed Tresind Studio at 'One&Only Royal Mirage, The Palm Jumeirah' in the itinerary. Tresind Studio is actually located in DIFC (Dubai International Financial Centre), not at the One&Only Royal Mirage. This is a factual error that could mislead travelers.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong luxury calibration overall, recommending top-tier properties (Soneva Fushi, Waldorf Astoria, St. Regis) with specific differentiators (outdoor cinema, underwater restaurant, butler service). The 9-day itinerary had excellent luxury pacing with breathing room and private experiences. Expert handoff worked well for dining topics. Key weaknesses: Booking.com is wrong for ultra-luxury, one factual restaurant location error, and 2 chat messages went missing from history. The companion mode was concise and contextually aware. As Victoria, I would genuinely find this useful for planning, though I would want a travel advisor for the actual bookings."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "create_trip", "create_itinerary_items", "suggest_expert", "recommend_booking", "web_search", "trip_sharing", "chat_history", "usage", "trip_lifecycle"]
+}

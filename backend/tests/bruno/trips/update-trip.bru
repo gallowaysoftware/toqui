@@ -1,0 +1,30 @@
+meta {
+  name: Update Trip
+  type: grpc
+  seq: 6
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/UpdateTrip
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Partial update — only non-empty fields are applied (COALESCE semantics).
+  id is required. Omit fields you don't want to change.
+  status values: TRIP_STATUS_PLANNING, TRIP_STATUS_ACTIVE, TRIP_STATUS_COMPLETED
+}
+
+body:json {
+  {
+    "id": "<trip-id-from-create>",
+    "title": "Tokyo & Kyoto Adventure — Updated",
+    "description": "Extended itinerary with Osaka day trip",
+    "start_date": "2025-09-10",
+    "end_date": "2025-09-20"
+  }
+}

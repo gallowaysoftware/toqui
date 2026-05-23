@@ -1,0 +1,56 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Shared trip public endpoint returns empty object",
+      "description": "GET /shared/{token} returns '{}' (empty JSON object) instead of trip data. Sharing was enabled successfully and the share token was generated, but the public view endpoint returned no content.",
+      "steps_to_reproduce": "POST /api/trips/share with valid trip_id, then GET /shared/{token}",
+      "expected": "Trip title, description, itinerary, and destination visible in shared view",
+      "actual": "Empty JSON object '{}'"
+    },
+    {
+      "severity": "P2",
+      "title": "Chat history messageComplete stores truncated content for multi-turn tool-loop responses",
+      "description": "For the Jerusalem cultural sensitivity message (Step 3), the messageComplete fullContent only contained the final tool-loop iteration's text (the brief itinerary summary), not the full expert response about access rules, dress codes, and security. The detailed 5000+ character expert response was delivered via textDelta events but the persisted fullContent was only the final ~500 chars after the itinerary tool call completed. Chat history shows the truncated version.",
+      "expected": "fullContent includes the complete AI response across all tool-loop iterations",
+      "actual": "fullContent only includes text from the final tool-loop iteration"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Planning mode responses are extremely long (8000-10000+ characters). While the depth is appropriate for this persona's needs, some responses could benefit from progressive disclosure — key facts first, then expandable detail sections.",
+      "severity": "P2",
+      "suggestion": "Consider offering a 'brief' vs 'detailed' mode, or use collapsible sections in the frontend rendering"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Web search tool calls returned no results for current Israel safety, Saudi Arabia visa, and Myanmar travel advisory queries — the AI acknowledged this ('I can't pull live data right now') and provided knowledge-cutoff information instead. The fallback was graceful and the information provided was accurate, but live data would have been more authoritative.",
+      "context": "Steps 4 and 5: Israel security + Saudi logistics, Myanmar ethical tourism",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "Israel safety travel advisory 2026, Saudi Arabia tourist visa British passport, Myanmar travel advisory 2026",
+      "error": "Search returned no usable results; AI fell back to knowledge-cutoff information"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the most culturally complex persona in the suite. The AI handled Jerusalem's Temple Mount/Haram al-Sharif naming sensitivity flawlessly, correctly stated non-Muslims can visit the platform but not enter the mosques, accurately described the 2019 Saudi abaya reform, presented Myanmar's ethical tourism debate without taking sides, correctly noted Bagan climbing restrictions, and provided a comprehensive cross-faith dress code comparison without ranking or comparing religions. The race/identity dimension for a Black British-Nigerian woman traveling through Israel was addressed directly and factually. The companion mode responses were appropriately concise compared to planning mode. The only factual test the AI could not fully pass was live travel advisory data due to web search limitations, but the fallback information was accurate and well-caveated."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation", "trip_lifecycle"]
+}

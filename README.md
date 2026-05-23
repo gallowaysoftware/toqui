@@ -1,21 +1,39 @@
 # Toqui
 
-AI-powered travel companion. React Native (Expo) cross-platform app
-targeting web, iOS, and Android from a single codebase.
+Self-hostable AI travel companion. Plan trips with destination-aware
+AI experts. Bring your own AI provider API key.
 
-> **Status:** This repo is part of Toqui's transition from a hosted SaaS to a
-> self-hostable open source project under [AGPL-3.0-or-later](./LICENSE).
-> SaaS surfaces (Stripe checkout, subscription, referral, analytics, age
-> gate, etc.) are actively being stripped — the repo is still private while
-> that work lands. See [toqui.travel](https://toqui.travel) for context.
->
-> Copyright (C) 2026 Galloway Software Solutions Inc.
+Released under [AGPL-3.0-or-later](./LICENSE) — Copyright (C) 2026
+Galloway Software Solutions Inc.
 
-See [CLAUDE.md](CLAUDE.md) for the current architecture and dev commands.
+## Layout
 
-## Related Repos
+- **`/`** — Expo React Native app. Web + iOS + Android from one codebase. See [CLAUDE.md](CLAUDE.md).
+- **`/backend/`** — Go API (ConnectRPC, PostgreSQL + PostGIS, Firestore for chat). See [backend/CLAUDE.md](backend/CLAUDE.md).
 
-- [toqui-backend](https://github.com/gallowaysoftware/toqui-backend) — Go API server
-- [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) — Infra (being torn down)
-- [toqui-site](https://github.com/gallowaysoftware/toqui-site) — toqui.travel (transition page)
-- [toqui-admin](https://github.com/gallowaysoftware/toqui-admin) — Admin panel (fate TBD)
+A separate transition page lives at [toqui.travel](https://toqui.travel)
+([gallowaysoftware/toqui-site](https://github.com/gallowaysoftware/toqui-site)).
+
+## Quickstart
+
+Run both halves in two shells:
+
+```bash
+# Shell 1 — backend
+cd backend
+docker compose up -d postgres firestore
+make migrate-up
+make run
+
+# Shell 2 — frontend (web)
+pnpm install
+pnpm web
+```
+
+Default frontend points at `http://localhost:8090` for the backend.
+
+## License
+
+[AGPL-3.0-or-later](./LICENSE). Anyone who hosts a modified version
+must publish their changes — keeping the privacy story enforceable
+downstream.

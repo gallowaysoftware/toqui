@@ -1,0 +1,55 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Accommodation item described hostel dorm as '$4-6' range, with $6 slightly above the stated $5/night target. Not a hard violation since the persona asked for 'under $5' but the AI's own suggestion included a $6 option (Joey's Hostel) while framing it as budget-appropriate.",
+      "severity": "minor",
+      "suggestion": "When the user states a hard cap ('under $5'), the AI should only recommend options strictly under that cap or explicitly flag any exception."
+    },
+    {
+      "description": "The itinerary has days 1-6 and then jumps to 14-17 (Rishikesh), leaving days 7-13 (most of Varanasi stay and travel days) without any itinerary items. The user asked for a 3-week trip but only 10 days of 21 have items.",
+      "severity": "moderate",
+      "suggestion": "The AI should fill in more of the itinerary or acknowledge the gap and ask if the user wants days 7-13 planned."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Humayun's Tomb listed at Rs 600 for foreigners (approx $7.20) without explicitly flagging this exceeds the $10 daily budget when combined with food and transport for that day. The description says 'you can skip the inside' but doesn't call out the budget conflict as clearly as it does for the Taj Mahal.",
+      "context": "Day 2 itinerary item - Humayun's Tomb Architecture",
+      "severity": "P2"
+    },
+    {
+      "issue": "Amber Fort listed at Rs 550 entry with a note you can walk the ramp for free, and Beatles Ashram at Rs 600 — both are presented as itinerary items without flagging that paying entry would consume over half the daily budget. The Taj Mahal was handled well with explicit budget warnings, but these other monuments got softer treatment.",
+      "context": "Day 4 Amber Fort, Day 16 Beatles Ashram",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI proactively handed off to an expert persona (Arjun) in the very first message, which is good for expertise, but the expert retained budget context well — $10/day was referenced throughout all subsequent responses. Budget survived persona switch successfully.",
+      "context": "Selection mode first message triggered suggest_expert",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "cheapest hostels in Delhi under $5 a night 2026",
+      "error": "Real-time web search is not configured in this environment. This is expected in local dev but noted for completeness."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent budget awareness overall, correctly flagging the Taj Mahal at Rs 1100 as exceeding the daily budget and suggesting free alternatives. Food recommendations were accurate with specific INR prices, all vegetarian, and well within budget. Transport recommendations correctly focused on Sleeper Class trains. The expert handoff to Arjun was seamless and budget context was retained. Main weakness: the itinerary only covers 10 of 21 days, and a few monument entry fees (Humayun's Tomb, Amber Fort, Beatles Ashram) weren't flagged as aggressively as the Taj Mahal despite being significant budget items. Companion mode responses were appropriately concise."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "unsharing", "chat_history", "list_sessions", "usage", "trip_lifecycle", "expert_handoff", "itinerary_creation", "recommend_booking"]
+}

@@ -1,0 +1,61 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives & Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Chat history missing one assistant response",
+      "description": "After 6 SendMessage calls (6 user messages, expecting 6 assistant responses), GetChatHistory returned only 5 assistant messages (11 total: 6 user + 5 assistant). The role sequence shows two consecutive 'user' entries at positions 2-3, indicating one assistant response was not persisted to Firestore. Pattern: user, assistant, user, user, assistant, user, assistant, user, assistant, user, assistant.",
+      "expected": "6 user + 6 assistant = 12 messages",
+      "actual": "6 user + 5 assistant = 11 messages",
+      "api_command": "GetChatHistory with trip_id and session_id"
+    },
+    {
+      "severity": "P2",
+      "title": "Tresind Studio incorrectly described as 2-Michelin-starred",
+      "description": "In companion mode response about dress code for Tresind Studio, the AI stated it is a '2-Michelin-starred theatrical experience'. Tresind Studio has 1 Michelin star (as of the persona's knowledge). This is a factual inaccuracy in the AI's knowledge base.",
+      "expected": "1 Michelin star",
+      "actual": "AI said '2-Michelin-starred'"
+    },
+    {
+      "severity": "P2",
+      "title": "First share token returned 404 on public view",
+      "description": "The first POST /api/trips/share returned token 'doIXodNxS0JmS4iqT0tLyc' successfully, but GET /shared/doIXodNxS0JmS4iqT0tLyc returned 404. A subsequent share call returned a different token that worked correctly. This may indicate a race condition or that rapid re-sharing invalidates previous tokens without the new token being immediately usable.",
+      "api_command": "POST /api/trips/share followed by GET /shared/{token}"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The recommend_booking tool generates generic Booking.com search URLs rather than direct resort links. For ultra-luxury properties like Waldorf Astoria Ithaafushi or Soneva Fushi, a generic search page is tone-deaf to the persona. The AI correctly noted that direct booking or travel advisor connections are better for these properties, but the tool output contradicts this advice.",
+      "severity": "P2",
+      "suggestion": "Consider adding a 'tier' parameter to recommend_booking that adjusts behavior for luxury bookings — e.g., linking to the resort's direct booking page instead of an OTA search."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Minor text duplication at end of planning responses",
+      "context": "In step 3a (itinerary creation), the AI response contained what appeared to be two passes at the same content — first a summary of highlights, then a full day-by-day breakdown that partially repeated the same information. The fullContent was very long (~3000 words). This may be caused by the tool loop where the AI sees tool results and continues generating.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Tresind Studio Michelin star count inaccuracy",
+      "context": "AI stated Tresind Studio has 2 Michelin stars in companion mode. It actually has 1 Michelin star. This is a factual error that would be noticed by an ultra-luxury traveler.",
+      "severity": "P1"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional luxury calibration throughout the entire interaction. It correctly identified ultra-luxury resorts (Waldorf Astoria Ithaafushi, Soneva Fushi, Cheval Blanc Randheli, Atlantis The Royal), knew specific differentiators (Waldorf's yacht transfer vs seaplane, Soneva's barefoot philosophy, Tresind Studio's intimate 20-seat format), and maintained the anniversary context without prompting. The itinerary had appropriate luxury pacing (2-3 activities per day, no cramming), romantic elements woven in naturally (sandbank dinner, floating breakfast, overwater pavilion), and practical logistics (seaplane schedules, February weather, UAE medication customs). The expert handoff to Julian (luxury+romance specialist) was immediate and appropriate. Companion mode responses were concise and practical. The only weaknesses were a Michelin star count error for Tresind Studio and somewhat verbose planning responses with partial content duplication."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "recommend_booking", "create_itinerary_items", "suggest_expert", "delete_itinerary_items"]
+}

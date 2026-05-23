@@ -1,0 +1,44 @@
+{
+  "persona_id": "N-16",
+  "persona_name": "Maya — Multi-Turn Fabrication Detection",
+  "status": "COMPLETED",
+  "trip_destination": "Peru",
+  "completed_steps": ["auth", "selection", "planning", "fabrication_stress_test", "verification"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Turn 1 initially returned 'no response from AI — please try again' error, requiring a retry after 15 seconds. Transient AI provider failure.",
+      "severity": "P2",
+      "suggestion": "Consider auto-retry logic on the backend for transient AI provider failures before surfacing to the user."
+    },
+    {
+      "description": "AI called create_itinerary_items twice in Turns 1, 2, and 4 with identical payloads, resulting in the second call being rejected as 'already_exists'. This is wasteful and confusing.",
+      "severity": "P2",
+      "suggestion": "The AI should not re-call create_itinerary_items with the same items within the same turn. The dedup guard on the backend correctly prevents duplicates, but the AI wastes a tool loop iteration."
+    },
+    {
+      "description": "Day 9 item ordering is illogical: 'Island Exploration & Cultural Immersion' (order 1) comes before 'Arrival & Homestay Experience' (order 2) and 'Travel to Puno & Boat' (order 3). Should be travel first, then arrival, then exploration.",
+      "severity": "P2",
+      "suggestion": "AI should think about chronological ordering when generating itinerary items."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 6 planning turns executed correctly with zero fabrication bugs. create_itinerary_items fired reliably on every turn that required it (Turns 1-5) and correctly did NOT fire on the summary-only Turn 6. Itinerary grew monotonically: 16 -> 29 -> 33 -> 39 -> 46 items across turns, confirming no overwrite-instead-of-append bug. Turn 3 (food additions) correctly appended 4 new items to existing Cusco days without wiping them. Final itinerary covers all 10 days across Cusco (Days 1-4), Sacred Valley (Days 5-7), Machu Picchu (Day 8), and Lake Titicaca (Days 9-10) with 46 total items, well above the 15-item threshold. The only quality issues are duplicate tool calls within single turns and minor item ordering inconsistencies on Day 9. PR #198 fabrication detection is working correctly across multi-turn sessions."
+  },
+  "feature_coverage": [
+    "create_trip",
+    "create_itinerary_items",
+    "fabrication_detection",
+    "multi_turn_context",
+    "fabrication_matches_3"
+  ]
+}

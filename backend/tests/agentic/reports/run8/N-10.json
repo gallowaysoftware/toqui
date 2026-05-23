@@ -1,0 +1,58 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake Morrison — Last-Minute Airport Traveler",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Missing messageComplete event causes message not persisted to chat history",
+      "description": "The third SendMessage call (companion mode, asking about 'one full day in Lisbon') streamed 15 events including textDelta, toolCall, itineraryUpdate, and toolResult, but never emitted a messageComplete event. As a result, the user message and AI response were not persisted to chat history (GetChatHistory returned 6 messages instead of 8). The itinerary items WERE created, and the AI response text WAS streamed to the client, but the conversation was not saved. This means if the user refreshes the app, they lose that exchange.",
+      "steps_to_reproduce": "1. Create trip via selection mode SendMessage. 2. Activate trip to ACTIVE. 3. Send companion mode message that triggers create_itinerary_items tool with multiple items. 4. Check GetChatHistory — the message pair is missing.",
+      "expected": "messageComplete event emitted, message persisted to Firestore, GetChatHistory returns all 8 messages (4 user + 4 assistant)",
+      "actual": "No messageComplete event for the third exchange. GetChatHistory returns only 6 messages. Usage counter shows 3 instead of 4.",
+      "api_command": "buf curl SendMessage with content 'I have one full day tomorrow. What are the absolute must-do things in Lisbon if you only have 24 hours?'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The initial selection mode response was too long for a user who explicitly said they're at the airport with zero plans and need immediate help. The AI created the trip quickly (good), but then launched into a detailed Day 1 itinerary with 4 sections (Morning, Lunch, Afternoon, Evening) — this is planning-mode behavior when the user hasn't even boarded yet. The user said 'Help me' not 'Plan my trip'. A shorter acknowledgment with 'we'll figure it out when you land' would be more appropriate.",
+      "severity": "P2",
+      "suggestion": "In selection mode with urgency cues, create the trip and give a brief reassurance ('Got it, Lisbon Express is set up. Message me when you land and I'll give you real-time help') rather than a full itinerary."
+    },
+    {
+      "description": "The late-night arrival response (companion mode) was split oddly — the first part with restaurant names was in the initial text chunk, but then the AI used recommend_booking for accommodation and the final response was brief. The restaurant recommendations were somewhat generic (Cervejaria Ramiro is famous but expensive and not downtown). For someone starving at 10pm, more specific nearby-to-arrival options would help.",
+      "severity": "P2",
+      "suggestion": "For late-night arrival guidance, prioritize restaurants that are (a) definitely open past 10pm, (b) near where the user will be staying, and (c) easy to find. Mention that Portugal dines late so most restaurants will still be serving."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Response verbosity in companion mode exceeds what a last-minute traveler needs. The 'one full day' response was approximately 400 words with detailed paragraphs for each time slot, specific addresses, transit tips, and multiple restaurant recommendations. While thorough, this is too much for a user who explicitly wants 'what do I do right now' answers. Companion mode should be more concise than planning mode, but the responses were essentially planning-mode length.",
+      "context": "Persona explicitly described as wanting bullet points and direct recommendations, not travel essays. The airport logistics response (message 4) was notably more concise and practical — that's the right length for companion mode.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI did not recognize the photographer context. Jake is a freelance photographer with camera gear. The AI never mentioned photo opportunities, golden hour timing, or visually stunning viewpoints — all of which are highly relevant for Lisbon (Miradouro da Senhora do Monte, Alfama streets at dawn, Belem Tower at sunset). This is a missed personalization opportunity.",
+      "context": "The persona background mentions Jake is a photographer, but this info was not in the chat messages. The AI had no way to know this unless persona context was injected. This is expected behavior but noted as a gap.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The AI mentioned Tram 28 in the selection-mode response but did not include it in the companion-mode one-day itinerary. It also did not mention that Tram 28 is very crowded midday (important practical tip). The one-day plan recommended Tram 15E to Belem which is correct and practical, but Tram 28 through Alfama/Graca is a top Lisbon must-do that was omitted from the focused day plan.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI handled the urgent trip creation well — it immediately called create_trip without asking unnecessary clarifying questions, which is exactly right for someone at the airport. The one-day Lisbon itinerary was solid with good picks (Alfama, Belem, pasteis de nata, Fado). Airport logistics response was concise and accurate (metro Red Line, leave by 1pm). However, companion mode responses were too verbose for the use case — a user who just landed at 10pm in a foreign city needs 3-5 bullet points, not multi-paragraph essays. The late-night dining recommendations lacked specificity for the 10pm context. The missing messageComplete event (P1 bug) means one conversation exchange was lost from history. Overall, the AI would be genuinely useful for a last-minute traveler, but the response length needs tuning for companion mode urgency."
+  },
+  "feature_coverage": ["selection", "companion", "sharing", "history", "usage", "itinerary", "recommend_booking"]
+}

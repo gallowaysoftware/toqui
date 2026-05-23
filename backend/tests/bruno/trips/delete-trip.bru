@@ -1,0 +1,20 @@
+meta {
+  name: Delete Trip
+  type: grpc
+  seq: 5
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/DeleteTrip
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "id": "<trip-id-from-create>"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-10",
+  "persona_name": "Jake Morrison (Last-Minute Lisbon)",
+  "status": "COMPLETED",
+  "trip_destination": "Lisbon, Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Selection mode response was 2375 characters for an urgent last-minute traveler. While informative, a user boarding in 2 hours ideally receives a shorter confirmation with a pointer to continue planning once seated.",
+      "severity": "P2",
+      "suggestion": "Consider detecting urgency signals (e.g., 'at the airport', 'boarding soon') and producing a shorter selection-mode response that confirms the trip was created and defers the full plan."
+    },
+    {
+      "description": "Usage endpoint reported 4 messages used but 5 SendMessage calls were made (1 selection + 1 planning + 3 companion). The selection mode message may not be counted, which could confuse users tracking their daily limit.",
+      "severity": "P2",
+      "suggestion": "Verify that all SendMessage calls increment the daily usage counter consistently, regardless of mode."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "In planning mode, the AI called create_itinerary_items successfully, then after the suggest_expert persona switch to 'Beatriz' (photography expert), it attempted to re-create the same 6 items twice more. Both attempts returned 0 created (duplicate detection worked), but the redundant tool calls wasted tokens and added latency.",
+      "context": "Planning mode step 3: after persona switch, the AI re-called create_itinerary_items with identical items. The dedup logic in the backend correctly prevented duplicates, but the AI should recognize from the tool result message that items already exist and stop retrying.",
+      "severity": "P2"
+    },
+    {
+      "issue": "The one-full-day companion response did not mention Tram 28, which is one of Lisbon's most iconic experiences. The persona test specifically calls this out as expected knowledge.",
+      "context": "Companion mode step 6: AI mentioned Alfama, Belem, Bica, Carmo, Senhora do Monte but omitted Tram 28 entirely.",
+      "severity": "P2"
+    },
+    {
+      "issue": "No mention of the long line at Pasteis de Belem or the takeaway/factory shop across the street as a workaround. The persona test specifically flags this as Lisbon-specific knowledge to watch for.",
+      "context": "Companion mode step 6: Pasteis de Belem was mentioned as a must-eat but without the practical tip about the line and the faster takeaway option.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 4,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI excelled at the core N-10 test: speed, practicality, and brevity in companion mode. Trip was created instantly without excessive clarifying questions. Companion responses were concise (675-895 chars), actionable, and Lisbon-specific. The AI showed strong context awareness, referencing the photographer angle and the user's itinerary when answering the airport question. The late-night arrival response was particularly strong with specific restaurant names, neighborhoods, and transport advice. Planning mode created a lean 6-item photography-focused itinerary. Minor gaps: no mention of Tram 28, no Pasteis de Belem line tip, and redundant tool calls after persona switch. Overall, this would genuinely help a traveler who just landed in a foreign city with zero plans."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "trip_sharing", "chat_history", "usage", "expert_handoff", "itinerary_creation", "recommend_booking", "affiliate_disclosure"]
+}

@@ -1,0 +1,141 @@
+{
+  "persona": "R-06",
+  "name": "Priya — The Organized Barcelona Traveler",
+  "run": 15,
+  "date": "2026-04-10",
+  "status": "PASS",
+  "summary": "All booking ingestion, data retrieval, AI context awareness, ExtractBookingField, recommend_booking, FTC disclosure, and itinerary integration tests passed. The AI accurately referenced specific booking details (terminals, check-in times, tour times, meeting points) from ingested data. No data integrity issues detected.",
+  "bugs": [],
+  "ux_issues": [
+    {
+      "severity": "P2",
+      "area": "itinerary",
+      "description": "Day 5 has a scheduling conflict: both the Picasso Museum Visit and a full-day Girona & Dali Museum tour are listed at order_in_day=1. The AI acknowledged the conflict in its response text and offered resolution options, but the itinerary data itself still contains the double-booking. Ideally the AI should resolve the conflict before saving, or at minimum not assign both items to the same order position.",
+      "context": "Day 5 items: Picasso Museum (order 1, sightseeing), Girona & Dali (order 1, activity), Quimet & Quimet lunch (order 2, meal)"
+    },
+    {
+      "severity": "P2",
+      "area": "chat",
+      "description": "On the day trip recommendation response, the AI called recommend_booking twice. The first call worked correctly and the response was complete. The second call at the end of the response resulted in a 'no response from AI' error. The user would see the complete response but the error event at the end is unnecessary.",
+      "context": "Second recommend_booking call with query 'Girona and Dali Museum day trip from Barcelona with transport and tickets' returned tool result but AI produced no follow-up, triggering error event."
+    },
+    {
+      "severity": "P2",
+      "area": "persona",
+      "description": "El Xampanyet tapas recommendation on Day 4 mentions 'Try the house cava' which is an alcoholic beverage. Priya explicitly stated she doesn't drink much. While cava is culturally relevant to Barcelona, the AI should have noted a non-alcoholic alternative or avoided leading with an alcohol recommendation for this user.",
+      "context": "Day 4 item: 'Tapas in El Born: El Xampanyet - Try the house cava and the anchoas'. This was in the initial itinerary built before Priya stated her alcohol preference."
+    }
+  ],
+  "ai_behavior_issues": [],
+  "tool_failures": [
+    {
+      "tool": "recommend_booking",
+      "description": "Second invocation of recommend_booking in the same turn produced a tool result but the AI generated no follow-up response, causing a 'no response from AI' error event. The primary response was already complete, so this is a minor issue.",
+      "impact": "low"
+    }
+  ],
+  "ftc_disclosure_check": {
+    "passed": true,
+    "details": "The AI included 'Affiliate disclosure: I may earn a small commission if you book through this link.' in its response after recommend_booking returned affiliate links. Disclosure was present and clearly visible."
+  },
+  "test_results": {
+    "trip_creation": {
+      "passed": true,
+      "details": "create_trip tool invoked correctly in selection mode. Trip 'Barcelona Getaway' created with destination_country ES and status PLANNING."
+    },
+    "booking_ingestion": {
+      "flight": {
+        "passed": true,
+        "booking_id": "9f51a0f3-853d-4cf6-a252-f649d9b6b0da",
+        "confirmation_code": "DL7829X",
+        "details": "All flight details correctly parsed: airline, flight number, terminals, seat, cabin class, passenger name."
+      },
+      "hotel": {
+        "passed": true,
+        "booking_id": "60913de7-9271-4fbb-9a21-786d4f591d64",
+        "confirmation_code": "HAB-2026-9831",
+        "details": "All hotel details correctly parsed: name, dates, room type, address, phone, number of guests."
+      },
+      "activity": {
+        "passed": true,
+        "booking_id": "40b85fc7-8802-44ab-8eb6-348b12daa418",
+        "confirmation_code": "SF-44921",
+        "details": "All activity details correctly parsed: name, date, time, duration, location, operator, price, number of guests, meeting notes."
+      }
+    },
+    "booking_data_retrieval": {
+      "departure_terminal_via_chat": {
+        "passed": true,
+        "expected": "Terminal 4 at JFK",
+        "actual": "Terminal 4 at JFK",
+        "details": "AI correctly answered 'Terminal 4 at JFK' from ingested flight booking data."
+      },
+      "hotel_checkin_via_chat": {
+        "passed": true,
+        "expected": "3:00 PM",
+        "actual": "3:00 PM",
+        "details": "AI correctly answered '3:00 PM' check-in at Hotel Arts Barcelona."
+      },
+      "activity_time_via_chat": {
+        "passed": true,
+        "expected": "Wednesday, June 17, 2026, at 10:00 AM",
+        "actual": "Wednesday, June 17, 2026, at 10:00 AM",
+        "details": "AI correctly answered with date, time, and meeting point details."
+      },
+      "extract_booking_field_terminal": {
+        "passed": true,
+        "expected": "Terminal 4",
+        "actual": "Terminal 4",
+        "details": "ExtractBookingField correctly extracted outbound_departure_terminal=Terminal 4, return_departure_terminal=Terminal 1."
+      },
+      "extract_booking_field_checkin": {
+        "passed": true,
+        "expected": "3:00 PM",
+        "actual": "3:00 PM",
+        "details": "ExtractBookingField correctly extracted check_in_time=3:00 PM, check_in_date=2026-06-15."
+      },
+      "extract_booking_field_meeting_point": {
+        "passed": true,
+        "expected": "Nativity Facade entrance",
+        "actual": "Nativity Facade entrance (Carrer de la Marina side)",
+        "details": "ExtractBookingField correctly extracted meeting point and guide identifier (orange Barcelona Expert Tours sign)."
+      }
+    },
+    "recommend_booking_tool": {
+      "triggered_for_bookable_item": {
+        "passed": true,
+        "details": "recommend_booking correctly triggered when user asked for a day trip with transport and tickets included."
+      },
+      "not_triggered_for_restaurant": {
+        "passed": true,
+        "details": "recommend_booking was NOT triggered when user asked for restaurant recommendations. AI used create_itinerary_items instead."
+      },
+      "ftc_disclosure_included": {
+        "passed": true,
+        "details": "Affiliate disclosure statement present in AI response after recommend_booking results."
+      }
+    },
+    "itinerary_integration": {
+      "passed": true,
+      "details": "6-day itinerary built with bookings correctly placed: Day 1 flight, Day 2 hotel check-in, Day 3 Sagrada Familia tour, Day 4 Montserrat day trip, Day 5 Girona day trip, Day 6 checkout. The AI proactively created itinerary items incorporating the booked activities at correct times.",
+      "issues": "Day 5 has a scheduling conflict (Picasso Museum + full-day Girona tour at same order position). AI acknowledged conflict in text but did not resolve it in the data."
+    }
+  },
+  "usefulness_scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": "N/A — not tested in this persona",
+    "booking_parsing": 5,
+    "companion_mode": "N/A — not tested in this persona",
+    "overall": 4
+  },
+  "notes": [
+    "Booking ingestion pipeline is solid — all three booking types (flight, hotel, activity) parsed accurately with structured fields.",
+    "AI context awareness is excellent — the AI answered specific questions about terminals, check-in times, and tour details correctly from ingested booking data without hallucinating.",
+    "ExtractBookingField RPC works reliably and extracts structured key-value pairs from booking raw text.",
+    "FTC affiliate disclosure is properly included when recommend_booking is used.",
+    "The AI correctly avoided triggering recommend_booking for simple restaurant recommendations.",
+    "The AI respected the no-alcohol preference when explicitly stated in the restaurant request, but the earlier auto-generated itinerary included a cava recommendation (before the preference was stated).",
+    "Minor double-booking conflict on Day 5 could be improved — the AI should resolve conflicts in the itinerary data, not just acknowledge them in text."
+  ]
+}

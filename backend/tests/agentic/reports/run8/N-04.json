@@ -1,0 +1,109 @@
+{
+  "persona_id": "N-04",
+  "persona_name": "Booking Field Extraction Gauntlet",
+  "status": "COMPLETED",
+  "run_id": "run-8",
+  "trip_destination": "Multiple Destinations",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "ingest_flight",
+    "ingest_hotel",
+    "ingest_activity",
+    "ingest_car_rental",
+    "ingest_hostel",
+    "ingest_ryokan",
+    "ingest_tour",
+    "list_bookings_verify_7",
+    "extract_flight_terminal_departure",
+    "extract_hotel_cancellation_policy",
+    "extract_activity_meeting_point_what_to_bring",
+    "extract_car_insurance_fuel_policy",
+    "extract_hostel_hanoi_checkin",
+    "extract_ryokan_meals_dinner_time",
+    "extract_tour_tastings_dietary",
+    "negative_test_irrelevant_question"
+  ],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 4,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 7 booking artifacts were ingested successfully with correct type classification, confirmation codes, and provider extraction. ExtractBookingField returned accurate, specific answers for all 7 targeted questions, correctly cross-referencing the raw text. The Hanoi hostel disambiguation was perfect (correctly isolated from Hue and Saigon hostels). The negative test correctly identified that hotel wifi info is not in a flight confirmation without hallucinating. Booking parsing and field extraction are production-quality."
+  },
+  "feature_coverage": [
+    "CreateTrip",
+    "IngestBooking_flight",
+    "IngestBooking_hotel",
+    "IngestBooking_activity",
+    "IngestBooking_car_rental",
+    "IngestBooking_hostel_multi_property",
+    "IngestBooking_ryokan",
+    "IngestBooking_tour",
+    "ListBookings",
+    "ExtractBookingField_flight",
+    "ExtractBookingField_hotel",
+    "ExtractBookingField_activity",
+    "ExtractBookingField_car_rental",
+    "ExtractBookingField_hostel_disambiguation",
+    "ExtractBookingField_ryokan",
+    "ExtractBookingField_tour",
+    "ExtractBookingField_negative_test"
+  ],
+  "extraction_results": {
+    "flight": {
+      "question": "What terminal and what time does my outbound flight depart?",
+      "answer": "Your outbound flight, DL 472, departs from New York (JFK) Terminal 4 at 6:45 PM EDT.",
+      "expected_terminal": "Terminal 4",
+      "expected_time": "6:45 PM EDT",
+      "correct": true
+    },
+    "hotel": {
+      "question": "What is the cancellation policy?",
+      "answer": "You can cancel for free until June 12, 2026, at 11:59 PM CEST. If you cancel after this date, the first night (EUR 289.00) will be charged. In case of a no-show, the full stay will be charged.",
+      "expected": "Free cancellation until June 12, first night EUR 289.00 penalty after, full stay for no-show",
+      "correct": true
+    },
+    "activity": {
+      "question": "What is the meeting point and what should I bring?",
+      "answer": "Nativity Facade entrance (Carrer de la Marina side), C/ de la Marina 253. Bring valid photo ID, comfortable walking shoes, sunscreen, water bottle, confirmation, shoulders and knees covered.",
+      "correct": true
+    },
+    "car_rental": {
+      "question": "What insurance is included and what's the fuel policy?",
+      "answer": "Super CDW (zero excess) and Theft Protection. Fuel policy: Full-to-Full.",
+      "correct": true
+    },
+    "hostel": {
+      "question": "What time is check-in at the Hanoi hostel?",
+      "answer": "Check-in at the Hanoi Old Quarter Hostel is from 2:00 PM to 10:00 PM.",
+      "expected_time": "2:00 PM - 10:00 PM",
+      "disambiguation_correct": true,
+      "correct": true
+    },
+    "ryokan": {
+      "question": "What meals are included and what time is dinner?",
+      "answer": "Kaiseki Dinner and Traditional Japanese Breakfast. Dinner at 6:00 PM or 6:30 PM.",
+      "correct": true
+    },
+    "tour": {
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "answer": "12 tastings. Vegetarian and gluten-free with advance notice, vegan substitutions for most stops.",
+      "expected_tastings": 12,
+      "correct": true
+    },
+    "negative_test": {
+      "question": "What is the hotel's wifi password?",
+      "answer": "I'm sorry, the provided text is a flight booking confirmation and does not contain any information about a hotel or its Wi-Fi password.",
+      "hallucinated": false,
+      "correct": true
+    }
+  }
+}

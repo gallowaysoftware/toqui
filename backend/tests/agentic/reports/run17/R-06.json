@@ -1,0 +1,107 @@
+{
+  "persona_id": "R-06",
+  "persona_name": "Priya (Organized Barcelona Traveler)",
+  "status": "COMPLETED",
+  "run_id": "run-17",
+  "trip_destination": "Barcelona, Spain",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "booking_ingestion_flight",
+    "booking_ingestion_hotel",
+    "booking_ingestion_activity",
+    "booking_list_verify",
+    "planning_terminal_query",
+    "planning_checkin_query",
+    "planning_activity_query",
+    "extract_booking_field_flight_terminal",
+    "extract_booking_field_hotel_checkin",
+    "extract_booking_field_hotel_cancellation",
+    "extract_booking_field_activity_meeting",
+    "recommend_booking_day_trip",
+    "ftc_disclosure_check",
+    "restaurant_no_recommend_booking",
+    "itinerary_verify",
+    "booking_date_gap_detection",
+    "activate",
+    "companion_arrival",
+    "companion_tipping",
+    "sharing_enable",
+    "shared_view_verify",
+    "sharing_disable",
+    "sharing_re_enable",
+    "chat_history_verify",
+    "usage_verify",
+    "complete",
+    "final_state_check"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "AI hallucinated return flight details in itinerary",
+      "description": "The AI created itinerary items for the return flight with incorrect details: flight number listed as 'DL 473' instead of the correct 'DL 149', and departure time listed as '11:15 AM' instead of the correct '11:30 AM'. The booking data was correctly ingested (DL 149, 11:30 AM) but the AI used fabricated details when generating itinerary text.",
+      "expected": "Return flight DL 149 departing at 11:30 AM CEST",
+      "actual": "Return flight 'DL 473' departing at '11:15 AM' in itinerary description",
+      "api_command": "GetItinerary after planning mode"
+    },
+    {
+      "severity": "P2",
+      "title": "Itinerary grew from 5 to 7 days without clear user request",
+      "description": "Initial trip was planned for 5 days (June 15-20 hotel, June 22 flight). The AI detected the gap between hotel check-out and flight (good), but the itinerary ended up with 7 day entries. The expansion was not explicitly requested by the user and the extra days have sparse content.",
+      "expected": "5 days matching the hotel stay, with a note about the 2-night gap",
+      "actual": "7 day itinerary entries"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Planning mode responses are very long. When asked about hotel check-in time, the AI gave a multi-paragraph response that included unsolicited itinerary creation, restaurant recommendations, and Park Guell suggestions. For an organized user like Priya who asked a simple factual question, the verbose response is overwhelming.",
+      "severity": "P2",
+      "suggestion": "When the user asks a specific factual question about a booking, answer concisely first, then offer to help with more if needed."
+    },
+    {
+      "description": "Day 1 itinerary suggests 'Tapas & Cava at El Xampanyet' despite the user not mentioning interest in alcohol. The AI later acknowledged this issue and suggested swapping it for Somorrostro, but the original itinerary item was not removed, resulting in both appearing on Day 1.",
+      "severity": "P2",
+      "suggestion": "When AI suggests replacing an itinerary item, it should call delete_itinerary_items to remove the old one rather than just adding a new alternative alongside it."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI proactively created extensive itinerary without being asked",
+      "context": "When asked 'What time is hotel check-in?', the AI created a full 5-day itinerary in a single response. While the persona spec later asks for itinerary creation, the AI jumped ahead unprompted, making it impossible to test the explicit itinerary-building step as a separate interaction.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Companion mode responses appropriately concise",
+      "context": "Companion responses about airport transfer and tipping were short, practical, and well-structured. This is correct behavior and a notable improvement over planning mode verbosity.",
+      "severity": null
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Booking ingestion and retrieval are excellent. All three bookings were parsed correctly with full details including confirmation codes, terminal numbers, check-in times, and meeting points. ExtractBookingField works flawlessly across all booking types. The AI correctly answered booking-specific questions (terminal, check-in, tour meeting point). FTC affiliate disclosure was consistently present. The main issues are AI verbosity in planning mode and minor data hallucination in itinerary flight details. Companion mode was notably better with concise, actionable responses. The AI smartly detected the hotel checkout / flight departure date gap. Restaurant recommendations correctly did not trigger recommend_booking. The AI respected the no-alcohol preference by suggesting alternatives."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "companion",
+    "booking_ingestion_flight",
+    "booking_ingestion_hotel",
+    "booking_ingestion_activity",
+    "booking_data_retrieval",
+    "extract_booking_field",
+    "recommend_booking",
+    "ftc_disclosure",
+    "create_itinerary_items",
+    "trip_sharing",
+    "chat_history",
+    "usage_tracking",
+    "trip_lifecycle"
+  ]
+}

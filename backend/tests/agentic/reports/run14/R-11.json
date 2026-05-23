@@ -1,0 +1,73 @@
+{
+  "persona_id": "R-11",
+  "persona_name": "Camila, the Food Blogger",
+  "status": "COMPLETED",
+  "run_id": "run14",
+  "trip_destination": "Mexico City & Oaxaca",
+  "completed_steps": ["auth", "selection", "planning", "booking_ingest", "booking_extract", "booking_recommend", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_verify"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Stream truncation on suggest_expert tool call",
+      "description": "In step 3b, the AI called suggest_expert with {region_code: MX, themes: [food, distilleries, history]} but the stream ended abruptly after the toolCall event. No toolResult, personaSwitch, or messageComplete events were delivered. The stream output was only 826 bytes. Subsequent messages worked fine, suggesting this was a transient stream delivery issue rather than a backend crash. The persona switch never fired for the entire session.",
+      "steps_to_reproduce": "Send a planning mode message asking to connect with a local food expert for Oaxaca. The AI calls suggest_expert but the stream may be truncated before the tool result is returned.",
+      "expected": "suggest_expert tool call should be followed by toolResult, personaSwitch, and messageComplete events",
+      "actual": "Stream ended at the toolCall event with no subsequent events delivered"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items on Day 7 after recommend_booking",
+      "description": "Day 7 ended up with two nearly identical cooking class items: 'Oaxacan Mole Cooking Class' (from step 3c) and 'Oaxacan Mole & Regional Cuisine Cooking Class' (from step 5 recommend_booking). The AI created new itinerary items via create_itinerary_items instead of using recommend_booking, resulting in duplicate activities. Total items grew from 36 to 39.",
+      "expected": "recommend_booking should generate affiliate links, not duplicate itinerary items",
+      "actual": "AI called create_itinerary_items instead of or in addition to recommend_booking, creating 3 duplicate items on days 7-8"
+    },
+    {
+      "severity": "P2",
+      "title": "Day 8 has duplicate mezcal distillery items",
+      "description": "Day 8 contains both 'Artisanal Mezcal Tasting & Palenque Visit' and 'Mezcal Distillery Tour in Santiago Matatlan' which overlap significantly. The AI added a new item without recognizing the existing one already covers the same experience.",
+      "expected": "AI should recognize existing itinerary items and avoid creating duplicates",
+      "actual": "Two mezcal distillery activities on the same day"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The recommend_booking tool was not called when asked for bookable cooking classes and tours. Instead, the AI used create_itinerary_items. This means no affiliate links were generated for the booking recommendations.",
+      "severity": "P1",
+      "suggestion": "The AI prompt should be tuned to use recommend_booking when the user explicitly asks for bookable activities, rather than falling back to create_itinerary_items."
+    },
+    {
+      "description": "ListChatSessions response session object uses a different key name than expected (not 'sessionId'). Minor API inconsistency.",
+      "severity": "P2",
+      "suggestion": "Ensure ListChatSessions response session objects use consistent field naming with other APIs."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "suggest_expert was called once but the stream was truncated, and the AI never retried the expert handoff in subsequent messages. The entire session stayed on the default Toqui persona despite multiple food-specific Oaxaca questions that warranted a Mexico food expert.",
+      "context": "Step 3b: AI called suggest_expert with MX/food/distilleries/history themes but stream truncated. Steps 3c-6b: No further suggest_expert calls despite continued food-focused conversation.",
+      "severity": "P1"
+    },
+    {
+      "issue": "When asked for bookable cooking classes and food tours (step 5), the AI called create_itinerary_items instead of recommend_booking. The FTC disclosure appeared in the response text but no actual affiliate links were generated via the tool.",
+      "context": "User asked 'Can you recommend some cooking classes and food tours I can book in Oaxaca?' - this should have triggered recommend_booking for activity-type results.",
+      "severity": "P1"
+    },
+    {
+      "issue": "AI did not distinguish CDMX vs Oaxacan food culture as strongly as expected. The CDMX itinerary was good but somewhat generic (Coyoacan, Roma Norte exploration rather than deeper CDMX-specific food experiences). The Oaxaca content was stronger and more region-specific.",
+      "context": "Day 3 includes 'Coyoacan Market & Frida Kahlo Museum' which is more sightseeing than food-focused. A food blogger persona would likely prefer deeper culinary experiences.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 5,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The trip creation flow was excellent -- the AI immediately understood the food-focused Mexico trip concept and created an appropriate trip with MX destination. The 10-day itinerary is comprehensive with 39 food-specific items including markets, street food, fine dining, cooking classes, mezcal distilleries, and Dia de Muertos traditions. Booking parsing was flawless -- the tour booking was extracted with all details including guide name, stops, and pricing. The cultural depth on mezcal (artisanal vs industrial, Espadin/Tobala/Madrecuixe agave varieties) was impressive. Companion mode responses were appropriately concise and practical. The main weaknesses were: (1) the expert persona handoff failed due to stream truncation and was never retried, (2) recommend_booking was not called when explicitly asked for bookable activities, and (3) some itinerary duplication occurred. Despite these issues, the overall experience would be genuinely useful for planning a food trip to Mexico."
+  },
+  "feature_coverage": ["selection", "planning", "create_trip", "create_itinerary_items", "suggest_expert", "booking_ingest", "booking_extract", "booking_recommend_ftc", "companion", "sharing", "unsharing", "chat_history", "usage", "trip_lifecycle"]
+}

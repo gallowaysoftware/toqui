@@ -1,0 +1,39 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives + Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The messageComplete fullContent for planning messages 1 and 2 only contained a short summary referencing the tool result counts rather than the full AI response text. The full detailed response was streamed via textDelta events but the messageComplete payload truncated it to just a confirmation blurb. This means chat history replay would show a much shorter version of the AI's detailed luxury recommendations.",
+      "severity": "P2",
+      "suggestion": "Ensure messageComplete fullContent captures the entire streamed response, not just the final continuation after tool results."
+    },
+    {
+      "description": "Chat session mode shows CHAT_MODE_COMPANION even though the session started in CHAT_MODE_SELECTION and transitioned through planning. The session mode reflects the last-used mode rather than showing mode history.",
+      "severity": "P2",
+      "suggestion": "Consider tracking mode transitions within a session or creating separate sessions per mode for clearer history."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI suggested checking Booking.com for Soneva Fushi villa availability via the recommend_booking tool. For ultra-luxury properties like Soneva Fushi, the standard advice is to book directly through the resort or a luxury travel advisor for best rates, villa selection, and complimentary anniversary perks. The AI did mention direct booking as an alternative in its text, which partially mitigates this.",
+      "context": "Planning message 1 — recommend_booking returned a Booking.com link for Soneva Fushi.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional luxury calibration throughout. The AI consistently matched ultra-luxury expectations without prompting — it knew Soneva Fushi's barefoot concept, no-shoes policy, the Den cinema, Hanifaru Bay manta rays, the observatory, and private sandbank dining. For Dubai, it correctly identified Tresind Studio's 16-seat limitation, SevenRooms booking platform, 60-day reservation window, and recommended using the Burj Al Arab concierge. The expert handoff to Zara for Dubai food was seamless and the standalone restaurant recommendations (11 Woodfire, Ossiano, Hoseki, Avatara) were genuinely high-caliber. The itinerary had excellent luxury pacing with 26 items across 9 days — no day was overcrowded, and romantic anniversary touches were woven throughout without being asked (sandbank dinner, couples spa, floating breakfast, observatory stargazing). Companion mode responses were appropriately concise and practical, covering seaplane logistics, tipping etiquette, night swimming safety, and dress codes. The Maldives-to-Dubai transition advice (seaplane daylight restrictions, Male two-terminal transfer, Emirates business class) demonstrated real travel expertise."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "create_trip", "create_itinerary_items", "recommend_booking", "suggest_expert", "web_search"]
+}

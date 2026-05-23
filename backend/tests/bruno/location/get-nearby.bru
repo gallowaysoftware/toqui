@@ -1,0 +1,32 @@
+meta {
+  name: Get Nearby
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{host}}/toqui.v1.LocationService/GetNearby
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Returns nearby points of interest based on a lat/lng position.
+  location is a nested LatLng message (not flat fields).
+  Call UpdateLocation first to cache the user's position server-side,
+  or provide location here directly for a one-off lookup.
+}
+
+body:json {
+  {
+    "location": {
+      "latitude": 35.6762,
+      "longitude": 139.6503
+    },
+    "category": "restaurant",
+    "radius_meters": 1000
+  }
+}

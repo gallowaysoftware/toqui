@@ -1,0 +1,207 @@
+{
+  "persona": "N-02",
+  "name": "Structural — Chat History Data Integrity",
+  "run": 9,
+  "date": "2026-04-09",
+  "overall_result": "PASS",
+  "summary": "All chat history and session management features work correctly. Messages persist accurately across selection, planning, and companion modes. Session listing returns correct data with valid timestamps. Cross-session isolation is fully maintained — no message bleed detected.",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Phase 1: Selection Mode — Create Trip via Chat",
+      "result": "PASS",
+      "details": {
+        "action": "SendMessage(mode=CHAT_MODE_SELECTION, content='I want to plan a trip to Portugal for 10 days.')",
+        "session_id": "6d054964-d20d-45fd-af31-8ed25d198d36",
+        "trip_id": "9c835cf0-876f-4a0e-a621-c3dfafd2ccd8",
+        "assertions": {
+          "session_created": { "pass": true, "note": "sessionCreated event emitted with valid UUID" },
+          "trip_created": { "pass": true, "note": "AI called create_trip tool, trip created with title 'Portugal 10 Days'" },
+          "message_complete": { "pass": true, "note": "Full response received with non-empty content" }
+        }
+      }
+    },
+    {
+      "step": 2,
+      "name": "Phase 1: Verify Trip via GetTrip",
+      "result": "PASS",
+      "details": {
+        "action": "GetTrip(id=9c835cf0-876f-4a0e-a621-c3dfafd2ccd8)",
+        "assertions": {
+          "title": { "expected": "Portugal 10 Days", "actual": "Portugal 10 Days", "pass": true },
+          "status": { "expected": "TRIP_STATUS_PLANNING", "actual": "TRIP_STATUS_PLANNING", "pass": true },
+          "destination_country": { "expected": "PT", "actual": "PT", "pass": true }
+        }
+      }
+    },
+    {
+      "step": 3,
+      "name": "Phase 2: Planning Mode — Message A (itinerary request)",
+      "result": "PASS",
+      "details": {
+        "action": "SendMessage(mode=CHAT_MODE_PLANNING, trip_id=..., content='I want to visit Lisbon and Porto. Can you suggest a rough itinerary?')",
+        "session_id": "b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8",
+        "assertions": {
+          "session_created": { "pass": true, "note": "New planning session created with valid UUID" },
+          "itinerary_created": { "pass": true, "note": "AI proactively called create_itinerary_items with 21 items across 10 days" },
+          "message_complete": { "pass": true, "note": "Full response received" }
+        }
+      }
+    },
+    {
+      "step": 4,
+      "name": "Phase 2: Planning Mode — Message B (add to itinerary)",
+      "result": "PASS",
+      "details": {
+        "action": "SendMessage(mode=CHAT_MODE_PLANNING, trip_id=..., session_id=..., content='Add those to my itinerary please.')",
+        "assertions": {
+          "same_session": { "pass": true, "note": "Response used same session_id b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8" },
+          "message_complete": { "pass": true, "note": "AI correctly recognized items were already saved, did not duplicate" }
+        }
+      }
+    },
+    {
+      "step": 5,
+      "name": "Phase 3: Companion Mode — Dinner recommendation",
+      "result": "PASS",
+      "details": {
+        "action": "SendMessage(mode=CHAT_MODE_COMPANION, trip_id=..., content='I just arrived in Lisbon. Where should I eat dinner tonight near Alfama?')",
+        "session_id": "a03f2b89-9f77-4efa-b716-2725c5796d53",
+        "prerequisites": "Trip status updated to TRIP_STATUS_ACTIVE before sending companion message",
+        "assertions": {
+          "session_created": { "pass": true, "note": "New companion session created with valid UUID" },
+          "nearby_places_attempted": { "pass": true, "note": "AI attempted nearby_places tool (returned no_location as expected without location data)" },
+          "message_complete": { "pass": true, "note": "AI provided restaurant recommendations near Alfama" }
+        }
+      }
+    },
+    {
+      "step": 6,
+      "name": "Phase 4: ListChatSessions Verification",
+      "result": "PASS",
+      "details": {
+        "action": "ListChatSessions(trip_id=9c835cf0-876f-4a0e-a621-c3dfafd2ccd8)",
+        "session_count": 3,
+        "ordering": "most-recent-first (companion, planning, selection)",
+        "assertions": {
+          "count_gte_3": { "expected": ">=3", "actual": 3, "pass": true },
+          "all_have_non_empty_id": { "pass": true },
+          "modes_correct": {
+            "pass": true,
+            "sessions": [
+              { "id": "a03f2b89-9f77-4efa-b716-2725c5796d53", "mode": "CHAT_MODE_COMPANION" },
+              { "id": "b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8", "mode": "CHAT_MODE_PLANNING" },
+              { "id": "6d054964-d20d-45fd-af31-8ed25d198d36", "mode": "CHAT_MODE_SELECTION" }
+            ]
+          },
+          "timestamps_valid": { "pass": true, "note": "All sessions have createdAt and lastMessageAt, lastMessageAt >= createdAt" },
+          "timestamp_field_name": { "note": "API uses 'lastMessageAt' rather than 'updatedAt' — functionally equivalent for session tracking" }
+        }
+      }
+    },
+    {
+      "step": 7,
+      "name": "Phase 5: GetChatHistory — Selection Session",
+      "result": "PASS",
+      "details": {
+        "action": "GetChatHistory(trip_id=..., session_id=6d054964-d20d-45fd-af31-8ed25d198d36)",
+        "message_count": 2,
+        "assertions": {
+          "count_gte_2": { "expected": ">=2", "actual": 2, "pass": true },
+          "first_user_contains_portugal": { "pass": true, "content_snippet": "I want to plan a trip to Portugal for 10 days." },
+          "roles_alternate": { "pass": true, "sequence": ["user", "assistant"] },
+          "no_empty_content": { "pass": true },
+          "timestamps_chronological": { "pass": true }
+        }
+      }
+    },
+    {
+      "step": 8,
+      "name": "Phase 5: GetChatHistory — Planning Session",
+      "result": "PASS",
+      "details": {
+        "action": "GetChatHistory(trip_id=..., session_id=b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8)",
+        "message_count": 4,
+        "assertions": {
+          "count_gte_4": { "expected": ">=4", "actual": 4, "pass": true },
+          "user_msg_contains_lisbon_porto": { "pass": true, "content_snippet": "I want to visit Lisbon and Porto. Can you suggest a rough itinerary?" },
+          "user_msg_contains_itinerary": { "pass": true, "content_snippet": "Add those to my itinerary please." },
+          "roles_alternate": { "pass": true, "sequence": ["user", "assistant", "user", "assistant"] },
+          "no_empty_content": { "pass": true },
+          "timestamps_chronological": { "pass": true }
+        }
+      }
+    },
+    {
+      "step": 9,
+      "name": "Phase 5: GetChatHistory — Companion Session",
+      "result": "PASS",
+      "details": {
+        "action": "GetChatHistory(trip_id=..., session_id=a03f2b89-9f77-4efa-b716-2725c5796d53)",
+        "message_count": 2,
+        "assertions": {
+          "count_gte_2": { "expected": ">=2", "actual": 2, "pass": true },
+          "user_msg_contains_lisbon": { "pass": true },
+          "user_msg_contains_alfama": { "pass": true, "content_snippet": "I just arrived in Lisbon. Where should I eat dinner tonight near Alfama?" },
+          "roles_alternate": { "pass": true, "sequence": ["user", "assistant"] },
+          "no_empty_content": { "pass": true },
+          "timestamps_chronological": { "pass": true }
+        }
+      }
+    },
+    {
+      "step": 10,
+      "name": "Phase 6: Cross-Session Isolation",
+      "result": "PASS",
+      "details": {
+        "action": "Verify no message IDs or content from one session appear in another session's history",
+        "assertions": {
+          "selection_isolated": { "pass": true, "note": "Selection session has 2 messages, all with session_id 6d054964-..." },
+          "planning_isolated": { "pass": true, "note": "Planning session has 4 messages, all with session_id b4a28603-..." },
+          "companion_isolated": { "pass": true, "note": "Companion session has 2 messages, all with session_id a03f2b89-..." },
+          "no_message_bleed": { "pass": true, "note": "No message IDs appear in multiple sessions. Content is distinct per session." }
+        }
+      }
+    }
+  ],
+  "bugs": [],
+  "warnings": [
+    {
+      "severity": "W",
+      "category": "ai_behavior",
+      "description": "Planning session second assistant response starts with 'I'm your travel planning assistant' which reads like a system prompt identity leak. This is cosmetic but slightly odd in a multi-turn conversation.",
+      "session": "b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8",
+      "message_id": "73e5bc4a-0b69-4c6e-9061-85c2afd7dd64"
+    },
+    {
+      "severity": "W",
+      "category": "ai_behavior",
+      "description": "Planning assistant response references internal tool result metadata ('you can see the tool returned created_count: 21') which exposes implementation details to the user. The user should not see raw tool result references.",
+      "session": "b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8",
+      "message_id": "b377808c-e01e-4e65-acf3-8177d53a962a"
+    }
+  ],
+  "ux_issues": [],
+  "message_counts": {
+    "selection_session": 2,
+    "planning_session": 4,
+    "companion_session": 2,
+    "total": 8
+  },
+  "session_ids": {
+    "selection": "6d054964-d20d-45fd-af31-8ed25d198d36",
+    "planning": "b4a28603-2aa2-4f70-8ee1-3a35cb1d46a8",
+    "companion": "a03f2b89-9f77-4efa-b716-2725c5796d53"
+  },
+  "trip_id": "9c835cf0-876f-4a0e-a621-c3dfafd2ccd8",
+  "user_id": "3a11af2b-0406-4638-b075-49b616d0d069",
+  "usefulness_scores": {
+    "note": "N/A for structural test — this persona tests data integrity, not AI quality",
+    "trip_creation": 5,
+    "itinerary_quality": 4,
+    "persona_handoff": "N/A",
+    "booking_parsing": "N/A",
+    "companion_mode": 4,
+    "overall": 5
+  }
+}

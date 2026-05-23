@@ -1,0 +1,26 @@
+meta {
+  name: Set Default Persona
+  type: grpc
+  seq: 4
+}
+
+grpc {
+  url: {{host}}/toqui.v1.PersonaService/SetDefaultPersona
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  Sets the user's preferred default persona for new chat sessions.
+  Persona IDs are in the format "location_theme" e.g. "JP_food" or "IT_history".
+  This preference persists across sessions for the user.
+}
+
+body:json {
+  {
+    "persona_id": "JP_food"
+  }
+}

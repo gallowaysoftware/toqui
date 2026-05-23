@@ -1,0 +1,104 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "test1_gettrip_nonexistent", "test2_gettrip_malformed", "test3_createtrip_empty_title", "test4_createtrip_oversized_title", "test5_invalid_status_transition", "test6_sendmessage_empty", "test7_sendmessage_oversized", "test8_deletebooking_nonexistent", "test9_ingestbooking_empty", "test10_listtrips_empty"],
+  "bugs": [],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "This is a structural/adversarial test persona that does not evaluate usefulness. All 10 edge case tests passed: validation interceptor correctly rejects malformed UUIDs, empty/oversized strings; status machine enforces valid transitions (COMPLETED->PLANNING rejected with failed_precondition); DeleteBooking is idempotent (silently succeeds on non-existent ID); ListTrips returns empty pagination object instead of error for zero trips. The API's error handling is robust with no panics, 500s, or incorrect error categories."
+  },
+  "feature_coverage": ["validation", "error_handling", "status_transitions", "idempotent_delete"],
+  "test_results": [
+    {
+      "test_number": 1,
+      "description": "GetTrip with non-existent UUID",
+      "expected": "NOT_FOUND error",
+      "actual": "not_found: trip not found",
+      "pass": true,
+      "notes": "Correct error code and message. No panic or 500."
+    },
+    {
+      "test_number": 2,
+      "description": "GetTrip with malformed ID (not-a-uuid)",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: id: value must be a valid UUID",
+      "pass": true,
+      "notes": "Validation interceptor correctly catches malformed UUID before it reaches business logic."
+    },
+    {
+      "test_number": 3,
+      "description": "CreateTrip with empty title",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: title: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced."
+    },
+    {
+      "test_number": 4,
+      "description": "CreateTrip with oversized title (513 chars)",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: title: value length must be at most 512 characters",
+      "pass": true,
+      "notes": "buf.validate max_len=512 constraint enforced."
+    },
+    {
+      "test_number": 5,
+      "description": "Invalid status transition: COMPLETED -> PLANNING",
+      "expected": "Error or rejection of backward transition",
+      "actual": "failed_precondition: invalid trip status transition: completed -> planning",
+      "pass": true,
+      "notes": "Status machine correctly rejects backward transition. Trip remained COMPLETED after rejection. Skipping PLANNING->ACTIVE (directly to COMPLETED) was allowed, which is reasonable for the test scenario."
+    },
+    {
+      "test_number": 6,
+      "description": "SendMessage with empty content",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: content: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced on streaming RPC."
+    },
+    {
+      "test_number": 7,
+      "description": "SendMessage with oversized content (10001 chars)",
+      "expected": "INVALID_ARGUMENT error from buf.validate",
+      "actual": "invalid_argument: validation error: content: value length must be at most 10000 characters",
+      "pass": true,
+      "notes": "buf.validate max_len=10000 constraint enforced."
+    },
+    {
+      "test_number": 8,
+      "description": "DeleteBooking on non-existent UUID",
+      "expected": "NOT_FOUND or silent success (idempotent)",
+      "actual": "Empty JSON response {} (silent success)",
+      "pass": true,
+      "notes": "Idempotent delete - returns success even when booking does not exist. This is acceptable REST/RPC design."
+    },
+    {
+      "test_number": 9,
+      "description": "IngestBooking with empty raw_text",
+      "expected": "INVALID_ARGUMENT error",
+      "actual": "invalid_argument: validation error: raw_text: value length must be at least 1 characters",
+      "pass": true,
+      "notes": "buf.validate min_len constraint enforced."
+    },
+    {
+      "test_number": 10,
+      "description": "ListTrips with zero trips",
+      "expected": "Success with empty trips array",
+      "actual": "Success: {\"pagination\":{}} (empty response with pagination object, no trips array)",
+      "pass": true,
+      "notes": "Returns successful response with empty pagination. The trips field is omitted (proto3 default for empty repeated fields) rather than an explicit empty array, which is standard proto3 behavior."
+    }
+  ]
+}

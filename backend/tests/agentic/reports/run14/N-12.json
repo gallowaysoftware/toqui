@@ -1,0 +1,54 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Cross-faith comparison table caused truncated response with massive whitespace padding",
+      "description": "When the AI attempted to generate a comparative markdown table for dress codes across three faiths, it produced a table with extremely wide column padding (hundreds of spaces per cell). The response reached ~483KB of mostly whitespace and never emitted a messageComplete event, meaning the stream was truncated. The user had to ask the AI to retry in list format, which worked fine. This is a Gemini output formatting issue with wide markdown tables.",
+      "steps_to_reproduce": "Ask the AI to compare dress codes across Jewish, Islamic, and Buddhist sites in a single response while in planning mode",
+      "expected": "A readable comparative table or list under normal token limits",
+      "actual": "A ~483KB response of mostly whitespace padding in table columns, truncated without messageComplete"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Companion mode itinerary gate blocked a legitimate itinerary item creation. When the user asked 'what should I do right now', the AI called create_itinerary_items to add 'Visit Church of the Holy Sepulchre' but the tool returned 'not_needed' because it classified the message as informational rather than an explicit itinerary modification request. The AI was actually being helpfully proactive here.",
+      "severity": "minor",
+      "suggestion": "Consider relaxing the companion mode gate slightly — when the AI recommends a specific activity and the user is actively traveling, adding it to the itinerary is reasonable"
+    },
+    {
+      "description": "Itinerary was empty at trip completion despite multiple planning messages. The AI focused on providing detailed cultural/logistical guidance but never proactively created itinerary items during planning mode for this persona's questions. This makes sense given the questions were research-oriented, but a 10-day trip completing with zero itinerary items is a gap.",
+      "severity": "minor",
+      "suggestion": "Consider having the AI proactively suggest creating itinerary items after giving detailed site-specific advice in planning mode"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not proactively create itinerary items during planning mode despite discussing specific sites with detailed logistics. All 5 planning messages received excellent cultural guidance but zero itinerary items were created.",
+      "context": "The persona's questions were research-oriented (dress codes, safety, ethics) rather than explicit 'plan my day' requests, which may explain why the AI didn't trigger create_itinerary_items. However, a documentary filmmaker discussing specific sites and logistics would benefit from structured itinerary output.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "Companion mode: AI tried to add Church of the Holy Sepulchre visit",
+      "error": "Tool returned status 'not_needed' with message 'The user's message is an informational query, not a request to modify the itinerary'"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 2,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated exceptional cultural sensitivity and factual accuracy across all three complex destinations. It correctly handled dual naming for Temple Mount / Haram al-Sharif, accurately stated that abayas are no longer legally required for foreign women in Saudi Arabia, acknowledged the February 2021 Myanmar coup with balanced ethical analysis, and correctly noted Bagan temple climbing restrictions. The expert handoff to Elias (history + photography specialist) was perfectly targeted. The only significant gap was the complete absence of structured itinerary items despite extensive planning discussion, and one truncated response caused by an AI-generated markdown table with extreme whitespace padding. For a culturally complex multi-country trip, the AI's depth of knowledge and balanced, non-editorializing tone were genuinely impressive."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "web_search"]
+}

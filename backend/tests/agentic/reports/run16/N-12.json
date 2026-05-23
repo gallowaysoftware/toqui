@@ -1,0 +1,40 @@
+{
+  "persona_id": "N-12",
+  "persona_name": "Amira Okafor — Multi-Region Cultural Sensitivity",
+  "status": "COMPLETED",
+  "trip_destination": "Israel, Saudi Arabia, Myanmar",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "The AI created a duplicate itinerary item for Day 3 (both 'The Holy Basin: Jerusalem's Old City' and 'Logistics: The Holy Basin Scouting' with order_in_day=1) rather than updating the existing item. This creates visual clutter in the itinerary view.",
+      "severity": "P2",
+      "suggestion": "When the AI generates a logistics-focused itinerary item for a day that already has a similar item, it should either update the existing item or use a different order_in_day value."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Saudi Arabia alcohol claims may be inaccurate. The AI stated that 'as of 2026, limited alcohol service (wine and beer) has been introduced in designated high-end tourist zones' including AlUla resorts and a shop in Riyadh's Diplomatic Quarter. While Saudi Arabia has been reported to be considering limited alcohol sales, the specific claims about 2026 implementation and a Diplomatic Quarter shop may not be fully verified. The AI presented uncertain/speculative information as established fact.",
+      "context": "Planning message about Saudi Arabia logistics. Web search was unavailable so the AI relied on knowledge which may include speculative or unverified reports.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "current safety situation Myanmar Yangon Bagan April 2026 for tourists",
+      "error": "Real-time web search is not configured in this environment. The AI attempted 3 web searches for Myanmar safety/ethical tourism info but all returned no results. The AI handled this gracefully by proceeding with its training knowledge."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on the most demanding cultural sensitivity test in the suite. The AI correctly handled Temple Mount/Haram al-Sharif naming sensitivity, provided accurate access rules for Jerusalem's holy sites, confirmed the abaya is no longer legally required in Saudi Arabia, honestly addressed Myanmar's ethical tourism dilemma without sanitizing or editorializing, correctly stated Bagan temple climbing is restricted, and produced a superb cross-faith dress code comparison covering Jewish, Islamic, and Buddhist etiquette. The expert handoff to 'Elias' (history specialist) was natural and added depth. Companion mode responses were appropriately concise with practical details (tipping, taxi costs, Shabbat awareness). The only minor issues were a duplicate itinerary item and potentially speculative claims about Saudi alcohol policy in 2026. For a documentary filmmaker persona, this AI would be genuinely useful as a research assistant."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "expert_handoff", "itinerary_creation"]
+}

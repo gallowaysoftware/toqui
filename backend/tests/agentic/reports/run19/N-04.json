@@ -1,0 +1,207 @@
+{
+  "persona": "N-04",
+  "name": "Booking Field Extraction Gauntlet",
+  "run": "run19",
+  "date": "2026-04-10",
+  "user_id": "f1414445-f368-47f7-8fcb-d1e10321f3ef",
+  "email": "n04-run19b@toqui-test.local",
+  "trip_id": "090fda64-0020-4ff8-b02d-60a1eabd8400",
+  "status": "PASS",
+  "summary": "All 7 booking artifacts ingested successfully. ExtractBookingField returned accurate answers for all 7 positive queries and correctly rejected the negative/hallucination test. Two minor issues found: type reclassification on activity bookings and empty hotelDetails for multi-property hostels.",
+
+  "steps": {
+    "1_get_current_user": {
+      "status": "PASS",
+      "details": "User verified: f1414445-f368-47f7-8fcb-d1e10321f3ef, email n04-run19b@toqui-test.local"
+    },
+    "2_create_trip": {
+      "status": "PASS",
+      "details": "Trip 'Booking Gauntlet Trip' created: 090fda64-0020-4ff8-b02d-60a1eabd8400"
+    },
+    "3_ingest_flight": {
+      "status": "PASS",
+      "booking_id": "6242ed92-3fe9-4371-a0a1-34357ba60648",
+      "type": "BOOKING_TYPE_FLIGHT",
+      "confirmation_code": "DL7829X",
+      "details": "Flight DL 472 JFK->BCN parsed correctly. Passenger, seats, terminals, fare all extracted."
+    },
+    "4_ingest_hotel": {
+      "status": "PASS",
+      "booking_id": "4e544280-11ed-4d7a-b2f7-efbede40b7c4",
+      "type": "BOOKING_TYPE_HOTEL",
+      "confirmation_code": "HAB-2026-9831",
+      "details": "Hotel Arts Barcelona parsed correctly. Room type, dates, address, phone all in hotelDetails."
+    },
+    "5_ingest_activity": {
+      "status": "PASS_WITH_NOTE",
+      "booking_id": "a27eb492-64a1-4bf4-9fd3-4b9cda631ccb",
+      "type_requested": "BOOKING_TYPE_ACTIVITY",
+      "type_stored": "BOOKING_TYPE_TOUR",
+      "confirmation_code": "SF-44921",
+      "details": "Sagrada Familia tour parsed correctly. NOTE: Submitted as BOOKING_TYPE_ACTIVITY but stored as BOOKING_TYPE_TOUR — AI reclassified the user-specified type."
+    },
+    "6_ingest_car_rental": {
+      "status": "PASS",
+      "booking_id": "373f729d-f826-4a75-8026-1d469ade1cdc",
+      "type": "BOOKING_TYPE_CAR_RENTAL",
+      "confirmation_code": "R-8847321",
+      "details": "Hertz BCN->LIS car rental parsed correctly. Pickup/dropoff locations, times, car type all extracted."
+    },
+    "7_ingest_hostel": {
+      "status": "PASS_WITH_NOTE",
+      "booking_id": "25aea584-df28-46ce-b68a-75168012533b",
+      "type": "BOOKING_TYPE_HOTEL",
+      "confirmation_code": "VBH-20260601",
+      "details": "3-property Vietnam hostel chain parsed correctly into detailsJson.properties array. NOTE: hotelDetails proto field is empty {} — multi-property bookings don't map to the single-property hotelDetails schema."
+    },
+    "8_ingest_ryokan": {
+      "status": "PASS",
+      "booking_id": "e48b42af-9569-4c5f-b6a4-ef45187b47ce",
+      "type": "BOOKING_TYPE_HOTEL",
+      "confirmation_code": "RYO-K-5521",
+      "details": "Gion Nanba Ryokan parsed correctly. Room type, dates, address, phone all in hotelDetails. First attempt failed with 'AI service encountered an error' (transient), retry succeeded."
+    },
+    "9_ingest_tour": {
+      "status": "PASS",
+      "booking_id": "23855821-f5cb-441f-bfcc-461ef92218aa",
+      "type": "BOOKING_TYPE_TOUR",
+      "confirmation_code": "OAXF-2026-112",
+      "details": "Oaxaca food tour parsed correctly. Tour operator, guide name, meeting point, stops, date, duration all in tourDetails."
+    },
+    "10_list_bookings": {
+      "status": "PASS",
+      "details": "ListBookings returned all 7 bookings. Types: 1 FLIGHT, 3 HOTEL, 1 CAR_RENTAL, 2 TOUR (activity reclassified as tour)."
+    },
+    "11_extract_flight_terminal": {
+      "status": "PASS",
+      "question": "What terminal and what time does my outbound flight depart?",
+      "answer": "Terminal 4 at 6:45 PM EDT on Monday, June 15, 2026",
+      "accuracy": "EXACT_MATCH",
+      "details": "Terminal 4 and 6:45 PM EDT both match artifact exactly."
+    },
+    "12_extract_hotel_cancellation": {
+      "status": "PASS",
+      "question": "What is the cancellation policy?",
+      "answer": "Free cancellation until June 12, 2026 (11:59 PM CEST). After: first night EUR 289. No-show: full stay.",
+      "accuracy": "EXACT_MATCH",
+      "details": "All three cancellation tiers (free/late/no-show) extracted correctly with dates and amounts."
+    },
+    "13_extract_activity_meeting_point": {
+      "status": "PASS",
+      "question": "What is the meeting point and what should I bring?",
+      "answer": "Nativity Facade entrance (Carrer de la Marina side). Bring: photo ID, walking shoes, sunscreen, water bottle, confirmation, modest clothing.",
+      "accuracy": "EXACT_MATCH",
+      "details": "Meeting point address, guide identification sign, all 5 items to bring, plus dress code — all extracted."
+    },
+    "14_extract_car_insurance": {
+      "status": "PASS",
+      "question": "What insurance is included and what's the fuel policy?",
+      "answer": "Super CDW (zero excess) + Theft Protection. Fuel: Full-to-Full.",
+      "accuracy": "EXACT_MATCH",
+      "details": "Both insurance types and fuel policy match artifact exactly."
+    },
+    "15_extract_hostel_checkin": {
+      "status": "PASS",
+      "question": "What time is check-in at the Hanoi hostel?",
+      "answer": "2:00 PM - 10:00 PM on Monday, June 1, 2026",
+      "accuracy": "EXACT_MATCH",
+      "details": "Correctly identified Hanoi hostel from multi-property booking and extracted check-in window."
+    },
+    "16_extract_ryokan_meals": {
+      "status": "PASS",
+      "question": "What meals are included and what time is dinner?",
+      "answer": "Kaiseki Dinner (in-room, 6:00 PM or 6:30 PM) + Traditional Japanese breakfast (dining room, 7:30-9:00 AM).",
+      "accuracy": "EXACT_MATCH",
+      "details": "Both meals, times, locations, and 72-hour dietary notice requirement all extracted correctly."
+    },
+    "17_extract_tour_tastings": {
+      "status": "PASS",
+      "question": "How many food tastings are included and what dietary accommodations are available?",
+      "answer": "12 tastings across 3 markets and 4 street food stands. Accommodations: vegetarian, gluten-free, vegan substitutions (48-hour notice).",
+      "accuracy": "EXACT_MATCH",
+      "details": "Tasting count, market count, dietary options, and notice period all match artifact."
+    },
+    "18_negative_test_hallucination": {
+      "status": "PASS",
+      "question": "What is the hotel's wifi password?",
+      "booking_type": "BOOKING_TYPE_FLIGHT",
+      "answer": "Correctly stated this is a flight confirmation and does not contain hotel/wifi information.",
+      "hallucinated": false,
+      "details": "AI did NOT hallucinate a wifi password. Correctly identified the booking type mismatch and refused to fabricate an answer."
+    }
+  },
+
+  "bugs": [
+    {
+      "id": "N04-B1",
+      "severity": "P2",
+      "category": "data_integrity",
+      "title": "IngestBooking reclassifies user-specified booking type",
+      "description": "When submitting activity-confirmation.txt with type=BOOKING_TYPE_ACTIVITY, the backend stored it as BOOKING_TYPE_TOUR. The AI parsing layer overrides the user's explicit type classification. While the reclassification to TOUR is arguably more accurate for a guided tour, the user's intent should be respected or the API should not accept a type parameter if it will be overridden.",
+      "repro": "IngestBooking with type=BOOKING_TYPE_ACTIVITY and raw_text containing a guided tour confirmation",
+      "expected": "Booking stored as BOOKING_TYPE_ACTIVITY (user's specified type)",
+      "actual": "Booking stored as BOOKING_TYPE_TOUR (AI reclassified)"
+    },
+    {
+      "id": "N04-B2",
+      "severity": "P2",
+      "category": "data_integrity",
+      "title": "Multi-property hostel booking has empty hotelDetails proto field",
+      "description": "The Hostelworld 3-property booking was correctly parsed into detailsJson.properties[] array, but the typed hotelDetails proto field is empty {}. This means clients relying on the typed proto field get no data, while clients parsing detailsJson get correct data. Single-property bookings (Hotel Arts, Ryokan) correctly populate hotelDetails.",
+      "repro": "IngestBooking with type=BOOKING_TYPE_HOTEL and raw_text containing a multi-stop hostel booking",
+      "expected": "hotelDetails populated (at minimum with first property data) or a repeated field for multiple properties",
+      "actual": "hotelDetails is empty {}, all data only in detailsJson"
+    },
+    {
+      "id": "N04-B3",
+      "severity": "P2",
+      "category": "reliability",
+      "title": "Transient AI service error on ryokan ingestion",
+      "description": "First attempt to ingest the ryokan booking returned 'Code: Unavailable, Message: AI service encountered an error'. Retry succeeded. This was likely a transient AI provider error (rate limit or timeout). No retry logic appears to be present in the ingestion path.",
+      "repro": "IngestBooking with multiple bookings in rapid succession (5+ ingestions within 60 seconds)",
+      "expected": "Automatic retry on transient AI errors",
+      "actual": "Error returned to client on first transient failure"
+    }
+  ],
+
+  "ux_issues": [],
+
+  "ai_behavior": [
+    {
+      "category": "extraction_accuracy",
+      "rating": "excellent",
+      "details": "All 7 ExtractBookingField queries returned factually accurate answers. The AI correctly cross-referenced raw booking text to answer specific questions. Multi-property booking queries (Hanoi hostel from 3-property chain) were correctly scoped."
+    },
+    {
+      "category": "hallucination_resistance",
+      "rating": "excellent",
+      "details": "Negative test (asking flight booking about hotel wifi password) correctly identified the type mismatch and refused to fabricate an answer. No hallucinated data in any extraction."
+    },
+    {
+      "category": "structured_field_extraction",
+      "rating": "good",
+      "details": "extractedFields JSON in responses contained well-structured key-value pairs with relevant fields. However, array formatting is inconsistent — some use JSON arrays, others use space-separated bracket notation like '[item1 item2]'."
+    }
+  ],
+
+  "tool_failures": [],
+
+  "scores": {
+    "booking_ingestion": 5,
+    "field_extraction_accuracy": 5,
+    "hallucination_resistance": 5,
+    "multi_property_handling": 4,
+    "type_classification": 3,
+    "overall": 4.5
+  },
+
+  "booking_ids": {
+    "flight": "6242ed92-3fe9-4371-a0a1-34357ba60648",
+    "hotel": "4e544280-11ed-4d7a-b2f7-efbede40b7c4",
+    "activity_as_tour": "a27eb492-64a1-4bf4-9fd3-4b9cda631ccb",
+    "car_rental": "373f729d-f826-4a75-8026-1d469ade1cdc",
+    "hostel": "25aea584-df28-46ce-b68a-75168012533b",
+    "ryokan": "e48b42af-9569-4c5f-b6a4-ef45187b47ce",
+    "tour": "23855821-f5cb-441f-bfcc-461ef92218aa"
+  }
+}

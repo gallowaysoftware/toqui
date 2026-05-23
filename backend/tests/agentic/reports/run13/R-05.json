@@ -1,0 +1,52 @@
+{
+  "persona_id": "R-05",
+  "persona_name": "Alex and Jordan — Craft Beer and Hiking Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Czech Republic and Iceland",
+  "run_id": "run-13",
+  "completed_steps": ["auth", "selection_cz", "planning_cz", "selection_is", "planning_is", "activate_both", "companion_cz", "sharing", "chat_history", "usage", "complete_both", "final_state"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "SendMessage stream error: no response from AI",
+      "description": "During Iceland planning mode, the first attempt to create a 7-day itinerary returned an error: 'no response from AI — please try again'. The AI had started generating text ('Alright, this sounds like an absolutely epic week! I've put together a full itinerary...') but the stream terminated with an error before any tool calls were made. Retry succeeded on the second attempt.",
+      "steps_to_reproduce": "Send a planning mode message asking for a 7-day day-by-day Iceland itinerary with specific day assignments. This was the 3rd message in the Iceland session.",
+      "expected": "AI completes the response with create_itinerary_items tool call",
+      "actual": "Stream terminated with error after partial text generation",
+      "api_command": "buf curl SendMessage with content about 7-day Iceland itinerary"
+    },
+    {
+      "severity": "P2",
+      "title": "create_trip called twice in Iceland selection",
+      "description": "When creating the Iceland trip in selection mode, the tool_calls list shows create_trip was called twice. Only one trip was created (verified via ListTrips), so it appears the second call was a no-op or deduped. However, this may indicate the AI attempted to create two trips.",
+      "expected": "create_trip called exactly once",
+      "actual": "create_trip called twice per toolName extraction"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI exposed the internal trip ID to the user in its response text ('Trip ID: 629389e6-eae5-435b-aab2-78ddfe24af29'). Users should not see UUIDs in conversational responses.",
+      "severity": "P2",
+      "suggestion": "Strip or suppress trip IDs from user-facing AI response text"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode created itinerary items via create_itinerary_items tool call, but the items do not appear in the final itinerary (GetItinerary still shows 4 original items). The tool was called but the result may not have persisted correctly, or the items were created on a day that already existed and the count stayed the same.",
+      "context": "Companion mode message about evening dining in Vinohrady triggered create_itinerary_items. Tool call was present in stream but no new items visible in GetItinerary.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The extended location profiles (CZ and IS) performed excellently. The Czech beer expert 'Pavel' demonstrated deep knowledge of specific breweries (Strahov Monastery, Zly Casy, U Medvidku, Pilsner Urquell in Pilsen) and distinguished between historic and craft scenes. The Iceland hiking expert 'Bjorn' provided detailed Laugavegur Trail information including exact distances (55km), hut system details (FI booking, facilities), season windows (mid-June to early September), and river crossing warnings. Both extended profiles loaded correctly with niche theme depth. The two-trip workflow worked cleanly with no cross-contamination. One transient AI error (no response from AI) on itinerary creation required a retry, which is a minor reliability concern."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "multi_trip", "expert_handoff", "itinerary_creation", "trip_sharing", "chat_history", "usage_tracking", "trip_completion", "extended_profiles_CZ", "extended_profiles_IS", "extended_themes_craft_beer", "extended_themes_hiking"]
+}

@@ -1,0 +1,49 @@
+{
+  "persona_id": "N-01",
+  "persona_name": "Jake — Companion Power User",
+  "status": "COMPLETED",
+  "trip_destination": "Thailand",
+  "completed_steps": ["auth", "create_trip", "activate", "companion", "chat_history", "sharing", "usage", "complete", "final_state"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Unsolicited itinerary creation in companion mode",
+      "description": "The AI called create_itinerary_items in companion mode without the user explicitly requesting it. This happened on 2 out of 5 companion messages (Message 2: food recommendations, Message 5: evening activity recommendations). The persona spec requires that companion mode be reactive and NOT proactively create itinerary items. The AI should only create itinerary items when the user explicitly asks (e.g., 'add that to my itinerary').",
+      "steps_to_reproduce": "1. Create trip with status ACTIVE. 2. Send companion message: 'I'm hungry, what's near Khao San Road?' 3. Observe create_itinerary_items tool call and itineraryUpdate stream event.",
+      "expected": "AI recommends food options without creating itinerary items. No itineraryUpdate stream events unless user explicitly requests adding to itinerary.",
+      "actual": "AI called create_itinerary_items and created 2 itinerary items (Dinner at Thip Samai, Street Food on Rambuttri Road) without being asked. Same behavior on Message 5 (evening recommendations) creating 2 more items.",
+      "api_command": "buf curl SendMessage with CHAT_MODE_COMPANION"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "Message 5 (evening recommendation) final fullContent was only 13 words ('I've added both to your itinerary for tonight! Enjoy the sights and tastes!') because the AI's actual recommendation text was emitted before the tool call, then the post-tool-loop continuation only contained the confirmation. The initial recommendation text with Flower Market and Chinatown details was lost from the fullContent. This means the chat history would only show the short confirmation, not the actual recommendations.",
+      "severity": "P2",
+      "suggestion": "Ensure the fullContent in messageComplete includes all text from the response, including text emitted before tool calls."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode is not respecting the 'only add to itinerary on explicit request' constraint. The system prompt for companion mode should instruct the AI to NOT call create_itinerary_items unless the user explicitly says something like 'add to my itinerary', 'put that in my plan', etc.",
+      "context": "Occurred on Messages 2 and 5. Messages 1, 3, and 4 correctly did NOT create itinerary items. The pattern suggests food/activity recommendations trigger proactive itinerary creation while informational queries (arrival advice, navigation, tipping) do not.",
+      "severity": "P1"
+    },
+    {
+      "issue": "Geographic reasoning was good but did not mention Wat Saket (Golden Mount), which is the most likely 'big gold temple' near Khao San Road. The AI suggested Wat Pho and Grand Palace/Wat Phra Kaew, which are reasonable guesses but Wat Saket is closer to Khao San Road and more distinctively 'gold'.",
+      "context": "Message 3: 'I think I'm lost, I'm near a big gold temple'. The AI identified the general Rattanakosin area correctly.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI provided genuinely useful, concise, Thailand-specific advice across all 6 companion messages. Food recommendations were concrete (Thip Samai, Rambuttri Road, Yaowarat), tipping advice included baht amounts, and geographic reasoning was reasonable. However, the unsolicited itinerary creation in companion mode is a significant behavioral issue — a traveler on the ground asking 'what's nearby?' doesn't want their itinerary auto-modified. All responses were under 200 words, which is good for mobile companion use. The AI correctly created itinerary items when explicitly asked (Message 6)."
+  },
+  "feature_coverage": ["companion", "chat_history", "sharing", "usage", "itinerary"]
+}

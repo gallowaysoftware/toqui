@@ -1,0 +1,160 @@
+{
+  "persona_id": "N-11",
+  "persona_name": "Structural — Full Lifecycle CRUD Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Kyoto)",
+  "completed_steps": [
+    "auth",
+    "create_trip",
+    "verify_create",
+    "update_title_only",
+    "update_description_only",
+    "update_status_active",
+    "send_planning_message",
+    "ingest_booking",
+    "verify_booking",
+    "get_itinerary",
+    "enable_sharing",
+    "verify_shared_view",
+    "update_status_completed",
+    "list_trips_verify",
+    "disable_sharing",
+    "verify_unshared",
+    "delete_trip",
+    "verify_deletion"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Flight booking arrivalLocation shows return leg destination instead of outbound",
+      "description": "When ingesting a round-trip flight confirmation (JFK->BCN outbound, BCN->JFK return), the arrivalLocation field on the booking was set to 'New York (JFK)' instead of 'Barcelona (BCN)'. The flightDetails correctly shows arrivalAirport='BCN', but the top-level arrivalLocation field appears to reflect the return leg arrival, not the outbound leg.",
+      "expected": "arrivalLocation should be 'Barcelona (BCN)' for the outbound flight",
+      "actual": "arrivalLocation was 'New York (JFK)' (the return flight destination)",
+      "api_command": "IngestBooking with flight-confirmation.txt"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI called create_itinerary_items twice with identical items in a single turn",
+      "context": "During the planning message (step 6), the AI successfully created 2 itinerary items, then called create_itinerary_items again with the exact same items. The backend correctly returned 'already_exists' with skipped_count=2, so no data duplication occurred, but this is a wasted tool call.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 4,
+    "companion_mode_score": 0,
+    "would_use_again": true,
+    "narrative": "All 14 lifecycle steps passed. COALESCE partial updates work correctly (title-only and description-only updates preserve other fields). Status transitions preserve all fields. Share token lifecycle works (enable, verify public access, disable, verify 404). Cascade deletion correctly removes trip, bookings, and itinerary. The only bugs found were a minor arrivalLocation mapping issue on round-trip flights and a duplicate tool call from the AI."
+  },
+  "feature_coverage": [
+    "CreateTrip",
+    "GetTrip",
+    "UpdateTrip (partial - title only)",
+    "UpdateTrip (partial - description only)",
+    "UpdateTrip (status to ACTIVE)",
+    "UpdateTrip (status to COMPLETED)",
+    "SendMessage (CHAT_MODE_PLANNING)",
+    "create_itinerary_items tool",
+    "IngestBooking (flight)",
+    "ListBookings",
+    "GetItinerary",
+    "trip sharing enable",
+    "shared trip public view",
+    "trip sharing disable",
+    "DeleteTrip",
+    "cascade deletion (bookings, itinerary)",
+    "ListTrips"
+  ],
+  "step_log": [
+    {
+      "step": 1,
+      "name": "CreateTrip",
+      "result": "PASS",
+      "details": "Trip created with ID 64fd882e-e82b-4888-ac2d-6aabeb081bb9. Title, description, dates, destination all set correctly."
+    },
+    {
+      "step": 2,
+      "name": "GetTrip (verify create)",
+      "result": "PASS",
+      "details": "Title='Lifecycle Test — Kyoto Spring', description='Cherry blossom season trip for lifecycle validation', status=TRIP_STATUS_PLANNING, startDate=2026-04-15, endDate=2026-04-25, destinationCountry=JP"
+    },
+    {
+      "step": 3,
+      "name": "UpdateTrip title only (COALESCE test)",
+      "result": "PASS",
+      "details": "Title updated to 'Lifecycle Test — Kyoto Autumn'. Description preserved as 'Cherry blossom season trip for lifecycle validation'. Dates preserved. COALESCE working correctly."
+    },
+    {
+      "step": 4,
+      "name": "UpdateTrip description only (COALESCE test)",
+      "result": "PASS",
+      "details": "Description updated to 'Updated: autumn foliage trip.' Title preserved as 'Lifecycle Test — Kyoto Autumn'. Dates preserved. COALESCE working correctly."
+    },
+    {
+      "step": 5,
+      "name": "UpdateTrip status to ACTIVE",
+      "result": "PASS",
+      "details": "Status changed to TRIP_STATUS_ACTIVE. Title='Lifecycle Test — Kyoto Autumn', description='Updated: autumn foliage trip.' preserved through status change."
+    },
+    {
+      "step": 6,
+      "name": "Send planning message",
+      "result": "PASS",
+      "details": "AI called create_itinerary_items, created 2 items: Kinkaku-ji (Day 1) and Fushimi Inari (Day 2). Note: AI made a duplicate tool call which backend handled gracefully."
+    },
+    {
+      "step": 7,
+      "name": "IngestBooking",
+      "result": "PASS",
+      "details": "Flight booking ingested. ID=3c67930f-738d-4574-903c-aff6b42a2e4a, type=FLIGHT, confirmationCode=DL7829X, provider=Delta Air Lines. Minor issue: arrivalLocation shows 'New York (JFK)' instead of 'Barcelona (BCN)'."
+    },
+    {
+      "step": 8,
+      "name": "GetItinerary",
+      "result": "PASS",
+      "details": "2 itinerary items across 2 days confirmed. Day 1: Kinkaku-ji Temple, Day 2: Fushimi Inari Shrine."
+    },
+    {
+      "step": 9,
+      "name": "Enable sharing + verify public access",
+      "result": "PASS",
+      "details": "Share token 'bDY2nbW8JecIYuNIJ4yMMG' generated. Public endpoint returns trip with correct title 'Lifecycle Test — Kyoto Autumn' and description 'Updated: autumn foliage trip.' Itinerary included in shared view."
+    },
+    {
+      "step": 10,
+      "name": "UpdateTrip status to COMPLETED",
+      "result": "PASS",
+      "details": "Status changed to TRIP_STATUS_COMPLETED. Title='Lifecycle Test — Kyoto Autumn', description='Updated: autumn foliage trip.' preserved through second status transition."
+    },
+    {
+      "step": 11,
+      "name": "ListTrips",
+      "result": "PASS",
+      "details": "Trip appears in list with status=TRIP_STATUS_COMPLETED, title='Lifecycle Test — Kyoto Autumn'. totalCount=1."
+    },
+    {
+      "step": 12,
+      "name": "Disable sharing + verify",
+      "result": "PASS",
+      "details": "Unshare returned OK. Public endpoint now returns HTTP 404 'not found'. Share token correctly invalidated."
+    },
+    {
+      "step": 13,
+      "name": "DeleteTrip",
+      "result": "PASS",
+      "details": "DeleteTrip returned empty success response."
+    },
+    {
+      "step": 14,
+      "name": "Verify deletion (cascade)",
+      "result": "PASS",
+      "details": "GetTrip returns 'not_found'. ListTrips returns empty (pagination only). ListBookings returns empty {}. GetItinerary returns 'not_found'. Full cascade deletion confirmed."
+    }
+  ]
+}

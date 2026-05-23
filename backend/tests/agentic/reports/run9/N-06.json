@@ -1,0 +1,99 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "Gemini primary model 404 — gemini-3-flash not found",
+      "description": "The primary AI provider (Gemini) fails with 404 for model 'gemini-3-flash' on every request. All responses fall through to the Claude fallback. This caused one complete message failure when Claude was also rate-limited (429). The error message indicates the model name 'gemini-3-flash' is incorrect or not available in the toqui-staging project.",
+      "expected": "Primary Gemini model should be available and respond successfully",
+      "actual": "Every request returns 404 from Gemini: 'Publisher Model projects/toqui-staging/locations/us-central1/publishers/google/models/gemini-3-flash was not found'",
+      "api_command": "SendMessage (any mode)"
+    },
+    {
+      "severity": "P2",
+      "title": "Shared trip view returns empty JSON",
+      "description": "GET /shared/{token} returns '{}' instead of trip data. The share token was generated successfully, but the public view endpoint returns no content.",
+      "expected": "Shared trip view should return trip title, description, itinerary, etc.",
+      "actual": "Returns empty JSON object '{}'",
+      "api_command": "GET /shared/FRsQWuNGr6GW6pcfzz2ame"
+    },
+    {
+      "severity": "P2",
+      "title": "itineraryUpdate stream event contains 0 items",
+      "description": "When create_itinerary_items tool creates 28 items successfully (confirmed by toolResult with created_count:28), the itineraryUpdate stream event sent to the frontend contains 0 items. The items are persisted in the database correctly (verified via GetItinerary), but the real-time stream event is empty.",
+      "expected": "itineraryUpdate event should contain the created items for frontend real-time update",
+      "actual": "itineraryUpdate event has items:[] despite 28 items being created"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "First SendMessage request for full 3-week itinerary timed out (1m30s). Had to retry with a smaller scope (8 days instead of 21). Large itinerary generation may need longer timeouts or chunked generation.",
+      "severity": "P2",
+      "suggestion": "Increase turn timeout for itinerary generation or automatically chunk large requests"
+    },
+    {
+      "description": "Companion mode response for 'what can I eat right now for under 100 rupees' was very brief (318 chars) and didn't list specific dishes or prices - just said 'go to Johari Bazaar'. Planning mode gave much richer food content for the same city.",
+      "severity": "P2",
+      "suggestion": "Companion mode should still provide 2-3 specific budget-appropriate food options with prices, especially when the user gives a specific budget constraint"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Itinerary Day 3 (Delhi) has Humayun's Tomb ($7) + Qutub Minar ($7) = $14 in entrance fees alone, exceeding the $10/day total budget. No budget warning was given for this day.",
+      "context": "create_itinerary_items tool call, Day 3 items",
+      "severity": "P1"
+    },
+    {
+      "issue": "Itinerary Day 5 (Agra) has Taj Mahal ($16) + Mehtab Bagh ($3.50) + Fatehpur Sikri ($7) + bus ($1.20) = ~$28 in activities alone before food and accommodation. The AI later acknowledged this totals ~$31 but dismissed it as 'averaged across your whole trip it works out' rather than treating it as a serious budget violation requiring restructuring.",
+      "context": "Day 5 itinerary + follow-up Agra budget question",
+      "severity": "P1"
+    },
+    {
+      "issue": "Itinerary Day 8 (Jaipur) suggests Chokhi Dhani at $10-12 for a single dinner, which equals or exceeds the entire daily budget. While an alternative was mentioned, leading with a budget-busting option undermines the $10/day constraint.",
+      "context": "create_itinerary_items Day 8, item 3",
+      "severity": "P2"
+    },
+    {
+      "issue": "Multiple days in the itinerary have entrance fees alone exceeding $10. Days 2, 3, 5, 6, 7 all have paid attractions that when combined with accommodation and food would far exceed $10/day. The AI should have structured the itinerary with more free days and fewer paid attractions per day to stay within budget.",
+      "context": "Overall itinerary budget compliance",
+      "severity": "P1"
+    },
+    {
+      "issue": "Taj Mahal budget was correctly flagged as exceeding daily budget (good), and workarounds were suggested (Mehtab Bagh for free view). However, the AI also suggested a composite ticket (Taj + Agra Fort) at 1350 INR without acknowledging this is still over budget.",
+      "context": "Agra itinerary and follow-up budget discussion",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "web_search",
+      "input": "India budget travel 2026 Delhi Agra Jaipur Varanasi $10 per day backpacker tips",
+      "error": "Web search not configured in this environment — returned no results"
+    },
+    {
+      "tool": "SendMessage",
+      "input": "Full 3-week itinerary request",
+      "error": "turn timeout: AI provider did not respond within 1m30s"
+    },
+    {
+      "tool": "SendMessage",
+      "input": "Agra free activities + Taj budget question (first attempt)",
+      "error": "Both providers failed: Gemini 404 (gemini-3-flash not found) + Claude 429 rate limit"
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 3,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "Trip creation was excellent — the AI immediately acknowledged the $10/day constraint and provided a realistic breakdown. Food, accommodation, and transport recommendations were all budget-appropriate and culturally accurate (vegetarian awareness, sleeper class trains, Paharganj dorms). However, budget enforcement in the itinerary was weak: multiple days had entrance fees alone exceeding the daily budget with no warning. The AI treated $10/day more as a vague guideline than a hard constraint. Companion mode was functional but too brief. The Gemini model 404 forced all requests through Claude fallback, causing one complete failure due to rate limiting."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "itinerary", "trip_lifecycle"]
+}

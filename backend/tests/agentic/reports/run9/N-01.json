@@ -1,0 +1,154 @@
+{
+  "persona": "N-01",
+  "name": "Jake — Companion Mode Power User",
+  "run": 9,
+  "timestamp": "2026-04-09T14:44:10Z",
+  "trip": {
+    "id": "f3b4df8d-86be-4506-a778-bdd87ceac6c6",
+    "title": "Thailand Adventure",
+    "destination": "Thailand",
+    "status": "active",
+    "mode": "companion"
+  },
+  "session_id": "7631ef9a-201c-49b0-abca-c8b4fbfd0b59",
+  "messages_sent": 6,
+  "bugs": [
+    {
+      "id": "N01-B1",
+      "severity": "P1",
+      "title": "create_itinerary_items tool rejected explicit user request in companion mode",
+      "description": "When user explicitly said 'add that temple visit to my itinerary for tomorrow morning', the AI correctly called create_itinerary_items, but the tool returned {\"status\":\"not_needed\",\"message\":\"The user's message is an informational query...\"} — incorrectly classifying an explicit itinerary modification request as informational. The itinerary item was NOT persisted. The AI told the user 'Done! Wat Bowonniwet Vihara is saved' but nothing was actually saved.",
+      "steps_to_reproduce": "1. Create trip with TRIP_STATUS_ACTIVE. 2. Send 5 companion messages discussing a temple. 3. Send 'actually, add that temple visit to my itinerary for tomorrow morning'. 4. Observe tool_result has status=not_needed. 5. Check GetItinerary — empty.",
+      "expected": "create_itinerary_items should persist the item when explicitly requested by the user",
+      "actual": "Tool rejected the call with not_needed status despite explicit user request"
+    },
+    {
+      "id": "N01-B2",
+      "severity": "P2",
+      "title": "AI attempted unsolicited create_itinerary_items on first companion message",
+      "description": "On message 1 ('just landed at BKK, what do I do first?'), the AI proactively called create_itinerary_items with 3 items (airport arrival, check-in, first meal). The tool correctly rejected this with not_needed status. While the guardrail worked, the AI should not have attempted to create itinerary items for an informational query in companion mode. This is a behavioral regression — companion mode should be reactive, not planning-oriented.",
+      "steps_to_reproduce": "1. Create trip with TRIP_STATUS_ACTIVE. 2. Send 'just landed at BKK, what do I do first?' in CHAT_MODE_COMPANION. 3. Observe tool_call for create_itinerary_items in the stream.",
+      "expected": "AI should not call create_itinerary_items for informational queries in companion mode",
+      "actual": "AI called create_itinerary_items with 3 items; tool guardrail prevented persistence"
+    },
+    {
+      "id": "N01-B3",
+      "severity": "P1",
+      "title": "AI falsely confirms itinerary creation that never happened",
+      "description": "After the create_itinerary_items tool returned not_needed for message 6, the AI responded 'Done! Wat Bowonniwet Vihara is saved for tomorrow morning' — a false confirmation. The user believes the item was saved but GetItinerary returns empty. This is a trust-breaking UX issue.",
+      "steps_to_reproduce": "See N01-B1 steps. AI response says 'Done! ... is saved' but item does not exist in itinerary.",
+      "expected": "AI should acknowledge the tool failure or retry, not falsely confirm success",
+      "actual": "AI told user the item was saved when it was not"
+    }
+  ],
+  "ux_issues": [
+    {
+      "id": "N01-UX1",
+      "severity": "minor",
+      "title": "nearby_places tool fails without user location",
+      "description": "Messages 2 and 3 triggered nearby_places calls that failed with 'no_location' error since no user_location was provided. The AI recovered gracefully by using its knowledge, but the tool call added unnecessary latency."
+    }
+  ],
+  "ai_behavior": [
+    {
+      "id": "N01-AI1",
+      "quality": "excellent",
+      "title": "Concise companion responses",
+      "description": "All 6 responses were under 200 words (122, 148, 111, 140, 126, ~40 words). Companion mode feels snappy and mobile-friendly."
+    },
+    {
+      "id": "N01-AI2",
+      "quality": "excellent",
+      "title": "Specific food recommendations near Khao San Road",
+      "description": "Message 2 gave 4 specific restaurants with addresses, prices in THB, and dish recommendations. Not generic at all — exactly what a traveler needs."
+    },
+    {
+      "id": "N01-AI3",
+      "quality": "good",
+      "title": "Geographic reasoning for gold temple",
+      "description": "AI identified Wat Bowonniwet Vihara as the likely temple near Khao San Road and provided walking directions. The persona expected Wat Saket or Grand Palace, but Wat Bowonniwet is actually a more reasonable guess given proximity. AI also asked a follow-up question to pinpoint location."
+    },
+    {
+      "id": "N01-AI4",
+      "quality": "excellent",
+      "title": "Thailand-specific tipping advice",
+      "description": "Message 4 covered street food, restaurants, taxis, massage, hotel staff with specific THB amounts. Mentioned the cultural context (face-saving culture). Not generic."
+    },
+    {
+      "id": "N01-AI5",
+      "quality": "excellent",
+      "title": "Age-appropriate evening recommendations",
+      "description": "Message 5 suggested riverside bars, Khao San bar-hopping, and Rot Fai Night Market — all appropriate for a solo 26-year-old. Included practical details (prices, distance, transport). Not patronizing."
+    },
+    {
+      "id": "N01-AI6",
+      "quality": "good",
+      "title": "No unsolicited itinerary creation in messages 2-5",
+      "description": "Messages 2-5 correctly avoided calling create_itinerary_items. Only message 1 had an unnecessary tool call attempt (caught by guardrail). GetItinerary confirmed 0 items after 5 messages."
+    }
+  ],
+  "tool_calls": [
+    {
+      "message": 1,
+      "tool": "create_itinerary_items",
+      "status": "rejected_by_guardrail",
+      "note": "AI should not have called this for an informational query in companion mode"
+    },
+    {
+      "message": 2,
+      "tool": "nearby_places",
+      "status": "error_no_location",
+      "note": "Expected — no user_location provided. AI recovered with knowledge-based response."
+    },
+    {
+      "message": 3,
+      "tool": "nearby_places",
+      "status": "error_no_location",
+      "note": "Same as message 2"
+    },
+    {
+      "message": 4,
+      "tool": null,
+      "status": "no_tool_called",
+      "note": "Correct — cultural knowledge, no tool needed"
+    },
+    {
+      "message": 5,
+      "tool": null,
+      "status": "no_tool_called",
+      "note": "Correct — recommendation from knowledge"
+    },
+    {
+      "message": 6,
+      "tool": "create_itinerary_items",
+      "status": "rejected_by_guardrail",
+      "note": "BUG: Tool rejected explicit user request. Item not persisted."
+    }
+  ],
+  "verification": {
+    "itinerary_empty_after_5_msgs": true,
+    "itinerary_empty_after_6_msgs": true,
+    "all_responses_under_200_words": true,
+    "word_counts": [122, 148, 111, 140, 126, 40],
+    "chat_history_count": 12,
+    "no_itinerary_update_events": true,
+    "explicit_itinerary_request_honored": false
+  },
+  "scores": {
+    "trip_creation": 5,
+    "itinerary_quality": 2,
+    "persona_handoff": null,
+    "booking_parsing": null,
+    "companion_mode": 4,
+    "overall": 3.5
+  },
+  "score_explanations": {
+    "trip_creation": "CreateTrip with TRIP_STATUS_ACTIVE worked correctly, immediately entering companion mode",
+    "itinerary_quality": "2/5 — The AI generated good itinerary content but the tool guardrail rejected both unsolicited AND explicit requests. Explicit itinerary creation is broken in companion mode.",
+    "persona_handoff": "Not tested in this persona",
+    "booking_parsing": "Not tested in this persona",
+    "companion_mode": "4/5 — Responses are concise, specific, actionable, and Thailand-aware. Docked 1 point for the message 1 unsolicited tool call attempt and the false confirmation in message 6.",
+    "overall": "3.5/5 — Excellent AI response quality across all 6 messages. The P1 bug (create_itinerary_items rejecting explicit requests in companion mode + false confirmation) significantly impacts the user experience. The companion conversational quality is top-tier."
+  },
+  "summary": "Companion mode conversational quality is excellent — all responses under 200 words, Thailand-specific, actionable, with real restaurant names and prices. Two P1 bugs found: (1) create_itinerary_items tool rejects explicit user requests in companion mode, returning not_needed status even for 'add that temple visit to my itinerary', and (2) the AI falsely confirms the item was saved when it was not. One P2: AI attempted unsolicited itinerary creation on the first companion message (caught by guardrail). The create_itinerary_items guardrail appears to be a blunt instrument that rejects ALL calls in companion mode regardless of user intent."
+}

@@ -1,0 +1,44 @@
+{
+  "persona_id": "N-06",
+  "persona_name": "Raj — The Ultra-Budget India Backpacker",
+  "status": "COMPLETED",
+  "trip_destination": "India",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "AI only created itinerary for 9 days (week 1 + some food items) out of the requested 21-day trip. The user asked for a full 3-week day-by-day itinerary but received only the first 7 days plus 2 additional food days. Weeks 2-3 (Varanasi, Rishikesh) were never planned in the itinerary.",
+      "severity": "P2",
+      "suggestion": "The AI should either create all 21 days in one tool call or explicitly state it will continue in the next message and then follow through proactively."
+    },
+    {
+      "description": "AI response after food tool call said 'I appreciate the reminder! However, I did already add those...' when the items were actually just created in that same turn. This is a confusing UX where the AI describes items as previously existing when they were just generated.",
+      "severity": "P2",
+      "suggestion": "The AI should say 'I just added these to your itinerary' rather than implying they existed before."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Itinerary only covers 9 of 21 requested days. Varanasi (4 days) and Rishikesh (3 days) were never added to the itinerary despite being core parts of the trip.",
+      "context": "User asked for 'day-by-day itinerary for the full 3 weeks' but only received days 1-9. The AI asked if user wanted to continue but never followed through since user moved to other questions.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Accommodation recommendation for Delhi was generic rather than specific. AI mentioned 'Zostel' and 'Joey's Hostel' by name but did not provide specific INR prices for dorm beds (e.g., 300-500 INR). Instead gave a Booking.com affiliate link.",
+      "context": "User asked for dorms under $5/night in Delhi. AI correctly identified Paharganj area and hostel names but lacked specific price breakdowns in INR.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 3,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated strong budget awareness throughout — it correctly flagged the Taj Mahal at ~$13-14 as exceeding the $10/day budget, recommended Sleeper and Unreserved train classes (not AC), gave accurate INR food prices (kachori 20-40 INR, thali 100-200 INR), and correctly identified Varanasi as overwhelmingly vegetarian. All food recommendations were vegetarian-appropriate. The main weakness was only building 9 of 21 requested itinerary days and not proactively continuing. Transport recommendations were excellent with specific train classes and realistic INR prices."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "history", "usage", "itinerary"]
+}

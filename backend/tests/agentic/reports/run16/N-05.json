@@ -1,0 +1,84 @@
+{
+  "persona_id": "N-05",
+  "persona_name": "Structural - Trip Sharing Lifecycle",
+  "status": "COMPLETED",
+  "run_id": "run-16",
+  "trip_destination": "Japan",
+  "completed_steps": [
+    "auth",
+    "selection",
+    "planning",
+    "booking_ingest",
+    "share_enable",
+    "share_access",
+    "share_disable",
+    "share_revocation_verify",
+    "share_re_enable",
+    "share_new_token_verify",
+    "share_old_token_still_invalid",
+    "activate",
+    "companion",
+    "chat_history",
+    "usage",
+    "complete",
+    "final_state_check"
+  ],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions returns messageCount=0 despite messages existing",
+      "description": "ListChatSessions for trip 9e8bd2a0 returned sessions with messageCount=0, but GetChatHistory for the same session returned 4 messages. The messageCount field is not being maintained accurately.",
+      "expected": "messageCount should reflect the actual number of messages in the session (at least 4)",
+      "actual": "messageCount=0",
+      "api_command": "POST /toqui.v1.ChatService/ListChatSessions {\"trip_id\": \"9e8bd2a0-f558-4580-974a-c41c92482694\"}"
+    },
+    {
+      "severity": "P2",
+      "title": "Planning mode chat messages missing from history",
+      "description": "Sent 3 SendMessage calls (selection, planning, companion) to the same session. GetChatHistory only returned 4 messages (2 pairs: selection + companion). The planning mode message and its AI response (which created 15 itinerary items) are missing from the persisted chat history. The itinerary items were created successfully, but the conversation that generated them was not saved.",
+      "expected": "6 messages in chat history (3 user + 3 assistant)",
+      "actual": "4 messages (selection user/assistant + companion user/assistant; planning pair missing)",
+      "api_command": "POST /toqui.v1.ChatService/GetChatHistory {\"trip_id\": \"...\", \"session_id\": \"7b1743df-03b9-4d3a-873c-3f399a246c52\"}"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count does not match number of messages sent",
+      "description": "Sent 3 SendMessage calls but /api/usage shows used=2. One message is not being counted. This may be related to the missing planning message in chat history -- if that message failed to persist, it may also not have been counted.",
+      "expected": "used=3",
+      "actual": "used=2"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 4,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The trip sharing lifecycle worked flawlessly: enable, access with full content (itinerary + bookings), disable with proper token revocation (404), re-enable with a new unique token, old token permanently invalid. No private data (JWT, user_id, email) leaked in the shared view. The shared view includes rich content -- 7 days of itinerary with 15 items and the ryokan booking. The only issues found were around chat history persistence (planning message missing) and an inaccurate messageCount field, both P2 severity."
+  },
+  "feature_coverage": [
+    "selection",
+    "planning",
+    "booking_ingest",
+    "trip_sharing_enable",
+    "trip_sharing_access",
+    "trip_sharing_disable",
+    "trip_sharing_revocation",
+    "trip_sharing_re_enable",
+    "trip_sharing_token_uniqueness",
+    "trip_sharing_old_token_invalidation",
+    "trip_sharing_content_completeness",
+    "trip_sharing_no_data_leak",
+    "trip_sharing_after_completion",
+    "activate",
+    "companion",
+    "chat_history",
+    "usage",
+    "complete"
+  ]
+}

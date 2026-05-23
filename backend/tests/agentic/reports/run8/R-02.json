@@ -1,0 +1,51 @@
+{
+  "persona_id": "R-02",
+  "persona_name": "The Chens — Family Costa Rica",
+  "status": "COMPLETED",
+  "trip_destination": "Costa Rica",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_check"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "ListChatSessions messageCount always 0",
+      "description": "ListChatSessions returns messageCount=0 for a session that has 14 messages persisted (verified via GetChatHistory). The message count field is not being updated when messages are added.",
+      "expected": "messageCount should reflect actual number of messages in the session (14)",
+      "actual": "messageCount returned as 0",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/ListChatSessions -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\": \"TRIP_ID\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "Usage count off by one",
+      "description": "Sent 7 messages total (1 selection + 4 planning + 2 companion) but /api/usage reports used=6. One message appears to not have been counted, possibly the selection mode message that triggered trip creation.",
+      "expected": "used=7 after 7 SendMessage calls",
+      "actual": "used=6",
+      "api_command": "curl -s http://localhost:8090/api/usage -H 'Authorization: Bearer TOKEN'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI created 29 itinerary items in a single tool call for days 1-7, then had to make a second tool call for days 8-10. This resulted in a long pause mid-stream while the first batch was processed. Breaking into smaller batches (e.g., 2-3 days at a time) would feel more responsive.",
+      "severity": "P2",
+      "suggestion": "Consider chunking large itinerary creation into smaller batches to improve perceived responsiveness."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "No expert persona handoff (suggest_expert) was triggered despite asking specifically about wildlife-watching for kids, which could have matched a nature/family expert.",
+      "context": "Asked about sloths, frogs, wildlife sanctuaries, and guided tours. The AI gave a comprehensive answer without handing off to an expert persona. This is acceptable behavior but a missed opportunity for showcasing the persona system.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 2,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Excellent family trip planning experience. The AI demonstrated strong context retention -- after trip creation with Costa Rica as the destination, it never asked where we were going. The 10-day itinerary was well-paced with realistic drive times (3h SJO to Arenal, 5-6h Arenal to Manuel Antonio). Safety responses were outstanding: specific hospital names, activity-by-activity water safety assessment for a non-swimming 6-year-old, and appropriate caution about night exploration. The Frog Pond Night Tour for Noah and sloth-watching recommendations for Emma showed excellent personalization. Companion mode responses were appropriately concise compared to planning mode. The only weakness was no expert persona handoff despite wildlife-focused questions."
+  },
+  "feature_coverage": ["selection", "planning", "itinerary_creation", "context_retention", "safety_questions", "driving_logistics", "wildlife_recommendations", "companion", "sharing", "chat_history", "usage", "trip_lifecycle"]
+}

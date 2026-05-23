@@ -1,0 +1,56 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives & Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Theme auto-classification only detects 'food' for multi-theme luxury trip",
+      "description": "The trip was auto-tagged with theme 'food' only, despite the conversation heavily covering luxury, romance, wellness/spa, and adventure (diving/snorkeling). The theme classification missed the dominant themes.",
+      "expected": "Themes should include at least 'luxury' and 'romance' given the anniversary context and ultra-luxury resort focus",
+      "actual": "themes: ['food']"
+    },
+    {
+      "severity": "P2",
+      "title": "Duplicate itinerary items for Day 1",
+      "description": "Day 1 has 3 items that are effectively the same event (arrival and check-in at Waldorf Astoria) created across multiple tool calls: 'Arrival & The Waldorf Estate', 'Check-in: Waldorf Astoria Ithaafushi', and 'Private Yacht Transfer & Arrival'. The AI called create_itinerary_items multiple times for Day 1 across different messages, resulting in duplicate content.",
+      "expected": "Day 1 should have a single arrival/check-in item, not three overlapping ones",
+      "actual": "3 near-duplicate items on Day 1"
+    },
+    {
+      "severity": "P2",
+      "title": "Step 2 streaming response appears truncated",
+      "description": "The initial selection mode message (trip creation) only produced 6 textDelta events before the stream ended. The AI response was cut off mid-sentence while describing Soneva Fushi. Subsequent planning messages streamed fully (29-69 text deltas each).",
+      "expected": "Complete AI response with full resort comparison",
+      "actual": "Only 6 textDelta chunks, response cut off after 'If you want a massive, multi-bedroom villa tucked'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The shared trip public view returned an empty JSON object {} on first request before unshare, then worked correctly on re-share. Possible race condition or caching issue with the share endpoint.",
+      "severity": "P2",
+      "suggestion": "Investigate whether share token generation has a brief window where the token is not yet queryable"
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI created a 3-resort Maldives itinerary (Waldorf, St. Regis, Soneva Fushi) when the user only asked for 5 nights in the Maldives at one resort. This is logistically complex and the AI acknowledged transit time concerns but proceeded anyway.",
+      "context": "The user mentioned Soneva Fushi/Waldorf Astoria/St. Regis as comparison options, not as a multi-resort hopping plan. The AI turned a comparison question into a 3-resort itinerary.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 5,
+    "would_use_again": true,
+    "narrative": "The AI consistently maintained ultra-luxury calibration throughout the entire interaction. It never once suggested a mid-range option, correctly identified and compared top-tier properties (Soneva Fushi, Waldorf Astoria Ithaafushi, St. Regis Vommuli), knew specific differentiators (Soneva's no-shoes policy and outdoor cinema, Waldorf's Terra treetop dining, St. Regis butler service and Whale Bar), and gave excellent Dubai dining advice including Tresind Studio's 2 Michelin stars and 60-day booking window. The expert handoff to 'Julian' (luxury specialist) was proactive and appropriate. Companion mode responses were notably more concise than planning mode, with practical tipping advice and dress codes. The only weakness was the itinerary becoming a 3-resort hop when a simpler plan was implied, and some Day 1 duplication from multiple tool calls."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "expert_handoff", "recommend_booking", "create_itinerary_items", "web_search"]
+}

@@ -1,0 +1,71 @@
+{
+  "persona_id": "N-02",
+  "persona_name": "Chat History Verifier",
+  "status": "COMPLETED",
+  "trip_destination": "Portugal",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "session_listing", "history_verification", "cross_session_isolation", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "Usage count off by one",
+      "description": "Sent 4 messages via SendMessage (1 selection + 2 planning + 1 companion) but GET /api/usage reports used=3. One message may not be counted toward the daily limit.",
+      "expected": "used=4",
+      "actual": "used=3",
+      "api_command": "GET /api/usage"
+    },
+    {
+      "severity": "P2",
+      "title": "ListChatSessions missing updated_at field",
+      "description": "ListChatSessions response sessions have 'lastMessageAt' but no 'updatedAt' field. The persona spec references 'updated_at' as an expected field. The 'lastMessageAt' field serves a similar purpose but the field name mismatch could confuse clients expecting 'updatedAt'.",
+      "expected": "Each session has both created_at and updated_at timestamps",
+      "actual": "Sessions have createdAt and lastMessageAt but no updatedAt"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "All core chat history and session management features work correctly. Messages persist accurately across all three chat modes (selection, planning, companion), sessions are properly isolated with no message bleed, roles alternate correctly, timestamps are chronologically ordered, and no empty messages were found. The data integrity is solid. The only issues are a minor usage count discrepancy (3 vs 4) and the absence of an updatedAt field on sessions."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "list_chat_sessions", "get_chat_history", "usage", "trip_lifecycle"],
+  "data_integrity_summary": {
+    "selection_session": {
+      "session_id": "aa93bf21-e791-470a-9d24-d02223439910",
+      "message_count": 2,
+      "roles": ["user", "assistant"],
+      "role_alternation": "PASS",
+      "empty_content": "PASS",
+      "timestamp_order": "PASS",
+      "content_verification": "PASS (contains 'Portugal')"
+    },
+    "planning_session": {
+      "session_id": "8ebe96d3-0612-490b-b4d2-78baebb3c784",
+      "message_count": 4,
+      "roles": ["user", "assistant", "user", "assistant"],
+      "role_alternation": "PASS",
+      "empty_content": "PASS",
+      "timestamp_order": "PASS",
+      "content_verification": "PASS (contains 'Lisbon and Porto', 'itinerary')"
+    },
+    "companion_session": {
+      "session_id": "1ac1a172-463f-4814-b9ab-f429de08f36d",
+      "message_count": 2,
+      "roles": ["user", "assistant"],
+      "role_alternation": "PASS",
+      "empty_content": "PASS",
+      "timestamp_order": "PASS",
+      "content_verification": "PASS (contains 'Lisbon', 'Alfama')"
+    },
+    "cross_session_isolation": "PASS",
+    "session_listing_order": "Descending by creation time (most recent first)",
+    "total_sessions": 3,
+    "session_modes": ["CHAT_MODE_COMPANION", "CHAT_MODE_PLANNING", "CHAT_MODE_SELECTION"]
+  }
+}

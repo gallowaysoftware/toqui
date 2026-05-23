@@ -1,0 +1,18 @@
+meta {
+  name: List Trips
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{host}}/toqui.v1.TripService/ListTrips
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {}
+}

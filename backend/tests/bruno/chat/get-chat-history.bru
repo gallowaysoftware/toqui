@@ -1,0 +1,21 @@
+meta {
+  name: Get Chat History
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{host}}/toqui.v1.ChatService/GetChatHistory
+  body: json
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "trip_id": "<trip-id>",
+    "session_id": "<session-id>"
+  }
+}

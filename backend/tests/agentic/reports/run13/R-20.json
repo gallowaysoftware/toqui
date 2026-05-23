@@ -1,0 +1,50 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James, the Luxury Couple",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives & Dubai",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "history", "usage", "complete"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "In companion mode, the AI's first response contained duplicate openings ('Welcome to paradise!' followed by 'Ah, you've made it!') because the AI generated text before and after a rejected tool call, creating a disjointed response.",
+      "severity": "P2",
+      "suggestion": "When the itinerary gate rejects a tool call in companion mode, the AI should seamlessly continue its response without restarting the greeting."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "Companion mode itinerary gate overly aggressive — blocks legitimate 'add to plan' requests",
+      "context": "User asked about arranging a sunset dolphin cruise 'tonight', which implies wanting to add it to the itinerary. The create_itinerary_items tool was called 3 times in succession, each time rejected with 'The user's message is an informational query, not a request to modify the itinerary.' The user's message was arguably an action request ('set that up'), not purely informational. The companion mode gate classified it incorrectly.",
+      "severity": "P1"
+    },
+    {
+      "issue": "First companion mode message also attempted itinerary creation for a purely informational query (tipping etiquette), which was correctly rejected, but the AI should not have attempted it in the first place.",
+      "context": "User asked 'What should we do this afternoon?' and 'what is the tipping etiquette?' — the AI tried to create an itinerary item for the spa suggestion, which was rejected. The gate was correct here, but the AI should learn to not call the tool for casual suggestions in companion mode.",
+      "severity": "P2"
+    },
+    {
+      "issue": "Soneva Fushi correction was proactive and knowledgeable — the AI correctly steered toward Soneva Jani for overwater villas since Soneva Fushi is primarily beach-front. This showed excellent luxury domain knowledge.",
+      "context": "This is a positive observation, not an issue.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [
+    {
+      "tool": "create_itinerary_items",
+      "input": "Private Sunset Dolphin Cruise item in companion mode",
+      "error": "Rejected 3 times with 'not_needed' status. The companion gate LLM classifier misclassified a user request to arrange an activity as an informational query."
+    }
+  ],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 3,
+    "would_use_again": true,
+    "narrative": "The AI demonstrated excellent luxury calibration throughout. Resort recommendations were top-tier (Soneva Jani correction, Waldorf Astoria, St. Regis), restaurant picks were genuinely Michelin-starred (STAY by Yannick Alleno, Ossiano, Il Ristorante Niko Romito), and the desert safari recommendation correctly distinguished private/luxury from mass-market. The itinerary had luxury pacing with 2-3 activities per day max. Expert handoff to a luxury/romance specialist was immediate and effective. Companion mode was weaker due to the itinerary gate blocking legitimate requests and causing duplicate/confused response text. February weather knowledge was accurate for both destinations. Seaplane logistics and Male-Dubai flight info was correct. The recommend_booking tool fired correctly with FTC disclosure for both hotel and activity requests."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "trip_lifecycle", "expert_handoff", "recommend_booking", "itinerary_creation"]
+}

@@ -1,0 +1,50 @@
+{
+  "persona_id": "N-08",
+  "persona_name": "Structural — Adversarial Edge Cases",
+  "status": "COMPLETED",
+  "trip_destination": "N/A (structural test)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "complete"],
+  "bugs": [
+    {
+      "severity": "P1",
+      "title": "UpdateTrip returns INTERNAL instead of NOT_FOUND for non-existent trip",
+      "description": "UpdateTrip with a valid UUID that does not exist returns code 'internal' with message 'an internal error occurred' instead of 'not_found'. This leaks an internal error to the client and masks the root cause.",
+      "steps_to_reproduce": "Call UpdateTrip with id=00000000-0000-0000-0000-000000000099 and title='Updated'",
+      "expected": "not_found error code",
+      "actual": "internal error code with generic message",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.TripService/UpdateTrip -H 'Content-Type: application/json' -H 'Authorization: Bearer TOKEN' -d '{\"id\":\"00000000-0000-0000-0000-000000000099\",\"title\":\"Updated\"}'"
+    },
+    {
+      "severity": "P1",
+      "title": "ExtractBookingField returns UNAVAILABLE instead of NOT_FOUND for non-existent booking",
+      "description": "ExtractBookingField with a valid UUID that does not match any booking returns code 'unavailable' with message 'AI service encountered an error'. The handler is passing the non-existent booking to the AI layer instead of checking for existence first, resulting in a misleading error.",
+      "steps_to_reproduce": "Call ExtractBookingField with booking_id=00000000-0000-0000-0000-000000000000 and question='What is the check-in time?'",
+      "expected": "not_found error code",
+      "actual": "unavailable error code: 'AI service encountered an error'",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.BookingService/ExtractBookingField -H 'Content-Type: application/json' -H 'Authorization: Bearer TOKEN' -d '{\"booking_id\":\"00000000-0000-0000-0000-000000000000\",\"question\":\"What is the check-in time?\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "GetChatHistory returns INTERNAL instead of NOT_FOUND or empty result for non-existent session",
+      "description": "GetChatHistory with valid UUIDs for trip_id and session_id that do not exist returns code 'internal' with message 'an internal error occurred'. This should return not_found or an empty messages array.",
+      "steps_to_reproduce": "Call GetChatHistory with trip_id=00000000-0000-0000-0000-000000000000 and session_id=00000000-0000-0000-0000-000000000000",
+      "expected": "not_found or empty messages array",
+      "actual": "internal error code with generic message",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.ChatService/GetChatHistory -H 'Content-Type: application/json' -H 'Authorization: Bearer TOKEN' -d '{\"trip_id\":\"00000000-0000-0000-0000-000000000000\",\"session_id\":\"00000000-0000-0000-0000-000000000000\"}'"
+    }
+  ],
+  "ux_issues": [],
+  "ai_behavior_issues": [],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 0,
+    "trip_creation_score": 0,
+    "itinerary_quality_score": 0,
+    "persona_handoff_score": 0,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 0,
+    "would_use_again": false,
+    "narrative": "Structural adversarial test — not a user-experience evaluation. All 10 prescribed test cases passed: validation interceptor correctly rejects malformed IDs, empty/oversized strings; trip state machine enforces valid transitions; empty collections return success not errors; delete is idempotent. Three bugs found in bonus edge-case testing: UpdateTrip and GetChatHistory leak INTERNAL errors for non-existent resources, and ExtractBookingField returns UNAVAILABLE instead of NOT_FOUND."
+  },
+  "feature_coverage": ["validation", "error_handling", "state_machine", "auth", "idempotent_delete", "empty_collections"]
+}

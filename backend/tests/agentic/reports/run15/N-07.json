@@ -1,0 +1,34 @@
+{
+  "persona_id": "N-07",
+  "persona_name": "Priya — Dietary Restrictions Stress Test",
+  "status": "COMPLETED",
+  "trip_destination": "Japan (Tokyo + Kyoto)",
+  "completed_steps": ["auth", "selection", "planning", "activate", "companion", "sharing", "chat_history", "usage", "complete", "final_state"],
+  "bugs": [],
+  "ux_issues": [
+    {
+      "description": "Companion mode started a new session and re-asked about sesame allergy despite Priya having already clarified in the planning session that sesame is fine. Cross-session dietary context is not carried over, forcing the user to repeat critical safety information.",
+      "severity": "P2",
+      "suggestion": "Persist key dietary/allergy information at the trip level (e.g. trip metadata or user profile) so companion mode sessions inherit critical safety context from planning sessions."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "In companion mode first message, the AI re-asked 'Does your tree nut allergy include sesame?' even though the user had already confirmed sesame is safe in the planning session. While the question itself is medically appropriate (and correctly asked rather than assumed), it indicates lost context across sessions.",
+      "context": "Companion session 14d10c13 did not have access to planning session 9a8fbab0 where sesame was discussed.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 5,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 5,
+    "persona_handoff_score": 5,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "Exceptional performance on compound dietary restrictions. The AI demonstrated deep Japan-specific food knowledge: correctly identified tamari vs wheat soy sauce, kombu vs bonito dashi, barley miso danger, tempura wheat batter, and shared fryer cross-contamination risks. Named specific real restaurants (T's TanTan, Ain Soph, Shigetsu, Brown Rice, Towzen, Mumokuteki, Choice). Proactively covered Yakkan Shoumei EpiPen import certificate, allergy card in Japanese with kanji, hospital locations with English support, and emergency phone numbers. Critically, the AI ASKED about sesame allergy rather than fabricating one — exactly the correct behavior. Created 17 food-focused itinerary items across 7 days. The only weakness was companion mode losing dietary context from the planning session, causing a redundant sesame question. For a vegan celiac with nut anaphylaxis planning Japan, this is genuinely life-saving guidance."
+  },
+  "feature_coverage": ["selection", "planning", "expert_handoff", "itinerary_creation", "activate", "companion", "sharing", "unsharing", "chat_history", "usage", "complete"]
+}

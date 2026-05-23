@@ -1,0 +1,65 @@
+{
+  "persona_id": "R-20",
+  "persona_name": "Victoria and James — Luxury Anniversary",
+  "status": "COMPLETED",
+  "trip_destination": "Maldives & Dubai",
+  "completed_steps": ["auth", "selection", "planning", "booking_recommendations", "activate", "companion", "sharing", "chat_history", "usage", "complete"],
+  "bugs": [
+    {
+      "severity": "P2",
+      "title": "destinationCountry field changes on trip activation",
+      "description": "The primary destinationCountry field changed from 'MV' (Maldives, the first destination) to 'AE' (UAE) after activating the trip via UpdateTrip. The destinationCountries array remained correct ['MV','AE'], but the singular field shifted unexpectedly. This could cause issues if the frontend uses destinationCountry for primary display.",
+      "expected": "destinationCountry should remain 'MV' (the first/primary destination) after activation",
+      "actual": "destinationCountry changed to 'AE' after UpdateTrip with status=TRIP_STATUS_ACTIVE",
+      "api_command": "curl -s -X POST http://localhost:8090/toqui.v1.TripService/UpdateTrip -d '{\"id\":\"TRIP_ID\",\"status\":\"TRIP_STATUS_ACTIVE\"}'"
+    },
+    {
+      "severity": "P2",
+      "title": "Trip description refers to user as 'James and his partner' instead of using Victoria's name",
+      "description": "The AI-generated trip description says 'A 10th wedding anniversary trip for James and his partner' — the user introduced herself as Victoria planning with her husband James, but the AI inverted the framing and used the generic 'his partner' instead of naming Victoria. Minor but noticeable for a luxury-focused persona where personalization matters.",
+      "expected": "Trip description should reference both names: 'Victoria and James' or 'a couple'",
+      "actual": "Description says 'James and his partner'"
+    }
+  ],
+  "ux_issues": [
+    {
+      "description": "The AI suggested Booking.com for the Waldorf Astoria Ithaafushi overwater villa booking. For ultra-luxury Maldives properties, direct resort booking or a travel advisor connection is more appropriate and often yields better rates, villa upgrades, and amenity packages. Suggesting Booking.com is somewhat tone-deaf for this tier of travel.",
+      "severity": "P2",
+      "suggestion": "For properties above a certain luxury tier, recommend direct booking or concierge services rather than OTA affiliate links."
+    },
+    {
+      "description": "The share endpoint generated a second, different share_token when called again (first: XrtoehMFW9amu5ADPwt91D, second: Mxt3KwcOPNQDefKGtfTf4t). Both tokens worked. It is unclear if this is intentional (re-sharing generates a new token) or a bug (should return the same token).",
+      "severity": "P2",
+      "suggestion": "Consider returning the existing share token if sharing is already enabled, or document the behavior."
+    }
+  ],
+  "ai_behavior_issues": [
+    {
+      "issue": "AI did not proactively trigger suggest_expert for Maldives luxury recommendations. It only triggered expert handoff when explicitly asked to 'talk to a local food expert' about Dubai dining. For a luxury couple asking about top-tier resort differences, a Maldives luxury expert handoff would have been appropriate.",
+      "context": "Step 3a: Asked about Waldorf Astoria vs St. Regis — no expert handoff triggered. Step 3d: Asked for Dubai food expert — handoff triggered correctly.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not mention the Waldorf Astoria Ithaafushi's signature underwater restaurant (Terra) when comparing resorts, despite claiming the persona test requires the AI to know 'specific differentiators.' The AI later referenced Terra correctly in the itinerary as treetop dining (which is accurate — Terra is treetop, not underwater), but missed the underwater restaurant entirely.",
+      "context": "The Waldorf Astoria's underwater restaurant is a key differentiator that was not mentioned in resort comparison.",
+      "severity": "P2"
+    },
+    {
+      "issue": "AI did not discuss the Maldives-to-Dubai transition logistics. No mention of which airlines fly Male to Dubai, seaplane schedule constraints for connecting to international flights, or whether a stopover makes sense.",
+      "context": "This was flagged as a test vector in the persona but the AI did not address it proactively when creating the Dubai itinerary, despite the user mentioning 'fly from Male to Dubai on February 13th'.",
+      "severity": "P2"
+    }
+  ],
+  "tool_failures": [],
+  "usefulness_evaluation": {
+    "overall_score": 4,
+    "trip_creation_score": 5,
+    "itinerary_quality_score": 4,
+    "persona_handoff_score": 3,
+    "booking_parsing_score": 0,
+    "companion_mode_score": 4,
+    "would_use_again": true,
+    "narrative": "The AI performed well overall for a luxury couple planning a Maldives + Dubai anniversary trip. Trip creation captured all key details including both destinations and the anniversary context. The Maldives itinerary had excellent luxury pacing with private dining, couples spa, and anniversary-specific experiences. Companion mode was appropriately concise and contextually aware, referencing itinerary items. The main gaps were: (1) insufficient proactive expert handoff for destination-specific luxury knowledge, (2) suggesting Booking.com for ultra-luxury properties rather than direct booking, and (3) not addressing the Male-to-Dubai transit logistics. Despite these, the overall experience would be genuinely useful for planning a luxury trip."
+  },
+  "feature_coverage": ["selection", "planning", "companion", "sharing", "chat_history", "usage", "recommend_booking", "suggest_expert", "create_itinerary_items", "web_search"]
+}

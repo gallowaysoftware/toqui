@@ -1,0 +1,194 @@
+-- name: CreateBooking :one
+INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests, price_cents, currency, timezone)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING *;
+
+-- name: CreateBookingForOwnerOrEditor :one
+-- Authz-gated booking insert used by IngestBooking (#361 P1 fix).
+-- When trip_id is non-NULL, the WHERE clause re-checks that
+-- user_id = $1 can edit the target trip — either owns it or is an
+-- accepted editor-role collaborator. A malicious client passing
+-- another user's trip_id misses the predicate, INSERT returns zero
+-- rows, pgx returns ErrNoRows, the service maps that to
+-- trip.ErrNotOwnerOrEditor.
+--
+-- When trip_id is NULL (unattached booking) the OR branch lets the
+-- insert through unchanged — unattached bookings are self-scoped
+-- and no trip-level check applies.
+--
+-- AUTHZ PREDICATE: semantic duplicate of the four other
+-- *ForOwnerOrEditor queries across bookings.sql + itinerary.sql.
+-- Keep in lockstep (#353 drift warning).
+INSERT INTO bookings (user_id, trip_id, type, confirmation_code, provider, title, start_time, end_time, location, address, details_json, raw_source, source, departure_location, arrival_location, num_guests, price_cents, currency, timezone)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+WHERE $2::uuid IS NULL
+   OR EXISTS (
+     SELECT 1 FROM trips t
+     WHERE t.id = $2::uuid
+       AND (
+         t.user_id = $1
+         OR EXISTS (
+           SELECT 1 FROM trip_collaborators tc
+           WHERE tc.trip_id = t.id
+             AND tc.user_id = $1
+             AND tc.accepted_at IS NOT NULL
+             AND tc.role = 'editor'
+         )
+       )
+   )
+RETURNING *;
+
+-- name: UpdateBooking :one
+UPDATE bookings SET
+  title = COALESCE(NULLIF(sqlc.arg(title), ''), title),
+  type = COALESCE(NULLIF(sqlc.arg(type), ''), type),
+  confirmation_code = COALESCE(NULLIF(sqlc.arg(confirmation_code), ''), confirmation_code),
+  provider = COALESCE(NULLIF(sqlc.arg(provider), ''), provider),
+  start_time = COALESCE(sqlc.arg(start_time), start_time),
+  end_time = COALESCE(sqlc.arg(end_time), end_time),
+  address = COALESCE(NULLIF(sqlc.arg(address), ''), address),
+  departure_location = COALESCE(NULLIF(sqlc.arg(departure_location), ''), departure_location),
+  arrival_location = COALESCE(NULLIF(sqlc.arg(arrival_location), ''), arrival_location),
+  num_guests = COALESCE(sqlc.arg(num_guests), num_guests),
+  price_cents = COALESCE(sqlc.arg(price_cents), price_cents),
+  currency = COALESCE(NULLIF(sqlc.arg(currency), ''), currency),
+  timezone = COALESCE(NULLIF(sqlc.arg(timezone), ''), timezone),
+  updated_at = NOW()
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: GetBookingByID :one
+SELECT * FROM bookings WHERE id = $1 AND user_id = $2;
+
+-- name: ListBookingsByTrip :many
+SELECT * FROM bookings
+WHERE trip_id = $1 AND user_id = $2
+ORDER BY start_time;
+
+-- name: ListBookingsByUser :many
+SELECT * FROM bookings
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: LinkBookingToTrip :one
+UPDATE bookings SET trip_id = $2
+WHERE id = $1 AND user_id = $3
+RETURNING *;
+
+-- name: LinkBookingToTripForOwnerOrEditor :one
+-- Authz-gated re-link of a booking to a trip (#361 P1 fix).
+-- The plain LinkBookingToTrip above only gated on booking.user_id
+-- so a user could re-associate their own booking with a victim's
+-- trip. Here the UPDATE requires both booking ownership AND edit
+-- rights on the target trip. Predicate miss → pgx.ErrNoRows →
+-- trip.ErrNotOwnerOrEditor.
+UPDATE bookings b SET trip_id = $2
+WHERE b.id = $1
+  AND b.user_id = $3
+  AND EXISTS (
+    SELECT 1 FROM trips t
+    WHERE t.id = $2
+      AND (
+        t.user_id = $3
+        OR EXISTS (
+          SELECT 1 FROM trip_collaborators tc
+          WHERE tc.trip_id = t.id
+            AND tc.user_id = $3
+            AND tc.accepted_at IS NOT NULL
+            AND tc.role = 'editor'
+        )
+      )
+  )
+RETURNING b.*;
+
+-- name: FindBookingByConfirmationCode :one
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id) AND trip_id = sqlc.arg(trip_id)
+  AND confirmation_code = sqlc.arg(confirmation_code)
+  AND confirmation_code != ''
+LIMIT 1;
+
+-- name: FindBookingFuzzy :one
+-- Fuzzy duplicate detection: same user + trip + type + start_time within 7 days.
+-- Used as a fallback when confirmation_code is absent or didn't match.
+-- Ordered by closest time delta so the nearest match wins on ties.
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id)
+  AND trip_id = sqlc.arg(trip_id)
+  AND type = sqlc.arg(type)
+  AND start_time IS NOT NULL
+  AND ABS(EXTRACT(EPOCH FROM (start_time - sqlc.arg(start_time)))) <= 7 * 86400
+ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - sqlc.arg(start_time))))
+LIMIT 1;
+
+-- name: MergeBooking :one
+-- Merge a re-imported booking into an existing record. All non-empty/non-null
+-- values from the new import overwrite the stored values; existing data is
+-- preserved when the new import omits a field (COALESCE pattern).
+--
+-- The WHERE clause locks the merge to four invariants:
+--   id + user_id  — base ownership check;
+--   trip_id       — defense-in-depth so a future caller cannot merge a
+--                   booking from one trip into a booking on another even
+--                   if the SELECT phase is bypassed;
+--   updated_at <= created_at + interval '1 second'  — preserves user
+--                   edits. If the user has touched the booking via
+--                   UpdateBooking after creation, updated_at moves and
+--                   this predicate fails, the merge no-ops, the service
+--                   returns the existing record unchanged. Stops a
+--                   re-imported confirmation from silently clobbering a
+--                   user's manual edits to title / address / details_json
+--                   / etc.
+--
+-- Predicate miss → pgx.ErrNoRows. Callers must distinguish "user-edited
+-- or trip mismatch" (preserve existing) from "row vanished" (real error).
+--
+-- `type` is deliberately NOT COALESCE'd. The AI parser can reclassify
+-- the same confirmation as "hotel" one run and "vacation_rental" the
+-- next, and silently mutating it would break the frontend's type-keyed
+-- details renderer for that booking (the oneof in proto's Booking
+-- message would point to a payload that doesn't match the new type).
+-- Type can only change via explicit UpdateBooking from a user action.
+UPDATE bookings SET
+  confirmation_code = COALESCE(NULLIF(sqlc.arg(confirmation_code), ''), confirmation_code),
+  provider          = COALESCE(NULLIF(sqlc.arg(provider), ''), provider),
+  title             = COALESCE(NULLIF(sqlc.arg(title), ''), title),
+  start_time        = COALESCE(sqlc.arg(start_time), start_time),
+  end_time          = COALESCE(sqlc.arg(end_time), end_time),
+  address           = COALESCE(NULLIF(sqlc.arg(address), ''), address),
+  departure_location = COALESCE(NULLIF(sqlc.arg(departure_location), ''), departure_location),
+  arrival_location  = COALESCE(NULLIF(sqlc.arg(arrival_location), ''), arrival_location),
+  num_guests        = COALESCE(sqlc.arg(num_guests), num_guests),
+  price_cents       = COALESCE(sqlc.arg(price_cents), price_cents),
+  currency          = COALESCE(NULLIF(sqlc.arg(currency), ''), currency),
+  timezone          = COALESCE(NULLIF(sqlc.arg(timezone), ''), timezone),
+  details_json      = COALESCE(sqlc.arg(details_json), details_json),
+  raw_source        = COALESCE(NULLIF(sqlc.arg(raw_source), ''), raw_source),
+  updated_at        = NOW()
+WHERE id = sqlc.arg(id)
+  AND user_id = sqlc.arg(user_id)
+  AND trip_id = sqlc.arg(trip_id)
+  AND updated_at <= created_at + interval '1 second'
+RETURNING *;
+
+-- name: DeleteBooking :execrows
+DELETE FROM bookings WHERE id = $1 AND user_id = $2;
+
+-- name: SearchBookings :many
+SELECT * FROM bookings
+WHERE user_id = sqlc.arg(user_id)
+  AND (title ILIKE '%' || sqlc.arg(query) || '%' OR provider ILIKE '%' || sqlc.arg(query) || '%' OR confirmation_code ILIKE '%' || sqlc.arg(query) || '%')
+ORDER BY created_at DESC
+LIMIT sqlc.arg(max_results);
+
+-- name: GetTripCostSummary :many
+SELECT
+  COALESCE(currency, 'USD') AS currency,
+  SUM(price_cents) AS total_cents,
+  COUNT(*) AS booking_count
+FROM bookings
+WHERE trip_id = sqlc.arg(trip_id) AND user_id = sqlc.arg(user_id)
+  AND price_cents IS NOT NULL AND price_cents > 0
+GROUP BY currency
+ORDER BY total_cents DESC;

@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "generate": "buf generate --template buf.gen.yaml ../toqui-backend/proto"
+    "generate": "buf generate --template buf.gen.yaml ./backend/proto"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.0",
