@@ -127,13 +127,6 @@ type oauthResult struct {
 	Name         string `json:"name,omitempty"`
 	AvatarURL    string `json:"avatar_url,omitempty"`
 	ExpiresAt    int64  `json:"expires_at"`
-	// IsNewUser is set by HandleCallback when this is the user's first-ever
-	// login (created within the last minute). HandleExchange uses this to
-	// decide whether to fire `signup_completed`.
-	IsNewUser bool `json:"is_new_user,omitempty"`
-	// AuthProvider is "google" — propagated to the `signup_completed`
-	// event when IsNewUser is true.
-	AuthProvider string `json:"auth_provider,omitempty"`
 }
 
 // exchangeResponse is the JSON response from POST /auth/exchange.
@@ -272,8 +265,6 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: refreshResult.Token,
 		UserID:       user.ID.String(),
 		Email:        user.Email,
-		IsNewUser:    isNewUser,
-		AuthProvider: "google",
 	}
 	if user.Name.Valid {
 		result.Name = user.Name.String
