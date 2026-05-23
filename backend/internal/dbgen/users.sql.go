@@ -15,7 +15,7 @@ import (
 const createUserWithPassword = `-- name: CreateUserWithPassword :one
 INSERT INTO users (email, name, password_hash)
 VALUES ($1, $2, $3)
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash
 `
 
 type CreateUserWithPasswordParams struct {
@@ -36,18 +36,15 @@ func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWith
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE email = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -62,18 +59,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE google_id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash FROM users WHERE google_id = $1
 `
 
 func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error) {
@@ -88,18 +82,15 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -114,11 +105,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err
@@ -151,26 +139,16 @@ func (q *Queries) GetUserPasswordHash(ctx context.Context, email string) (GetUse
 	return i, err
 }
 
-const getUserSubscriptionTier = `-- name: GetUserSubscriptionTier :one
-SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1
-`
-
-func (q *Queries) GetUserSubscriptionTier(ctx context.Context, id uuid.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getUserSubscriptionTier, id)
-	var subscription_tier string
-	err := row.Scan(&subscription_tier)
-	return subscription_tier, err
-}
-
 const isUserAdmin = `-- name: IsUserAdmin :one
 
 SELECT is_admin FROM users WHERE id = $1
 `
 
 // Facebook + Apple OAuth queries were removed when the project transitioned
-// to self-hostable OSS (email+password default, Google OAuth optional). The
-// facebook_id / apple_sub columns remain in the schema as dead fields —
-// migrations are immutable history.
+// to self-hostable OSS (email+password default, Google OAuth optional).
+// The facebook_id column remains in the schema as a dead field; apple_sub +
+// subscription_tier + age_verified_at were dropped via the 20260524000001
+// cleanup migration.
 func (q *Queries) IsUserAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, isUserAdmin, id)
 	var is_admin bool
@@ -179,7 +157,7 @@ func (q *Queries) IsUserAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users ORDER BY created_at DESC
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash FROM users ORDER BY created_at DESC
 LIMIT $2 OFFSET $1
 `
 
@@ -206,11 +184,8 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DefaultPersonaID,
-			&i.SubscriptionTier,
-			&i.AgeVerifiedAt,
 			&i.FacebookID,
 			&i.IsAdmin,
-			&i.AppleSub,
 			&i.PasswordHash,
 		); err != nil {
 			return nil, err
@@ -224,7 +199,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE email ILIKE '%' || $1::text || '%' OR name ILIKE '%' || $1::text || '%'
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash FROM users WHERE email ILIKE '%' || $1::text || '%' OR name ILIKE '%' || $1::text || '%'
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $2
 `
@@ -253,11 +228,8 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Use
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DefaultPersonaID,
-			&i.SubscriptionTier,
-			&i.AgeVerifiedAt,
 			&i.FacebookID,
 			&i.IsAdmin,
-			&i.AppleSub,
 			&i.PasswordHash,
 		); err != nil {
 			return nil, err
@@ -296,7 +268,7 @@ func (q *Queries) SetAdmin(ctx context.Context, arg SetAdminParams) error {
 const setUserDefaultPersona = `-- name: SetUserDefaultPersona :one
 UPDATE users SET default_persona_id = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash
 `
 
 type SetUserDefaultPersonaParams struct {
@@ -316,42 +288,11 @@ func (q *Queries) SetUserDefaultPersona(ctx context.Context, arg SetUserDefaultP
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err
-}
-
-const setUserSubscriptionTier = `-- name: SetUserSubscriptionTier :exec
-UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE email = $2
-`
-
-type SetUserSubscriptionTierParams struct {
-	SubscriptionTier string `json:"subscription_tier"`
-	Email            string `json:"email"`
-}
-
-func (q *Queries) SetUserSubscriptionTier(ctx context.Context, arg SetUserSubscriptionTierParams) error {
-	_, err := q.db.Exec(ctx, setUserSubscriptionTier, arg.SubscriptionTier, arg.Email)
-	return err
-}
-
-const setUserSubscriptionTierByID = `-- name: SetUserSubscriptionTierByID :exec
-UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE id = $2
-`
-
-type SetUserSubscriptionTierByIDParams struct {
-	Tier   string    `json:"tier"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) SetUserSubscriptionTierByID(ctx context.Context, arg SetUserSubscriptionTierByIDParams) error {
-	_, err := q.db.Exec(ctx, setUserSubscriptionTierByID, arg.Tier, arg.UserID)
-	return err
 }
 
 const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
@@ -374,7 +315,7 @@ INSERT INTO users (google_id, email, name, avatar_url)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (google_id)
 DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url, updated_at = NOW()
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash
 `
 
 type UpsertUserByGoogleIDParams struct {
@@ -401,11 +342,8 @@ func (q *Queries) UpsertUserByGoogleID(ctx context.Context, arg UpsertUserByGoog
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
 		&i.FacebookID,
 		&i.IsAdmin,
-		&i.AppleSub,
 		&i.PasswordHash,
 	)
 	return i, err

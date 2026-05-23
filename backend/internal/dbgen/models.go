@@ -11,18 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AiUsage struct {
-	ID           uuid.UUID `json:"id"`
-	UserID       uuid.UUID `json:"user_id"`
-	Provider     string    `json:"provider"`
-	ModelTier    string    `json:"model_tier"`
-	InputTokens  int32     `json:"input_tokens"`
-	OutputTokens int32     `json:"output_tokens"`
-	CostCents    int32     `json:"cost_cents"`
-	UserTier     string    `json:"user_tier"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
 type Booking struct {
 	ID                uuid.UUID          `json:"id"`
 	TripID            pgtype.UUID        `json:"trip_id"`
@@ -58,16 +46,6 @@ type CheckoutSession struct {
 	Status        string             `json:"status"`
 	CreatedAt     time.Time          `json:"created_at"`
 	CompletedAt   pgtype.Timestamptz `json:"completed_at"`
-}
-
-type DailyUsage struct {
-	ID           uuid.UUID  `json:"id"`
-	UserID       uuid.UUID  `json:"user_id"`
-	Date         *time.Time `json:"date"`
-	MessageCount int32      `json:"message_count"`
-	AiCostCents  int32      `json:"ai_cost_cents"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 type DeletionRequest struct {
@@ -118,33 +96,11 @@ type ItineraryItem struct {
 	BookingID          pgtype.UUID        `json:"booking_id"`
 }
 
-type Payment struct {
-	ID                uuid.UUID `json:"id"`
-	UserID            uuid.UUID `json:"user_id"`
-	TripID            uuid.UUID `json:"trip_id"`
-	ExternalPaymentID string    `json:"external_payment_id"`
-	AmountCents       int32     `json:"amount_cents"`
-	Currency          string    `json:"currency"`
-	Status            string    `json:"status"`
-	CreatedAt         time.Time `json:"created_at"`
-}
-
 type ProInterest struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
 	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type Referral struct {
-	ID                    uuid.UUID          `json:"id"`
-	ReferrerID            uuid.UUID          `json:"referrer_id"`
-	RefereeID             pgtype.UUID        `json:"referee_id"`
-	Code                  string             `json:"code"`
-	RedeemedAt            pgtype.Timestamptz `json:"redeemed_at"`
-	ReferrerRewardGranted bool               `json:"referrer_reward_granted"`
-	RefereeRewardGranted  bool               `json:"referee_reward_granted"`
-	CreatedAt             time.Time          `json:"created_at"`
 }
 
 type RefreshToken struct {
@@ -155,30 +111,6 @@ type RefreshToken struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	Revoked   bool      `json:"revoked"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type StripeEvent struct {
-	ID          string             `json:"id"`
-	EventType   string             `json:"event_type"`
-	ReceivedAt  time.Time          `json:"received_at"`
-	ProcessedAt pgtype.Timestamptz `json:"processed_at"`
-	RetryCount  int32              `json:"retry_count"`
-	LastError   pgtype.Text        `json:"last_error"`
-}
-
-type Subscription struct {
-	ID                   uuid.UUID          `json:"id"`
-	UserID               uuid.UUID          `json:"user_id"`
-	StripeCustomerID     string             `json:"stripe_customer_id"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	Tier                 string             `json:"tier"`
-	Status               string             `json:"status"`
-	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
-	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
-	CancelAtPeriodEnd    pgtype.Bool        `json:"cancel_at_period_end"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	BillingPeriod        string             `json:"billing_period"`
 }
 
 type Theme struct {
@@ -204,8 +136,6 @@ type Trip struct {
 	ArchiveAfter         pgtype.Timestamptz `json:"archive_after"`
 	ArchivedAt           pgtype.Timestamptz `json:"archived_at"`
 	ShareToken           pgtype.Text        `json:"share_token"`
-	TrialStartedAt       pgtype.Timestamptz `json:"trial_started_at"`
-	TrialEndsAt          pgtype.Timestamptz `json:"trial_ends_at"`
 	DestinationCountries []string           `json:"destination_countries"`
 	ExpertCalls          int32              `json:"expert_calls"`
 	SearchVector         interface{}        `json:"search_vector"`
@@ -237,48 +167,18 @@ type TripTheme struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-type TripUnlock struct {
-	ID         uuid.UUID   `json:"id"`
-	UserID     uuid.UUID   `json:"user_id"`
-	TripID     uuid.UUID   `json:"trip_id"`
-	PaymentID  pgtype.UUID `json:"payment_id"`
-	Source     string      `json:"source"`
-	UnlockedAt time.Time   `json:"unlocked_at"`
-}
-
-type UnderAgeBlock struct {
-	ID            uuid.UUID `json:"id"`
-	EmailSha256   string    `json:"email_sha256"`
-	OauthProvider string    `json:"oauth_provider"`
-	BlockedAt     time.Time `json:"blocked_at"`
-}
-
 type User struct {
-	ID               uuid.UUID          `json:"id"`
-	Email            string             `json:"email"`
-	Name             pgtype.Text        `json:"name"`
-	GoogleID         pgtype.Text        `json:"google_id"`
-	AvatarUrl        pgtype.Text        `json:"avatar_url"`
-	CreatedAt        time.Time          `json:"created_at"`
-	UpdatedAt        time.Time          `json:"updated_at"`
-	DefaultPersonaID pgtype.Text        `json:"default_persona_id"`
-	SubscriptionTier string             `json:"subscription_tier"`
-	AgeVerifiedAt    pgtype.Timestamptz `json:"age_verified_at"`
-	FacebookID       pgtype.Text        `json:"facebook_id"`
-	IsAdmin          bool               `json:"is_admin"`
-	AppleSub         pgtype.Text        `json:"apple_sub"`
-	PasswordHash     pgtype.Text        `json:"password_hash"`
-}
-
-type UserConsent struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      uuid.UUID          `json:"user_id"`
-	ConsentType string             `json:"consent_type"`
-	GrantedAt   time.Time          `json:"granted_at"`
-	WithdrawnAt pgtype.Timestamptz `json:"withdrawn_at"`
-	IpAddress   pgtype.Text        `json:"ip_address"`
-	UserAgent   pgtype.Text        `json:"user_agent"`
-	CreatedAt   time.Time          `json:"created_at"`
+	ID               uuid.UUID   `json:"id"`
+	Email            string      `json:"email"`
+	Name             pgtype.Text `json:"name"`
+	GoogleID         pgtype.Text `json:"google_id"`
+	AvatarUrl        pgtype.Text `json:"avatar_url"`
+	CreatedAt        time.Time   `json:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+	DefaultPersonaID pgtype.Text `json:"default_persona_id"`
+	FacebookID       pgtype.Text `json:"facebook_id"`
+	IsAdmin          bool        `json:"is_admin"`
+	PasswordHash     pgtype.Text `json:"password_hash"`
 }
 
 type UserPreference struct {
@@ -287,15 +187,4 @@ type UserPreference struct {
 	Key       string    `json:"key"`
 	Value     string    `json:"value"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type Waitlist struct {
-	ID          uuid.UUID          `json:"id"`
-	Email       string             `json:"email"`
-	InviteCode  pgtype.Text        `json:"invite_code"`
-	SignedUpAt  time.Time          `json:"signed_up_at"`
-	InvitedAt   pgtype.Timestamptz `json:"invited_at"`
-	AcceptedAt  pgtype.Timestamptz `json:"accepted_at"`
-	VerifyToken pgtype.Text        `json:"verify_token"`
-	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
 }

@@ -206,7 +206,7 @@ func (q *Queries) ListCollaborators(ctx context.Context, tripID uuid.UUID) ([]Tr
 }
 
 const listSharedTrips = `-- name: ListSharedTrips :many
-SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.trial_started_at, t.trial_ends_at, t.destination_countries, t.expert_calls, t.search_vector, t.budget_cents, t.currency, t.notes, t.is_template, t.cover_image_url, t.timezone FROM trips t
+SELECT t.id, t.user_id, t.title, t.description, t.status, t.start_date, t.end_date, t.created_at, t.updated_at, t.destination_country, t.completed_at, t.archive_after, t.archived_at, t.share_token, t.destination_countries, t.expert_calls, t.search_vector, t.budget_cents, t.currency, t.notes, t.is_template, t.cover_image_url, t.timezone FROM trips t
 INNER JOIN trip_collaborators tc ON tc.trip_id = t.id
 WHERE tc.user_id = $1 AND tc.accepted_at IS NOT NULL
 ORDER BY t.created_at DESC
@@ -236,8 +236,6 @@ func (q *Queries) ListSharedTrips(ctx context.Context, userID pgtype.UUID) ([]Tr
 			&i.ArchiveAfter,
 			&i.ArchivedAt,
 			&i.ShareToken,
-			&i.TrialStartedAt,
-			&i.TrialEndsAt,
 			&i.DestinationCountries,
 			&i.ExpertCalls,
 			&i.SearchVector,

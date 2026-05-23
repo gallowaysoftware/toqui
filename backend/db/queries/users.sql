@@ -22,15 +22,6 @@ RETURNING *;
 -- name: GetUserDefaultPersona :one
 SELECT default_persona_id FROM users WHERE id = $1;
 
--- name: GetUserSubscriptionTier :one
-SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1;
-
--- name: SetUserSubscriptionTier :exec
-UPDATE users SET subscription_tier = $1, updated_at = NOW() WHERE email = $2;
-
--- name: SetUserSubscriptionTierByID :exec
-UPDATE users SET subscription_tier = sqlc.arg(tier), updated_at = NOW() WHERE id = sqlc.arg(user_id);
-
 -- name: ListUsers :many
 SELECT * FROM users ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
@@ -41,9 +32,10 @@ ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 -- Facebook + Apple OAuth queries were removed when the project transitioned
--- to self-hostable OSS (email+password default, Google OAuth optional). The
--- facebook_id / apple_sub columns remain in the schema as dead fields —
--- migrations are immutable history.
+-- to self-hostable OSS (email+password default, Google OAuth optional).
+-- The facebook_id column remains in the schema as a dead field; apple_sub +
+-- subscription_tier + age_verified_at were dropped via the 20260524000001
+-- cleanup migration.
 
 -- name: IsUserAdmin :one
 SELECT is_admin FROM users WHERE id = $1;
