@@ -14,23 +14,35 @@ Galloway Software Solutions Inc.
 A separate transition page lives at [toqui.travel](https://toqui.travel)
 ([gallowaysoftware/toqui-site](https://github.com/gallowaysoftware/toqui-site)).
 
-## Quickstart
-
-Run both halves in two shells:
+## Quickstart (self-host)
 
 ```bash
-# Shell 1 — backend
+git clone https://github.com/gallowaysoftware/toqui
+cd toqui
+cp .env.example .env
+$EDITOR .env                  # set JWT_SECRET + one AI provider key
+docker compose up -d --build  # frontend on :3000, backend on :8090
+```
+
+That's it — see [DEPLOYMENT.md](DEPLOYMENT.md) for Fly.io / Render / production notes.
+
+## Quickstart (development)
+
+Run the two halves separately for fast iteration:
+
+```bash
+# Shell 1 — backend (Postgres + Firestore emulator + Go server)
 cd backend
 docker compose up -d postgres firestore
 make migrate-up
 make run
 
-# Shell 2 — frontend (web)
+# Shell 2 — frontend (Expo, with hot reload)
 pnpm install
 pnpm web
 ```
 
-Default frontend points at `http://localhost:8090` for the backend.
+Frontend defaults to `http://localhost:8090` for the backend.
 
 ## License
 
