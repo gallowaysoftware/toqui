@@ -44,7 +44,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import type { ThemeColors } from "@/lib/theme";
-import { getConfig } from "@/lib/config";
+import { getConfig, getPublicUrl } from "@/lib/config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -779,7 +779,7 @@ export default function SharedTripScreen() {
   const ogDescription = trip.destination_country
     ? `AI-powered travel itinerary for ${trip.destination_country} with expert recommendations`
     : "AI-powered travel itinerary with expert recommendations";
-  const ogUrl = `https://app.toqui.travel/shared/${token}`;
+  const ogUrl = getPublicUrl(`/shared/${token}`);
   const ogImage = "https://toqui.travel/og-default.png";
 
   return (

@@ -12,7 +12,7 @@ import { Share2 } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
-import { getConfig } from "@/lib/config";
+import { getConfig, getPublicUrl } from "@/lib/config";
 
 interface ShareButtonProps {
   /** Trip ID to enable sharing for */
@@ -54,7 +54,7 @@ export function ShareButton({
         throw new Error(`Failed to enable sharing (${res.status})`);
       }
       const data: { share_token: string } = await res.json();
-      const shareUrl = `https://app.toqui.travel/shared/${data.share_token}`;
+      const shareUrl = getPublicUrl(`/shared/${data.share_token}`);
 
       const shareMessage = destination
         ? `Check out my trip to ${destination} on Toqui!`

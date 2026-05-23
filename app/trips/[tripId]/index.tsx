@@ -18,7 +18,7 @@ import { exportItineraryICal } from "@/lib/export/calendar-export";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
-import { getConfig } from "@/lib/config";
+import { getConfig, getPublicUrl } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
 import { ShareNudgeBanner } from "@/components/share/ShareNudgeBanner";
 import { useCollaborators } from "@/lib/hooks/useCollaborators";
@@ -436,7 +436,7 @@ export default function TripDetailScreen() {
         throw new Error(`Failed to enable sharing (${res.status})`);
       }
       const data: { share_token: string } = await res.json();
-      const shareUrl = `https://app.toqui.travel/shared/${data.share_token}`;
+      const shareUrl = getPublicUrl(`/shared/${data.share_token}`);
       await Share.share({
         message: `${trip.title} — ${shareUrl}`,
         url: shareUrl,

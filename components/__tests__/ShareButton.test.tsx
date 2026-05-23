@@ -36,6 +36,7 @@ vi.mock("@/lib/authFetch", () => ({
 
 vi.mock("@/lib/config", () => ({
   getConfig: () => ({ apiUrl: "http://localhost:8090" }),
+  getPublicUrl: (path: string) => `https://toqui.example/${path.replace(/^\//, "")}`,
 }));
 
 // Mock react-native Share
@@ -110,7 +111,7 @@ describe("ShareButton", () => {
     await waitFor(() => {
       expect(mockShare).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "https://app.toqui.travel/shared/abc123",
+          url: "https://toqui.example/shared/abc123",
         }),
       );
     });
