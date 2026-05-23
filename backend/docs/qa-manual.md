@@ -396,8 +396,7 @@ Walk through these flows after injecting the token:
 
 ## 6. Known Issues & Gotchas
 
-See [toqui GitHub Issues](https://github.com/gallowaysoftware/toqui/issues) and
-[toqui-backend GitHub Issues](https://github.com/gallowaysoftware/toqui-backend/issues) for the
+See [GitHub Issues](https://github.com/gallowaysoftware/toqui/issues) for the
 full list. Issues found during QA that aren't yet filed:
 
 ### Expo/React Native web
@@ -455,9 +454,8 @@ The agentic suite runs 20 AI traveler personas in batches of 2, covering:
 
 ## 8. Reporting Bugs
 
-File issues at:
-- Frontend: https://github.com/gallowaysoftware/toqui/issues
-- Backend: https://github.com/gallowaysoftware/toqui-backend/issues
+File issues at https://github.com/gallowaysoftware/toqui/issues (monorepo —
+frontend + backend live in the same tracker).
 
 Labels to apply:
 - `P0` — crash / data loss / auth failure

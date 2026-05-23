@@ -1,7 +1,9 @@
-# Toqui Tasks
+# Backend tasks
 
-Task tracking has moved to GitHub Issues:
+Backend tracking lives in the unified Toqui repo:
 
-- **toqui-backend**: https://github.com/gallowaysoftware/toqui-backend/issues
-- **toqui**: https://github.com/gallowaysoftware/toqui/issues
-- **toqui-site**: https://github.com/gallowaysoftware/toqui-site/issues
+- **Issues**: https://github.com/gallowaysoftware/toqui/issues
+- **Pull requests**: https://github.com/gallowaysoftware/toqui/pulls
+
+The legacy `gallowaysoftware/toqui-backend` repo was merged into this
+monorepo and archived in 2026-05.
