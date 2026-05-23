@@ -460,11 +460,6 @@ func main() {
 	mux.HandleFunc("/api/trips/unshare", sharedHandler.HandleDisable) // POST — disable sharing (auth)
 	mux.HandleFunc("/shared/", sharedHandler.HandlePublicView)        // GET — public view (no auth)
 
-	// Email ingestion webhook (outside ConnectRPC)
-	emailInbound := email.NewInbound(cfg.ResendAPIKey)
-	emailWebhookHandler := handlers.NewEmailWebhookHandler(bookingSvc, tripSvc, pool, emailInbound, cfg.EmailWebhookSecret)
-	mux.HandleFunc("/webhooks/email/inbound", emailWebhookHandler.HandleInbound)
-
 	mux.Handle(toquiv1connect.NewAuthServiceHandler(authHandler, interceptors))
 	mux.Handle(toquiv1connect.NewTripServiceHandler(tripHandler, interceptors))
 	mux.Handle(toquiv1connect.NewChatServiceHandler(chatHandler, interceptors))

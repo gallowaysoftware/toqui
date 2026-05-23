@@ -83,14 +83,6 @@ type Config struct {
 	GoogleCustomSearchCX     string
 	GooglePlacesAPIKey       string
 
-	// Email ingestion. Resend webhook signing secret in `whsec_<base64>`
-	// form, used to verify the Svix signature headers (svix-id,
-	// svix-timestamp, svix-signature) on POST /webhooks/email/inbound.
-	// Resend posts metadata only — the email body is fetched separately
-	// via the Resend Received Emails API. See
-	// internal/handlers/email_webhook.go for the verification contract.
-	EmailWebhookSecret string
-
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
 
@@ -149,7 +141,6 @@ func Load() (*Config, error) {
 		GoogleCustomSearchAPIKey:  os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
 		GoogleCustomSearchCX:      os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
-		EmailWebhookSecret:        os.Getenv("EMAIL_WEBHOOK_SECRET"),
 		AIProvider:                getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:           getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:               getEnvDuration("LLM_CACHE_TTL", time.Hour),
