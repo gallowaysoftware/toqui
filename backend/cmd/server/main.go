@@ -132,6 +132,10 @@ func main() {
 	}
 
 	// AI Provider — Gemini primary (cost-effective), Claude fallback.
+	// OpenAI (or any OpenAI-compatible endpoint via OPENAI_BASE_URL —
+	// Ollama, OpenRouter, vLLM, LM Studio, Together AI, etc.) is opt-in
+	// via AI_PROVIDER=openai or as the only configured provider for
+	// self-hosters.
 	// Override with AI_PROVIDER=claude to reverse priority.
 	var aiProvider ai.Provider
 	{
@@ -143,6 +147,7 @@ func main() {
 
 		var geminiProvider ai.Provider
 		var claudeProvider ai.Provider
+		var openAIProvider ai.Provider
 
 		// Prefer Developer API when API key is available;
 		// fall back to Vertex AI (global endpoint) otherwise.
@@ -158,7 +163,31 @@ func main() {
 			slog.Info("AI provider initialized", "provider", "claude")
 		}
 
+		if cfg.OpenAIAPIKey != "" {
+			openAIProvider = ai.NewOpenAIProvider(cfg.OpenAIAPIKey, cfg.OpenAIBaseURL)
+			slog.Info("AI provider initialized",
+				"provider", "openai",
+				"base_url_override", cfg.OpenAIBaseURL != "",
+			)
+		}
+
 		switch cfg.AIProvider {
+		case "openai":
+			if openAIProvider != nil {
+				// Prefer Gemini as fallback when available, otherwise Claude.
+				fallback := geminiProvider
+				if fallback == nil {
+					fallback = claudeProvider
+				}
+				aiProvider = ai.NewFallbackProvider(openAIProvider, fallback)
+				slog.Info("AI provider priority", "primary", "openai")
+			} else if geminiProvider != nil {
+				aiProvider = geminiProvider
+				slog.Warn("AI_PROVIDER=openai but OPENAI_API_KEY not set, using Gemini only")
+			} else if claudeProvider != nil {
+				aiProvider = claudeProvider
+				slog.Warn("AI_PROVIDER=openai but OPENAI_API_KEY not set, using Claude only")
+			}
 		case "claude":
 			if claudeProvider != nil {
 				aiProvider = ai.NewFallbackProvider(claudeProvider, geminiProvider)
@@ -174,6 +203,12 @@ func main() {
 			} else if claudeProvider != nil {
 				aiProvider = claudeProvider
 				slog.Warn("Gemini unavailable, using Claude only")
+			} else if openAIProvider != nil {
+				// No explicit selection and no Gemini/Claude creds — auto-fall
+				// through to OpenAI when it's the only thing configured. This
+				// is the common self-host case.
+				aiProvider = openAIProvider
+				slog.Info("AI provider priority", "primary", "openai", "reason", "only_provider_configured")
 			}
 		}
 	}
