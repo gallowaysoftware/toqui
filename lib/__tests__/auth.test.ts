@@ -9,6 +9,8 @@ import React from "react";
 
 // Mock ConnectRPC: createConnectTransport and createClient
 const mockGoogleLogin = vi.fn();
+const mockEmailLogin = vi.fn();
+const mockEmailRegister = vi.fn();
 const mockRefreshToken = vi.fn();
 
 vi.mock("@connectrpc/connect-web", () => ({
@@ -18,6 +20,8 @@ vi.mock("@connectrpc/connect-web", () => ({
 vi.mock("@connectrpc/connect", () => ({
   createClient: vi.fn(() => ({
     googleLogin: mockGoogleLogin,
+    emailLogin: mockEmailLogin,
+    emailRegister: mockEmailRegister,
     refreshToken: mockRefreshToken,
   })),
 }));
@@ -385,6 +389,93 @@ describe("AuthProvider", () => {
     expect(first.login).toBe(second.login);
     expect(first.logout).toBe(second.logout);
     expect(first.refreshTokens).toBe(second.refreshTokens);
+  });
+
+  // ── Email login / register ────────────────────────────────────────────
+
+  it("loginWithEmail calls emailLogin RPC and persists tokens + user", async () => {
+    mockEmailLogin.mockResolvedValueOnce({
+      accessToken: "email-at",
+      refreshToken: "email-rt",
+      user: { id: "u-em", email: "x@y.com", name: "Xavier" },
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.loginWithEmail("x@y.com", "supersecret123");
+    });
+
+    expect(mockEmailLogin).toHaveBeenCalledWith({
+      email: "x@y.com",
+      password: "supersecret123",
+    });
+    expect(result.current.accessToken).toBe("email-at");
+    expect(result.current.user).toEqual({
+      id: "u-em",
+      email: "x@y.com",
+      name: "Xavier",
+    });
+    expect(localStorage.getItem("toqui_access_token")).toBe("email-at");
+  });
+
+  it("loginWithEmail propagates RPC errors to the caller", async () => {
+    mockEmailLogin.mockRejectedValueOnce(new Error("unauthenticated"));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(
+      act(async () => {
+        await result.current.loginWithEmail("a@b.com", "wrong-password");
+      }),
+    ).rejects.toThrow("unauthenticated");
+
+    expect(result.current.accessToken).toBeNull();
+  });
+
+  it("registerWithEmail calls emailRegister RPC and persists tokens + user", async () => {
+    mockEmailRegister.mockResolvedValueOnce({
+      accessToken: "reg-at",
+      refreshToken: "reg-rt",
+      user: { id: "u-new", email: "new@x.com", name: "Newt" },
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.registerWithEmail("new@x.com", "supersecret123", "Newt");
+    });
+
+    expect(mockEmailRegister).toHaveBeenCalledWith({
+      email: "new@x.com",
+      password: "supersecret123",
+      name: "Newt",
+    });
+    expect(result.current.accessToken).toBe("reg-at");
+    expect(result.current.user).toEqual({
+      id: "u-new",
+      email: "new@x.com",
+      name: "Newt",
+    });
+    expect(localStorage.getItem("toqui_refresh_token")).toBe("reg-rt");
+  });
+
+  it("registerWithEmail propagates RPC errors to the caller", async () => {
+    mockEmailRegister.mockRejectedValueOnce(new Error("already exists"));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(
+      act(async () => {
+        await result.current.registerWithEmail("dup@x.com", "supersecret123", "Dup");
+      }),
+    ).rejects.toThrow("already exists");
+
+    expect(result.current.accessToken).toBeNull();
   });
 
   // ── Login propagation error ───────────────────────────────────────────

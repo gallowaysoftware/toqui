@@ -68,7 +68,10 @@ app/                          Expo Router pages (file-based routing)
       chat.tsx                AI chat for trip planning
       bookings.tsx            Booking management
       settings.tsx            Trip settings
-  auth/callback.tsx           OAuth callback handler
+  auth/
+    callback.tsx              Google OAuth callback handler
+    email-login.tsx           Email + password sign-in screen
+    email-register.tsx        Email + password registration screen
   shared/[token]/index.tsx    Public shared trip view
   onboarding.tsx              Onboarding flow
   privacy.tsx                 Privacy policy
@@ -122,6 +125,7 @@ lib/                          Shared utilities
     useCollaborators.ts       Trip collaborator management
     useOnboarding.ts          Onboarding flow state
     useNetworkStatus.ts       Online/offline detection, reconnection handling
+    useAuthProviders.ts       Fetch server's enabled auth providers (email+password always; Google env-gated)
   data/
     tripTemplates.ts          Trip template data for onboarding
   export/
@@ -215,15 +219,33 @@ CI auto-deploys to prod on push to `main`: Docker build → push to Artifact Reg
 
 ## Auth Flow (Bearer Token)
 
-1. User authenticates via Google OAuth (`expo-auth-session`) or Facebook OAuth.
-2. App sends auth code to backend's `AuthService.GoogleLogin` / `FacebookLogin` RPC.
-3. Backend returns `{ access_token, refresh_token, user }` in response body.
-4. Tokens stored in `expo-secure-store` (native) or `localStorage` (web).
-5. `TransportProvider` interceptor attaches `Authorization: Bearer <token>` to every ConnectRPC request.
-6. On 401, interceptor calls `AuthService.RefreshToken` RPC, stores new tokens, retries.
-7. Logout clears stored tokens.
+Toqui ships as self-hostable OSS with **email + password as the primary login** and **Google OAuth as an optional, env-gated extra**. Facebook and Apple sign-in have been removed; their backend RPCs no longer exist. Operators decide whether Google is enabled at deploy time by setting `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` on the backend.
 
-**Apple Sign-In (planned, native only):** the backend exposes `AuthService.AppleLogin` (returns `Unimplemented` until Apple Developer enrollment completes). Frontend integration pending — will use `expo-apple-authentication` to obtain `authorization_code` + `id_token`, then POST both to the RPC. Apple is a third login provider alongside Google and Facebook; same token-bearer flow applies once it lands.
+The signed-out home screen (`app/(tabs)/index.tsx`) calls `useAuthProviders()` once on mount to learn which providers the server has enabled. The Google sign-in button is only rendered when `googleOauth === true` in the response; the email options are always shown.
+
+**Email + password (always available):**
+
+1. User taps "Sign in with email" or "Create account" on `app/(tabs)/index.tsx` and lands on `app/auth/email-login.tsx` or `app/auth/email-register.tsx`.
+2. Screen calls `useAuth().loginWithEmail(email, password)` or `registerWithEmail(email, password, name)`.
+3. AuthProvider builds an unauthenticated transport and invokes `AuthService.EmailLogin` / `EmailRegister`.
+4. Backend returns `{ access_token, refresh_token, user }` in the response body.
+5. Tokens are persisted to `expo-secure-store` (native) or `localStorage` (web); the user is redirected to `/(tabs)`.
+
+The screens map ConnectRPC error codes to user-facing messages: `Unauthenticated` on login → "Invalid email or password"; `AlreadyExists` on register → "Email already registered"; `InvalidArgument` on register → "Email must be valid; password must be at least 12 characters". The backend's `bcrypt` + proto validation is the single source of truth for password rules — there is no frontend strength meter.
+
+**Google OAuth (optional, env-gated):**
+
+1. User authenticates via Google OAuth (`expo-auth-session`).
+2. App sends the auth code to `AuthService.GoogleLogin`.
+3. Backend returns `{ access_token, refresh_token, user }`.
+4. Same persistence + redirect path as the email flow.
+
+**Shared (all flows):**
+
+- `TransportProvider` interceptor attaches `Authorization: Bearer <token>` to every ConnectRPC request.
+- On 401, interceptor calls `AuthService.RefreshToken`, stores new tokens, retries.
+- Logout clears stored tokens.
+- Password reset and email verification are deliberately out of scope for the OSS auth surface — operators manage their own user database directly when needed.
 
 **No cookies are used.** The backend's `cookieAuth` middleware is bypassed — the auth interceptor reads the Bearer header directly.
 
@@ -267,6 +289,7 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useNetworkStatus` | expo-network | Online/offline detection, reconnection handling |
 | `useFeedback` | REST | Submit user feedback (`POST /api/feedback`) |
 | `useDestinationGuide` | REST | Fetch destination guides (`GET /api/guides`) |
+| `useAuthProviders` | ConnectRPC | Fetch server's enabled auth providers (`AuthService.GetAuthProviders`) — `emailPassword` always true; `googleOauth` env-gated. Cached for the session (`staleTime: Infinity`). |
 
 ## Security
 

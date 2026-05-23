@@ -4,6 +4,9 @@
     "tagline": "Your AI-powered travel companion",
     "signIn": "Sign In",
     "getStarted": "Sign In with Google",
+    "signInWithEmail": "Sign in with email",
+    "createAccount": "Create account",
+    "or": "or",
     "signOut": "Sign Out",
     "loading": "Loading...",
     "error": "Something went wrong. Please try again.",
@@ -45,7 +48,7 @@
     "welcomeTitle": "Where do you want to go?",
     "welcomeSubtitle": "Pick a destination or create your own trip",
     "noDestination": "No destination",
-    "signInNote": "Sign in with Google to get started. Free, no credit card required.",
+    "signInNote": "Sign in to start planning your next trip.",
     "valueProps": {
       "experts": "800+ expert personas for every destination",
       "itineraries": "Day-by-day itineraries built from conversation",
@@ -58,6 +61,45 @@
       "rome": "Ancient wonders",
       "bali": "Island adventure",
       "newYork": "The city that never sleeps"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to continue planning your trips.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Your password",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Create one",
+      "errors": {
+        "invalidCredentials": "Invalid email or password",
+        "missingFields": "Email and password are required",
+        "generic": "Sign-in failed. Please try again."
+      }
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "All you need is an email and a password.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 12 characters",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "errors": {
+        "alreadyExists": "Email already registered",
+        "invalidArgument": "Email must be valid; password must be at least 12 characters",
+        "missingFields": "Name, email, and password are required",
+        "generic": "Sign-up failed. Please try again."
+      }
     }
   },
   "companion": {
