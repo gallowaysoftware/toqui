@@ -1,21 +1,16 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -36,10 +31,10 @@ type OAuthHandler struct {
 	authLimiter    *ratelimit.AuthLimiter
 	emailSvc       *email.Sender
 
-	// Facebook/Meta OAuth config (covers Facebook + Instagram login)
-	facebookClientID     string
-	facebookClientSecret string
-	facebookRedirectURI  string
+	// googleOAuthEnabled gates HandleLogin / HandleCallback. When false,
+	// /auth/google/* returns 501 Not Implemented so self-hosters who
+	// haven't provisioned a Google OAuth client don't see broken redirects.
+	googleOAuthEnabled bool
 }
 
 func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL string, secureCookies bool, allowedDomains []string, authLimiter *ratelimit.AuthLimiter, emailSvc *email.Sender) *OAuthHandler {
@@ -55,15 +50,19 @@ func NewOAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, frontendURL stri
 	}
 }
 
-// WithFacebookOAuth configures Facebook/Meta OAuth credentials on the handler.
-func (h *OAuthHandler) WithFacebookOAuth(clientID, clientSecret, redirectURI string) *OAuthHandler {
-	h.facebookClientID = clientID
-	h.facebookClientSecret = clientSecret
-	h.facebookRedirectURI = redirectURI
+// WithGoogleOAuthEnabled toggles the Google OAuth path. When false,
+// HandleLogin and HandleCallback return 501.
+func (h *OAuthHandler) WithGoogleOAuthEnabled(enabled bool) *OAuthHandler {
+	h.googleOAuthEnabled = enabled
 	return h
 }
 
 func (h *OAuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	if !h.googleOAuthEnabled {
+		http.Error(w, "google oauth not configured", http.StatusNotImplemented)
+		return
+	}
+
 	state := generateState()
 
 	// Set Domain so the cookie is available on the callback subdomain (api.*).
@@ -132,8 +131,8 @@ type oauthResult struct {
 	// login (created within the last minute). HandleExchange uses this to
 	// decide whether to fire `signup_completed`.
 	IsNewUser bool `json:"is_new_user,omitempty"`
-	// AuthProvider is "google" or "facebook" — propagated to the
-	// `signup_completed` event when IsNewUser is true.
+	// AuthProvider is "google" — propagated to the `signup_completed`
+	// event when IsNewUser is true.
 	AuthProvider string `json:"auth_provider,omitempty"`
 }
 
@@ -162,6 +161,11 @@ type refreshUser struct {
 }
 
 func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
+	if !h.googleOAuthEnabled {
+		http.Error(w, "google oauth not configured", http.StatusNotImplemented)
+		return
+	}
+
 	stateCookie, err := r.Cookie("oauth_state")
 	if err != nil || stateCookie.Value == "" || stateCookie.Value != r.URL.Query().Get("state") {
 		http.Redirect(w, r, h.frontendURL+"/?error=invalid_state", http.StatusTemporaryRedirect)
@@ -580,377 +584,6 @@ func (h *OAuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// facebookUserInfo holds the response from Facebook's Graph API /me endpoint.
-type facebookUserInfo struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Picture struct {
-		Data struct {
-			URL string `json:"url"`
-		} `json:"data"`
-	} `json:"picture"`
-}
-
-// HandleFacebookLogin redirects to Facebook's OAuth consent screen.
-func (h *OAuthHandler) HandleFacebookLogin(w http.ResponseWriter, r *http.Request) {
-	if h.facebookClientID == "" {
-		http.Error(w, "Facebook login not configured", http.StatusNotImplemented)
-		return
-	}
-
-	state := generateState()
-
-	domain := ""
-	if h.secureCookies {
-		domain = ".toqui.travel"
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauth_state",
-		Value:    state,
-		Path:     "/",
-		Domain:   domain,
-		MaxAge:   300,
-		HttpOnly: true,
-		Secure:   h.secureCookies,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	// If a return URL is requested (e.g. admin), store it in a cookie.
-	if ret := r.URL.Query().Get("return"); ret == "admin" {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "oauth_return",
-			Value:    "admin",
-			Path:     "/",
-			Domain:   domain,
-			MaxAge:   300,
-			HttpOnly: true,
-			Secure:   h.secureCookies,
-			SameSite: http.SameSiteLaxMode,
-		})
-	}
-
-	params := url.Values{
-		"client_id":    {h.facebookClientID},
-		"redirect_uri": {h.facebookRedirectURI},
-		"state":        {state},
-		"scope":        {"email,public_profile"},
-	}
-
-	authURL := "https://www.facebook.com/v19.0/dialog/oauth?" + params.Encode()
-	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
-}
-
-// HandleFacebookCallback handles the OAuth callback from Facebook.
-func (h *OAuthHandler) HandleFacebookCallback(w http.ResponseWriter, r *http.Request) {
-	if h.facebookClientID == "" {
-		http.Error(w, "Facebook login not configured", http.StatusNotImplemented)
-		return
-	}
-
-	// Validate state
-	stateCookie, err := r.Cookie("oauth_state")
-	if err != nil || stateCookie.Value == "" || stateCookie.Value != r.URL.Query().Get("state") {
-		http.Redirect(w, r, h.frontendURL+"/?error=invalid_state", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// Clear the state cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:   "oauth_state",
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
-	})
-
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		http.Redirect(w, r, h.frontendURL+"/?error=missing_code", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// Exchange code for access token
-	fbToken, err := h.exchangeFacebookCode(r.Context(), code)
-	if err != nil {
-		slog.Error("facebook code exchange failed", "error", err)
-		http.Redirect(w, r, h.frontendURL+"/?error=exchange_failed", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// Fetch user profile from Facebook
-	fbUser, err := fetchFacebookUser(fbToken)
-	if err != nil {
-		slog.Error("facebook user info failed", "error", err)
-		http.Redirect(w, r, h.frontendURL+"/?error=exchange_failed", http.StatusTemporaryRedirect)
-		return
-	}
-
-	if fbUser.Email == "" {
-		http.Redirect(w, r, h.frontendURL+"/?error=email_required", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// Domain allowlist
-	if !isEmailDomainAllowed(fbUser.Email, h.allowedDomains) {
-		audit.Log(audit.EventLoginDeniedDomain, "email", maskEmail(fbUser.Email))
-		http.Redirect(w, r, h.frontendURL+"/?error=domain_not_allowed", http.StatusTemporaryRedirect)
-		return
-	}
-
-	ctx := r.Context()
-	user, err := h.findOrCreateFacebookUser(ctx, fbUser)
-	if err != nil {
-		slog.Error("facebook user upsert failed", "error", err)
-		http.Redirect(w, r, h.frontendURL+"/?error=db_error", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// New user detection: created within the last minute means this is a signup, not a returning login.
-	fbIsNewUser := time.Since(user.CreatedAt) < time.Minute
-
-	// Send welcome email for new users.
-	if h.emailSvc != nil && fbIsNewUser {
-		name := ""
-		if user.Name.Valid {
-			name = user.Name.String
-		}
-		go func() {
-			if err := h.emailSvc.SendWelcome(user.Email, name, h.frontendURL); err != nil {
-				slog.Error("welcome email failed", "error", err, "user_id", user.ID)
-			}
-		}()
-	}
-
-	accessToken, err := h.authSvc.GenerateAccessToken(user.ID)
-	if err != nil {
-		http.Redirect(w, r, h.frontendURL+"/?error=token_error", http.StatusTemporaryRedirect)
-		return
-	}
-
-	refreshResult, err := h.authSvc.GenerateRefreshToken(user.ID, uuid.Nil)
-	if err != nil {
-		http.Redirect(w, r, h.frontendURL+"/?error=token_error", http.StatusTemporaryRedirect)
-		return
-	}
-
-	if _, dbErr := h.queries.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
-		UserID:    user.ID,
-		Jti:       refreshResult.JTI,
-		Family:    refreshResult.Family,
-		ExpiresAt: refreshResult.ExpiresAt,
-	}); dbErr != nil {
-		slog.Error("store refresh token", "error", dbErr)
-		http.Redirect(w, r, h.frontendURL+"/?error=internal", http.StatusTemporaryRedirect)
-		return
-	}
-
-	result := oauthResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshResult.Token,
-		UserID:       user.ID.String(),
-		Email:        user.Email,
-		IsNewUser:    fbIsNewUser,
-		AuthProvider: "facebook",
-	}
-	if user.Name.Valid {
-		result.Name = user.Name.String
-	}
-	if user.AvatarUrl.Valid {
-		result.AvatarURL = user.AvatarUrl.String
-	}
-
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		slog.Error("marshal oauth result", "error", err)
-		http.Redirect(w, r, h.frontendURL+"/?error=internal", http.StatusTemporaryRedirect)
-		return
-	}
-
-	audit.Log(audit.EventFacebookLogin, "user_id", user.ID.String(), "email", maskEmail(user.Email))
-
-	// Admin return flow (same as Google)
-	if c, err := r.Cookie("oauth_return"); err == nil && c.Value == "admin" {
-		clearDomain := ""
-		if h.secureCookies {
-			clearDomain = ".toqui.travel"
-		}
-		http.SetCookie(w, &http.Cookie{Name: "oauth_return", Value: "", Path: "/", Domain: clearDomain, MaxAge: -1})
-		http.Redirect(w, r, "https://admin.toqui.travel/#token="+result.AccessToken, http.StatusTemporaryRedirect)
-		return
-	}
-
-	auth.SetOAuthResultCookie(w, string(resultJSON), h.secureCookies)
-	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
-}
-
-// exchangeFacebookCode exchanges a Facebook authorization code for an access token.
-func (h *OAuthHandler) exchangeFacebookCode(ctx context.Context, code string) (string, error) {
-	params := url.Values{
-		"client_id":     {h.facebookClientID},
-		"client_secret": {h.facebookClientSecret},
-		"redirect_uri":  {h.facebookRedirectURI},
-		"code":          {code},
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://graph.facebook.com/v19.0/oauth/access_token?"+params.Encode(), nil)
-	if err != nil {
-		return "", fmt.Errorf("create token request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("facebook token request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return "", fmt.Errorf("read token response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("facebook token exchange failed (%d): %s", resp.StatusCode, body)
-	}
-
-	var tokenResp struct {
-		AccessToken string `json:"access_token"`
-	}
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return "", fmt.Errorf("unmarshal token response: %w", err)
-	}
-
-	if tokenResp.AccessToken == "" {
-		return "", fmt.Errorf("empty access token in response")
-	}
-
-	return tokenResp.AccessToken, nil
-}
-
-// fetchFacebookUser fetches the user profile from Facebook's Graph API.
-func fetchFacebookUser(accessToken string) (*facebookUserInfo, error) {
-	u := "https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=" + url.QueryEscape(accessToken)
-	resp, err := http.Get(u) //nolint:gosec // URL is constructed from trusted components
-	if err != nil {
-		return nil, fmt.Errorf("facebook user info request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, fmt.Errorf("read user info: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("facebook user info failed (%d): %s", resp.StatusCode, body)
-	}
-
-	var info facebookUserInfo
-	if err := json.Unmarshal(body, &info); err != nil {
-		return nil, fmt.Errorf("unmarshal user info: %w", err)
-	}
-
-	return &info, nil
-}
-
-// validateFacebookAccessToken validates a Facebook access token using the debug_token endpoint.
-func validateFacebookAccessToken(ctx context.Context, inputToken, appID, appSecret string) (*facebookUserInfo, error) {
-	// Debug the token to verify it's valid and belongs to our app.
-	debugURL := fmt.Sprintf("https://graph.facebook.com/debug_token?input_token=%s&access_token=%s|%s",
-		url.QueryEscape(inputToken), url.QueryEscape(appID), url.QueryEscape(appSecret))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, debugURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create debug request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("facebook debug_token request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, fmt.Errorf("read debug response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("facebook debug_token failed (%d): %s", resp.StatusCode, body)
-	}
-
-	var debugResp struct {
-		Data struct {
-			AppID   string `json:"app_id"`
-			IsValid bool   `json:"is_valid"`
-			UserID  string `json:"user_id"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &debugResp); err != nil {
-		return nil, fmt.Errorf("unmarshal debug response: %w", err)
-	}
-
-	if !debugResp.Data.IsValid {
-		return nil, fmt.Errorf("facebook access token is not valid")
-	}
-
-	if debugResp.Data.AppID != appID {
-		return nil, fmt.Errorf("facebook access token is for a different app")
-	}
-
-	// Token is valid — fetch the user profile.
-	return fetchFacebookUser(inputToken)
-}
-
-// findOrCreateFacebookUser looks up or creates a user from Facebook login info.
-// Logic: 1) find by facebook_id → login, 2) find by email → link, 3) create new.
-func (h *OAuthHandler) findOrCreateFacebookUser(ctx context.Context, fbUser *facebookUserInfo) (*dbgen.User, error) {
-	fbID := pgtype.Text{String: fbUser.ID, Valid: true}
-	avatarURL := fbUser.Picture.Data.URL
-
-	// 1. Check if user exists by Facebook ID
-	user, err := h.queries.GetUserByFacebookID(ctx, fbID)
-	if err == nil {
-		return &user, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("get user by facebook_id: %w", err)
-	}
-
-	// 2. Check if user exists by email → link Facebook ID
-	user, err = h.queries.GetUserByEmail(ctx, fbUser.Email)
-	if err == nil {
-		// Link Facebook ID to existing account
-		if linkErr := h.queries.UpdateUserFacebookID(ctx, dbgen.UpdateUserFacebookIDParams{
-			ID:         user.ID,
-			FacebookID: fbID,
-		}); linkErr != nil {
-			return nil, fmt.Errorf("link facebook_id to user: %w", linkErr)
-		}
-		user.FacebookID = fbID
-		audit.Log(audit.EventFacebookLink, "user_id", user.ID.String(), "email", maskEmail(user.Email))
-		return &user, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("get user by email: %w", err)
-	}
-
-	// 3. Create new user with Facebook ID
-	user, err = h.queries.CreateUserWithFacebook(ctx, dbgen.CreateUserWithFacebookParams{
-		Email:      fbUser.Email,
-		Name:       pgtype.Text{String: fbUser.Name, Valid: fbUser.Name != ""},
-		FacebookID: fbID,
-		AvatarUrl:  pgtype.Text{String: avatarURL, Valid: avatarURL != ""},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create user with facebook: %w", err)
-	}
-
-	audit.Log(audit.EventFacebookLoginNew, "user_id", user.ID.String(), "email", maskEmail(user.Email))
-	return &user, nil
-}
-
 func generateState() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
@@ -979,4 +612,3 @@ func isEmailDomainAllowed(email string, allowedDomains []string) bool {
 	}
 	return false
 }
-

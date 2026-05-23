@@ -81,7 +81,7 @@ graph TB
 | `internal/chatstore/`   | Firestore chat message persistence                                                        |
 | `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
 | `internal/exportstorage/` | Export storage abstraction (GCS in prod, local filesystem for dev)                        |
-| `internal/auth/`        | Google/Facebook OAuth + Apple Sign-In + JWT + auth interceptor + refresh token rotation (JTI/family). Apple sub-package: `internal/auth/apple/` (JWKS fetch + cache, ID-token verify, ES256 client-secret signer). |
+| `internal/auth/`        | Local email+password (bcrypt) + optional Google OAuth + JWT + auth interceptor + refresh token rotation (JTI/family). Facebook/Apple OAuth were removed when the project transitioned to self-hostable OSS. |
 | `internal/trip/`        | Trip CRUD, status transitions, destination management                                     |
 | `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
 | `internal/location/`    | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places)   |
@@ -110,7 +110,7 @@ graph TB
 
 ### Services (proto/toqui/v1/)
 
-- **AuthService** — Google OAuth, Facebook OAuth, Apple Sign-In (scaffold; returns `Unimplemented` until Apple Developer enrollment completes), JWT refresh, account deletion/export
+- **AuthService** — Local email+password (`EmailRegister`, `EmailLogin`, always available), optional Google OAuth (gated on `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), `GetAuthProviders` discovery RPC, JWT refresh, account deletion/export. Facebook and Apple OAuth were removed in the OSS transition.
 - **TripService** — Trip CRUD, itinerary management, templates, reorder
 - **ChatService** — Streaming chat with AI, history, sessions
 - **BookingService** — Booking ingestion (AI parsing), CRUD, update, price tracking, cost summary
@@ -137,7 +137,7 @@ Request → validate.Interceptor → auth.Interceptor → age.Interceptor → ra
 - **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure.
 - **age**: Enforces the 18+ age verification gate — users who haven't completed `POST /auth/verify-age` cannot access gated RPCs. Returns `PermissionDenied` if age not verified. The gate runs **after** OAuth (not before login as in the original design) — login responses include an `age_verification_required` flag the frontend uses to mount the form. If the user submits a DOB indicating <18, the handler **hard-deletes the user** via `lifecycle.Service.DeleteUser` and records the email's SHA-256 in `under_age_blocks` so subsequent OAuth attempts with the same email are refused at login (`auth.login_denied.under_age` audit event). The DOB itself is never stored — only `users.age_verified_at` (timestamp).
 
-**Consent flow**: Login responses (Google/Facebook/Apple OAuth, gRPC `GoogleLogin`/`FacebookLogin`/`AppleLogin`, and `POST /auth/exchange`) include a `consent_pending` flag. When true, the frontend must show a consent modal and call `POST /auth/consent` with `{"terms_accepted": true, "privacy_accepted": true, "marketing_opt_in": bool}` before the user can proceed. Individual consents can also be managed via `POST /api/privacy/consents` and `DELETE /api/privacy/consents/{type}`.
+**Consent flow**: Login responses (`EmailLogin`, `EmailRegister`, `GoogleLogin`, and `POST /auth/exchange`) may include a `consent_pending` flag. When true, the frontend must show a consent modal and call `POST /auth/consent` with `{"terms_accepted": true, "privacy_accepted": true, "marketing_opt_in": bool}` before the user can proceed. Individual consents can also be managed via `POST /api/privacy/consents` and `DELETE /api/privacy/consents/{type}`.
 - **ratelimit**: Per-user token bucket. Separate limits for AI RPCs (SendMessage) vs general RPCs. Returns `ResourceExhausted` when exceeded.
 
 ## Development
@@ -261,17 +261,15 @@ FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: st
 
 Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. All environments use `gcsm://secret-name` references resolved at startup via GCP Secret Manager (requires `gcloud auth application-default login`).
 
-Required: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). See `env/.env.local` for the full local dev config.
+Required: `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` are **optional** — when both are set the Google OAuth path lights up; when either is missing, GoogleLogin returns Unimplemented and the deployment runs as email+password only. See `env/.env.local` for the full local dev config.
 
 **Additional environment variables** (see `internal/config/config.go` for full list):
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
 | `GEMINI_API_KEY` | (none) | Gemini Developer API key (preferred over Vertex AI) |
-| `APPLE_TEAM_ID` | (none) | Apple Developer team ID (10-char). Required for Apple Sign-In; empty → `AppleLogin` returns `Unimplemented`. |
-| `APPLE_SERVICES_ID` | (none) | Apple Services ID (NOT bundle ID), used as `client_id` for `/auth/token`. |
-| `APPLE_KEY_ID` | (none) | Apple Sign-In key ID (10-char). |
-| `APPLE_PRIVATE_KEY` | (none) | PEM contents of the Apple `.p8` private key. Supports `gcsm://` resolution. |
+| `GOOGLE_CLIENT_ID` | (none) | Google OAuth client ID. When unset (together with `GOOGLE_CLIENT_SECRET`), the `GoogleLogin` RPC returns `Unimplemented` and `/auth/google/*` returns 501. |
+| `GOOGLE_CLIENT_SECRET` | (none) | Google OAuth client secret. Same gating as `GOOGLE_CLIENT_ID`. |
 | `STRIPE_SECRET_KEY` | (none) | Stripe API secret key |
 | `STRIPE_WEBHOOK_SECRET` | (none) | Stripe webhook signing secret |
 | `STRIPE_TRIP_PRO_PRODUCT_ID` | (none) | Stripe product ID for Trip Pro one-time purchase |
@@ -721,17 +719,24 @@ Migrations are copied to `/migrations` in the image. The `cmd/migrate` binary re
 HTTP routes (outside ConnectRPC):
 
 ### Auth routes
-- `GET /auth/google/login` — Initiates OAuth, sets state cookie, redirects to Google
-- `GET /auth/google/callback` — Exchanges code, checks capacity cap, sets `toqui_oauth_result` cookie (60s TTL), redirects to frontend `/auth/callback`
-- `GET /auth/facebook/login` — Initiates Facebook OAuth, sets state cookie, redirects to Facebook
-- `GET /auth/facebook/callback` — Exchanges code, checks capacity cap, sets OAuth result cookie, redirects to frontend
-- `AuthService/AppleLogin` (gRPC) — Native-app Apple Sign-In. Frontend (`expo-apple-authentication`) supplies `authorization_code` + `id_token`. Backend exchanges code with Apple, verifies the JWT against Apple's JWKS, links by `apple_sub` (or email on first sign-in), issues Toqui tokens. **Returns `Unimplemented` when `APPLE_TEAM_ID`, `APPLE_SERVICES_ID`, `APPLE_KEY_ID`, or `APPLE_PRIVATE_KEY` is empty** — gated until Apple Developer enrollment completes.
+
+**Primary path — local email+password (always available)**:
+- `AuthService/EmailRegister` (gRPC) — Creates a new account with `{email, password (>=12 chars), name}`. Password is bcrypt-hashed at cost 12. Returns access + refresh tokens. Duplicate email returns `CodeAlreadyExists` ("email already registered"); allowlisted-domain failure returns `CodePermissionDenied`.
+- `AuthService/EmailLogin` (gRPC) — Verifies an email+password and returns tokens. All failure modes — unknown email, OAuth-only user (no `password_hash`), wrong password — collapse to `CodeUnauthenticated` with "invalid email or password" to prevent account enumeration. A dummy bcrypt comparison runs on the missing-user / missing-hash branches so timing is equivalent across paths.
+- `AuthService/GetAuthProviders` (gRPC, **public/no auth**) — Frontends call this before render to decide which sign-in buttons to draw. Returns `{email_password: true, google_oauth: <env-gated>}`. Listed in the auth interceptor's `publicMethods` allowlist alongside `EmailRegister` / `EmailLogin` / `GoogleLogin` / `RefreshToken`.
+
+**Optional — Google OAuth (gated on env)**:
+- `AuthService/GoogleLogin` (gRPC) — Native-app code-for-token exchange (PKCE). **Returns `CodeUnimplemented` when `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` is unset.**
+- `GET /auth/google/login` — Initiates the web OAuth redirect. **Returns 501 when Google OAuth is not configured.**
+- `GET /auth/google/callback` — Exchanges code, sets `toqui_oauth_result` cookie, redirects to frontend `/auth/callback`. **Returns 501 when Google OAuth is not configured.**
+
+**Shared**:
 - `POST /auth/exchange` — Reads OAuth cookie, returns `{user, expires_at}`, sets `toqui_access`/`toqui_refresh` HttpOnly cookies
 - `POST /auth/refresh` — Cookie-based token refresh. Rotates tokens (JTI/family), sets new cookies, returns `{user, expires_at}`
+- `AuthService/RefreshToken` (gRPC) — Native-app variant of `/auth/refresh`.
 - `POST /auth/logout` — Revokes refresh token, clears auth cookies, returns 204
-- `POST /auth/verify-age` — Authenticated. JSON body `{"date_of_birth":"YYYY-MM-DD"}`. **18+ only**. Age >= 18 → sets `users.age_verified_at`, returns `200 {"verified":true}`. Age < 18 → records the email's SHA-256 in `under_age_blocks` (anti-evasion), hard-deletes the user via `lifecycle.DeleteUser` (full Postgres CASCADE + Firestore chat purge), audit-logs **two events** (`auth.account_delete` with `reason=under_age` for the general deletion stream, and `auth.login_denied.under_age` for compliance reports that filter on a single event name across this path and the OAuth pre-check), returns `403 {"error":"under_age", "message":"..."}`. The DOB itself is never persisted. Future-dated or >150-year-old DOBs are treated as malformed input (400) — destructive action only fires on 0 ≤ age < 18.
 
-  **Anti-evasion at OAuth login**: every Google/Facebook/Apple login handler runs `checkUnderAgeBlock` after token validation and before user upsert. A previously-refused email (matched by SHA-256 hash) is rejected with `PermissionDenied` and the `auth.login_denied.under_age` audit event. The block is per-email, not per-(email, provider) — switching providers doesn't bypass it.
+Facebook OAuth and Apple Sign-In were removed when the project transitioned to self-hostable OSS. The `facebook_id` and `apple_sub` columns remain in the `users` table (migrations are immutable history) but are unused.
 
 ### Waitlist routes
 - `POST /waitlist` — Public. JSON `{"email":"..."}`. Sends verification email via Resend, returns `{"message":"Check your email to verify your waitlist signup!"}`. Re-submission resends verification. In local dev (no RESEND_API_KEY), auto-verifies.

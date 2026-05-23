@@ -267,6 +267,7 @@ type User struct {
 	FacebookID       pgtype.Text        `json:"facebook_id"`
 	IsAdmin          bool               `json:"is_admin"`
 	AppleSub         pgtype.Text        `json:"apple_sub"`
+	PasswordHash     pgtype.Text        `json:"password_hash"`
 }
 
 type UserConsent struct {

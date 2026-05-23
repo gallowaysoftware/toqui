@@ -12,26 +12,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUserWithApple = `-- name: CreateUserWithApple :one
-INSERT INTO users (email, name, apple_sub, avatar_url)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub
+const createUserWithPassword = `-- name: CreateUserWithPassword :one
+INSERT INTO users (email, name, password_hash)
+VALUES ($1, $2, $3)
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
 `
 
-type CreateUserWithAppleParams struct {
-	Email     string      `json:"email"`
-	Name      pgtype.Text `json:"name"`
-	AppleSub  pgtype.Text `json:"apple_sub"`
-	AvatarUrl pgtype.Text `json:"avatar_url"`
+type CreateUserWithPasswordParams struct {
+	Email        string      `json:"email"`
+	Name         pgtype.Text `json:"name"`
+	PasswordHash pgtype.Text `json:"password_hash"`
 }
 
-func (q *Queries) CreateUserWithApple(ctx context.Context, arg CreateUserWithAppleParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUserWithApple,
-		arg.Email,
-		arg.Name,
-		arg.AppleSub,
-		arg.AvatarUrl,
-	)
+func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUserWithPassword, arg.Email, arg.Name, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -47,76 +41,13 @@ func (q *Queries) CreateUserWithApple(ctx context.Context, arg CreateUserWithApp
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
-	)
-	return i, err
-}
-
-const createUserWithFacebook = `-- name: CreateUserWithFacebook :one
-INSERT INTO users (email, name, facebook_id, avatar_url)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub
-`
-
-type CreateUserWithFacebookParams struct {
-	Email      string      `json:"email"`
-	Name       pgtype.Text `json:"name"`
-	FacebookID pgtype.Text `json:"facebook_id"`
-	AvatarUrl  pgtype.Text `json:"avatar_url"`
-}
-
-func (q *Queries) CreateUserWithFacebook(ctx context.Context, arg CreateUserWithFacebookParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUserWithFacebook,
-		arg.Email,
-		arg.Name,
-		arg.FacebookID,
-		arg.AvatarUrl,
-	)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-		&i.GoogleID,
-		&i.AvatarUrl,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
-		&i.FacebookID,
-		&i.IsAdmin,
-		&i.AppleSub,
-	)
-	return i, err
-}
-
-const getUserByAppleSub = `-- name: GetUserByAppleSub :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE apple_sub = $1
-`
-
-func (q *Queries) GetUserByAppleSub(ctx context.Context, appleSub pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByAppleSub, appleSub)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-		&i.GoogleID,
-		&i.AvatarUrl,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
-		&i.FacebookID,
-		&i.IsAdmin,
-		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE email = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -136,37 +67,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
-	)
-	return i, err
-}
-
-const getUserByFacebookID = `-- name: GetUserByFacebookID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE facebook_id = $1
-`
-
-func (q *Queries) GetUserByFacebookID(ctx context.Context, facebookID pgtype.Text) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByFacebookID, facebookID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-		&i.GoogleID,
-		&i.AvatarUrl,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DefaultPersonaID,
-		&i.SubscriptionTier,
-		&i.AgeVerifiedAt,
-		&i.FacebookID,
-		&i.IsAdmin,
-		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE google_id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE google_id = $1
 `
 
 func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error) {
@@ -186,12 +93,13 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE id = $1
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -211,6 +119,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }
@@ -226,6 +135,22 @@ func (q *Queries) GetUserDefaultPersona(ctx context.Context, id uuid.UUID) (pgty
 	return default_persona_id, err
 }
 
+const getUserPasswordHash = `-- name: GetUserPasswordHash :one
+SELECT id, password_hash FROM users WHERE email = $1
+`
+
+type GetUserPasswordHashRow struct {
+	ID           uuid.UUID   `json:"id"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+}
+
+func (q *Queries) GetUserPasswordHash(ctx context.Context, email string) (GetUserPasswordHashRow, error) {
+	row := q.db.QueryRow(ctx, getUserPasswordHash, email)
+	var i GetUserPasswordHashRow
+	err := row.Scan(&i.ID, &i.PasswordHash)
+	return i, err
+}
+
 const getUserSubscriptionTier = `-- name: GetUserSubscriptionTier :one
 SELECT COALESCE(subscription_tier, 'free') FROM users WHERE id = $1
 `
@@ -238,9 +163,14 @@ func (q *Queries) GetUserSubscriptionTier(ctx context.Context, id uuid.UUID) (st
 }
 
 const isUserAdmin = `-- name: IsUserAdmin :one
+
 SELECT is_admin FROM users WHERE id = $1
 `
 
+// Facebook + Apple OAuth queries were removed when the project transitioned
+// to self-hostable OSS (email+password default, Google OAuth optional). The
+// facebook_id / apple_sub columns remain in the schema as dead fields —
+// migrations are immutable history.
 func (q *Queries) IsUserAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, isUserAdmin, id)
 	var is_admin bool
@@ -249,7 +179,7 @@ func (q *Queries) IsUserAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users ORDER BY created_at DESC
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users ORDER BY created_at DESC
 LIMIT $2 OFFSET $1
 `
 
@@ -281,6 +211,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.FacebookID,
 			&i.IsAdmin,
 			&i.AppleSub,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -293,7 +224,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub FROM users WHERE email ILIKE '%' || $1::text || '%' OR name ILIKE '%' || $1::text || '%'
+SELECT id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash FROM users WHERE email ILIKE '%' || $1::text || '%' OR name ILIKE '%' || $1::text || '%'
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $2
 `
@@ -327,6 +258,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Use
 			&i.FacebookID,
 			&i.IsAdmin,
 			&i.AppleSub,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -364,7 +296,7 @@ func (q *Queries) SetAdmin(ctx context.Context, arg SetAdminParams) error {
 const setUserDefaultPersona = `-- name: SetUserDefaultPersona :one
 UPDATE users SET default_persona_id = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
 `
 
 type SetUserDefaultPersonaParams struct {
@@ -389,6 +321,7 @@ func (q *Queries) SetUserDefaultPersona(ctx context.Context, arg SetUserDefaultP
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }
@@ -421,31 +354,18 @@ func (q *Queries) SetUserSubscriptionTierByID(ctx context.Context, arg SetUserSu
 	return err
 }
 
-const updateUserAppleSub = `-- name: UpdateUserAppleSub :exec
-UPDATE users SET apple_sub = $2, updated_at = NOW() WHERE id = $1
+const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
+UPDATE users SET password_hash = $1, updated_at = NOW()
+WHERE id = $2
 `
 
-type UpdateUserAppleSubParams struct {
-	ID       uuid.UUID   `json:"id"`
-	AppleSub pgtype.Text `json:"apple_sub"`
+type UpdateUserPasswordHashParams struct {
+	PasswordHash pgtype.Text `json:"password_hash"`
+	UserID       uuid.UUID   `json:"user_id"`
 }
 
-func (q *Queries) UpdateUserAppleSub(ctx context.Context, arg UpdateUserAppleSubParams) error {
-	_, err := q.db.Exec(ctx, updateUserAppleSub, arg.ID, arg.AppleSub)
-	return err
-}
-
-const updateUserFacebookID = `-- name: UpdateUserFacebookID :exec
-UPDATE users SET facebook_id = $2, updated_at = NOW() WHERE id = $1
-`
-
-type UpdateUserFacebookIDParams struct {
-	ID         uuid.UUID   `json:"id"`
-	FacebookID pgtype.Text `json:"facebook_id"`
-}
-
-func (q *Queries) UpdateUserFacebookID(ctx context.Context, arg UpdateUserFacebookIDParams) error {
-	_, err := q.db.Exec(ctx, updateUserFacebookID, arg.ID, arg.FacebookID)
+func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
+	_, err := q.db.Exec(ctx, updateUserPasswordHash, arg.PasswordHash, arg.UserID)
 	return err
 }
 
@@ -454,7 +374,7 @@ INSERT INTO users (google_id, email, name, avatar_url)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (google_id)
 DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url, updated_at = NOW()
-RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, subscription_tier, age_verified_at, facebook_id, is_admin, apple_sub, password_hash
 `
 
 type UpsertUserByGoogleIDParams struct {
@@ -486,6 +406,7 @@ func (q *Queries) UpsertUserByGoogleID(ctx context.Context, arg UpsertUserByGoog
 		&i.FacebookID,
 		&i.IsAdmin,
 		&i.AppleSub,
+		&i.PasswordHash,
 	)
 	return i, err
 }

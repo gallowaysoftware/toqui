@@ -35,11 +35,14 @@ const (
 const (
 	// AuthServiceGoogleLoginProcedure is the fully-qualified name of the AuthService's GoogleLogin RPC.
 	AuthServiceGoogleLoginProcedure = "/toqui.v1.AuthService/GoogleLogin"
-	// AuthServiceFacebookLoginProcedure is the fully-qualified name of the AuthService's FacebookLogin
+	// AuthServiceEmailRegisterProcedure is the fully-qualified name of the AuthService's EmailRegister
 	// RPC.
-	AuthServiceFacebookLoginProcedure = "/toqui.v1.AuthService/FacebookLogin"
-	// AuthServiceAppleLoginProcedure is the fully-qualified name of the AuthService's AppleLogin RPC.
-	AuthServiceAppleLoginProcedure = "/toqui.v1.AuthService/AppleLogin"
+	AuthServiceEmailRegisterProcedure = "/toqui.v1.AuthService/EmailRegister"
+	// AuthServiceEmailLoginProcedure is the fully-qualified name of the AuthService's EmailLogin RPC.
+	AuthServiceEmailLoginProcedure = "/toqui.v1.AuthService/EmailLogin"
+	// AuthServiceGetAuthProvidersProcedure is the fully-qualified name of the AuthService's
+	// GetAuthProviders RPC.
+	AuthServiceGetAuthProvidersProcedure = "/toqui.v1.AuthService/GetAuthProviders"
 	// AuthServiceRefreshTokenProcedure is the fully-qualified name of the AuthService's RefreshToken
 	// RPC.
 	AuthServiceRefreshTokenProcedure = "/toqui.v1.AuthService/RefreshToken"
@@ -56,8 +59,9 @@ const (
 // AuthServiceClient is a client for the toqui.v1.AuthService service.
 type AuthServiceClient interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
-	FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error)
-	AppleLogin(context.Context, *connect.Request[v1.AppleLoginRequest]) (*connect.Response[v1.AppleLoginResponse], error)
+	EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error)
+	EmailLogin(context.Context, *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error)
+	GetAuthProviders(context.Context, *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	GetCurrentUser(context.Context, *connect.Request[v1.GetCurrentUserRequest]) (*connect.Response[v1.GetCurrentUserResponse], error)
 	// Privacy / data lifecycle
@@ -82,16 +86,22 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
 			connect.WithClientOptions(opts...),
 		),
-		facebookLogin: connect.NewClient[v1.FacebookLoginRequest, v1.FacebookLoginResponse](
+		emailRegister: connect.NewClient[v1.EmailRegisterRequest, v1.EmailRegisterResponse](
 			httpClient,
-			baseURL+AuthServiceFacebookLoginProcedure,
-			connect.WithSchema(authServiceMethods.ByName("FacebookLogin")),
+			baseURL+AuthServiceEmailRegisterProcedure,
+			connect.WithSchema(authServiceMethods.ByName("EmailRegister")),
 			connect.WithClientOptions(opts...),
 		),
-		appleLogin: connect.NewClient[v1.AppleLoginRequest, v1.AppleLoginResponse](
+		emailLogin: connect.NewClient[v1.EmailLoginRequest, v1.EmailLoginResponse](
 			httpClient,
-			baseURL+AuthServiceAppleLoginProcedure,
-			connect.WithSchema(authServiceMethods.ByName("AppleLogin")),
+			baseURL+AuthServiceEmailLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("EmailLogin")),
+			connect.WithClientOptions(opts...),
+		),
+		getAuthProviders: connect.NewClient[v1.GetAuthProvidersRequest, v1.GetAuthProvidersResponse](
+			httpClient,
+			baseURL+AuthServiceGetAuthProvidersProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetAuthProviders")),
 			connect.WithClientOptions(opts...),
 		),
 		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
@@ -123,13 +133,14 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	googleLogin    *connect.Client[v1.GoogleLoginRequest, v1.GoogleLoginResponse]
-	facebookLogin  *connect.Client[v1.FacebookLoginRequest, v1.FacebookLoginResponse]
-	appleLogin     *connect.Client[v1.AppleLoginRequest, v1.AppleLoginResponse]
-	refreshToken   *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
-	getCurrentUser *connect.Client[v1.GetCurrentUserRequest, v1.GetCurrentUserResponse]
-	deleteAccount  *connect.Client[v1.DeleteAccountRequest, v1.DeleteAccountResponse]
-	exportData     *connect.Client[v1.ExportDataRequest, v1.ExportDataResponse]
+	googleLogin      *connect.Client[v1.GoogleLoginRequest, v1.GoogleLoginResponse]
+	emailRegister    *connect.Client[v1.EmailRegisterRequest, v1.EmailRegisterResponse]
+	emailLogin       *connect.Client[v1.EmailLoginRequest, v1.EmailLoginResponse]
+	getAuthProviders *connect.Client[v1.GetAuthProvidersRequest, v1.GetAuthProvidersResponse]
+	refreshToken     *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
+	getCurrentUser   *connect.Client[v1.GetCurrentUserRequest, v1.GetCurrentUserResponse]
+	deleteAccount    *connect.Client[v1.DeleteAccountRequest, v1.DeleteAccountResponse]
+	exportData       *connect.Client[v1.ExportDataRequest, v1.ExportDataResponse]
 }
 
 // GoogleLogin calls toqui.v1.AuthService.GoogleLogin.
@@ -137,14 +148,19 @@ func (c *authServiceClient) GoogleLogin(ctx context.Context, req *connect.Reques
 	return c.googleLogin.CallUnary(ctx, req)
 }
 
-// FacebookLogin calls toqui.v1.AuthService.FacebookLogin.
-func (c *authServiceClient) FacebookLogin(ctx context.Context, req *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error) {
-	return c.facebookLogin.CallUnary(ctx, req)
+// EmailRegister calls toqui.v1.AuthService.EmailRegister.
+func (c *authServiceClient) EmailRegister(ctx context.Context, req *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error) {
+	return c.emailRegister.CallUnary(ctx, req)
 }
 
-// AppleLogin calls toqui.v1.AuthService.AppleLogin.
-func (c *authServiceClient) AppleLogin(ctx context.Context, req *connect.Request[v1.AppleLoginRequest]) (*connect.Response[v1.AppleLoginResponse], error) {
-	return c.appleLogin.CallUnary(ctx, req)
+// EmailLogin calls toqui.v1.AuthService.EmailLogin.
+func (c *authServiceClient) EmailLogin(ctx context.Context, req *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error) {
+	return c.emailLogin.CallUnary(ctx, req)
+}
+
+// GetAuthProviders calls toqui.v1.AuthService.GetAuthProviders.
+func (c *authServiceClient) GetAuthProviders(ctx context.Context, req *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error) {
+	return c.getAuthProviders.CallUnary(ctx, req)
 }
 
 // RefreshToken calls toqui.v1.AuthService.RefreshToken.
@@ -170,8 +186,9 @@ func (c *authServiceClient) ExportData(ctx context.Context, req *connect.Request
 // AuthServiceHandler is an implementation of the toqui.v1.AuthService service.
 type AuthServiceHandler interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
-	FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error)
-	AppleLogin(context.Context, *connect.Request[v1.AppleLoginRequest]) (*connect.Response[v1.AppleLoginResponse], error)
+	EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error)
+	EmailLogin(context.Context, *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error)
+	GetAuthProviders(context.Context, *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	GetCurrentUser(context.Context, *connect.Request[v1.GetCurrentUserRequest]) (*connect.Response[v1.GetCurrentUserResponse], error)
 	// Privacy / data lifecycle
@@ -192,16 +209,22 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
-	authServiceFacebookLoginHandler := connect.NewUnaryHandler(
-		AuthServiceFacebookLoginProcedure,
-		svc.FacebookLogin,
-		connect.WithSchema(authServiceMethods.ByName("FacebookLogin")),
+	authServiceEmailRegisterHandler := connect.NewUnaryHandler(
+		AuthServiceEmailRegisterProcedure,
+		svc.EmailRegister,
+		connect.WithSchema(authServiceMethods.ByName("EmailRegister")),
 		connect.WithHandlerOptions(opts...),
 	)
-	authServiceAppleLoginHandler := connect.NewUnaryHandler(
-		AuthServiceAppleLoginProcedure,
-		svc.AppleLogin,
-		connect.WithSchema(authServiceMethods.ByName("AppleLogin")),
+	authServiceEmailLoginHandler := connect.NewUnaryHandler(
+		AuthServiceEmailLoginProcedure,
+		svc.EmailLogin,
+		connect.WithSchema(authServiceMethods.ByName("EmailLogin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceGetAuthProvidersHandler := connect.NewUnaryHandler(
+		AuthServiceGetAuthProvidersProcedure,
+		svc.GetAuthProviders,
+		connect.WithSchema(authServiceMethods.ByName("GetAuthProviders")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceRefreshTokenHandler := connect.NewUnaryHandler(
@@ -232,10 +255,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case AuthServiceGoogleLoginProcedure:
 			authServiceGoogleLoginHandler.ServeHTTP(w, r)
-		case AuthServiceFacebookLoginProcedure:
-			authServiceFacebookLoginHandler.ServeHTTP(w, r)
-		case AuthServiceAppleLoginProcedure:
-			authServiceAppleLoginHandler.ServeHTTP(w, r)
+		case AuthServiceEmailRegisterProcedure:
+			authServiceEmailRegisterHandler.ServeHTTP(w, r)
+		case AuthServiceEmailLoginProcedure:
+			authServiceEmailLoginHandler.ServeHTTP(w, r)
+		case AuthServiceGetAuthProvidersProcedure:
+			authServiceGetAuthProvidersHandler.ServeHTTP(w, r)
 		case AuthServiceRefreshTokenProcedure:
 			authServiceRefreshTokenHandler.ServeHTTP(w, r)
 		case AuthServiceGetCurrentUserProcedure:
@@ -257,12 +282,16 @@ func (UnimplementedAuthServiceHandler) GoogleLogin(context.Context, *connect.Req
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.GoogleLogin is not implemented"))
 }
 
-func (UnimplementedAuthServiceHandler) FacebookLogin(context.Context, *connect.Request[v1.FacebookLoginRequest]) (*connect.Response[v1.FacebookLoginResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.FacebookLogin is not implemented"))
+func (UnimplementedAuthServiceHandler) EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.EmailRegister is not implemented"))
 }
 
-func (UnimplementedAuthServiceHandler) AppleLogin(context.Context, *connect.Request[v1.AppleLoginRequest]) (*connect.Response[v1.AppleLoginResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.AppleLogin is not implemented"))
+func (UnimplementedAuthServiceHandler) EmailLogin(context.Context, *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.EmailLogin is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetAuthProviders(context.Context, *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.GetAuthProviders is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {

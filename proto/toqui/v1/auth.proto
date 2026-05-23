@@ -9,8 +9,15 @@ import "google/protobuf/timestamp.proto";
 
 service AuthService {
   rpc GoogleLogin(GoogleLoginRequest) returns (GoogleLoginResponse);
-  rpc FacebookLogin(FacebookLoginRequest) returns (FacebookLoginResponse);
-  rpc AppleLogin(AppleLoginRequest) returns (AppleLoginResponse);
+  // Note: FacebookLogin and AppleLogin RPCs were removed when the project
+  // transitioned to self-hostable OSS (email+password default, Google OAuth
+  // optional). Do not reuse those names. Proto3 doesn't support `reserved`
+  // inside services, so this comment is the contract.
+
+  rpc EmailRegister(EmailRegisterRequest) returns (EmailRegisterResponse);
+  rpc EmailLogin(EmailLoginRequest) returns (EmailLoginResponse);
+  rpc GetAuthProviders(GetAuthProvidersRequest) returns (GetAuthProvidersResponse);
+
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
   rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
 
@@ -35,42 +42,39 @@ message GoogleLoginResponse {
   reserved "consent_pending", "age_verification_required";
 }
 
-message FacebookLoginRequest {
-  string access_token = 1 [(buf.validate.field).string.min_len = 1];
-  reserved 2;
-  reserved "attribution";
+// FacebookLoginRequest / FacebookLoginResponse / AppleLoginRequest /
+// AppleLoginResponse were removed alongside the FacebookLogin / AppleLogin
+// RPCs. The transition to self-hostable OSS standardized on local
+// email+password (always available) with optional Google OAuth.
+
+message EmailRegisterRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string password = 2 [(buf.validate.field).string.min_len = 12, (buf.validate.field).string.max_len = 200];
+  string name = 3 [(buf.validate.field).string.min_len = 1, (buf.validate.field).string.max_len = 100];
 }
 
-message FacebookLoginResponse {
+message EmailRegisterResponse {
   string access_token = 1;
   string refresh_token = 2;
   User user = 3;
-  reserved 4, 5;
-  reserved "consent_pending", "age_verification_required";
 }
 
-// Apple Sign-In: the frontend (expo-apple-authentication) returns an
-// authorization_code + id_token after the user taps "Sign in with Apple."
-// The backend exchanges the code with Apple, verifies the signed ID token,
-// and creates / links a Toqui user account.
-message AppleLoginRequest {
-  string authorization_code = 1 [(buf.validate.field).string.min_len = 1];
-  string id_token = 2 [(buf.validate.field).string.min_len = 1];
-  // Optional. The Services-ID redirect URI the frontend supplied during the
-  // initial authorization request. Apple verifies this against the value it
-  // saw client-side, so it must match exactly.
-  string redirect_uri = 3;
-  reserved 4;
-  reserved "attribution";
+message EmailLoginRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string password = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).string.max_len = 200];
 }
 
-message AppleLoginResponse {
-  User user = 1;
-  string access_token = 2;
-  string refresh_token = 3;
-  google.protobuf.Timestamp expires_at = 4;
-  reserved 5, 6;
-  reserved "consent_pending", "age_verification_required";
+message EmailLoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+}
+
+message GetAuthProvidersRequest {}
+
+message GetAuthProvidersResponse {
+  bool email_password = 1;  // always true
+  bool google_oauth = 2;    // env-gated (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET set)
 }
 
 message RefreshTokenRequest {

@@ -21,28 +21,13 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 
-	// Google OAuth
+	// Google OAuth. Optional — when GoogleClientID or GoogleClientSecret
+	// is empty, the GoogleLogin RPC returns Unimplemented and the
+	// /auth/google/* HTTP routes return 501. Self-hosters who don't want
+	// to provision a Google OAuth client get email+password only.
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURI  string
-
-	// Facebook/Meta OAuth (covers Facebook + Instagram login)
-	FacebookClientID     string
-	FacebookClientSecret string
-	FacebookRedirectURI  string
-
-	// Apple Sign-In
-	// All four fields are required to enable Apple Sign-In; when any is
-	// empty, the AppleLogin RPC returns Unimplemented (deliberate — the
-	// backend ships before Apple Developer enrollment completes).
-	//
-	// Note: AppleServicesID is the Services ID configured in the Apple
-	// Developer portal, NOT the iOS app bundle ID. ApplePrivateKey holds
-	// the PEM-encoded contents of the .p8 key (supports gcsm:// resolution).
-	AppleTeamID     string
-	AppleServicesID string
-	AppleKeyID      string
-	ApplePrivateKey string
 
 	// JWT
 	JWTSecret string
@@ -114,42 +99,35 @@ func Load() (*Config, error) {
 
 	// Layer 2: read env vars with defaults
 	cfg := &Config{
-		TargetEnv:                 env,
-		Port:                      getEnv("PORT", "8090"),
-		DatabaseURL:               getEnv("DATABASE_URL", "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"),
-		GoogleClientID:            os.Getenv("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret:        os.Getenv("GOOGLE_CLIENT_SECRET"),
-		GoogleRedirectURI:         getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
-		FacebookClientID:          os.Getenv("FACEBOOK_CLIENT_ID"),
-		FacebookClientSecret:      os.Getenv("FACEBOOK_CLIENT_SECRET"),
-		FacebookRedirectURI:       getEnv("FACEBOOK_REDIRECT_URI", "http://localhost:8090/auth/facebook/callback"),
-		AppleTeamID:               os.Getenv("APPLE_TEAM_ID"),
-		AppleServicesID:           os.Getenv("APPLE_SERVICES_ID"),
-		AppleKeyID:                os.Getenv("APPLE_KEY_ID"),
-		ApplePrivateKey:           os.Getenv("APPLE_PRIVATE_KEY"),
-		JWTSecret:                 getEnv("JWT_SECRET", "dev-secret-change-in-production"),
-		AnthropicAPIKey:           os.Getenv("ANTHROPIC_API_KEY"),
-		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
-		VertexAIProjectID:         os.Getenv("VERTEX_AI_PROJECT_ID"),
-		VertexAILocation:          getEnv("VERTEX_AI_LOCATION", "us-central1"),
-		DailyAITokenBudget:        getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
-		AIDailyBudgetCents:        getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
-		FirestoreProjectID:        getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
-		FirestoreDatabaseID:       getEnv("FIRESTORE_DATABASE_ID", ""),
-		FirestoreEmulatorHost:     os.Getenv("FIRESTORE_EMULATOR_HOST"),
-		FrontendURL:               getEnv("FRONTEND_URL", "http://localhost:3000"),
-		GoogleCustomSearchAPIKey:  os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
-		GoogleCustomSearchCX:      os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
-		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
-		AIProvider:                getEnv("AI_PROVIDER", "gemini"),
-		LLMCacheEnabled:           getEnvBool("LLM_CACHE_ENABLED", true),
-		LLMCacheTTL:               getEnvDuration("LLM_CACHE_TTL", time.Hour),
-		AllowedEmailDomains:       parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
-		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
-		EmailFrom:                 getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
-		CORSAllowedOrigins:        parseCSVEnv("CORS_ALLOWED_ORIGINS"),
-		GCSExportBucket:           getEnv("GCS_EXPORT_BUCKET", ""),
-		ExportLocalDir:            getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
+		TargetEnv:                env,
+		Port:                     getEnv("PORT", "8090"),
+		DatabaseURL:              getEnv("DATABASE_URL", "postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable"),
+		GoogleClientID:           os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:       os.Getenv("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURI:        getEnv("GOOGLE_REDIRECT_URI", "http://localhost:8090/auth/google/callback"),
+		JWTSecret:                getEnv("JWT_SECRET", "dev-secret-change-in-production"),
+		AnthropicAPIKey:          os.Getenv("ANTHROPIC_API_KEY"),
+		GeminiAPIKey:             os.Getenv("GEMINI_API_KEY"),
+		VertexAIProjectID:        os.Getenv("VERTEX_AI_PROJECT_ID"),
+		VertexAILocation:         getEnv("VERTEX_AI_LOCATION", "us-central1"),
+		DailyAITokenBudget:       getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
+		AIDailyBudgetCents:       getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
+		FirestoreProjectID:       getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
+		FirestoreDatabaseID:      getEnv("FIRESTORE_DATABASE_ID", ""),
+		FirestoreEmulatorHost:    os.Getenv("FIRESTORE_EMULATOR_HOST"),
+		FrontendURL:              getEnv("FRONTEND_URL", "http://localhost:3000"),
+		GoogleCustomSearchAPIKey: os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
+		GoogleCustomSearchCX:     os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
+		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
+		AIProvider:               getEnv("AI_PROVIDER", "gemini"),
+		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
+		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),
+		AllowedEmailDomains:      parseCSVEnv("ALLOWED_EMAIL_DOMAINS"),
+		ResendAPIKey:             os.Getenv("RESEND_API_KEY"),
+		EmailFrom:                getEnv("EMAIL_FROM", "Toqui <hello@toqui.travel>"),
+		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
+		GCSExportBucket:          getEnv("GCS_EXPORT_BUCKET", ""),
+		ExportLocalDir:           getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
 	}
 
 	// Layer 3: resolve gcsm:// references

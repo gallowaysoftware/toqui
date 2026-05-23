@@ -40,27 +40,10 @@ SELECT * FROM users WHERE email ILIKE '%' || sqlc.arg(query)::text || '%' OR nam
 ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
--- name: GetUserByFacebookID :one
-SELECT * FROM users WHERE facebook_id = $1;
-
--- name: UpdateUserFacebookID :exec
-UPDATE users SET facebook_id = $2, updated_at = NOW() WHERE id = $1;
-
--- name: CreateUserWithFacebook :one
-INSERT INTO users (email, name, facebook_id, avatar_url)
-VALUES ($1, $2, $3, $4)
-RETURNING *;
-
--- name: GetUserByAppleSub :one
-SELECT * FROM users WHERE apple_sub = $1;
-
--- name: UpdateUserAppleSub :exec
-UPDATE users SET apple_sub = $2, updated_at = NOW() WHERE id = $1;
-
--- name: CreateUserWithApple :one
-INSERT INTO users (email, name, apple_sub, avatar_url)
-VALUES ($1, $2, $3, $4)
-RETURNING *;
+-- Facebook + Apple OAuth queries were removed when the project transitioned
+-- to self-hostable OSS (email+password default, Google OAuth optional). The
+-- facebook_id / apple_sub columns remain in the schema as dead fields —
+-- migrations are immutable history.
 
 -- name: IsUserAdmin :one
 SELECT is_admin FROM users WHERE id = $1;
@@ -70,3 +53,15 @@ UPDATE users SET is_admin = sqlc.arg(is_admin), updated_at = NOW() WHERE id = sq
 
 -- name: SeedAdminByEmail :exec
 UPDATE users SET is_admin = true, updated_at = NOW() WHERE LOWER(email) = LOWER(sqlc.arg(email));
+
+-- name: CreateUserWithPassword :one
+INSERT INTO users (email, name, password_hash)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: GetUserPasswordHash :one
+SELECT id, password_hash FROM users WHERE email = $1;
+
+-- name: UpdateUserPasswordHash :exec
+UPDATE users SET password_hash = sqlc.arg(password_hash), updated_at = NOW()
+WHERE id = sqlc.arg(user_id);

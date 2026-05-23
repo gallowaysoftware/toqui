@@ -25,7 +25,6 @@ import (
 	"github.com/gallowaysoftware/toqui-backend/internal/ai"
 	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
 	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/auth/apple"
 	"github.com/gallowaysoftware/toqui-backend/internal/booking"
 	"github.com/gallowaysoftware/toqui-backend/internal/chat"
 	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
@@ -113,25 +112,14 @@ func main() {
 		cfg.JWTSecret,
 	)
 
-	// Apple Sign-In: enabled only when all four credentials are present.
-	// Until Apple Developer enrollment completes, these are blank in every
-	// environment and AppleLogin returns Unimplemented.
-	if apple.IsConfigured(cfg.AppleTeamID, cfg.AppleServicesID, cfg.AppleKeyID, []byte(cfg.ApplePrivateKey)) {
-		appleClient, err := apple.NewClient(apple.Config{
-			TeamID:     cfg.AppleTeamID,
-			ServicesID: cfg.AppleServicesID,
-			KeyID:      cfg.AppleKeyID,
-			PrivateKey: []byte(cfg.ApplePrivateKey),
-		})
-		if err != nil {
-			slog.Error("apple sign-in client initialization failed — AppleLogin will be unimplemented",
-				"error", err)
-		} else {
-			authSvc.WithAppleClient(appleClient)
-			slog.Info("apple sign-in configured", "services_id", cfg.AppleServicesID, "team_id", cfg.AppleTeamID)
-		}
+	// Google OAuth is optional. Self-hosters who don't configure
+	// GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET get email+password only;
+	// GoogleLogin returns Unimplemented and /auth/google/* returns 501.
+	googleOAuthEnabled := cfg.GoogleClientID != "" && cfg.GoogleClientSecret != ""
+	if googleOAuthEnabled {
+		slog.Info("google oauth enabled")
 	} else {
-		slog.Warn("apple sign-in not configured (waiting on Apple Developer enrollment) — AppleLogin returns Unimplemented")
+		slog.Info("google oauth disabled (GOOGLE_CLIENT_ID and/or GOOGLE_CLIENT_SECRET not set) — email+password only")
 	}
 
 	// Allow frontend origins to use their own /auth/callback as redirect URI.
@@ -296,7 +284,7 @@ func main() {
 	defer authLimiter.Stop()
 
 	authHandler := handlers.NewAuthHandler(authSvc, pool, lifecycleSvc, cfg.AllowedEmailDomains, authLimiter).
-		WithFacebookCredentials(cfg.FacebookClientID, cfg.FacebookClientSecret)
+		WithGoogleOAuthEnabled(googleOAuthEnabled)
 	tripHandler := handlers.NewTripHandler(tripSvc, lifecycleSvc, themeSvc, dbgen.New(pool))
 	chatHandler := handlers.NewChatHandler(chatSvc, tripSvc, themeSvc, locationCache, locationSvc, pool).
 		WithPlacesAPIKey(cfg.GooglePlacesAPIKey).
@@ -316,7 +304,7 @@ func main() {
 		slog.Warn("RESEND_API_KEY not configured — transactional emails will be skipped")
 	}
 	oauthHandler := handlers.NewOAuthHandler(authSvc, pool, cfg.FrontendURL, secureCookies, cfg.AllowedEmailDomains, authLimiter, emailSender).
-		WithFacebookOAuth(cfg.FacebookClientID, cfg.FacebookClientSecret, cfg.FacebookRedirectURI)
+		WithGoogleOAuthEnabled(googleOAuthEnabled)
 
 	// Shared trip handler (public + authenticated routes)
 	sharedHandler := handlers.NewSharedHandler(tripSvc, authSvc, cfg.FrontendURL).
@@ -372,8 +360,6 @@ func main() {
 	// Auth HTTP routes (outside ConnectRPC)
 	mux.HandleFunc("/auth/google/login", oauthHandler.HandleLogin)
 	mux.HandleFunc("/auth/google/callback", oauthHandler.HandleCallback)
-	mux.HandleFunc("/auth/facebook/login", oauthHandler.HandleFacebookLogin)
-	mux.HandleFunc("/auth/facebook/callback", oauthHandler.HandleFacebookCallback)
 	mux.HandleFunc("/auth/exchange", oauthHandler.HandleExchange)
 	mux.HandleFunc("/auth/refresh", oauthHandler.HandleRefresh)
 	mux.HandleFunc("/auth/logout", oauthHandler.HandleLogout)

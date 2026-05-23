@@ -15,8 +15,6 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-
-	"github.com/gallowaysoftware/toqui-backend/internal/auth/apple"
 )
 
 type contextKey string
@@ -39,10 +37,6 @@ type GoogleUserInfo struct {
 type Service struct {
 	oauthConfig *oauth2.Config
 	jwtSecret   []byte
-
-	// appleClient is non-nil when all four Apple env vars are configured.
-	// AppleLogin returns Unimplemented when this is nil.
-	appleClient *apple.Client
 }
 
 func NewService(clientID, clientSecret, redirectURI, jwtSecret string) *Service {
@@ -56,20 +50,6 @@ func NewService(clientID, clientSecret, redirectURI, jwtSecret string) *Service 
 		},
 		jwtSecret: []byte(jwtSecret),
 	}
-}
-
-// WithAppleClient attaches an Apple Sign-In client to the auth service.
-// Pass nil to leave Apple Sign-In disabled — handlers detect that via
-// AppleClient() returning nil and return Unimplemented.
-func (s *Service) WithAppleClient(c *apple.Client) *Service {
-	s.appleClient = c
-	return s
-}
-
-// AppleClient returns the configured Apple Sign-In client, or nil when not
-// configured. Handlers use this to gate the AppleLogin RPC.
-func (s *Service) AppleClient() *apple.Client {
-	return s.appleClient
 }
 
 // GeneratePKCE creates a PKCE code verifier and its S256 challenge.

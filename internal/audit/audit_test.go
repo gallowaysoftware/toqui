@@ -33,10 +33,6 @@ func TestSeverityForEvent(t *testing.T) {
 		{EventAdminInvite, slog.LevelInfo},
 		{EventReferralRedeem, slog.LevelInfo},
 		{EventLoginAdmittedInvite, slog.LevelInfo},
-		{EventFacebookLogin, slog.LevelInfo},
-		{EventAppleLogin, slog.LevelInfo},
-		{EventAppleLoginNew, slog.LevelInfo},
-		{EventAppleLink, slog.LevelInfo},
 	}
 
 	for _, tt := range tests {
