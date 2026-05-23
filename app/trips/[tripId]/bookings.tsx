@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Plane, Hotel, Car, Train, Ticket, Utensils, MoreHorizontal, AlertCircle, RefreshCw, ClipboardList } from "lucide-react-native";
 import { useBookings, useIngestBooking, useDeleteBooking } from "@/lib/hooks/useBookings";
 import { BookingType } from "@gen/toqui/v1/booking_pb";
-import ForwardingCard from "@/components/bookings/ForwardingCard";
 import type { Booking } from "@gen/toqui/v1/booking_pb";
 import { useTheme } from "@/lib/theme";
 import { useOfflineTrip } from "@/lib/offline";
@@ -231,7 +230,6 @@ export default function BookingsScreen() {
         }
         ListHeaderComponent={
           <>
-          <ForwardingCard tripId={tripId!} />
           {isOffline && hasCachedData && (
             <View style={{ backgroundColor: colors.warningBg, borderRadius: 8, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: colors.warningBorder }}>
               <Text style={{ fontSize: 13, color: colors.warning }} testID="bookings-offline-notice">
