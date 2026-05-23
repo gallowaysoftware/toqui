@@ -349,7 +349,7 @@ const file_toqui_v1_location_proto_rawDesc = "" +
 	"\x0fgoogle_place_id\x18\b \x01(\tR\rgooglePlaceId2\xac\x01\n" +
 	"\x0fLocationService\x12S\n" +
 	"\x0eUpdateLocation\x12\x1f.toqui.v1.UpdateLocationRequest\x1a .toqui.v1.UpdateLocationResponse\x12D\n" +
-	"\tGetNearby\x12\x1a.toqui.v1.GetNearbyRequest\x1a\x1b.toqui.v1.GetNearbyResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\tGetNearby\x12\x1a.toqui.v1.GetNearbyRequest\x1a\x1b.toqui.v1.GetNearbyResponseB@Z>github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_location_proto_rawDescOnce sync.Once

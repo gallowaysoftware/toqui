@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
 // CurrencyTool provides real-time exchange rate lookups.

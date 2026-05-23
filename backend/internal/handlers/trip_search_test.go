@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
 )
 
 func TestListTripsQueryTrimming(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
 // WeatherTool is a chat tool that provides weather data for a location.

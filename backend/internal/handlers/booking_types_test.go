@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 func TestBookingTypeMap_AllTypes(t *testing.T) {

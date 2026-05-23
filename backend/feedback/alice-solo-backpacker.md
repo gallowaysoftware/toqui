@@ -125,7 +125,7 @@ Alice is a first-time user who wants to backpack through Vietnam for a month on 
 A Python test runner script has been provided at `feedback/alice-test-runner.py`. Run it with:
 
 ```bash
-cd /Users/pequalsnp/src/github.com/gallowaysoftware/toqui-backend
+cd /Users/pequalsnp/src/github.com/gallowaysoftware/toqui/backend
 python3 feedback/alice-test-runner.py
 ```
 

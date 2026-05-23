@@ -220,7 +220,7 @@ GitHub Actions on push to `main` and all PRs (GitHub-hosted runners):
 **Prod deploy is MANUAL while staging is up.** The backend `deploy-prod` job runs on `workflow_dispatch`, OR on push-to-main when `check-staging` reports staging is down. In the common case (staging running), merging to `main` only redeploys staging. If staging has been torn down to save cost, the same merge auto-deploys to prod instead — treat merges as prod-bound when you know staging is off. To ship a main commit to prod while staging is up, trigger the workflow manually:
 
 ```bash
-gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main
+gh workflow run CI --repo gallowaysoftware/toqui --ref main
 ```
 
 This runs migrations via Cloud Run Jobs first (to avoid schema mismatch), then builds + pushes the image to Artifact Registry, then deploys to Cloud Run. Uses Workload Identity Federation (keyless GCP auth). If you're unsure whether prod is behind, compare `gcloud run services describe toqui-backend --region=northamerica-northeast1 --project=toqui-prod --format='value(spec.template.spec.containers[0].image)'` (the image tag is the git SHA) against `git rev-parse origin/main`.
@@ -229,7 +229,7 @@ This runs migrations via Cloud Run Jobs first (to avoid schema mismatch), then b
 
 ### Task Tracking
 
-All task tracking is in GitHub Issues: [toqui-backend issues](https://github.com/gallowaysoftware/toqui-backend/issues), [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P0`, `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`, `security`, `code-quality`, `design`, `compliance`.
+All task tracking is in GitHub Issues: [toqui issues](https://github.com/gallowaysoftware/toqui/issues). Labels: `P0`, `P1`, `P2`, `backend`, `frontend`, `infra`, `staging-launch`, `security`, `code-quality`, `design`, `compliance`.
 
 ### Database
 
@@ -435,7 +435,7 @@ Both providers parse streaming events to extract stop reasons and serialize tool
 5. **Run adversarial review** on the PR branch (spawn a review agent against the diff)
 6. **Merge via squash**: `gh pr merge --squash`
 7. **After merge, verify CI passes on `main`** — if it breaks, fix immediately with another PR
-8. **Deploy to prod** (when ready): `gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main`
+8. **Deploy to prod** (when ready): `gh workflow run CI --repo gallowaysoftware/toqui --ref main`
 
 ### Keep CI Green — This Is Critical
 
@@ -623,7 +623,7 @@ Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret 
 **CI-driven (preferred)**: Prod deploys are **manual via `workflow_dispatch`** (not auto on push to main). Trigger from the CLI:
 
 ```bash
-gh workflow run CI --repo gallowaysoftware/toqui-backend --ref main
+gh workflow run CI --repo gallowaysoftware/toqui --ref main
 ```
 
 The `deploy-prod` job runs migrations via Cloud Run Jobs FIRST (to avoid schema mismatch), then builds + pushes the Docker image to Artifact Registry, then deploys to Cloud Run. Uses WIF (keyless GCP auth). Merging a PR to `main` only redeploys staging; prod stays on its current revision until someone dispatches the workflow.
@@ -881,7 +881,7 @@ When adding new handlers, ensure:
 
 ### Known Open Security Issues
 
-See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui-backend/issues?q=label:security) for the full list.
+See [GitHub Issues with `security` label](https://github.com/gallowaysoftware/toqui/issues?q=label:security) for the full list.
 
 ## Waitlist + Capacity Cap
 

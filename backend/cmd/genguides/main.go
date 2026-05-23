@@ -40,9 +40,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
-	"github.com/gallowaysoftware/toqui-backend/internal/persona"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/handlers"
+	"github.com/gallowaysoftware/toqui/backend/internal/persona"
 )
 
 // guideSeed is one row in the curated set. Keep this list aligned with

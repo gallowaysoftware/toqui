@@ -10,7 +10,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/google/uuid"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
 )
 
 func TestChatStoreSessionAndMessages(t *testing.T) {

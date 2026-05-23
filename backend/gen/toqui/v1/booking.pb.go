@@ -3347,7 +3347,7 @@ const file_toqui_v1_booking_proto_rawDesc = "" +
 	"\x12GetTripCostSummary\x12#.toqui.v1.GetTripCostSummaryRequest\x1a$.toqui.v1.GetTripCostSummaryResponse\x12\\\n" +
 	"\x11LinkBookingToTrip\x12\".toqui.v1.LinkBookingToTripRequest\x1a#.toqui.v1.LinkBookingToTripResponse\x12P\n" +
 	"\rDeleteBooking\x12\x1e.toqui.v1.DeleteBookingRequest\x1a\x1f.toqui.v1.DeleteBookingResponse\x12b\n" +
-	"\x13ExtractBookingField\x12$.toqui.v1.ExtractBookingFieldRequest\x1a%.toqui.v1.ExtractBookingFieldResponseB@Z>github.com/gallowaysoftware/toqui-backend/gen/toqui/v1;toquiv1b\x06proto3"
+	"\x13ExtractBookingField\x12$.toqui.v1.ExtractBookingFieldRequest\x1a%.toqui.v1.ExtractBookingFieldResponseB@Z>github.com/gallowaysoftware/toqui/backend/gen/toqui/v1;toquiv1b\x06proto3"
 
 var (
 	file_toqui_v1_booking_proto_rawDescOnce sync.Once

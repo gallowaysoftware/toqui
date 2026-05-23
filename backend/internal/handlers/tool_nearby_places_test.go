@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/location"
+	"github.com/gallowaysoftware/toqui/backend/internal/location"
 )
 
 func TestNearbyPlacesTool_Definition(t *testing.T) {

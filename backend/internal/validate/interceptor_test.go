@@ -7,8 +7,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
-	"github.com/gallowaysoftware/toqui-backend/internal/validate"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
+	"github.com/gallowaysoftware/toqui/backend/internal/validate"
 )
 
 // TestInterceptor_WrapUnary_ValidRequestPassesThrough pins the happy path:

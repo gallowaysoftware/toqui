@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/ai"
-	"github.com/gallowaysoftware/toqui-backend/internal/ai/tools"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai"
+	"github.com/gallowaysoftware/toqui/backend/internal/ai/tools"
 )
 
 // CompanionGate wraps a tool (typically create_itinerary_items or

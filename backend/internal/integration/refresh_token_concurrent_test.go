@@ -11,12 +11,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
-	"github.com/gallowaysoftware/toqui-backend/internal/chatstore"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
-	"github.com/gallowaysoftware/toqui-backend/internal/handlers"
-	"github.com/gallowaysoftware/toqui-backend/internal/lifecycle"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/chatstore"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/handlers"
+	"github.com/gallowaysoftware/toqui/backend/internal/lifecycle"
 )
 
 // TestRefreshTokenConcurrentRotation pins the TOCTOU fix from

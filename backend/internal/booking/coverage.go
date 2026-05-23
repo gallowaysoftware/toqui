@@ -3,7 +3,7 @@ package booking
 import (
 	"time"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 // CoverageGap describes one missing piece of a trip plan that the AI

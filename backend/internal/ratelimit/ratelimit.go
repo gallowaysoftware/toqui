@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/time/rate"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/auth"
+	"github.com/gallowaysoftware/toqui/backend/internal/auth"
 )
 
 // rateLimitCounter records rate limit rejections as an OpenTelemetry metric.

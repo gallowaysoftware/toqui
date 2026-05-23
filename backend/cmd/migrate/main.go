@@ -12,7 +12,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
-	"github.com/gallowaysoftware/toqui-backend/internal/config"
+	"github.com/gallowaysoftware/toqui/backend/internal/config"
 )
 
 func main() {

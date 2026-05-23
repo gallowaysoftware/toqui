@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	toquiv1 "github.com/gallowaysoftware/toqui-backend/gen/toqui/v1"
-	"github.com/gallowaysoftware/toqui-backend/internal/dbgen"
+	toquiv1 "github.com/gallowaysoftware/toqui/backend/gen/toqui/v1"
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
 // newTestTrip creates a minimal dbgen.Trip for unit tests.
