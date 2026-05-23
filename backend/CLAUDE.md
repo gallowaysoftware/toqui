@@ -994,6 +994,8 @@ Both backends use Gemini 3 models. Gemini 3 requires "thought signature circulat
 
 **Claude (fallback)** — Anthropic API with API key. Set a monthly spend cap in the [Anthropic Console](https://console.anthropic.com) → Settings → Billing → Spend Limits. Recommended: $50/month staging, $500/month prod.
 
+**OpenAI / OpenAI-compatible (`internal/ai/openai.go`)** — Opt-in third provider that talks to any `/v1/chat/completions` endpoint with SSE streaming. Selected via `AI_PROVIDER=openai`, or auto-selected when it's the only configured provider (the common self-host case). The `OPENAI_BASE_URL` override is the key knob: leave empty to hit `https://api.openai.com/v1`, or point at OpenRouter (`https://openrouter.ai/api/v1`), Ollama (`http://host:11434/v1`), vLLM, LM Studio, Together AI, etc. Override model IDs per tier with `OPENAI_MODEL_FAST` / `OPENAI_MODEL_SMART` / `OPENAI_MODEL_BEST` to match whatever the chosen endpoint serves (defaults: `gpt-4o-mini` / `gpt-4o` / `gpt-4o`). No SDK dependency — pure stdlib. The provider stitches OpenAI's fragmented tool-call argument deltas (id+name arrive once, JSON arguments stream in across many chunks keyed by `index`) into a single `EventToolCall` before forwarding to the chat tool loop.
+
 | Model Tier | Claude                     | Gemini                          |
 | ---------- | -------------------------- | ------------------------------- |
 | fast       | `claude-haiku-4-5`         | `gemini-3.1-flash-lite-preview` |

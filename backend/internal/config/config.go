@@ -44,6 +44,13 @@ type Config struct {
 	VertexAIProjectID string // GCP project for Vertex AI calls (fallback)
 	VertexAILocation  string // Overridden to "global" for Gemini 3 (config default: us-central1)
 
+	// OpenAI — talks to any OpenAI-compatible /v1/chat/completions endpoint.
+	// Set OpenAIBaseURL to point at Ollama (http://host:11434/v1),
+	// OpenRouter (https://openrouter.ai/api/v1), vLLM, LM Studio,
+	// Together AI, etc. Empty defaults to https://api.openai.com/v1.
+	OpenAIAPIKey  string
+	OpenAIBaseURL string
+
 	// Cost control
 	DailyAITokenBudget int // Max total tokens per day (0 = unlimited) — legacy in-memory guard
 
@@ -110,6 +117,8 @@ func Load() (*Config, error) {
 		GeminiAPIKey:             os.Getenv("GEMINI_API_KEY"),
 		VertexAIProjectID:        os.Getenv("VERTEX_AI_PROJECT_ID"),
 		VertexAILocation:         getEnv("VERTEX_AI_LOCATION", "us-central1"),
+		OpenAIAPIKey:             os.Getenv("OPENAI_API_KEY"),
+		OpenAIBaseURL:            os.Getenv("OPENAI_BASE_URL"),
 		DailyAITokenBudget:       getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
 		AIDailyBudgetCents:       getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
 		FirestoreProjectID:       getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
