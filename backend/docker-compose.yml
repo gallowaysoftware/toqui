@@ -23,15 +23,11 @@ services:
 
   migrate:
     build: .
-    command:
-      [
-        "/migrate",
-        "-dir",
-        "/migrations",
-        "-db",
-        "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable",
-        "up",
-      ]
+    # The image's ENTRYPOINT is /server; override it to run the migrator.
+    entrypoint: ["/migrate"]
+    command: ["-direction", "up"]
+    environment:
+      DATABASE_URL: "postgres://toqui:toqui@postgres:5432/toqui?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
