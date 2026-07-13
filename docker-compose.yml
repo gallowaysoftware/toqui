@@ -86,6 +86,16 @@ services:
       # Days to keep chat history after a trip completes (default 90).
       # 0 = keep forever (until the trip or account is deleted).
       CHAT_RETENTION_DAYS: "${CHAT_RETENTION_DAYS:-}"
+      # Optional: email booking import. Point at a mailbox users forward
+      # booking confirmations to; each is matched to its sender's account
+      # and imported. Enabled only when HOST + USERNAME + PASSWORD are set.
+      IMAP_HOST: "${IMAP_HOST:-}"
+      IMAP_PORT: "${IMAP_PORT:-}"
+      IMAP_USERNAME: "${IMAP_USERNAME:-}"
+      IMAP_PASSWORD: "${IMAP_PASSWORD:-}"
+      IMAP_MAILBOX: "${IMAP_MAILBOX:-}"
+      IMAP_POLL_INTERVAL: "${IMAP_POLL_INTERVAL:-}"
+      IMAP_TLS: "${IMAP_TLS:-}"
       # Optional Google OAuth — leave unset for email+password only.
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"

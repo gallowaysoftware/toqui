@@ -99,6 +99,18 @@ type Config struct {
 	// 0 disables the purge entirely — chat is kept until the trip or
 	// account is deleted.
 	ChatRetentionDays int
+
+	// IMAP booking-import poller. Enabled only when Host + Username +
+	// Password are all set. Watches a mailbox users forward booking
+	// confirmations to; each message is matched to its sender's account
+	// and ingested. Off by default.
+	IMAPHost         string
+	IMAPPort         int
+	IMAPUsername     string
+	IMAPPassword     string
+	IMAPMailbox      string        // default "INBOX"
+	IMAPPollInterval time.Duration // default 60s
+	IMAPTLS          bool          // default true; false only for local/testing
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -143,6 +155,13 @@ func Load() (*Config, error) {
 		GCSExportBucket:          getEnv("GCS_EXPORT_BUCKET", ""),
 		ExportLocalDir:           getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
 		ChatRetentionDays:        getEnvInt("CHAT_RETENTION_DAYS", 90),
+		IMAPHost:                 os.Getenv("IMAP_HOST"),
+		IMAPPort:                 getEnvInt("IMAP_PORT", 993),
+		IMAPUsername:             os.Getenv("IMAP_USERNAME"),
+		IMAPPassword:             os.Getenv("IMAP_PASSWORD"),
+		IMAPMailbox:              getEnv("IMAP_MAILBOX", "INBOX"),
+		IMAPPollInterval:         getEnvDuration("IMAP_POLL_INTERVAL", 60*time.Second),
+		IMAPTLS:                  getEnvBool("IMAP_TLS", true),
 	}
 
 	// Layer 3: resolve gcsm:// references
