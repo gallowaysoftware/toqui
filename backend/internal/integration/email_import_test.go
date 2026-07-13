@@ -105,6 +105,49 @@ func TestIngestEmail_EndToEnd(t *testing.T) {
 	}
 }
 
+// TestIngestEmail_Latin1BodyIngests drives the exact path that used to
+// crash the Postgres TEXT insert: a non-UTF-8 (latin-1) body. It must now
+// decode to valid UTF-8, ingest cleanly, and create an unattached booking
+// (the user has no trips).
+func TestIngestEmail_Latin1BodyIngests(t *testing.T) {
+	env := NewTestEnv(t)
+	env.CleanDB(t)
+	ctx := context.Background()
+	queries := dbgen.New(env.Pool)
+
+	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
+		GoogleID: pgtype.Text{String: "g_latin1", Valid: true},
+		Email:    "latin1@example.com",
+		Name:     pgtype.Text{String: "Latin", Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	parsedJSON := `{"type":"restaurant","confirmation_code":"CAFE-1","provider":"Café Central","title":"Dinner at Café Central"}`
+	svc := booking.NewService(env.Pool, &cannedAIProvider{json: parsedJSON})
+	h := handlers.NewBookingHandler(svc, queries)
+
+	// 'é' encoded as the single latin-1 byte 0xE9 in the body.
+	rawEmail := "From: Café Central <res@cafe.com>\r\n" +
+		"Subject: R\xe9servation\r\n" +
+		"Content-Type: text/plain; charset=iso-8859-1\r\n\r\n" +
+		"Merci pour votre r\xe9servation au Caf\xe9 Central.\r\n"
+
+	authCtx := auth.ContextWithUserID(ctx, user.ID)
+	resp, err := h.IngestEmail(authCtx, connect.NewRequest(&toquiv1.IngestEmailRequest{RawEmail: rawEmail}))
+	if err != nil {
+		t.Fatalf("IngestEmail on latin-1 body failed (the exact regression): %v", err)
+	}
+	if len(resp.Msg.Bookings) != 1 {
+		t.Fatalf("expected 1 booking, got %d", len(resp.Msg.Bookings))
+	}
+	// No trips → unattached booking.
+	if resp.Msg.Bookings[0].TripId != "" {
+		t.Errorf("expected unattached booking, got trip_id %q", resp.Msg.Bookings[0].TripId)
+	}
+}
+
 // TestIngestEmail_EmptyBodyRejected verifies a message with no readable
 // text is rejected with InvalidArgument rather than calling the AI.
 func TestIngestEmail_EmptyBodyRejected(t *testing.T) {

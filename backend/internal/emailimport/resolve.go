@@ -8,6 +8,7 @@ import (
 	"context"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -106,8 +107,18 @@ func containsWholePhrase(s, phrase string) bool {
 		}
 		start := from + i
 		end := start + len(phrase)
-		leftOK := start == 0 || !isWordChar(rune(s[start-1]))
-		rightOK := end == len(s) || !isWordChar(rune(s[end]))
+		// Decode the neighbouring runes (not bytes) so multibyte titles /
+		// subjects (accented, CJK) get a correct word boundary.
+		leftOK := start == 0
+		if !leftOK {
+			r, _ := utf8.DecodeLastRuneInString(s[:start])
+			leftOK = !isWordChar(r)
+		}
+		rightOK := end == len(s)
+		if !rightOK {
+			r, _ := utf8.DecodeRuneInString(s[end:])
+			rightOK = !isWordChar(r)
+		}
 		if leftOK && rightOK {
 			return true
 		}

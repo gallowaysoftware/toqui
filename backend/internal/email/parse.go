@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+	"golang.org/x/text/encoding/htmlindex"
 )
 
 // ParsedEmail is the useful content extracted from a raw RFC 822 message
@@ -28,6 +29,11 @@ type ParsedEmail struct {
 // raw_email to 500KB; this is the post-extraction guard.
 const maxBodyBytes = 200_000
 
+// maxMultipartDepth bounds nested multipart recursion. A hand-crafted
+// message can nest multiparts thousands deep within the 500KB cap, and an
+// unbounded walk burns seconds of CPU per request. Real mail is 1–2 levels.
+const maxMultipartDepth = 12
+
 // Parse extracts the sender, subject, and a plain-text body from a raw
 // email. It is deliberately lenient: input that doesn't parse as a
 // structured message (no headers) is treated as a bare plain-text body so
@@ -44,12 +50,16 @@ func Parse(raw string) ParsedEmail {
 	subject, _ := dec.DecodeHeader(msg.Header.Get("Subject"))
 	from := parseFromAddress(msg.Header.Get("From"))
 
-	body := extractBody(msg.Header.Get("Content-Type"), msg.Header.Get("Content-Transfer-Encoding"), msg.Body)
+	body := extractBody(msg.Header.Get("Content-Type"), msg.Header.Get("Content-Transfer-Encoding"), msg.Body, 0)
 
 	return ParsedEmail{
 		FromAddress: from,
-		Subject:     strings.TrimSpace(subject),
-		Body:        truncate(collapseBlankLines(body)),
+		// ToValidUTF8 is the last-line guard: charset decoding above handles
+		// known encodings, but an unknown charset, a truncation mid-rune, or
+		// base64 of arbitrary bytes can still yield invalid UTF-8 — which
+		// would fail the Postgres TEXT insert (SQLSTATE 22021) downstream.
+		Subject: strings.ToValidUTF8(strings.TrimSpace(subject), "�"),
+		Body:    strings.ToValidUTF8(truncate(collapseBlankLines(body)), "�"),
 	}
 }
 
@@ -75,19 +85,19 @@ func parseFromAddress(header string) string {
 // content it can find. For multipart/alternative it prefers text/plain and
 // falls back to stripped text/html; for a single part it decodes and (if
 // HTML) strips it.
-func extractBody(contentType, transferEncoding string, body io.Reader) string {
+func extractBody(contentType, transferEncoding string, body io.Reader, depth int) string {
 	mediaType, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		// No / unparseable Content-Type — read as-is with the declared
-		// transfer encoding.
-		return decodeText(readAll(body), transferEncoding)
+		// transfer encoding (charset unknown → assume UTF-8/ASCII).
+		return decodeText(readAll(body), transferEncoding, "")
 	}
 
 	if strings.HasPrefix(mediaType, "multipart/") {
-		return extractMultipart(body, params["boundary"])
+		return extractMultipart(body, params["boundary"], depth)
 	}
 
-	text := decodeText(readAll(body), transferEncoding)
+	text := decodeText(readAll(body), transferEncoding, params["charset"])
 	if mediaType == "text/html" {
 		return stripHTML(text)
 	}
@@ -95,9 +105,10 @@ func extractBody(contentType, transferEncoding string, body io.Reader) string {
 }
 
 // extractMultipart prefers a text/plain part; it keeps the first stripped
-// text/html part as a fallback and recurses into nested multiparts.
-func extractMultipart(body io.Reader, boundary string) string {
-	if boundary == "" {
+// text/html part as a fallback and recurses into nested multiparts up to
+// maxMultipartDepth.
+func extractMultipart(body io.Reader, boundary string, depth int) string {
+	if boundary == "" || depth >= maxMultipartDepth {
 		return ""
 	}
 	mr := multipart.NewReader(body, boundary)
@@ -112,16 +123,18 @@ func extractMultipart(body io.Reader, boundary string) string {
 
 		switch {
 		case strings.HasPrefix(partType, "multipart/"):
-			if nested := extractMultipart(part, partParams["boundary"]); nested != "" {
+			if nested := extractMultipart(part, partParams["boundary"], depth+1); nested != "" {
+				_ = part.Close()
 				return nested
 			}
 		case partType == "text/plain":
-			if text := decodeText(readAll(part), enc); strings.TrimSpace(text) != "" {
+			if text := decodeText(readAll(part), enc, partParams["charset"]); strings.TrimSpace(text) != "" {
+				_ = part.Close()
 				return text // plain text wins immediately
 			}
 		case partType == "text/html":
 			if htmlFallback == "" {
-				htmlFallback = stripHTML(decodeText(readAll(part), enc))
+				htmlFallback = stripHTML(decodeText(readAll(part), enc, partParams["charset"]))
 			}
 		}
 		_ = part.Close()
@@ -129,20 +142,42 @@ func extractMultipart(body io.Reader, boundary string) string {
 	return htmlFallback
 }
 
-func decodeText(raw, encoding string) string {
+// decodeText undoes the Content-Transfer-Encoding, then converts the bytes
+// from the part's charset to UTF-8 so non-UTF-8 confirmations (latin-1,
+// windows-1252, shift_jis, gb2312, …) don't reach the DB as invalid bytes.
+func decodeText(raw, encoding, charset string) string {
 	switch strings.ToLower(strings.TrimSpace(encoding)) {
 	case "quoted-printable":
 		if decoded, err := io.ReadAll(quotedprintable.NewReader(strings.NewReader(raw))); err == nil {
-			return string(decoded)
+			raw = string(decoded)
 		}
 	case "base64":
 		// Mail base64 is line-wrapped; strip whitespace before decoding.
 		clean := strings.NewReplacer("\r", "", "\n", "", " ", "").Replace(raw)
 		if decoded, err := base64.StdEncoding.DecodeString(clean); err == nil {
-			return string(decoded)
+			raw = string(decoded)
 		}
 	}
-	return raw
+	return toUTF8(raw, charset)
+}
+
+// toUTF8 converts s from the named charset to UTF-8. Unknown/empty charsets
+// and already-UTF-8 content pass through unchanged (the ToValidUTF8 guard in
+// Parse scrubs anything still invalid).
+func toUTF8(s, charset string) string {
+	charset = strings.ToLower(strings.TrimSpace(charset))
+	if charset == "" || charset == "utf-8" || charset == "utf8" || charset == "us-ascii" || charset == "ascii" {
+		return s
+	}
+	enc, err := htmlindex.Get(charset)
+	if err != nil || enc == nil {
+		return s
+	}
+	decoded, err := enc.NewDecoder().String(s)
+	if err != nil {
+		return s
+	}
+	return decoded
 }
 
 func readAll(r io.Reader) string {

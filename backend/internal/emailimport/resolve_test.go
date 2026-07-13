@@ -110,4 +110,27 @@ func TestResolveTrip(t *testing.T) {
 			t.Errorf("got %s, want greece via planning fallback", got)
 		}
 	})
+
+	t.Run("multibyte title matches at a real word boundary", func(t *testing.T) {
+		// A CJK-titled trip must match when the subject names it, and the
+		// rune-aware boundary check must not panic or mis-slice.
+		nihon := trip("日本", now.Add(-time.Hour))
+		s := &stubLister{all: []dbgen.Trip{nihon}}
+		got := ResolveTrip(ctx, s, uid, "予約確認 日本 ホテル")
+		if got != nihon.ID.String() {
+			t.Errorf("got %s, want 日本 trip %s", got, nihon.ID.String())
+		}
+	})
+
+	t.Run("accented title does not false-match a longer word", func(t *testing.T) {
+		// "Café" must not match inside "Cafétéria" (é is multibyte, so the
+		// byte-cast bug would have mishandled the boundary).
+		cafe := trip("Café", now.Add(-time.Hour))
+		fallback := trip("Somewhere", now)
+		s := &stubLister{all: []dbgen.Trip{fallback, cafe}}
+		got := ResolveTrip(ctx, s, uid, "Your Cafétéria order is ready")
+		if got == cafe.ID.String() {
+			t.Errorf("'Café' should not match inside 'Cafétéria'")
+		}
+	})
 }
