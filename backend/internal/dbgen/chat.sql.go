@@ -53,16 +53,13 @@ func (q *Queries) CreateChatSession(ctx context.Context, arg CreateChatSessionPa
 
 const deleteChatForTrip = `-- name: DeleteChatForTrip :exec
 DELETE FROM chat_sessions
-WHERE user_id = $1 AND trip_id = $2
+WHERE trip_id = $1
 `
 
-type DeleteChatForTripParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	TripID string    `json:"trip_id"`
-}
-
-func (q *Queries) DeleteChatForTrip(ctx context.Context, arg DeleteChatForTripParams) error {
-	_, err := q.db.Exec(ctx, deleteChatForTrip, arg.UserID, arg.TripID)
+// DeleteChatForTrip removes ALL chat for a trip, across every participant.
+// Used when the trip itself is deleted.
+func (q *Queries) DeleteChatForTrip(ctx context.Context, tripID string) error {
+	_, err := q.db.Exec(ctx, deleteChatForTrip, tripID)
 	return err
 }
 
@@ -354,21 +351,62 @@ func (q *Queries) PurgeExpiredChatSessions(ctx context.Context) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const purgeStaleLobbyChatSessions = `-- name: PurgeStaleLobbyChatSessions :execrows
+DELETE FROM chat_sessions
+WHERE trip_id = '_lobby'
+  AND last_message_at < NOW() - make_interval(days => $1::int)
+`
+
+// PurgeStaleLobbyChatSessions deletes selection-mode ("_lobby") sessions
+// idle longer than the retention window. Lobby sessions never belong to a
+// trip, so they never get an expire_at stamp at trip completion — without
+// this they would live until account deletion.
+func (q *Queries) PurgeStaleLobbyChatSessions(ctx context.Context, retentionDays int32) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeStaleLobbyChatSessions, retentionDays)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setChatTTLForTrip = `-- name: SetChatTTLForTrip :exec
 UPDATE chat_sessions
-SET expire_at = $3
-WHERE user_id = $1 AND trip_id = $2
+SET expire_at = $2
+WHERE trip_id = $1
 `
 
 type SetChatTTLForTripParams struct {
-	UserID   uuid.UUID          `json:"user_id"`
 	TripID   string             `json:"trip_id"`
 	ExpireAt pgtype.Timestamptz `json:"expire_at"`
 }
 
+// SetChatTTLForTrip stamps the retention deadline on ALL of a trip's
+// sessions, across every participant — collaborators' chat is trip data
+// and follows the trip's retention, not just the owner's sessions.
 func (q *Queries) SetChatTTLForTrip(ctx context.Context, arg SetChatTTLForTripParams) error {
-	_, err := q.db.Exec(ctx, setChatTTLForTrip, arg.UserID, arg.TripID, arg.ExpireAt)
+	_, err := q.db.Exec(ctx, setChatTTLForTrip, arg.TripID, arg.ExpireAt)
 	return err
+}
+
+const stampMissingChatTTLForEndedTrips = `-- name: StampMissingChatTTLForEndedTrips :execrows
+UPDATE chat_sessions cs
+SET expire_at = NOW() + make_interval(days => $1::int)
+FROM trips t
+WHERE t.id::text = cs.trip_id
+  AND t.status IN ('completed', 'archived')
+  AND cs.expire_at IS NULL
+`
+
+// StampMissingChatTTLForEndedTrips is the hourly safety net: any session
+// belonging to a completed/archived trip that has no expire_at yet gets
+// one. Catches sessions created after the completion stamp, collaborator
+// sessions, and stamps that failed at completion time.
+func (q *Queries) StampMissingChatTTLForEndedTrips(ctx context.Context, retentionDays int32) (int64, error) {
+	result, err := q.db.Exec(ctx, stampMissingChatTTLForEndedTrips, retentionDays)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateChatSessionSummary = `-- name: UpdateChatSessionSummary :execrows

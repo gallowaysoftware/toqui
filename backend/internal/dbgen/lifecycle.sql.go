@@ -63,7 +63,7 @@ SET status = 'completed',
     completed_at = NOW(),
     archive_after = NOW() + INTERVAL '90 days',
     updated_at = NOW()
-WHERE id = $1 AND user_id = $2
+WHERE id = $1 AND user_id = $2 AND completed_at IS NULL
 `
 
 type CompleteTripParams struct {
@@ -71,6 +71,9 @@ type CompleteTripParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
+// CompleteTrip stamps the completion + archival timestamps. The
+// completed_at IS NULL guard makes it idempotent — re-completing a trip
+// doesn't reset its archival clock.
 func (q *Queries) CompleteTrip(ctx context.Context, arg CompleteTripParams) error {
 	_, err := q.db.Exec(ctx, completeTrip, arg.ID, arg.UserID)
 	return err
@@ -117,7 +120,7 @@ func (q *Queries) CreateExportRequest(ctx context.Context, userID uuid.UUID) (Ex
 	return i, err
 }
 
-const deleteTripByUser = `-- name: DeleteTripByUser :exec
+const deleteTripByUser = `-- name: DeleteTripByUser :execrows
 DELETE FROM trips WHERE id = $1 AND user_id = $2
 `
 
@@ -126,9 +129,12 @@ type DeleteTripByUserParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) DeleteTripByUser(ctx context.Context, arg DeleteTripByUserParams) error {
-	_, err := q.db.Exec(ctx, deleteTripByUser, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteTripByUser(ctx context.Context, arg DeleteTripByUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTripByUser, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteUserByID = `-- name: DeleteUserByID :exec

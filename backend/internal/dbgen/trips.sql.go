@@ -367,17 +367,6 @@ func (q *Queries) IncrementExpertCalls(ctx context.Context, arg IncrementExpertC
 	return expert_calls, err
 }
 
-const isTripTrialActive = `-- name: IsTripTrialActive :one
-SELECT COALESCE(trial_ends_at > NOW(), false)::boolean AS active FROM trips WHERE id = $1
-`
-
-func (q *Queries) IsTripTrialActive(ctx context.Context, id uuid.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, isTripTrialActive, id)
-	var active bool
-	err := row.Scan(&active)
-	return active, err
-}
-
 const listTripTemplates = `-- name: ListTripTemplates :many
 SELECT id, user_id, title, description, status, start_date, end_date, created_at, updated_at, destination_country, completed_at, archive_after, archived_at, share_token, destination_countries, expert_calls, search_vector, budget_cents, currency, notes, is_template, cover_image_url, timezone FROM trips
 WHERE is_template = TRUE
@@ -685,16 +674,6 @@ type SetTripTemplateParams struct {
 
 func (q *Queries) SetTripTemplate(ctx context.Context, arg SetTripTemplateParams) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, setTripTemplate, arg.IsTemplate, arg.ID, arg.UserID)
-}
-
-const startTripTrial = `-- name: StartTripTrial :exec
-UPDATE trips SET trial_started_at = NOW(), trial_ends_at = NOW() + INTERVAL '3 days', updated_at = NOW()
-WHERE id = $1 AND trial_started_at IS NULL
-`
-
-func (q *Queries) StartTripTrial(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, startTripTrial, id)
-	return err
 }
 
 const updateTrip = `-- name: UpdateTrip :one

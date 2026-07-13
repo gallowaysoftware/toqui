@@ -29,7 +29,7 @@ type stubQueries struct {
 
 	getAllTripIDsForUserFn         func(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	deleteUserByIDFn               func(ctx context.Context, id uuid.UUID) error
-	deleteTripByUserFn             func(ctx context.Context, arg dbgen.DeleteTripByUserParams) error
+	deleteTripByUserFn             func(ctx context.Context, arg dbgen.DeleteTripByUserParams) (int64, error)
 	getTripsToArchiveFn            func(ctx context.Context) ([]dbgen.GetTripsToArchiveRow, error)
 	archiveTripFn                  func(ctx context.Context, arg dbgen.ArchiveTripParams) error
 	createDeletionRequestFn        func(ctx context.Context, userID uuid.UUID) (dbgen.DeletionRequest, error)
@@ -76,13 +76,13 @@ func (s *stubQueries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *stubQueries) DeleteTripByUser(ctx context.Context, arg dbgen.DeleteTripByUserParams) error {
+func (s *stubQueries) DeleteTripByUser(ctx context.Context, arg dbgen.DeleteTripByUserParams) (int64, error) {
 	s.deleteTripByUserCalls = append(s.deleteTripByUserCalls, arg)
 	if s.deleteTripByUserFn != nil {
 		return s.deleteTripByUserFn(ctx, arg)
 	}
 	s.tb.Fatalf("unexpected stubQueries.DeleteTripByUser(%+v) — set deleteTripByUserFn", arg)
-	return nil
+	return 0, nil
 }
 
 func (s *stubQueries) GetTripsToArchive(ctx context.Context) ([]dbgen.GetTripsToArchiveRow, error) {
@@ -234,35 +234,35 @@ func (s *stubQueries) CompleteExportRequest(ctx context.Context, arg dbgen.Compl
 type stubChatStore struct {
 	tb testing.TB
 
-	deleteAllForTripFn func(ctx context.Context, userID, tripID string) error
-	setTTLFn           func(ctx context.Context, userID, tripID string, expireAt time.Time) error
+	deleteAllForTripFn func(ctx context.Context, tripID string) error
+	setTTLFn           func(ctx context.Context, tripID string, expireAt time.Time) error
 	exportChatDataFn   func(ctx context.Context, userID string, tripIDs []string) (map[string][]chatstore.ExportedSession, error)
 
-	deleteAllForTripCalls []struct{ UserID, TripID string }
+	deleteAllForTripCalls []string
 	setTTLCalls           []struct {
-		UserID, TripID string
-		ExpireAt       time.Time
+		TripID   string
+		ExpireAt time.Time
 	}
 }
 
-func (s *stubChatStore) DeleteAllForTrip(ctx context.Context, userID, tripID string) error {
-	s.deleteAllForTripCalls = append(s.deleteAllForTripCalls, struct{ UserID, TripID string }{userID, tripID})
+func (s *stubChatStore) DeleteAllForTrip(ctx context.Context, tripID string) error {
+	s.deleteAllForTripCalls = append(s.deleteAllForTripCalls, tripID)
 	if s.deleteAllForTripFn != nil {
-		return s.deleteAllForTripFn(ctx, userID, tripID)
+		return s.deleteAllForTripFn(ctx, tripID)
 	}
-	s.tb.Fatalf("unexpected stubChatStore.DeleteAllForTrip(%s, %s) — set deleteAllForTripFn", userID, tripID)
+	s.tb.Fatalf("unexpected stubChatStore.DeleteAllForTrip(%s) — set deleteAllForTripFn", tripID)
 	return nil
 }
 
-func (s *stubChatStore) SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error {
+func (s *stubChatStore) SetTTL(ctx context.Context, tripID string, expireAt time.Time) error {
 	s.setTTLCalls = append(s.setTTLCalls, struct {
-		UserID, TripID string
-		ExpireAt       time.Time
-	}{userID, tripID, expireAt})
+		TripID   string
+		ExpireAt time.Time
+	}{tripID, expireAt})
 	if s.setTTLFn != nil {
-		return s.setTTLFn(ctx, userID, tripID, expireAt)
+		return s.setTTLFn(ctx, tripID, expireAt)
 	}
-	s.tb.Fatalf("unexpected stubChatStore.SetTTL(%s, %s, %v) — set setTTLFn", userID, tripID, expireAt)
+	s.tb.Fatalf("unexpected stubChatStore.SetTTL(%s, %v) — set setTTLFn", tripID, expireAt)
 	return nil
 }
 
@@ -280,8 +280,9 @@ func (s *stubChatStore) ExportChatData(ctx context.Context, userID string, tripI
 // ones that need a real Postgres landed in internal/integration/).
 func newTestService(q *stubQueries, c *stubChatStore) *Service {
 	return &Service{
-		queries:   q,
-		chatStore: c,
+		queries:           q,
+		chatStore:         c,
+		chatRetentionDays: 90, // mirror NewService's default
 	}
 }
 
@@ -304,7 +305,7 @@ func TestDeleteUser_HappyPath_DeletesFirestorePerTripThenPostgres(t *testing.T) 
 		deleteUserByIDFn: func(_ context.Context, _ uuid.UUID) error { return nil },
 	}
 	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error { return nil },
+		deleteAllForTripFn: func(_ context.Context, _ string) error { return nil },
 	}
 	svc := newTestService(q, c)
 
@@ -312,9 +313,9 @@ func TestDeleteUser_HappyPath_DeletesFirestorePerTripThenPostgres(t *testing.T) 
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Each trip's Firestore data was deleted.
+	// Each trip's chat data was deleted.
 	if len(c.deleteAllForTripCalls) != 2 {
-		t.Errorf("expected 2 Firestore deletes, got %d", len(c.deleteAllForTripCalls))
+		t.Errorf("expected 2 chat deletes, got %d", len(c.deleteAllForTripCalls))
 	}
 	// Postgres user delete fired exactly once with the right ID.
 	if len(q.deleteUserByIDCalls) != 1 || q.deleteUserByIDCalls[0] != userID {
@@ -322,9 +323,9 @@ func TestDeleteUser_HappyPath_DeletesFirestorePerTripThenPostgres(t *testing.T) 
 	}
 }
 
-func TestDeleteUser_FirestoreFailureIsNonFatal(t *testing.T) {
+func TestDeleteUser_ChatFailureIsNonFatal(t *testing.T) {
 	// Per the function comment: "Continue — don't fail the whole
-	// deletion for Firestore issues". The Postgres user delete must
+	// deletion for chat-store issues". The Postgres user delete must
 	// still fire.
 	userID := uuid.New()
 	q := &stubQueries{tb: t,
@@ -334,14 +335,14 @@ func TestDeleteUser_FirestoreFailureIsNonFatal(t *testing.T) {
 		deleteUserByIDFn: func(_ context.Context, _ uuid.UUID) error { return nil },
 	}
 	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error {
-			return errors.New("firestore down")
+		deleteAllForTripFn: func(_ context.Context, _ string) error {
+			return errors.New("chat store down")
 		},
 	}
 	svc := newTestService(q, c)
 
 	if err := svc.DeleteUser(context.Background(), userID); err != nil {
-		t.Errorf("Firestore failure must not fail the whole deletion, got %v", err)
+		t.Errorf("chat-store failure must not fail the whole deletion, got %v", err)
 	}
 	if len(q.deleteUserByIDCalls) != 1 {
 		t.Errorf("Postgres delete must still fire — got %d calls", len(q.deleteUserByIDCalls))
@@ -390,15 +391,15 @@ func TestDeleteTrip_HappyPath(t *testing.T) {
 	tripID := uuid.New()
 
 	q := &stubQueries{tb: t,
-		deleteTripByUserFn: func(_ context.Context, arg dbgen.DeleteTripByUserParams) error {
+		deleteTripByUserFn: func(_ context.Context, arg dbgen.DeleteTripByUserParams) (int64, error) {
 			if arg.ID != tripID || arg.UserID != userID {
 				t.Errorf("DeleteTripByUser: got %+v, want trip=%s user=%s", arg, tripID, userID)
 			}
-			return nil
+			return 1, nil
 		},
 	}
 	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error { return nil },
+		deleteAllForTripFn: func(_ context.Context, _ string) error { return nil },
 	}
 	svc := newTestService(q, c)
 
@@ -406,34 +407,51 @@ func TestDeleteTrip_HappyPath(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(c.deleteAllForTripCalls) != 1 {
-		t.Errorf("expected 1 Firestore delete, got %d", len(c.deleteAllForTripCalls))
+		t.Errorf("expected 1 chat delete, got %d", len(c.deleteAllForTripCalls))
 	}
 }
 
-func TestDeleteTrip_FirestoreFailureNonFatal(t *testing.T) {
+func TestDeleteTrip_NotOwnerNeverTouchesChat(t *testing.T) {
+	// The trip-row delete IS the ownership check: when it affects zero
+	// rows, the (trip-wide!) chat delete must never run.
 	q := &stubQueries{tb: t,
-		deleteTripByUserFn: func(_ context.Context, _ dbgen.DeleteTripByUserParams) error { return nil },
+		deleteTripByUserFn: func(_ context.Context, _ dbgen.DeleteTripByUserParams) (int64, error) {
+			return 0, nil
+		},
+	}
+	c := &stubChatStore{tb: t} // fail-loud: any chat call fails the test
+	svc := newTestService(q, c)
+
+	if err := svc.DeleteTrip(context.Background(), uuid.New(), uuid.New()); !errors.Is(err, ErrTripNotFound) {
+		t.Errorf("expected ErrTripNotFound, got %v", err)
+	}
+	if len(c.deleteAllForTripCalls) != 0 {
+		t.Errorf("chat was deleted for a trip the caller doesn't own — %d calls", len(c.deleteAllForTripCalls))
+	}
+}
+
+func TestDeleteTrip_ChatFailureNonFatal(t *testing.T) {
+	q := &stubQueries{tb: t,
+		deleteTripByUserFn: func(_ context.Context, _ dbgen.DeleteTripByUserParams) (int64, error) { return 1, nil },
 	}
 	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error {
-			return errors.New("firestore failed")
+		deleteAllForTripFn: func(_ context.Context, _ string) error {
+			return errors.New("chat delete failed")
 		},
 	}
 	svc := newTestService(q, c)
 
 	if err := svc.DeleteTrip(context.Background(), uuid.New(), uuid.New()); err != nil {
-		t.Errorf("Firestore failure must not fail trip deletion, got %v", err)
+		t.Errorf("chat-store failure must not fail trip deletion, got %v", err)
 	}
 }
 
 func TestDeleteTrip_PostgresDeleteErrorPropagates(t *testing.T) {
-	wantErr := errors.New("trip not found")
+	wantErr := errors.New("db down")
 	q := &stubQueries{tb: t,
-		deleteTripByUserFn: func(_ context.Context, _ dbgen.DeleteTripByUserParams) error { return wantErr },
+		deleteTripByUserFn: func(_ context.Context, _ dbgen.DeleteTripByUserParams) (int64, error) { return 0, wantErr },
 	}
-	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error { return nil },
-	}
+	c := &stubChatStore{tb: t} // chat must not be touched on DB error
 	svc := newTestService(q, c)
 
 	if err := svc.DeleteTrip(context.Background(), uuid.New(), uuid.New()); !errors.Is(err, wantErr) {
@@ -455,9 +473,9 @@ func TestArchiveCompletedTrips_HappyPath_ArchivesAllReturned(t *testing.T) {
 		},
 		archiveTripFn: func(_ context.Context, _ dbgen.ArchiveTripParams) error { return nil },
 	}
-	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error { return nil },
-	}
+	// fail-loud chat stub: archival must not touch chat at all — the
+	// hourly retention pass owns stamping and purging.
+	c := &stubChatStore{tb: t}
 	svc := newTestService(q, c)
 
 	count, err := svc.ArchiveCompletedTrips(context.Background())
@@ -469,43 +487,6 @@ func TestArchiveCompletedTrips_HappyPath_ArchivesAllReturned(t *testing.T) {
 	}
 	if len(q.archiveTripCalls) != 2 {
 		t.Errorf("expected 2 ArchiveTrip calls, got %d", len(q.archiveTripCalls))
-	}
-}
-
-func TestArchiveCompletedTrips_FirestoreFailureSkipsTrip(t *testing.T) {
-	// A trip whose chat purge fails is NOT archived (continue) — the
-	// archived counter and ArchiveTrip call list should reflect only
-	// the trips that succeeded.
-	t1 := dbgen.GetTripsToArchiveRow{ID: uuid.New(), UserID: uuid.New()}
-	t2 := dbgen.GetTripsToArchiveRow{ID: uuid.New(), UserID: uuid.New()}
-
-	q := &stubQueries{tb: t,
-		getTripsToArchiveFn: func(_ context.Context) ([]dbgen.GetTripsToArchiveRow, error) {
-			return []dbgen.GetTripsToArchiveRow{t1, t2}, nil
-		},
-		archiveTripFn: func(_ context.Context, _ dbgen.ArchiveTripParams) error { return nil },
-	}
-	calls := 0
-	c := &stubChatStore{tb: t,
-		deleteAllForTripFn: func(_ context.Context, _, _ string) error {
-			calls++
-			if calls == 1 {
-				return errors.New("firestore down for trip 1")
-			}
-			return nil
-		},
-	}
-	svc := newTestService(q, c)
-
-	count, err := svc.ArchiveCompletedTrips(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if count != 1 {
-		t.Errorf("expected 1 archived (the second trip), got %d", count)
-	}
-	if len(q.archiveTripCalls) != 1 {
-		t.Errorf("expected 1 ArchiveTrip call (skipped on Firestore failure), got %d", len(q.archiveTripCalls))
 	}
 }
 
@@ -533,11 +514,10 @@ func TestArchiveCompletedTrips_GetTripsErrorPropagates(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSetChatTTL_StampsExpireAtRetentionDaysOut(t *testing.T) {
-	userID := uuid.New()
 	tripID := uuid.New()
 
 	c := &stubChatStore{tb: t,
-		setTTLFn: func(_ context.Context, _, _ string, expireAt time.Time) error {
+		setTTLFn: func(_ context.Context, _ string, expireAt time.Time) error {
 			// Must be ~retentionDays in the future. Allow a 1-min slack
 			// to absorb test execution time.
 			expected := time.Now().AddDate(0, 0, 90)
@@ -549,27 +529,53 @@ func TestSetChatTTL_StampsExpireAtRetentionDaysOut(t *testing.T) {
 	}
 	svc := newTestService(&stubQueries{tb: t}, c)
 
-	if err := svc.SetChatTTL(context.Background(), userID, tripID, 90); err != nil {
+	if err := svc.SetChatTTL(context.Background(), tripID); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(c.setTTLCalls) != 1 {
 		t.Fatalf("expected 1 SetTTL call, got %d", len(c.setTTLCalls))
 	}
-	got := c.setTTLCalls[0]
-	if got.UserID != userID.String() || got.TripID != tripID.String() {
-		t.Errorf("SetTTL got user=%s trip=%s, want %s/%s", got.UserID, got.TripID, userID, tripID)
+	if got := c.setTTLCalls[0]; got.TripID != tripID.String() {
+		t.Errorf("SetTTL got trip=%s, want %s", got.TripID, tripID)
 	}
 }
 
 func TestSetChatTTL_ChatStoreErrorPropagates(t *testing.T) {
 	wantErr := errors.New("ttl set failed")
 	c := &stubChatStore{tb: t,
-		setTTLFn: func(_ context.Context, _, _ string, _ time.Time) error { return wantErr },
+		setTTLFn: func(_ context.Context, _ string, _ time.Time) error { return wantErr },
 	}
 	svc := newTestService(&stubQueries{tb: t}, c)
 
-	if err := svc.SetChatTTL(context.Background(), uuid.New(), uuid.New(), 90); !errors.Is(err, wantErr) {
+	if err := svc.SetChatTTL(context.Background(), uuid.New()); !errors.Is(err, wantErr) {
 		t.Errorf("expected wantErr to wrap, got %v", err)
+	}
+}
+
+func TestSetChatTTL_RetentionDisabledIsNoOp(t *testing.T) {
+	c := &stubChatStore{tb: t} // fail-loud: any SetTTL call fails the test
+	svc := newTestService(&stubQueries{tb: t}, c)
+	svc.SetChatRetentionDays(0)
+
+	if err := svc.SetChatTTL(context.Background(), uuid.New()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(c.setTTLCalls) != 0 {
+		t.Errorf("expected no SetTTL calls with retention disabled, got %d", len(c.setTTLCalls))
+	}
+}
+
+func TestSetChatRetentionDays_Clamps(t *testing.T) {
+	svc := newTestService(&stubQueries{tb: t}, &stubChatStore{tb: t})
+	svc.SetChatRetentionDays(-5)
+	if got := svc.ChatRetentionDays(); got != 0 {
+		t.Errorf("negative retention should clamp to 0, got %d", got)
+	}
+	// An absurd value must clamp below int32-overflow territory — an
+	// overflowed negative SQL interval would purge ALL lobby chat.
+	svc.SetChatRetentionDays(2_200_000_000)
+	if got := svc.ChatRetentionDays(); got != maxChatRetentionDays {
+		t.Errorf("huge retention should clamp to %d, got %d", maxChatRetentionDays, got)
 	}
 }
 

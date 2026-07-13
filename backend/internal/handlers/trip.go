@@ -89,17 +89,6 @@ func (h *TripHandler) CreateTrip(ctx context.Context, req *connect.Request[toqui
 		h.themeSvc.TagTripAsync(userID, t.ID, t.Title, t.Description.String)
 	}
 
-	// Auto-grant 3-day Pro trial on first trip creation
-	if h.queries != nil {
-		if count, err := h.queries.CountTripsByUser(ctx, userID); err == nil && count == 1 {
-			if err := h.queries.StartTripTrial(ctx, t.ID); err != nil {
-				slog.Warn("failed to start trip trial", "error", err, "trip_id", t.ID)
-			} else {
-				slog.Info("first-trip trial started", "user_id", userID, "trip_id", t.ID)
-			}
-		}
-	}
-
 	return connect.NewResponse(&toquiv1.CreateTripResponse{Trip: tripToProto(t)}), nil
 }
 
@@ -247,9 +236,20 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 		return nil, mapTripErr(ctx, "trip operation", err)
 	}
 
-	// When trip is completed, stamp TTL on chat data (90-day retention)
+	// When the trip is completed: stamp completed_at + archive_after
+	// (idempotent — CompleteTrip guards on completed_at IS NULL, so
+	// re-completions don't reset the archival clock) and stamp the chat
+	// retention TTL (CHAT_RETENTION_DAYS; no-op when retention disabled).
 	if status == "completed" {
-		h.lifecycleSvc.SetChatTTLAsync(userID, tripID, 90)
+		if h.queries != nil {
+			if err := h.queries.CompleteTrip(ctx, dbgen.CompleteTripParams{
+				ID:     tripID,
+				UserID: userID,
+			}); err != nil {
+				slog.Warn("failed to stamp trip completion timestamps", "trip_id", tripID, "error", err)
+			}
+		}
+		h.lifecycleSvc.SetChatTTLAsync(tripID)
 	}
 
 	return connect.NewResponse(&toquiv1.UpdateTripResponse{Trip: tripToProto(t)}), nil
@@ -276,6 +276,9 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 
 	// Use lifecycle service to purge chat data + trip rows
 	if err := h.lifecycleSvc.DeleteTrip(ctx, userID, tripID); err != nil {
+		if errors.Is(err, lifecycle.ErrTripNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
+		}
 		return nil, internalError(ctx, "trip operation", err)
 	}
 

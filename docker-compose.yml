@@ -83,6 +83,9 @@ services:
       # Registration gate — comma-separated email domains allowed to sign up.
       # Empty = open registration. Set this on internet-facing deploys.
       ALLOWED_EMAIL_DOMAINS: "${ALLOWED_EMAIL_DOMAINS:-}"
+      # Days to keep chat history after a trip completes (default 90).
+      # 0 = keep forever (until the trip or account is deleted).
+      CHAT_RETENTION_DAYS: "${CHAT_RETENTION_DAYS:-}"
       # Optional Google OAuth — leave unset for email+password only.
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"

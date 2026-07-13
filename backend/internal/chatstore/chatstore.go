@@ -417,15 +417,12 @@ func (s *Store) MoveSessionToTrip(ctx context.Context, userID, fromTripID, toTri
 	return nil
 }
 
-// SetTTL stamps an expireAt time on all sessions for a trip. The lifecycle
-// background purge job deletes expired sessions (messages cascade).
-func (s *Store) SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("set ttl: parse user id: %w", err)
-	}
+// SetTTL stamps an expireAt time on all of a trip's sessions, across every
+// participant — collaborator chat is trip data and follows the trip's
+// retention. The lifecycle purge job deletes expired sessions (messages
+// cascade). Callers must have verified authority over the trip.
+func (s *Store) SetTTL(ctx context.Context, tripID string, expireAt time.Time) error {
 	if err := s.queries.SetChatTTLForTrip(ctx, dbgen.SetChatTTLForTripParams{
-		UserID:   uid,
 		TripID:   tripID,
 		ExpireAt: pgtype.Timestamptz{Time: expireAt, Valid: true},
 	}); err != nil {
@@ -434,17 +431,12 @@ func (s *Store) SetTTL(ctx context.Context, userID, tripID string, expireAt time
 	return nil
 }
 
-// DeleteAllForTrip deletes all chat sessions and messages for a trip.
-// Used for trip deletion and data lifecycle archival.
-func (s *Store) DeleteAllForTrip(ctx context.Context, userID, tripID string) error {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("delete all for trip: parse user id: %w", err)
-	}
-	if err := s.queries.DeleteChatForTrip(ctx, dbgen.DeleteChatForTripParams{
-		UserID: uid,
-		TripID: tripID,
-	}); err != nil {
+// DeleteAllForTrip deletes all chat sessions and messages for a trip,
+// across every participant. Used when the trip itself is deleted (and for
+// GDPR account deletion, per trip). Callers must have verified authority
+// over the trip.
+func (s *Store) DeleteAllForTrip(ctx context.Context, tripID string) error {
+	if err := s.queries.DeleteChatForTrip(ctx, tripID); err != nil {
 		return fmt.Errorf("delete all for trip: %w", err)
 	}
 	return nil

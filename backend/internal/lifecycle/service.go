@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -26,7 +27,7 @@ import (
 type lifecycleQueries interface {
 	GetAllTripIDsForUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
-	DeleteTripByUser(ctx context.Context, arg dbgen.DeleteTripByUserParams) error
+	DeleteTripByUser(ctx context.Context, arg dbgen.DeleteTripByUserParams) (int64, error)
 	GetTripsToArchive(ctx context.Context) ([]dbgen.GetTripsToArchiveRow, error)
 	ArchiveTrip(ctx context.Context, arg dbgen.ArchiveTripParams) error
 	CreateDeletionRequest(ctx context.Context, userID uuid.UUID) (dbgen.DeletionRequest, error)
@@ -52,12 +53,16 @@ var _ lifecycleQueries = (*dbgen.Queries)(nil)
 // depends on. Same rationale as lifecycleQueries — unit tests inject
 // a stub instead of standing up Postgres.
 type lifecycleChatStore interface {
-	DeleteAllForTrip(ctx context.Context, userID, tripID string) error
-	SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error
+	DeleteAllForTrip(ctx context.Context, tripID string) error
+	SetTTL(ctx context.Context, tripID string, expireAt time.Time) error
 	ExportChatData(ctx context.Context, userID string, tripIDs []string) (map[string][]chatstore.ExportedSession, error)
 }
 
 var _ lifecycleChatStore = (*chatstore.Store)(nil)
+
+// ErrTripNotFound is returned by DeleteTrip when the trip doesn't exist or
+// isn't owned by the caller.
+var ErrTripNotFound = errors.New("lifecycle: trip not found")
 
 // Service handles data lifecycle operations: deletion, archival, export.
 type Service struct {
@@ -65,14 +70,43 @@ type Service struct {
 	pool        *pgxpool.Pool
 	chatStore   lifecycleChatStore
 	exportStore exportstorage.Store
+
+	// chatRetentionDays is how long chat history survives after a trip
+	// completes (CHAT_RETENTION_DAYS). 0 disables the retention purge —
+	// chat lives until the trip or account is deleted.
+	chatRetentionDays int
 }
 
 func NewService(pool *pgxpool.Pool, chatStore *chatstore.Store) *Service {
 	return &Service{
-		queries:   dbgen.New(pool),
-		pool:      pool,
-		chatStore: chatStore,
+		queries:           dbgen.New(pool),
+		pool:              pool,
+		chatStore:         chatStore,
+		chatRetentionDays: 90,
 	}
+}
+
+// maxChatRetentionDays caps the retention window at ~100 years. Beyond
+// guarding against typos, this prevents int32 overflow in the SQL interval
+// arithmetic (an overflowed negative interval would purge everything).
+const maxChatRetentionDays = 36500
+
+// SetChatRetentionDays overrides the default 90-day chat retention window.
+// 0 disables retention-based purging entirely; negatives clamp to 0 and
+// absurdly large values clamp to maxChatRetentionDays.
+func (s *Service) SetChatRetentionDays(days int) {
+	if days < 0 {
+		days = 0
+	}
+	if days > maxChatRetentionDays {
+		days = maxChatRetentionDays
+	}
+	s.chatRetentionDays = days
+}
+
+// ChatRetentionDays returns the configured retention window (0 = keep forever).
+func (s *Service) ChatRetentionDays() int {
+	return s.chatRetentionDays
 }
 
 // SetExportStore configures durable storage for GDPR data exports.
@@ -88,17 +122,16 @@ func (s *Service) SetExportStore(store exportstorage.Store) {
 //  2. Delete all chat data for each trip
 //  3. Delete user from Postgres (CASCADE handles trips, bookings, itinerary, themes)
 func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
-	userIDStr := userID.String()
-
 	// Get all trip IDs before deleting from Postgres
 	tripIDs, err := s.queries.GetAllTripIDsForUser(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("get trip IDs: %w", err)
 	}
 
-	// Delete all chat data
+	// Delete all chat data for the user's trips (their own _lobby sessions
+	// cascade with the users row below).
 	for _, tripID := range tripIDs {
-		if err := s.chatStore.DeleteAllForTrip(ctx, userIDStr, tripID.String()); err != nil {
+		if err := s.chatStore.DeleteAllForTrip(ctx, tripID.String()); err != nil {
 			slog.Warn("failed to delete chat data", "trip_id", tripID, "error", err)
 			// Continue — don't fail the whole deletion for chat-store issues
 		}
@@ -112,19 +145,26 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
-// DeleteTrip purges a specific trip and all its associated data.
+// DeleteTrip purges a specific trip and all its associated data. The trip
+// row is deleted first — its WHERE user_id clause is the ownership check —
+// and chat (which is trip-wide, spanning collaborators) is only purged
+// after the caller's authority is proven by that delete affecting a row.
 func (s *Service) DeleteTrip(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) error {
-	// Delete chat data
-	if err := s.chatStore.DeleteAllForTrip(ctx, userID.String(), tripID.String()); err != nil {
-		slog.Warn("failed to delete chat data", "trip_id", tripID, "error", err)
-	}
-
 	// Delete from Postgres — CASCADE handles itinerary, bookings, themes
-	if err := s.queries.DeleteTripByUser(ctx, dbgen.DeleteTripByUserParams{
+	rows, err := s.queries.DeleteTripByUser(ctx, dbgen.DeleteTripByUserParams{
 		ID:     tripID,
 		UserID: userID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("delete trip: %w", err)
+	}
+	if rows == 0 {
+		// Not the owner (or no such trip) — do NOT touch chat.
+		return ErrTripNotFound
+	}
+
+	if err := s.chatStore.DeleteAllForTrip(ctx, tripID.String()); err != nil {
+		slog.Warn("failed to delete chat data", "trip_id", tripID, "error", err)
 	}
 
 	return nil
@@ -140,13 +180,9 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 
 	archived := 0
 	for _, t := range trips {
-		// Purge chat messages
-		if err := s.chatStore.DeleteAllForTrip(ctx, t.UserID.String(), t.ID.String()); err != nil {
-			slog.Warn("failed to purge chat for trip", "trip_id", t.ID, "error", err)
-			continue
-		}
-
-		// Mark as archived in Postgres
+		// Archival only marks the trip; chat retention is enforced
+		// independently by the hourly purge job (completion stamps the
+		// TTL, StampMissingChatTTLForEndedTrips catches stragglers).
 		if err := s.queries.ArchiveTrip(ctx, dbgen.ArchiveTripParams(t)); err != nil {
 			slog.Warn("failed to archive trip", "trip_id", t.ID, "error", err)
 			continue
@@ -158,11 +194,16 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 	return archived, nil
 }
 
-// SetChatTTL stamps an expireAt time on all chat data for a trip.
-// Call this when a trip is marked completed to start the retention countdown.
-func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.UUID, retentionDays int) error {
-	expireAt := time.Now().AddDate(0, 0, retentionDays)
-	if err := s.chatStore.SetTTL(ctx, userID.String(), tripID.String(), expireAt); err != nil {
+// SetChatTTL stamps an expireAt time on ALL of a trip's chat data (every
+// participant), using the configured retention window. Call this when a
+// trip is marked completed to start the retention countdown. No-op when
+// retention is disabled (0).
+func (s *Service) SetChatTTL(ctx context.Context, tripID uuid.UUID) error {
+	if s.chatRetentionDays <= 0 {
+		return nil
+	}
+	expireAt := time.Now().AddDate(0, 0, s.chatRetentionDays)
+	if err := s.chatStore.SetTTL(ctx, tripID.String(), expireAt); err != nil {
 		return fmt.Errorf("set chat TTL: %w", err)
 	}
 	return nil
@@ -171,11 +212,14 @@ func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.
 // SetChatTTLAsync fires TTL stamping in a background goroutine.
 // This intentionally uses a detached context with a 60-second timeout because
 // TTL stamping must complete even after the originating request ends.
-func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID, retentionDays int) {
+func (s *Service) SetChatTTLAsync(tripID uuid.UUID) {
+	if s.chatRetentionDays <= 0 {
+		return
+	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		if err := s.SetChatTTL(ctx, userID, tripID, retentionDays); err != nil {
+		if err := s.SetChatTTL(ctx, tripID); err != nil {
 			slog.Warn("failed to set chat TTL for trip", "trip_id", tripID, "error", err)
 		}
 	}()

@@ -93,6 +93,12 @@ type Config struct {
 	// GDPR export storage
 	GCSExportBucket string // GCS bucket for GDPR data exports (empty = local filesystem fallback)
 	ExportLocalDir  string // Local directory for exports when GCS is not configured
+
+	// ChatRetentionDays controls how long chat history survives after a
+	// trip completes (and how long idle selection-mode chats are kept).
+	// 0 disables the purge entirely — chat is kept until the trip or
+	// account is deleted.
+	ChatRetentionDays int
 }
 
 // Load builds a Config using the three-layer loading strategy:
@@ -136,6 +142,7 @@ func Load() (*Config, error) {
 		CORSAllowedOrigins:       parseCSVEnv("CORS_ALLOWED_ORIGINS"),
 		GCSExportBucket:          getEnv("GCS_EXPORT_BUCKET", ""),
 		ExportLocalDir:           getEnv("EXPORT_LOCAL_DIR", "/tmp/toqui-exports"),
+		ChatRetentionDays:        getEnvInt("CHAT_RETENTION_DAYS", 90),
 	}
 
 	// Layer 3: resolve gcsm:// references
