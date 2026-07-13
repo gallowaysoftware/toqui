@@ -71,7 +71,7 @@ There is no Firestore. Chat persistence moved to Postgres (`internal/chatstore`,
 | `internal/chatstore/`   | Postgres chat session/message persistence (replaced Firestore)                            |
 | `internal/persona/`     | Persona composition — 43 locations × 23 themes of composed experts                        |
 | `internal/ai/`          | AI provider abstraction (Gemini, Claude, OpenAI-compatible, fallback wrapper, response cache, token budget) |
-| `internal/ai/tools/`    | Global LLM tool registry (`web_search`; `place_lookup` is implemented but never registered — see Chat Tool System) |
+| `internal/ai/tools/`    | Global LLM tool registry: `web_search` (Google Custom Search or SearXNG backend, or graceful stub) and `place_lookup` (Google Places, or graceful stub) — both always registered |
 | `internal/lifecycle/`   | GDPR deletion, trip archival, chat purge, data export, background jobs                    |
 | `internal/exportstorage/` | Export storage abstraction (GCS when `GCS_EXPORT_BUCKET` set, local filesystem otherwise) |
 | `internal/auth/`        | Email+password (bcrypt) + optional Google OAuth + JWT + auth interceptor + refresh token rotation (JTI/family) + auth cookies |
@@ -247,8 +247,10 @@ Config loads in three layers via `internal/config/`:
 | `AI_DAILY_BUDGET_CENTS` | `0` | **Dead knob** — parsed into config but consumed nowhere (the `ai_usage` table it depended on was dropped) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (none) | Optional. When either is unset, `GoogleLogin` returns `Unimplemented` and `/auth/google/*` returns 501 — email+password only |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8090/auth/google/callback` | OAuth redirect URI |
-| `GOOGLE_CUSTOM_SEARCH_API_KEY` / `GOOGLE_CUSTOM_SEARCH_CX` | (none) | Backs `web_search`; without them the tool is a stub returning `no_web_access` |
-| `GOOGLE_PLACES_API_KEY` | (none) | Backs `nearby_places` and itinerary-item geocoding |
+| `SEARCH_PROVIDER` | (auto) | `web_search` backend: `searxng` \| `google` \| blank (auto: SearXNG if `SEARXNG_URL` set, else Google if its keys set, else stub) |
+| `SEARXNG_URL` | (none) | SearXNG instance URL for `web_search` (needs its JSON format enabled) |
+| `GOOGLE_CUSTOM_SEARCH_API_KEY` / `GOOGLE_CUSTOM_SEARCH_CX` | (none) | Google Custom Search backend for `web_search`; without a backend the tool is a stub returning `no_web_access` |
+| `GOOGLE_PLACES_API_KEY` | (none) | Backs `nearby_places`, `place_lookup`, and itinerary-item geocoding; `place_lookup` is a graceful stub without it |
 | `FRONTEND_URL` | `http://localhost:3000` | Primary CORS origin + OAuth redirect target + guide CTA URL |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowlist |
 | `ALLOWED_EMAIL_DOMAINS` | (none = allow all) | Comma-separated signup domain allowlist |
@@ -308,11 +310,11 @@ The AI in chat has access to tools injected by the handler layer (`internal/hand
 | `nearby_places`          | companion | Finds nearby places using the user's cached location (Google Places)                                        | —                 |
 | `get_weather`            | planning, companion | Current weather + forecast via Open-Meteo (no key required)                                        | —                 |
 | `currency_convert`       | planning, companion | Live exchange rates via frankfurter.app (no key required)                                          | —                 |
-| `web_search`             | all modes (global registry) | Google Custom Search. Always registered: without keys it's a stub returning a success-shaped `no_web_access` result so the AI falls back to parametric knowledge instead of retrying. | — |
+| `web_search`             | all modes (global registry) | Web search via SearXNG or Google Custom Search (`SEARCH_PROVIDER`). Always registered: without a backend it's a stub returning a success-shaped `no_web_access` result so the AI falls back to parametric knowledge instead of retrying. | — |
+| `place_lookup`           | all modes (global registry) | Place details (address, rating, hours, coords) via Google Places. Always registered; a graceful `no_place_data` stub when `GOOGLE_PLACES_API_KEY` is unset. | — |
 
 **Ownership gating** (`BuildPlanningAndCompanionTools`, #263): itinerary write tools are given to the trip owner or a collaborator with editor role; `update_trip` is owner-only.
 
-**Known gap — `place_lookup`**: `internal/ai/tools/places.go` implements a `place_lookup` tool and the persona system prompt (`internal/persona/composer.go`) tells the AI it has it, but nothing ever registers it in the tool registry (`cmd/server/main.go` registers only `web_search`). Either register it or stop advertising it in the prompt.
 
 **CompanionGate** (`internal/handlers/tool_companion_gate.go`): in companion mode, `create_itinerary_items`, `delete_itinerary_items`, and `reorder_itinerary_items` are wrapped by an LLM-classifier gate that only allows execution when the user's most recent message *explicitly* requests an itinerary modification. This prevents "recommend a lunch spot" being interpreted as "add a lunch spot to the itinerary." Fail-closed: classifier errors block the call.
 

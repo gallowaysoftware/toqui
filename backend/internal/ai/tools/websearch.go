@@ -5,39 +5,66 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gallowaysoftware/toqui/backend/internal/ai"
 )
 
-type WebSearch struct {
-	apiKey string
-	cx     string
-	client *http.Client
+// searchResult is the normalized shape returned to the AI regardless of the
+// underlying search backend.
+type searchResult struct {
+	Title   string `json:"title"`
+	URL     string `json:"url"`
+	Snippet string `json:"snippet"`
 }
 
+// searchBackend performs a web search and returns normalized results.
+// Implementations: Google Custom Search and SearXNG. A nil backend means
+// web search is not configured (the tool returns a graceful no_web_access).
+type searchBackend interface {
+	search(ctx context.Context, query string) ([]searchResult, error)
+}
+
+// WebSearch is the web_search chat tool. It's always registered (even when
+// unconfigured) so the AI gets a clear "no web access" signal instead of an
+// "unknown tool" error — which Gemini treats as a real failure and retries
+// pointlessly (#194).
+type WebSearch struct {
+	backend searchBackend
+}
+
+// NewWebSearch builds the Google Custom Search backed tool.
 func NewWebSearch(apiKey, cx string) *WebSearch {
-	return &WebSearch{
+	return &WebSearch{backend: &googleSearch{
 		apiKey: apiKey,
 		cx:     cx,
 		client: &http.Client{Timeout: 15 * time.Second},
-	}
+	}}
 }
 
-// NewWebSearchStub returns a registered tool that responds with a graceful
-// "feature unavailable" message. Used in environments where the Google Custom
-// Search API key isn't configured so the AI gets a clear signal instead of
-// the registry returning "unknown tool" — which Gemini interprets as a real
-// failure and retries pointlessly (#194).
+// NewWebSearchSearXNG builds the SearXNG backed tool. baseURL points at a
+// SearXNG instance with the JSON output format enabled (`search.formats:
+// [json]` in its settings.yml). Self-hosters typically run one alongside
+// Toqui or point at an existing instance.
+func NewWebSearchSearXNG(baseURL string) *WebSearch {
+	return &WebSearch{backend: &searxngSearch{
+		baseURL: strings.TrimRight(baseURL, "/"),
+		client:  &http.Client{Timeout: 15 * time.Second},
+	}}
+}
+
+// NewWebSearchStub returns a registered tool with no backend — it responds
+// with a graceful "feature unavailable" message so the AI falls back to
+// parametric knowledge instead of erroring.
 func NewWebSearchStub() *WebSearch {
 	return &WebSearch{}
 }
 
-func (w *WebSearch) configured() bool {
-	return w.apiKey != "" && w.cx != ""
-}
+func (w *WebSearch) configured() bool { return w.backend != nil }
 
 func (w *WebSearch) Definition() ai.ToolDefinition {
 	return ai.ToolDefinition{
@@ -57,45 +84,60 @@ func (w *WebSearch) Definition() ai.ToolDefinition {
 }
 
 func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	// IMPORTANT: no failure path here may return a Go error or an
+	// "error"-keyed payload. The chat loop turns a Go error into
+	// {"error": ...}, and Gemini treats ANY tool result with an "error" key
+	// as a genuine failure — it retries pointlessly and can abandon
+	// follow-up side-effect tools like create_itinerary_items (#194, Run 4
+	// R-16). So both "not configured" and "backend failed at runtime"
+	// degrade to the same success-shaped no_web_access result, letting the
+	// AI fall back to parametric knowledge with a clear caveat.
 	if !w.configured() {
-		// IMPORTANT: this response MUST NOT contain an "error" field.
-		// Gemini interprets any tool result with an "error" key as a genuine
-		// failure and either retries the call or apologises to the user,
-		// which cascades into follow-up tools (e.g. create_itinerary_items) never
-		// being invoked (Run 4 R-16). A plain status/message payload tells
-		// the AI "the call succeeded, there's just no web access" and lets
-		// it gracefully fall back to parametric knowledge.
-		return json.Marshal(map[string]any{
-			"status":  "no_web_access",
-			"results": []any{},
-			"message": "Real-time web search is not configured in this environment. Proceed using your existing knowledge and tell the user you cannot verify time-sensitive details (current opening hours, prices, closures) without web access. Then continue answering their question with the information you have.",
-		})
+		return webSearchUnavailable("Real-time web search is not configured in this environment.")
 	}
 
 	var input struct {
 		Query string `json:"query"`
 	}
 	if err := json.Unmarshal(args, &input); err != nil {
-		return nil, fmt.Errorf("unmarshal args: %w", err)
+		// Malformed args from the model — treat as a no-op search, not a failure.
+		slog.Warn("web_search: bad arguments, returning no_web_access", "error", err)
+		return webSearchUnavailable("Real-time web search could not run (bad query).")
 	}
 
+	results, err := w.backend.search(ctx, input.Query)
+	if err != nil {
+		slog.Warn("web_search: backend failed, returning no_web_access", "error", err)
+		return webSearchUnavailable("Real-time web search is temporarily unavailable.")
+	}
+	return json.Marshal(map[string]any{"results": results})
+}
+
+// webSearchUnavailable builds the success-shaped no_web_access payload. The
+// message tells the AI to proceed from its own knowledge and caveat that
+// time-sensitive details can't be verified.
+func webSearchUnavailable(reason string) (json.RawMessage, error) {
+	return json.Marshal(map[string]any{
+		"status":  "no_web_access",
+		"results": []any{},
+		"message": reason + " Proceed using your existing knowledge and tell the user you cannot verify time-sensitive details (current opening hours, prices, closures) without web access. Then continue answering their question with the information you have.",
+	})
+}
+
+// googleSearch queries the Google Custom Search JSON API.
+type googleSearch struct {
+	apiKey string
+	cx     string
+	client *http.Client
+}
+
+func (g *googleSearch) search(ctx context.Context, query string) ([]searchResult, error) {
 	u := fmt.Sprintf("https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=%s&num=5",
-		w.apiKey, w.cx, url.QueryEscape(input.Query))
+		url.QueryEscape(g.apiKey), url.QueryEscape(g.cx), url.QueryEscape(query))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	body, err := httpGetLimited(ctx, g.client, u, nil)
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-
-	resp, err := w.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("execute search: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxToolResponseBytes))
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+		return nil, err
 	}
 
 	var result struct {
@@ -106,22 +148,74 @@ func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.Raw
 		} `json:"items"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return json.Marshal(map[string]string{"error": "failed to parse search results"})
-	}
-
-	type searchResult struct {
-		Title   string `json:"title"`
-		URL     string `json:"url"`
-		Snippet string `json:"snippet"`
+		return nil, fmt.Errorf("parse google results: %w", err)
 	}
 	results := make([]searchResult, 0, len(result.Items))
 	for _, item := range result.Items {
-		results = append(results, searchResult{
-			Title:   item.Title,
-			URL:     item.Link,
-			Snippet: item.Snippet,
-		})
+		results = append(results, searchResult{Title: item.Title, URL: item.Link, Snippet: item.Snippet})
+	}
+	return results, nil
+}
+
+// searxngSearch queries a SearXNG instance's JSON API. SearXNG must have the
+// JSON format enabled; the snippet lives in the result's "content" field.
+type searxngSearch struct {
+	baseURL string
+	client  *http.Client
+}
+
+func (s *searxngSearch) search(ctx context.Context, query string) ([]searchResult, error) {
+	u := fmt.Sprintf("%s/search?q=%s&format=json", s.baseURL, url.QueryEscape(query))
+
+	// SearXNG rejects the default Go user agent from some instances; send a
+	// plain one.
+	body, err := httpGetLimited(ctx, s.client, u, map[string]string{"User-Agent": "Toqui/1.0"})
+	if err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(map[string]any{"results": results})
+	var result struct {
+		Results []struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Content string `json:"content"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse searxng results: %w", err)
+	}
+
+	const maxResults = 5
+	results := make([]searchResult, 0, maxResults)
+	for _, item := range result.Results {
+		if len(results) >= maxResults {
+			break
+		}
+		results = append(results, searchResult{Title: item.Title, URL: item.URL, Snippet: item.Content})
+	}
+	return results, nil
+}
+
+// httpGetLimited performs a GET and returns the (size-bounded) body.
+func httpGetLimited(ctx context.Context, client *http.Client, u string, headers map[string]string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute search: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("search backend returned status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxToolResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+	return body, nil
 }

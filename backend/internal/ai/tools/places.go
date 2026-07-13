@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -28,6 +28,18 @@ func NewPlaceLookup(apiKey string) *PlaceLookup {
 	}
 }
 
+// NewPlaceLookupStub returns a registered place_lookup tool with no API key —
+// it responds with a graceful "unavailable" message rather than erroring, so
+// the AI (which is told about place_lookup in the system prompt) falls back to
+// its own knowledge. Same rationale as NewWebSearchStub (#194): an unknown
+// tool would make Gemini retry pointlessly. Used when GOOGLE_PLACES_API_KEY
+// isn't set — the common self-host case.
+func NewPlaceLookupStub() *PlaceLookup {
+	return &PlaceLookup{}
+}
+
+func (p *PlaceLookup) configured() bool { return p.apiKey != "" }
+
 func (p *PlaceLookup) Definition() ai.ToolDefinition {
 	return ai.ToolDefinition{
 		Name:        "place_lookup",
@@ -46,31 +58,47 @@ func (p *PlaceLookup) Definition() ai.ToolDefinition {
 }
 
 func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	// Like web_search, no failure path returns a Go error or an "error"-keyed
+	// payload — that would make the chat loop feed {"error": ...} to Gemini,
+	// which treats it as a real failure and abandons follow-up tools (#194).
+	// "Not configured" and "backend failed" both degrade to no_place_data.
+	if !p.configured() {
+		return placeUnavailable("Place lookup is not configured in this environment.")
+	}
+
 	var input struct {
 		Query string `json:"query"`
 	}
 	if err := json.Unmarshal(args, &input); err != nil {
-		return nil, fmt.Errorf("unmarshal args: %w", err)
+		slog.Warn("place_lookup: bad arguments, returning no_place_data", "error", err)
+		return placeUnavailable("Place lookup could not run (bad query).")
 	}
 
-	// Use Google Places Text Search API
-	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/place/textsearch/json?query=%s&key=%s",
-		url.QueryEscape(input.Query), p.apiKey)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	places, err := p.lookup(ctx, input.Query)
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		slog.Warn("place_lookup: backend failed, returning no_place_data", "error", err)
+		return placeUnavailable("Place lookup is temporarily unavailable.")
 	}
+	return json.Marshal(map[string]any{"places": places})
+}
 
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("execute search: %w", err)
-	}
-	defer resp.Body.Close()
+type placeResult struct {
+	Name      string   `json:"name"`
+	Address   string   `json:"address"`
+	Rating    float64  `json:"rating"`
+	Reviews   int      `json:"review_count"`
+	Latitude  float64  `json:"latitude"`
+	Longitude float64  `json:"longitude"`
+	Types     []string `json:"types"`
+}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxToolResponseBytes))
+func (p *PlaceLookup) lookup(ctx context.Context, query string) ([]placeResult, error) {
+	u := fmt.Sprintf("https://maps.googleapis.com/maps/api/place/textsearch/json?query=%s&key=%s",
+		url.QueryEscape(query), url.QueryEscape(p.apiKey))
+
+	body, err := httpGetLimited(ctx, p.client, u, nil)
 	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+		return nil, err
 	}
 
 	var result struct {
@@ -89,18 +117,9 @@ func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.R
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return json.Marshal(map[string]string{"error": "failed to parse place results"})
+		return nil, fmt.Errorf("parse place results: %w", err)
 	}
 
-	type placeResult struct {
-		Name      string   `json:"name"`
-		Address   string   `json:"address"`
-		Rating    float64  `json:"rating"`
-		Reviews   int      `json:"review_count"`
-		Latitude  float64  `json:"latitude"`
-		Longitude float64  `json:"longitude"`
-		Types     []string `json:"types"`
-	}
 	places := make([]placeResult, 0, len(result.Results))
 	for _, r := range result.Results {
 		places = append(places, placeResult{
@@ -113,6 +132,13 @@ func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.R
 			Types:     r.Types,
 		})
 	}
+	return places, nil
+}
 
-	return json.Marshal(map[string]any{"places": places})
+func placeUnavailable(reason string) (json.RawMessage, error) {
+	return json.Marshal(map[string]any{
+		"status":  "no_place_data",
+		"places":  []any{},
+		"message": reason + " Answer from your existing knowledge and tell the user you cannot verify live details (current hours, ratings, exact address) without it.",
+	})
 }
