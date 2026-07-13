@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// needsServerSetup is native-only behavior — run this file as "ios".
+vi.mock("react-native", async () => {
+  const actual = await vi.importActual<typeof import("react-native")>("react-native");
+  return { ...actual, Platform: { OS: "ios" } };
+});
+
 const storage = new Map<string, string>();
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
@@ -38,6 +44,9 @@ describe("normalizeServerUrl", () => {
     ["ftp://example.com"],
     ["not a url at all"],
     ["https://"],
+    // Query strings / fragments have no meaning in a server base URL.
+    ["https://host.example.com?x=1"],
+    ["https://host.example.com/api#frag"],
   ])("rejects %s", (input) => {
     expect(normalizeServerUrl(input)).toBeNull();
   });
@@ -66,5 +75,43 @@ describe("setServerUrl", () => {
   it("rejects invalid URLs without persisting", async () => {
     await expect(setServerUrl("ftp://nope")).rejects.toThrow(/invalid server URL/);
     expect(storage.has("toqui_server_url")).toBe(false);
+  });
+});
+
+describe("needsServerSetup", () => {
+  // Fresh module instance per test — hasStoredServerUrl and runtimeConfig
+  // are module state.
+  async function freshConfig() {
+    vi.resetModules();
+    return await import("@/lib/config");
+  }
+
+  beforeEach(() => {
+    storage.clear();
+  });
+
+  it("gates on native when nothing is configured (localhost default)", async () => {
+    const cfg = await freshConfig();
+    await cfg.loadConfig();
+    expect(cfg.needsServerSetup()).toBe(true);
+  });
+
+  it("does not gate once a stored URL is loaded", async () => {
+    storage.set("toqui_server_url", "https://toqui.example.com");
+    const cfg = await freshConfig();
+    await cfg.loadConfig();
+    expect(cfg.needsServerSetup()).toBe(false);
+    expect(cfg.getConfig().apiUrl).toBe("https://toqui.example.com");
+  });
+
+  it("does not gate after the user explicitly saves the localhost default (no redirect loop)", async () => {
+    // Simulator testing of a store build: the user saves
+    // http://localhost:8090 itself. String-matching the default would
+    // bounce them back to setup forever.
+    const cfg = await freshConfig();
+    await cfg.loadConfig();
+    expect(cfg.needsServerSetup()).toBe(true);
+    await cfg.setServerUrl("http://localhost:8090");
+    expect(cfg.needsServerSetup()).toBe(false);
   });
 });

@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Server } from "lucide-react-native";
 
@@ -33,6 +33,10 @@ export default function ServerSetupScreen() {
   const [input, setInput] = useState(currentUrl);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Web gets its API URL from the serving host's /config.json — this
+  // screen is a native-only concept. (After all hooks, per hooks rules.)
+  const isWeb = Platform.OS === "web";
 
   const handleConnect = useCallback(async () => {
     const normalized = normalizeServerUrl(input);
@@ -147,6 +151,10 @@ export default function ServerSetupScreen() {
     cancelButton: { paddingVertical: 12 },
     cancelText: { color: colors.textSecondary, fontSize: 15 },
   });
+
+  if (isWeb) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <KeyboardAvoidingView

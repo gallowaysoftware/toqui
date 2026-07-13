@@ -34,6 +34,12 @@ const SERVER_URL_STORAGE_KEY = "toqui_server_url";
 
 const changeListeners = new Set<() => void>();
 
+// True once a user-chosen server URL exists (loaded from storage or just
+// saved). Lets needsServerSetup() distinguish "the user chose
+// http://localhost:8090" (fine — simulator testing) from "nothing was ever
+// configured and we're on the build-time localhost default".
+let hasStoredServerUrl = false;
+
 /**
  * Subscribe to config changes (currently: the user switching servers on
  * native). Returns an unsubscribe function. The root layout uses this to
@@ -62,6 +68,9 @@ export function normalizeServerUrl(input: string): string | null {
     const url = new URL(value);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     if (!url.hostname) return null;
+    // Query strings and fragments have no meaning in a server base URL and
+    // would silently break the healthz probe / RPC paths.
+    if (url.search || url.hash) return null;
     return value.replace(/\/+$/, "");
   } catch {
     return null;
@@ -102,6 +111,7 @@ export async function loadConfig(): Promise<AppConfig> {
   try {
     const stored = await AsyncStorage.getItem(SERVER_URL_STORAGE_KEY);
     const normalized = stored ? normalizeServerUrl(stored) : null;
+    hasStoredServerUrl = !!normalized;
     runtimeConfig = normalized ? { ...defaults, apiUrl: normalized } : defaults;
   } catch {
     runtimeConfig = defaults;
@@ -117,6 +127,7 @@ export async function loadConfig(): Promise<AppConfig> {
  */
 export function needsServerSetup(): boolean {
   if (Platform.OS === "web") return false;
+  if (hasStoredServerUrl) return false;
   const cfg = getConfig();
   return cfg.apiUrl === "" || (cfg.apiUrl === "http://localhost:8090" && !process.env.EXPO_PUBLIC_API_URL);
 }
@@ -132,6 +143,7 @@ export async function setServerUrl(url: string): Promise<void> {
     throw new Error(`invalid server URL: ${url}`);
   }
   await AsyncStorage.setItem(SERVER_URL_STORAGE_KEY, normalized);
+  hasStoredServerUrl = true;
   runtimeConfig = { ...(runtimeConfig ?? defaults), apiUrl: normalized };
   changeListeners.forEach((listener) => listener());
 }

@@ -29,7 +29,7 @@ vi.mock("react-native", async () => {
   const actual = await vi.importActual<typeof import("react-native")>("react-native");
   return {
     ...actual,
-    Platform: { OS: "web" },
+    Platform: { OS: "ios" },
     useColorScheme: () => "light",
     Dimensions: {
       get: () => ({ width: 375, height: 812 }),
@@ -41,6 +41,7 @@ vi.mock("react-native", async () => {
 vi.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace, push: vi.fn(), back: mockBack }),
   useLocalSearchParams: () => ({}),
+  Redirect: () => null,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -55,6 +56,13 @@ vi.mock("react-i18next", () => ({
     },
     i18n: { language: "en" },
   }),
+}));
+
+// ThemeProvider persists via expo-secure-store on native (Platform mocked
+// to ios above) — stub it so the provider mounts.
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: vi.fn(() => Promise.resolve(null)),
+  setItemAsync: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("lucide-react-native", () => {

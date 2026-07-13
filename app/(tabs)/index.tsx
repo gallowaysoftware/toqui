@@ -187,6 +187,7 @@ export default function TripsScreen() {
     },
     secondaryButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: "600" },
     createAccountLink: { color: colors.accent, fontSize: 14, fontWeight: "600", marginTop: 16 },
+    changeServerLink: { color: colors.textTertiary, fontSize: 13, marginTop: 20, textDecorationLine: "underline" },
     authSeparator: {
       flexDirection: "row",
       alignItems: "center",
@@ -296,6 +297,20 @@ export default function TripsScreen() {
         </Pressable>
 
         <Text style={styles.signInNote}>{t("home.signInNote")}</Text>
+
+        {/* Escape hatch: a saved-but-now-dead server URL would otherwise
+            strand a signed-out user here with no way to fix it (the
+            first-run gate only fires when NO server is configured, and
+            Settings requires auth). Native-only, like server setup. */}
+        {Platform.OS !== "web" && (
+          <Pressable
+            onPress={() => router.push("/server-setup" as never)}
+            accessibilityRole="link"
+            testID="signin-change-server"
+          >
+            <Text style={styles.changeServerLink}>{t("serverSetup.changeServer")}</Text>
+          </Pressable>
+        )}
       </ScrollView>
     );
   }
