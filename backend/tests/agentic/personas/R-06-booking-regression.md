@@ -26,9 +26,9 @@ Five days in Barcelona. Everything is pre-booked: flights from Chicago, a boutiq
 
 ### Phase 3: AI Booking Recommendations
 
-9. Ask the AI: "Can you recommend a good day trip from Barcelona? Maybe something with transport and tickets included." This should trigger the `recommend_booking` tool. The AI should provide affiliate-linked recommendations.
-10. **FTC disclosure check**: After the AI gives booking recommendations, verify that the response includes an affiliate disclosure statement. This is legally required. If the AI recommends bookings with affiliate links but does not disclose the affiliate relationship, this is a compliance failure.
-11. Ask for restaurant recommendations (non-booking) to verify the AI does not trigger `recommend_booking` for simple restaurant suggestions — that tool is for bookable activities, transport, and accommodation.
+9. Ask the AI: "Can you recommend a good day trip from Barcelona? Maybe something with transport and tickets included." There is NO booking tool — the AI should recommend specific named options (operator, route, what's included) and tell you to book directly with the provider or your preferred booking site.
+10. **No-fabrication check**: Verify the response does NOT contain invented booking/affiliate URLs and does NOT claim to have made a reservation on your behalf. Any fabricated link or "I've booked it for you" claim is a failure.
+11. After discussing a bookable option, verify the AI mentions (at least once in the conversation) that you can paste a booking confirmation into the trip's Bookings screen to get it added to the itinerary.
 
 ### Phase 4: Itinerary Integration
 
@@ -43,7 +43,6 @@ Five days in Barcelona. Everything is pre-booked: flights from Chicago, a boutiq
 ## Special Attention
 
 - Booking data integrity is the primary test. The AI must be able to answer specific questions about ingested bookings (terminal numbers, check-in times, confirmation codes) accurately. Vague or incorrect answers indicate a data pipeline issue.
-- The FTC affiliate disclosure is a hard compliance requirement. Every response that includes `recommend_booking` tool results with affiliate links MUST include a disclosure. Test this explicitly.
-- The `recommend_booking` tool should only trigger for bookable items (tours, transport, accommodation), not for restaurant suggestions or general advice. Over-triggering this tool is a UX issue.
+- There is no booking tool and no affiliate program. If the AI emits a phantom `recommend_booking` tool call, fabricates a booking link, or appends an affiliate disclosure, that is a regression against the cleaned prompts — report it.
 - When building the itinerary, the AI should intelligently place existing bookings at the correct times and build around them, not ignore them or double-book time slots.
 - Priya does not drink much — if the AI recommends wine tours or bar crawls without being asked, it is not being attentive to the persona. Evaluate whether the AI picks up on stated preferences.

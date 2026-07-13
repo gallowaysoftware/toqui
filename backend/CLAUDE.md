@@ -277,8 +277,6 @@ Required: `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). `
 | `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
 | `EMAIL_WEBHOOK_SECRET` | (none) | Resend webhook signing secret in `whsec_<base64>` form. Used to verify Svix-style signatures on POST /webhooks/email/inbound. |
-| `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
-| `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | (none) | OpenTelemetry collector endpoint |
 | `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
@@ -555,7 +553,7 @@ go run ./cmd/testctl cleanup-user --user-id "uuid"
 | R-02 | Family w/ kids | Costa Rica 10d | Context injection, safety, accessibility, companion mode |
 | R-03 | Returning user | Multi-trip | select_trip matching, trip switching, multi-trip management |
 | R-05 | Craft beer + hiker | CZ + Iceland | Extended profiles, niche themes, 2 trips |
-| R-06 | Booking-heavy | Barcelona 5d | IngestBooking (3 types), ExtractBookingField, FTC disclosure |
+| R-06 | Booking-heavy | Barcelona 5d | IngestBooking (3 types), ExtractBookingField, no fabricated booking links |
 | R-07 | Update regression | Structural | COALESCE partial updates (no AI, deterministic) |
 | R-11 | Food blogger | Mexico City | Expert handoff (food), tour booking |
 | R-16 | History professor | Greece + Turkey | Academic depth, 3 expert handoffs, multi-country |

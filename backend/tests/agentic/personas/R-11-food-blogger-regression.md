@@ -14,7 +14,7 @@ Mexico City + Oaxaca, 10 days total. You plan to spend 5 days in CDMX exploring 
 2. **Food expert handoff**: Once in planning mode, discuss Oaxacan food. The AI should call `suggest_expert` to hand off to a Mexico food specialist. Verify the persona switch event fires and the expert demonstrates deep knowledge of regional Mexican cuisine (not generic Mexican food).
 3. **Itinerary generation**: Ask the AI to build a day-by-day food itinerary. Verify `create_itinerary_items` is called with food-specific items (market visits, cooking classes, restaurant reservations, distillery tours) -- not generic sightseeing.
 4. **Booking ingestion**: Ingest the `tour-booking.txt` artifact (Oaxaca food tour). Verify the booking appears correctly in the trip.
-5. **Booking recommendations**: Ask the AI to recommend more food tours and cooking classes in Oaxaca. This should trigger `recommend_booking` with activity-type results. Verify the response includes FTC affiliate disclosure.
+5. **Booking recommendations**: Ask the AI to recommend more food tours and cooking classes in Oaxaca. Expect specific named tours/classes with practical details (price range, duration, how to book directly). Verify it does NOT emit a phantom `recommend_booking` tool call, fabricate booking links, or claim to have reserved anything.
 6. **Cultural depth**: Ask about Dia de Muertos food traditions. The expert should provide culturally rich, specific answers (pan de muerto, calaveritas de azucar, mole negro) rather than surface-level tourism facts.
 
 ## Booking Artifacts
