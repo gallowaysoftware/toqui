@@ -18,53 +18,38 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 - Docker & Docker Compose (local Postgres)
 - [sqlc](https://sqlc.dev/) (SQL code generation)
 - [golangci-lint](https://golangci-lint.run/) (optional, for linting)
-- [gcloud CLI](https://cloud.google.com/sdk/docs/install) — required for Secret Manager resolution (`gcloud auth application-default login`)
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) — only needed if you use `gcsm://` Secret Manager references in env files
 
 ## Quick Start
 
 ```bash
 # 1. Start Postgres
-make docker-up
+docker compose up -d postgres
 
 # 2. Run database migrations
 make migrate-up
 
-# 3. Authenticate with GCP (for Secret Manager)
-gcloud auth application-default login
-
-# 4. Run the server
+# 3. Run the server (needs an AI provider key, e.g. GEMINI_API_KEY,
+#    ANTHROPIC_API_KEY, or OPENAI_API_KEY + OPENAI_BASE_URL)
 make run
 # Server starts on http://localhost:8090
 ```
 
 ## Environment Configuration
 
-Config is loaded automatically based on `TARGET_ENV` (default: `local`):
-
-```bash
-make run                        # Local dev (loads env/.env.local, resolves gcsm:// secrets)
-make run-staging                # Staging (loads env/.env.staging, resolves gcsm:// secrets)
-make run-prod                   # Production (loads env/.env.prod, resolves gcsm:// secrets)
-TARGET_ENV=staging make run     # Same as make run-staging
-```
-
-Env files live in `env/`:
-
-- `env/.env.local` — Local dev (`gcsm://` secrets from `toqui-staging` project)
-- `env/.env.staging` — Staging infrastructure + `gcsm://` secret references
-- `env/.env.prod` — Production infrastructure + `gcsm://` secret references
-
-All env files use `gcsm://` prefixed values which are resolved from GCP Secret Manager at startup. This means no secrets are stored in the repo. Requires `gcloud auth application-default login` for local dev. Real environment variables always take precedence over the env file.
+Config is loaded automatically based on `TARGET_ENV` (default: `local`). If `env/.env.{TARGET_ENV}` exists it is parsed first (real environment variables take precedence); there is no `env/.env.local` — local dev runs on plain env vars and defaults. Values prefixed `gcsm://` are resolved from GCP Secret Manager at startup (requires `gcloud auth application-default login`); plain values never touch GCP.
 
 ### Environment Variables
 
 | Variable                  | Required | Default                                                       | Description                                 |
 | ------------------------- | -------- | ------------------------------------------------------------- | ------------------------------------------- |
 | `TARGET_ENV`              | No       | `local`                                                       | Environment: `local`, `staging`, `prod`     |
-| `GOOGLE_CLIENT_ID`        | Yes      | —                                                             | Google OAuth client ID                      |
-| `GOOGLE_CLIENT_SECRET`    | Yes      | —                                                             | Google OAuth client secret                  |
-| `ANTHROPIC_API_KEY`       | Yes\*    | —                                                             | Claude API key (primary AI provider)        |
-| `VERTEX_AI_PROJECT_ID`    | Yes\*    | —                                                             | GCP project for Vertex AI Gemini (fallback) |
+| `GOOGLE_CLIENT_ID`        | No       | —                                                             | Optional Google OAuth client ID (unset = email+password only) |
+| `GOOGLE_CLIENT_SECRET`    | No       | —                                                             | Optional Google OAuth client secret         |
+| `ANTHROPIC_API_KEY`       | Yes\*    | —                                                             | Claude API key                              |
+| `GEMINI_API_KEY`          | Yes\*    | —                                                             | Gemini Developer API key (default primary provider) |
+| `OPENAI_API_KEY`          | Yes\*    | —                                                             | OpenAI or OpenAI-compatible endpoint key    |
+| `VERTEX_AI_PROJECT_ID`    | Yes\*    | —                                                             | GCP project for Vertex AI Gemini (ADC auth) |
 | `VERTEX_AI_LOCATION`      | No       | `us-central1`                                                 | Vertex AI region                            |
 | `DAILY_AI_TOKEN_BUDGET`   | No       | `0`                                                           | Max total AI tokens/day (0 = unlimited)     |
 | `DATABASE_URL`            | No       | `postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable` | PostgreSQL connection                       |
@@ -73,27 +58,24 @@ All env files use `gcsm://` prefixed values which are resolved from GCP Secret M
 | `FIRESTORE_PROJECT_ID`    | No       | `toqui-dev`                                                   | GCP project (Secret Manager, Vertex fallback) |
 | `FRONTEND_URL`            | No       | `http://localhost:3000`                                       | CORS origin                                 |
 
-\*At least one AI provider is required: `GEMINI_API_KEY` (default primary), `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` (+ `OPENAI_BASE_URL` for OpenAI-compatible endpoints — set `AI_PROVIDER=openai`). Vertex AI works via ADC + `VERTEX_AI_PROJECT_ID`.
+\*At least one AI provider is required: `GEMINI_API_KEY` (default primary), `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` (+ `OPENAI_BASE_URL` for OpenAI-compatible endpoints — set `AI_PROVIDER=openai`). Vertex AI works via ADC + `VERTEX_AI_PROJECT_ID`. See `backend/CLAUDE.md` for the full variable table.
 
 ## Make Targets
 
 ```bash
 make run                # Run server (local env, default)
-make run-staging        # Run locally against staging
-make run-prod           # Run locally against prod
 make build              # Build server binary to bin/server
 make test               # Run unit tests
 make lint               # Run golangci-lint
 make proto              # Generate Go proto code + lint
 make sqlc               # Generate Go from SQL queries
-make docker-up          # Start Postgres
+make docker-up          # docker compose up -d (postgres + migrate + backend)
 make docker-down        # Stop Docker services
 make migrate-up         # Apply pending migrations
 make migrate-down       # Rollback one migration
 make migrate-create     # Create new migration files
-make integration-test   # Run integration tests (starts its own Docker)
-make ai-test            # Run AI regression tests (needs Docker + AI key)
-make ai-test-generative # Run AI regression + generative tests
+make integration-test   # Run integration tests (starts compose Postgres itself)
+make genguides          # Regenerate destination guides (needs AI key)
 ```
 
 ## Testing
@@ -112,78 +94,13 @@ Runs against the dev-compose Postgres:
 make integration-test
 ```
 
-### AI Integration Tests
+### Agentic Tests
 
-End-to-end tests that exercise the full trip lifecycle through the AI with real LLM calls. Requires Docker services running and an AI provider (`ANTHROPIC_API_KEY` for Claude, or `VERTEX_AI_PROJECT_ID` for Gemini via Vertex AI).
+Black-box tests where Claude agents adopt traveler personas against a running backend. See the "Agentic Testing" section in [`CLAUDE.md`](./CLAUDE.md) and `tests/agentic/`.
 
-```bash
-docker compose up -d    # Start Postgres
-make ai-test            # Run 7 regression scenarios
-make ai-test-generative # Run regression + LLM-generated exploratory scenarios
-```
+## CI
 
-Run a specific scenario:
-
-```bash
-go test -tags=aitest -v -timeout=30m ./internal/aitest/... -run TestAIScenarios/alice
-```
-
-Reports are written to `testdata/aitest-reports/`.
-
-## CI/CD
-
-GitHub Actions runs on push to `main` and all PRs (self-hosted Linux runners):
-
-1. **Build & Test** — `go build`, `go vet`, `go test` with coverage
-2. **Deploy to Staging** (main only) — build Docker image → push to Artifact Registry → redeploy GCE VM → run migrations
-
-Uses **Workload Identity Federation** for keyless GCP auth — no service account keys.
-
-### Deploying to Staging
-
-**Automatic**: Push to `main`. That's it. GitHub Actions handles everything.
-
-**Manual deploy** (if CI is broken):
-
-```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
-
-# Build and push
-docker build --platform linux/amd64 -t $IMAGE:latest .
-docker push $IMAGE:latest
-
-# Redeploy on the VM
-gcloud compute instances update-container toqui-staging-vm \
-  --zone=us-central1-a --project=toqui-staging --container-image=$IMAGE:latest
-
-# Run migrations
-DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
-gcloud compute ssh toqui-staging-vm \
-  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
-  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
-```
-
-### Rolling Back
-
-```bash
-IMAGE=us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend
-
-# List available image tags
-gcloud artifacts docker tags list \
-  us-central1-docker.pkg.dev/toqui-infra/toqui-backend/toqui-backend \
-  --project=toqui-staging
-
-# Redeploy to a previous version
-gcloud compute instances update-container toqui-staging-vm \
-  --zone=us-central1-a --project=toqui-staging \
-  --container-image=$IMAGE:<previous-sha>
-
-# Roll back one database migration
-DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
-gcloud compute ssh toqui-staging-vm \
-  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
-  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction down -steps 1"
-```
+GitHub Actions (`.github/workflows/ci.yml` at the repo root) runs on push to `main` and all PRs: backend build, test, lint, and integration test (against a PostGIS service container), plus the frontend jobs. There are no deploy jobs — deployment for self-hosters is documented in [`/DEPLOYMENT.md`](../DEPLOYMENT.md).
 
 ### Database Migrations
 
@@ -197,44 +114,9 @@ make migrate-up
 
 # Rollback locally
 make migrate-down
-
-# Run on staging
-DB_URL=$(gcloud secrets versions access latest --secret=staging-database-url --project=toqui-staging)
-gcloud compute ssh toqui-staging-vm \
-  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
-  -- "docker exec -e DATABASE_URL='${DB_URL}' \$(docker ps -q --filter name=klt) /migrate -direction up"
 ```
 
 **Note**: The `cmd/migrate` binary auto-detects migration files at `/migrations` (Docker) or `db/migrations/` (local).
-
-### Checking Logs
-
-```bash
-# App container logs on staging
-gcloud compute ssh toqui-staging-vm \
-  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
-  -- "docker logs --tail 100 -f \$(docker ps -q --filter name=klt)"
-
-# Container status
-gcloud compute ssh toqui-staging-vm \
-  --project=toqui-staging --zone=us-central1-a --tunnel-through-iap \
-  -- "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'"
-
-# Cloud Logging
-gcloud logging read 'resource.type="gce_instance"' --project=toqui-staging --limit=50
-```
-
-### Accessing Staging
-
-Staging is behind Tailscale VPN at `toqui-staging:8090`. No public IP.
-
-```bash
-# API request (requires Tailscale connected)
-curl http://toqui-staging:8090/toqui.v1.TripService/ListTrips
-
-# SSH via GCP IAP tunnel (no Tailscale needed)
-gcloud compute ssh toqui-staging-vm --project=toqui-staging --zone=us-central1-a --tunnel-through-iap
-```
 
 ### Docker Image
 
@@ -261,36 +143,39 @@ docker run -p 8090:8090 \
 cmd/
   server/           # API server entry point
   migrate/          # Database migration runner
+  testctl/          # Test user/token CLI for agentic testing
+  genguides/        # Destination guide generator (dev machine)
 internal/
-  handlers/         # ConnectRPC service handlers (auth, trip, chat, booking, location, persona)
-  chat/             # Chat service — AI streaming, tool execution, persona resolution
-  persona/          # Persona composition (24 locations × 15 themes)
-  ai/               # AI provider abstraction (Claude, Gemini/Vertex AI)
-  ai/tools/         # LLM-callable tool registry (WebSearch, Places)
+  handlers/         # ConnectRPC service handlers + REST handlers + chat tools
+  chat/             # Chat service — AI streaming, tool loop, persona resolution
+  persona/          # Persona composition (43 locations × 23 themes)
+  ai/               # AI provider abstraction (Gemini, Claude, OpenAI-compatible)
+  ai/tools/         # Global LLM tool registry (web_search)
   chatstore/        # Postgres chat session/message persistence
-  auth/             # Google OAuth + JWT + auth interceptor
+  auth/             # Email+password + optional Google OAuth + JWT + refresh rotation
   trip/             # Trip CRUD, status transitions
   booking/          # Booking ingestion + AI parsing
   location/         # Ephemeral location, nearby places
   theme/            # Trip theme tagging (AI-driven)
-  lifecycle/        # GDPR deletion, archival, data export
+  lifecycle/        # GDPR deletion, archival, chat purge, data export
   config/           # Three-layer config (env file → defaults → Secret Manager)
   db/               # PostgreSQL connection pool + transactions
   validate/         # Request validation interceptor (buf.validate)
-  ratelimit/        # Per-user rate limiting interceptor
-  aitest/           # AI integration test harness (build tag: aitest)
+  ratelimit/        # Per-user + per-IP rate limiting, auth lockout
   integration/      # Integration test suite (build tag: integration)
   dbgen/            # Generated sqlc code
 proto/toqui/v1/     # Protobuf service definitions
 gen/toqui/v1/       # Generated Go proto code
-env/                # Environment configs (.env.local, .env.staging, .env.prod)
 db/
   migrations/       # SQL migrations (golang-migrate)
   queries/          # sqlc query definitions
+tests/
+  agentic/          # Agentic test personas, artifacts, baselines
+  bruno/            # Bruno HTTP client collections
 ```
 
-## Related Repos
+## Related
 
-- [toqui](https://github.com/gallowaysoftware/toqui) — Next.js frontend
-- [toqui-terraform](https://github.com/gallowaysoftware/toqui-terraform) — Terraform GCP infrastructure (staging + prod)
-- [toqui-site](https://github.com/gallowaysoftware/toqui-site) — Astro marketing site
+- Monorepo root — Expo React Native frontend (web + iOS + Android)
+- [`/DEPLOYMENT.md`](../DEPLOYMENT.md) — self-host deployment guide
+- [toqui-site](https://github.com/gallowaysoftware/toqui-site) — Astro site at toqui.travel

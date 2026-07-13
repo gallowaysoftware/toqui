@@ -58,16 +58,6 @@ export default function RootLayout() {
     });
   }, []);
 
-  useEffect(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get("ref");
-      if (ref) {
-        sessionStorage.setItem("toqui_pending_ref", ref);
-      }
-    }
-  }, []);
-
   if (!configLoaded) return null;
 
   return (

@@ -85,13 +85,12 @@ export default function PrivacyScreen() {
 
       <Text style={styles.subsectionTitle}>Account Information</Text>
       <Text style={styles.text}>
-        When you create an account, we collect information from your Google
-        account through Google OAuth, including:
+        When you create an account (email + password, or Google OAuth when
+        your server has it enabled), we collect:
       </Text>
       <Bullet>Name</Bullet>
       <Bullet>Email address</Bullet>
-      <Bullet>Google profile picture</Bullet>
-      <Bullet>Age verification status (we require users to be 18 or older)</Bullet>
+      <Bullet>Profile picture (Google sign-in only)</Bullet>
 
       <Text style={styles.subsectionTitle}>Trip and Chat Data</Text>
       <Text style={styles.text}>
@@ -103,15 +102,6 @@ export default function PrivacyScreen() {
       <Bullet>Bookings and reservation details you add or forward to us</Bullet>
       <Bullet>Exported itineraries (PDF and calendar files)</Bullet>
 
-      <Text style={styles.subsectionTitle}>Payment Information</Text>
-      <Text style={styles.text}>
-        Payments for Trip Pro upgrades are processed by Helcim, our third-party
-        payment processor. We do not directly store your credit card number or
-        full payment details. We receive a transaction confirmation and associate
-        the purchase with your account. Helcim's privacy practices are governed
-        by their own privacy policy.
-      </Text>
-
       <Text style={styles.subsectionTitle}>Location Data</Text>
       <Text style={styles.text}>
         When you use the travel companion feature, we may collect your
@@ -119,12 +109,12 @@ export default function PrivacyScreen() {
         You can control location access through your device settings.
       </Text>
 
-      <Text style={styles.subsectionTitle}>Email Forwarding</Text>
+      <Text style={styles.subsectionTitle}>Booking Import</Text>
       <Text style={styles.text}>
-        If you use our booking email forwarding feature (available with Trip
-        Pro), we process inbound emails sent to your unique forwarding address
-        to extract booking details. These emails are processed by SendGrid and
-        stored only long enough to extract relevant booking information.
+        If you import a booking by pasting a confirmation email (or via an
+        email import mailbox, when your server operator has configured one),
+        the content is processed only to extract booking details and is not
+        retained beyond that.
       </Text>
 
       <Text style={styles.subsectionTitle}>Usage and Device Information</Text>
@@ -149,7 +139,7 @@ export default function PrivacyScreen() {
         Generate personalized travel plans and recommendations through our AI
         system
       </Bullet>
-      <Bullet>Process payments and manage your account</Bullet>
+      <Bullet>Manage your account</Bullet>
       <Bullet>
         Send transactional emails (account verification, booking confirmations,
         trip-related notifications)
@@ -157,7 +147,6 @@ export default function PrivacyScreen() {
       <Bullet>
         Parse forwarded booking emails to populate your trip details
       </Bullet>
-      <Bullet>Manage the referral program</Bullet>
       <Bullet>Detect and prevent fraud or abuse</Bullet>
       <Bullet>Comply with legal obligations</Bullet>
 
@@ -189,9 +178,9 @@ export default function PrivacyScreen() {
         these circumstances:
       </Text>
       <Bullet>
-        Service providers: Helcim (payments), SendGrid (email forwarding),
-        Resend (transactional emails), Google Cloud Platform (hosting and
-        storage), Anthropic and Google (AI processing)
+        Service providers: the hosting infrastructure the operator of your
+        Toqui server has chosen, and the configured AI provider (e.g.
+        Google Gemini, Anthropic, or a self-hosted model)
       </Bullet>
       <Bullet>
         Shared trips: If you share a trip via a public link, the trip details

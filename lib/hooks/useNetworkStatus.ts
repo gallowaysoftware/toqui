@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Platform } from "react-native";
 
+import { getConfig } from "@/lib/config";
+
 export interface NetworkStatus {
   isConnected: boolean;
   isInternetReachable: boolean | null;
@@ -48,8 +50,10 @@ export function useNetworkStatus(): NetworkStatus {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        await fetch("https://clients3.google.com/generate_204", {
-          method: "HEAD",
+        // Probe our own backend (privacy: no third-party connectivity
+        // beacons) — reachability of the API is also what actually matters.
+        await fetch(`${getConfig().apiUrl}/livez`, {
+          method: "GET",
           signal: controller.signal,
         });
         clearTimeout(timeout);

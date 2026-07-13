@@ -100,22 +100,6 @@ export default function TermsScreen() {
         The Service is available on web, iOS, and Android platforms.
       </Text>
 
-      <Text style={styles.subsectionTitle}>Free Tier</Text>
-      <Text style={styles.text}>
-        All users can create trips and interact with the AI companion with
-        limited features. Free-tier trips include a limited number of messages
-        and a subset of AI persona capabilities.
-      </Text>
-
-      <Text style={styles.subsectionTitle}>Trip Pro</Text>
-      <Text style={styles.text}>
-        Trip Pro is a per-trip upgrade priced at $19 per trip. Trip Pro unlocks
-        unlimited messages, all 800+ expert AI personas, email booking
-        forwarding, itinerary export (PDF and calendar), and best-fit
-        recommendations for the purchased trip. Trip Pro applies only to the
-        specific trip it is purchased for and is not transferable.
-      </Text>
-
       <Text style={styles.sectionTitle}>
         4. AI-Generated Content Disclaimer
       </Text>
@@ -141,33 +125,8 @@ export default function TermsScreen() {
         We are not liable for any decisions made or actions taken based on
         AI-generated content
       </Bullet>
-      <Bullet>
-        Recommendations may include affiliate links for any user. Affiliate
-        links help support Toqui but never influence the AI's choices
-      </Bullet>
 
-      <Text style={styles.sectionTitle}>5. Payment Terms</Text>
-      <Text style={styles.text}>
-        Payments are processed by Helcim, a third-party payment processor. By
-        making a purchase, you agree to Helcim's terms of service in addition to
-        these Terms.
-      </Text>
-      <Bullet>
-        Trip Pro purchases are one-time, per-trip payments of $19
-      </Bullet>
-      <Bullet>
-        All purchases are final. We do not offer refunds unless required by
-        applicable law
-      </Bullet>
-      <Bullet>
-        Prices are in US dollars and may be subject to applicable taxes
-      </Bullet>
-      <Bullet>
-        We reserve the right to change pricing at any time; price changes will
-        not affect previously purchased Trip Pro upgrades
-      </Bullet>
-
-      <Text style={styles.sectionTitle}>6. Acceptable Use</Text>
+      <Text style={styles.sectionTitle}>5. Acceptable Use</Text>
       <Text style={styles.text}>You agree not to use the Service to:</Text>
       <Bullet>
         Violate any applicable law, regulation, or third-party rights
@@ -196,12 +155,8 @@ export default function TermsScreen() {
         Resell, redistribute, or commercially exploit the Service or its outputs
         without our written consent
       </Bullet>
-      <Bullet>
-        Abuse the referral program through fake accounts, self-referrals, or
-        other fraudulent means
-      </Bullet>
 
-      <Text style={styles.sectionTitle}>7. Your Content</Text>
+      <Text style={styles.sectionTitle}>6. Your Content</Text>
       <Text style={styles.text}>
         You retain ownership of the content you submit to Toqui, including trip
         details, chat messages, and booking information. By submitting content,
@@ -213,7 +168,7 @@ export default function TermsScreen() {
         details on that shared page are accessible to anyone with the link.
       </Text>
 
-      <Text style={styles.sectionTitle}>8. Intellectual Property</Text>
+      <Text style={styles.sectionTitle}>7. Intellectual Property</Text>
       <Text style={styles.text}>
         The Service, including its design, features, code, and branding, is
         owned by Galloway Software and is protected by intellectual property
@@ -226,18 +181,8 @@ export default function TermsScreen() {
         these outputs for personal, non-commercial purposes.
       </Text>
 
-      <Text style={styles.sectionTitle}>9. Referral Program</Text>
-      <Text style={styles.text}>
-        Toqui offers a referral program that allows users to invite others to
-        the Service. Referral codes are for personal sharing only. We reserve
-        the right to void referrals and suspend accounts that abuse the
-        program, including through mass distribution, fake accounts, or
-        self-referral schemes. We may modify or discontinue the referral
-        program at any time.
-      </Text>
-
       <Text style={styles.sectionTitle}>
-        10. Account Suspension and Termination
+        8. Account Suspension and Termination
       </Text>
       <Text style={styles.text}>
         We may suspend or terminate your account at our discretion if you
@@ -252,17 +197,17 @@ export default function TermsScreen() {
         Privacy Policy, subject to any legal retention obligations.
       </Text>
 
-      <Text style={styles.sectionTitle}>11. Third-Party Services</Text>
+      <Text style={styles.sectionTitle}>9. Third-Party Services</Text>
       <Text style={styles.text}>
         The Service integrates with and may link to third-party services
         including Google (OAuth, Places API, Gemini), Anthropic (Claude AI),
-        Helcim (payments), and various travel booking platforms. We are not
+        and various travel booking platforms. We are not
         responsible for the content, accuracy, or practices of these third-party
         services. Your use of third-party services is subject to their
         respective terms and privacy policies.
       </Text>
 
-      <Text style={styles.sectionTitle}>12. Disclaimer of Warranties</Text>
+      <Text style={styles.sectionTitle}>10. Disclaimer of Warranties</Text>
       <Text style={styles.text}>
         THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES
         OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY. TO THE FULLEST
@@ -277,7 +222,7 @@ export default function TermsScreen() {
         specific travel planning needs.
       </Text>
 
-      <Text style={styles.sectionTitle}>13. Limitation of Liability</Text>
+      <Text style={styles.sectionTitle}>11. Limitation of Liability</Text>
       <Text style={styles.text}>
         TO THE MAXIMUM EXTENT PERMITTED BY LAW, GALLOWAY SOFTWARE AND ITS
         OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS SHALL NOT BE LIABLE FOR ANY
@@ -297,7 +242,7 @@ export default function TermsScreen() {
         of the possibility of such damages.
       </Text>
 
-      <Text style={styles.sectionTitle}>14. Indemnification</Text>
+      <Text style={styles.sectionTitle}>12. Indemnification</Text>
       <Text style={styles.text}>
         You agree to indemnify and hold harmless Galloway Software from any
         claims, damages, losses, or expenses (including reasonable legal fees)
@@ -305,7 +250,7 @@ export default function TermsScreen() {
         or your violation of any third-party rights.
       </Text>
 
-      <Text style={styles.sectionTitle}>15. Governing Law and Disputes</Text>
+      <Text style={styles.sectionTitle}>13. Governing Law and Disputes</Text>
       <Text style={styles.text}>
         These Terms are governed by the laws of the State of Washington, United
         States, without regard to conflict of law principles. Any disputes
@@ -314,7 +259,7 @@ export default function TermsScreen() {
         jurisdiction of such courts.
       </Text>
 
-      <Text style={styles.sectionTitle}>16. Changes to These Terms</Text>
+      <Text style={styles.sectionTitle}>14. Changes to These Terms</Text>
       <Text style={styles.text}>
         We may update these Terms from time to time. We will notify you of
         material changes by posting the updated Terms within the app and
@@ -324,7 +269,7 @@ export default function TermsScreen() {
         Service.
       </Text>
 
-      <Text style={styles.sectionTitle}>17. General Provisions</Text>
+      <Text style={styles.sectionTitle}>15. General Provisions</Text>
       <Bullet>
         Severability: If any provision of these Terms is found to be
         unenforceable, the remaining provisions remain in full effect
@@ -343,7 +288,7 @@ export default function TermsScreen() {
         written consent; we may assign our rights without restriction
       </Bullet>
 
-      <Text style={styles.sectionTitle}>18. Contact Us</Text>
+      <Text style={styles.sectionTitle}>16. Contact Us</Text>
       <Text style={styles.text}>
         If you have questions about these Terms, contact us at:
       </Text>

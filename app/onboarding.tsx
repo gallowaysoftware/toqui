@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Plane } from "lucide-react-native";
@@ -41,8 +40,6 @@ const SAMPLE_PERSONAS = [
   },
 ] as const;
 
-const TERMS_URL = "https://toqui.travel/terms";
-const PRIVACY_URL = "https://toqui.travel/privacy";
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -59,13 +56,15 @@ export default function OnboardingScreen() {
   const createTrip = useCreateTrip();
   const [destination, setDestination] = useState("");
 
+  // In-app screens — a self-hosted server shouldn't send users to
+  // toqui.travel for its legal text.
   const openTerms = useCallback(() => {
-    void WebBrowser.openBrowserAsync(TERMS_URL);
-  }, []);
+    router.push("/terms" as never);
+  }, [router]);
 
   const openPrivacy = useCallback(() => {
-    void WebBrowser.openBrowserAsync(PRIVACY_URL);
-  }, []);
+    router.push("/privacy" as never);
+  }, [router]);
 
   const handleStartPlanning = useCallback(async () => {
     if (!destination.trim()) return;

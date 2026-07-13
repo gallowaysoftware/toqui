@@ -1,6 +1,6 @@
 /**
  * Fetch wrapper that attaches a Bearer Authorization header.
- * Shared by hooks that call REST endpoints (checkout, referral, etc.).
+ * Shared by hooks that call REST endpoints (feedback, sharing, etc.).
  */
 export async function authFetch(
   url: string,
