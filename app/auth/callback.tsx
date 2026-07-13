@@ -4,8 +4,6 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "@/lib/auth";
-import { authFetch } from "@/lib/authFetch";
-import { getConfig } from "@/lib/config";
 
 // Attempt to complete the auth session via the popup postMessage flow.
 // If window.opener is available (popup not severed by COOP), this resolves
@@ -37,15 +35,6 @@ export default function AuthCallbackScreen() {
         // signup_completed / signin_completed analytics events removed —
         // the backend's trackNativeSignup fires signup_completed server-side
         // with auth_provider so the frontend duplicate isn't necessary.
-        const pendingRef = sessionStorage.getItem("toqui_pending_ref");
-        if (pendingRef) {
-          sessionStorage.removeItem("toqui_pending_ref");
-          const at = sessionStorage.getItem("toqui_access_token");
-          authFetch(`${getConfig().apiUrl}/api/referral/redeem`, at, {
-            method: "POST",
-            body: JSON.stringify({ code: pendingRef }),
-          }).catch(() => {});
-        }
         // Check for post-login redirect (e.g., back to shared trip page)
         const postLoginRedirect = sessionStorage.getItem("toqui_post_login_redirect");
         if (postLoginRedirect) {

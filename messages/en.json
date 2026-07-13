@@ -215,13 +215,13 @@
     "bookings": "Bookings",
     "settings": "Settings",
     "planningBanner": "Only {{covered}} of {{total}} days planned",
-    "continuePlanning": "Continue planning \u2192",
+    "continuePlanning": "Continue planning →",
     "startTrip": "Start Trip",
     "completeTrip": "Complete Trip",
     "exportPdf": "Export PDF",
     "exportCalendar": "Export Calendar",
     "travelGuide": "{{destination}} Travel Guide",
-    "guideAuthor": "By {{name}} \u2014 {{specialty}}",
+    "guideAuthor": "By {{name}} — {{specialty}}",
     "failedToCreate": "Failed to create trip",
     "loadError": "Couldn't load this trip",
     "loadErrorSubtitle": "Check your connection and try again.",
@@ -346,50 +346,11 @@
       "translateSomething": "Translate something for me"
     }
   },
-  "usage": {
-    "nearLimit": "You have {{remaining}} messages left today",
-    "atLimit": "You've reached your daily message limit",
-    "upgradeFromFree": "Upgrade to Trip Pro for 50 messages per day",
-    "upgradeFromPro": "Get unlimited messages with Explorer — $9.99/mo",
-    "resetsIn": "Limit resets {{time}}"
-  },
-  "checkout": {
-    "title": "Unlock Trip Pro",
-    "price": "$19 CAD",
-    "priceDescription": "One-time payment per trip",
-    "unlockButton": "Unlock This Trip",
-    "benefits": {
-      "experts": "Unlimited access to local expert personas",
-      "bookings": "Best-fit booking recommendations",
-      "email": "Email forwarding for automatic booking import"
-    },
-    "success": "Trip Unlocked!",
-    "successDescription": "You now have full Pro access for this trip.",
-    "error": "Payment failed. Please try again.",
-    "paymentProcessing": "Your payment is being processed. This can take a moment — tap retry if it doesn't update.",
-    "unlockInline": "Unlock Pro features",
-    "subscriptionAlt": "Or save with a monthly plan"
-  },
-  "referral": {
-    "title": "Refer a Friend",
-    "description": "Share Toqui with friends. When they sign up, you get a free Trip Pro unlock and they get 50% off their first trip. You can earn up to 10 free unlocks.",
-    "yourCode": "Your referral code",
-    "copyLink": "Copy Link",
-    "share": "Share",
-    "copied": "Copied!",
-    "friendsInvited": "{{count}} friends invited",
-    "rewardsEarned": "{{count}} free trip unlocks earned",
-    "rewardsRemaining": "{{count}} free unlocks remaining",
-    "rewardsCapped": "Maximum rewards earned — thanks for sharing!",
-    "shareMessage": "Plan your next trip with Toqui — an AI travel companion with 800+ expert personas. Use my referral code {{code}} for 50% off your first Trip Pro unlock! {{link}}"
-  },
   "share": {
     "promptTitle": "Your itinerary is ready!",
     "promptSubtitle": "Share it with your travel companions",
-    "nudgeBanner": "Share this trip with friends \u2192",
+    "nudgeBanner": "Share this trip with friends →",
     "nudgeDismissed": "Dismissed",
-    "viewCount": "Viewed by {{count}} people",
-    "viewCountOne": "Viewed by 1 person",
     "signInToSave": "Sign in to plan a trip like this",
     "signInWithGoogle": "Continue with Google",
     "orContinue": "or",
@@ -402,7 +363,8 @@
     "socialProof": "Plan your perfect trip with AI-powered travel expertise",
     "valuePropExperts": "800+ expert personas for every destination",
     "valuePropItineraries": "Day-by-day itineraries built from conversation",
-    "valuePropMinutes": "Plan your perfect trip in minutes, not hours"
+    "valuePropMinutes": "Plan your perfect trip in minutes, not hours",
+    "button": "Share"
   },
   "collaborators": {
     "title": "Team",
@@ -503,7 +465,7 @@
     "expand": "Expand weather"
   },
   "onboarding": {
-    "next": "Next \u2192",
+    "next": "Next →",
     "skip": "Skip",
     "planSmarter": {
       "headline": "AI-powered trip planning",

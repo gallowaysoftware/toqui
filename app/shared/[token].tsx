@@ -167,17 +167,6 @@ function computeTripDays(start?: string, end?: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// Referral check
-// ---------------------------------------------------------------------------
-
-function getPendingRef(): string | null {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    return sessionStorage.getItem("toqui_pending_ref");
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Skeleton loader
 // ---------------------------------------------------------------------------
 
@@ -286,11 +275,9 @@ function ErrorState({
 function HeroSection({
   trip,
   colors,
-  refCode,
 }: {
   trip: SharedTripInfo;
   colors: ThemeColors;
-  refCode: string | null;
 }) {
   const styles = makeStyles(colors);
   const [gradientStart, gradientEnd] = getHeroColors(trip.destination_country);
@@ -311,15 +298,6 @@ function HeroSection({
       >
         {/* Subtle pattern overlay */}
         <View style={styles.heroOverlay} />
-
-        {/* Referral banner, placed inside hero for visual continuity */}
-        {refCode && (
-          <View style={styles.refBanner}>
-            <Text style={styles.refBannerText}>
-              Your friend shared this trip with you. Sign up and you both get a bonus.
-            </Text>
-          </View>
-        )}
 
         {/* Destination icon area */}
         <View style={styles.heroIconContainer}>
@@ -718,7 +696,6 @@ export default function SharedTripScreen() {
   const { colors } = useTheme();
   const { accessToken } = useAuth();
   const router = useRouter();
-  const refCode = getPendingRef();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
 
@@ -806,7 +783,7 @@ export default function SharedTripScreen() {
         ]}
       >
         {/* 1. Hero */}
-        <HeroSection trip={trip} colors={colors} refCode={refCode} />
+        <HeroSection trip={trip} colors={colors} />
 
         {/* 2. Quick Stats */}
         <QuickStats trip={trip} itinerary={sortedDays} colors={colors} />
@@ -973,19 +950,6 @@ function createStyles(colors: ThemeColors) {
       color: "rgba(255,255,255,0.95)",
       fontSize: 13,
       fontWeight: "500",
-    },
-
-    // ----- Referral banner -----
-    refBanner: {
-      backgroundColor: "rgba(255,255,255,0.18)",
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 20,
-    },
-    refBannerText: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: "rgba(255,255,255,0.95)",
     },
 
     // ----- Stats -----

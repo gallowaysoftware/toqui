@@ -224,7 +224,7 @@ describe("OnboardingScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
   });
 
-  it("Terms link opens the in-app browser (not Safari via Linking)", async () => {
+  it("Terms link opens the in-app terms screen (not toqui.travel)", async () => {
     await act(async () => {
       renderOnboarding();
     });
@@ -234,10 +234,11 @@ describe("OnboardingScreen", () => {
       fireEvent.click(termsLink);
     });
 
-    expect(mockOpenBrowserAsync).toHaveBeenCalledWith("https://toqui.travel/terms");
+    expect(mockPush).toHaveBeenCalledWith("/terms");
+    expect(mockOpenBrowserAsync).not.toHaveBeenCalled();
   });
 
-  it("Privacy link opens the in-app browser (not Safari via Linking)", async () => {
+  it("Privacy link opens the in-app privacy screen (not toqui.travel)", async () => {
     await act(async () => {
       renderOnboarding();
     });
@@ -247,6 +248,7 @@ describe("OnboardingScreen", () => {
       fireEvent.click(privacyLink);
     });
 
-    expect(mockOpenBrowserAsync).toHaveBeenCalledWith("https://toqui.travel/privacy");
+    expect(mockPush).toHaveBeenCalledWith("/privacy");
+    expect(mockOpenBrowserAsync).not.toHaveBeenCalled();
   });
 });

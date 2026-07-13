@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share } from "react-native";
 import { alertNotice } from "@/lib/confirm";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Share2, X, AlertCircle, RefreshCw, Send, Eye, Users, Navigation } from "lucide-react-native";
+import { MessageCircle, Calendar, Settings, Play, CheckCircle, FileText, CalendarDays, Share2, X, AlertCircle, RefreshCw, Send, Users, Navigation } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,7 +84,6 @@ export default function TripDetailScreen() {
   const [isSharing, setIsSharing] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(false);
-  const [shareViewCount, setShareViewCount] = useState<number | null>(null);
 
   // Extract first available coordinates from itinerary for weather lookup
   const firstLocation = itinerary?.days
@@ -108,27 +107,6 @@ export default function TripDetailScreen() {
       if (val === "true") setShareNudgeDismissed(true);
     });
   }, [dismissalKey, shareNudgeKey]);
-
-  // Fetch share view count if trip has been shared
-  useEffect(() => {
-    if (!tripId || !accessToken) return;
-    authFetch(
-      `${getConfig().apiUrl}/api/trips/share/stats?trip_id=${encodeURIComponent(tripId)}`,
-      accessToken,
-    )
-      .then((res) => {
-        if (res.ok) return res.json();
-        return null;
-      })
-      .then((data: { view_count?: number } | null) => {
-        if (data && typeof data.view_count === "number" && data.view_count > 0) {
-          setShareViewCount(data.view_count);
-        }
-      })
-      .catch(() => {
-        // Share stats are non-critical — silently ignore errors
-      });
-  }, [tripId, accessToken]);
 
   const handleDismissBanner = () => {
     setBannerDismissed(true);
@@ -330,15 +308,6 @@ export default function TripDetailScreen() {
       color: colors.accent,
       fontWeight: "500",
     },
-    shareStats: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 4,
-      marginTop: -16,
-      marginBottom: 24,
-    },
-    shareStatsText: { fontSize: 13, color: colors.textTertiary },
     companionCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,
@@ -567,14 +536,14 @@ export default function TripDetailScreen() {
             onPress={handleShare}
             disabled={isSharing}
             accessibilityRole="button"
-            accessibilityLabel={t("referral.share")}
+            accessibilityLabel={t("share.button")}
           >
             {isSharing ? (
               <ActivityIndicator size="small" color={colors.accent} />
             ) : (
               <Share2 color={colors.accent} size={24} />
             )}
-            <Text style={styles.actionText}>{t("referral.share")}</Text>
+            <Text style={styles.actionText}>{t("share.button")}</Text>
           </Pressable>
         </View>
 
@@ -635,15 +604,6 @@ export default function TripDetailScreen() {
                 </Pressable>
               ))}
             </View>
-          </View>
-        )}
-
-        {shareViewCount !== null && shareViewCount > 0 && (
-          <View style={styles.shareStats as object}>
-            <Eye color={colors.textTertiary} size={14} />
-            <Text style={styles.shareStatsText}>
-              {shareViewCount === 1 ? t("share.viewCountOne") : t("share.viewCount", { count: shareViewCount })}
-            </Text>
           </View>
         )}
 

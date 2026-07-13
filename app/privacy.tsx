@@ -85,13 +85,12 @@ export default function PrivacyScreen() {
 
       <Text style={styles.subsectionTitle}>Account Information</Text>
       <Text style={styles.text}>
-        When you create an account, we collect information from your Google
-        account through Google OAuth, including:
+        When you create an account (email + password, or Google OAuth when
+        your server has it enabled), we collect:
       </Text>
       <Bullet>Name</Bullet>
       <Bullet>Email address</Bullet>
-      <Bullet>Google profile picture</Bullet>
-      <Bullet>Age verification status (we require users to be 18 or older)</Bullet>
+      <Bullet>Profile picture (Google sign-in only)</Bullet>
 
       <Text style={styles.subsectionTitle}>Trip and Chat Data</Text>
       <Text style={styles.text}>
@@ -103,15 +102,6 @@ export default function PrivacyScreen() {
       <Bullet>Bookings and reservation details you add or forward to us</Bullet>
       <Bullet>Exported itineraries (PDF and calendar files)</Bullet>
 
-      <Text style={styles.subsectionTitle}>Payment Information</Text>
-      <Text style={styles.text}>
-        Payments for Trip Pro upgrades are processed by Helcim, our third-party
-        payment processor. We do not directly store your credit card number or
-        full payment details. We receive a transaction confirmation and associate
-        the purchase with your account. Helcim's privacy practices are governed
-        by their own privacy policy.
-      </Text>
-
       <Text style={styles.subsectionTitle}>Location Data</Text>
       <Text style={styles.text}>
         When you use the travel companion feature, we may collect your
@@ -119,12 +109,11 @@ export default function PrivacyScreen() {
         You can control location access through your device settings.
       </Text>
 
-      <Text style={styles.subsectionTitle}>Email Forwarding</Text>
+      <Text style={styles.subsectionTitle}>Booking Import</Text>
       <Text style={styles.text}>
-        If you use our booking email forwarding feature (available with Trip
-        Pro), we process inbound emails sent to your unique forwarding address
-        to extract booking details. These emails are processed by SendGrid and
-        stored only long enough to extract relevant booking information.
+        If you import a booking by pasting a confirmation email, the content
+        is processed only to extract booking details and is not retained
+        beyond that.
       </Text>
 
       <Text style={styles.subsectionTitle}>Usage and Device Information</Text>
@@ -149,15 +138,13 @@ export default function PrivacyScreen() {
         Generate personalized travel plans and recommendations through our AI
         system
       </Bullet>
-      <Bullet>Process payments and manage your account</Bullet>
+      <Bullet>Manage your account</Bullet>
       <Bullet>
-        Send transactional emails (account verification, booking confirmations,
-        trip-related notifications)
+        Send transactional emails (welcome and collaboration invites)
       </Bullet>
       <Bullet>
-        Parse forwarded booking emails to populate your trip details
+        Parse pasted booking confirmations to populate your trip details
       </Bullet>
-      <Bullet>Manage the referral program</Bullet>
       <Bullet>Detect and prevent fraud or abuse</Bullet>
       <Bullet>Comply with legal obligations</Bullet>
 
@@ -165,11 +152,12 @@ export default function PrivacyScreen() {
         3. AI Processing and Third-Party AI Services
       </Text>
       <Text style={styles.text}>
-        Toqui uses third-party AI models from Anthropic (Claude) and Google
-        (Gemini) to power the travel planning features. When you interact with
-        the AI companion, your messages and relevant trip context are sent to
-        these providers for processing. These providers process data according
-        to their own privacy policies and data processing agreements.
+        Toqui sends your chat messages and relevant trip context to the AI
+        provider configured by your server operator (e.g. Google Gemini,
+        Anthropic Claude, or a self-hosted model) to power the travel planning
+        features. Third-party providers process data according to their own
+        privacy policies and data processing agreements; a self-hosted model
+        keeps this data on infrastructure the operator controls.
       </Text>
       <Text style={styles.text}>
         We also use Google Places API and Google Custom Search API to provide
@@ -189,9 +177,9 @@ export default function PrivacyScreen() {
         these circumstances:
       </Text>
       <Bullet>
-        Service providers: Helcim (payments), SendGrid (email forwarding),
-        Resend (transactional emails), Google Cloud Platform (hosting and
-        storage), Anthropic and Google (AI processing)
+        Service providers: the hosting infrastructure the operator of your
+        Toqui server has chosen, and the configured AI provider (e.g.
+        Google Gemini, Anthropic, or a self-hosted model)
       </Bullet>
       <Bullet>
         Shared trips: If you share a trip via a public link, the trip details
@@ -208,14 +196,14 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>5. Data Storage and Security</Text>
       <Text style={styles.text}>
-        Your data is stored on Google Cloud Platform infrastructure located in
-        the United States. Account data and trip information are stored in
-        PostgreSQL databases. Chat history is stored in Google Firestore.
+        All of your data — account, trips, bookings, and chat history — is
+        stored in a PostgreSQL database on the infrastructure chosen by the
+        operator of your Toqui server.
       </Text>
       <Text style={styles.text}>
         Authentication tokens are stored securely on your device: in the
         system keychain (iOS) or keystore (Android) on native platforms, and
-        in session storage on web. We use encrypted connections (TLS) for all
+        in browser local storage on web. We use encrypted connections (TLS) for all
         data in transit. We do not use cookies for authentication.
       </Text>
       <Text style={styles.text}>
@@ -226,10 +214,11 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>6. Data Retention</Text>
       <Text style={styles.text}>
-        We retain your data for as long as your account is active. Completed
-        trips are archived after 90 days of completion but remain accessible in
-        your account. If you delete your account, we will delete your personal
-        data in accordance with our obligations, subject to any legal retention
+        We retain your data for as long as your account is active, with one
+        exception: chat history for a completed trip is permanently deleted 90
+        days after the trip completes. Completed trips themselves are archived
+        but remain accessible in your account. If you delete your account, all
+        of your personal data is deleted, subject to any legal retention
         requirements.
       </Text>
 
@@ -261,9 +250,8 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>8. Children's Privacy</Text>
       <Text style={styles.text}>
-        Toqui is not intended for users under the age of 18. We enforce an age
-        gate that requires users to verify they are 18 or older before accessing
-        the Service. We do not knowingly collect personal information from
+        Toqui is not intended for users under the age of 18. We do not
+        knowingly collect personal information from
         anyone under 18. If we learn that we have collected personal data from a
         user under 18, we will delete that information promptly. If you believe
         a child under 18 has provided us with personal information, please
@@ -284,11 +272,10 @@ export default function PrivacyScreen() {
         10. International Data Transfers
       </Text>
       <Text style={styles.text}>
-        Your data is processed and stored in the United States. If you are
-        located outside the United States, your information will be transferred
-        to and processed in the United States. By using the Service, you consent
-        to this transfer. We take steps to ensure your data is treated securely
-        and in accordance with this Privacy Policy regardless of where it is
+        Your data is processed and stored wherever the operator of your Toqui
+        server hosts it, and by the configured AI provider per their own
+        policies. We take steps to ensure your data is treated securely and in
+        accordance with this Privacy Policy regardless of where it is
         processed.
       </Text>
 

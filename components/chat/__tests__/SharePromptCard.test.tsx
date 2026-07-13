@@ -12,7 +12,7 @@ vi.mock("react-i18next", () => ({
       const strings: Record<string, string> = {
         "share.promptTitle": "Your itinerary is ready!",
         "share.promptSubtitle": "Share it with your travel companions",
-        "referral.share": "Share",
+        "share.button": "Share",
       };
       return strings[key] ?? key;
     },

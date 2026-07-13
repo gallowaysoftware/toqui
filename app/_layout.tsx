@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform, View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -56,16 +56,6 @@ export default function RootLayout() {
     loadConfig().then(() => {
       setConfigLoaded(true);
     });
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get("ref");
-      if (ref) {
-        sessionStorage.setItem("toqui_pending_ref", ref);
-      }
-    }
   }, []);
 
   if (!configLoaded) return null;

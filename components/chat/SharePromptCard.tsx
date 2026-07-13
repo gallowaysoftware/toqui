@@ -69,14 +69,14 @@ export function SharePromptCard({ onShare, isSharing }: SharePromptCardProps) {
         onPress={onShare}
         disabled={isSharing}
         accessibilityRole="button"
-        accessibilityLabel={t("referral.share")}
+        accessibilityLabel={t("share.button")}
       >
         {isSharing ? (
           <ActivityIndicator size="small" color="#fff" />
         ) : (
           <Share2 color="#fff" size={16} />
         )}
-        <Text style={styles.buttonText}>{t("referral.share")}</Text>
+        <Text style={styles.buttonText}>{t("share.button")}</Text>
       </Pressable>
     </View>
   );
