@@ -31,14 +31,14 @@ type emailAuthQueries interface {
 }
 
 // emailQueries lets tests swap out the dbgen-backed query implementation.
-// In production this returns h.emailQueries() (which satisfies emailAuthQueries
+// In production this returns h.queries (which satisfies emailAuthQueries
 // implicitly); in tests, auth_email_test.go assigns its stub via
 // withEmailQueriesForTest.
 func (h *AuthHandler) emailQueries() emailAuthQueries {
 	if h.testEmailQueries != nil {
 		return h.testEmailQueries
 	}
-	return h.emailQueries()
+	return h.queries
 }
 
 // bcryptCost is the work factor used for password hashing. Cost 12 is

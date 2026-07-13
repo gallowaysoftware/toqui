@@ -41,7 +41,7 @@ cd toqui-backend
 
 ```bash
 cd toqui-backend
-make docker-up       # postgres:5432, firestore emulator:8080
+make docker-up       # postgres:5432
 make migrate-up      # apply DB migrations (idempotent)
 ```
 
@@ -49,7 +49,7 @@ Verify containers:
 
 ```bash
 docker ps | grep toqui-backend
-# Should show: toqui-backend-postgres-1, toqui-backend-firestore-1
+# Should show: toqui-backend-postgres-1
 ```
 
 ### Start the backend
@@ -409,7 +409,7 @@ full list. Issues found during QA that aren't yet filed:
 ### Chat history
 
 - `GetChatHistory` may return 0 messages when queried immediately after `SendMessage`.
-  There's a Firestore write delay. Wait a moment and retry. See issue #178.
+  Chat writes are transactional in Postgres; if history looks stale, retry once. See issue #178.
 
 ### Proto field naming
 

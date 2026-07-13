@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	gcstorage "cloud.google.com/go/storage"
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
@@ -95,14 +94,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
-
-	// Firestore
-	firestoreClient, err := newFirestoreClient(ctx, cfg)
-	if err != nil {
-		slog.Error("connect to firestore failed", "error", err)
-		os.Exit(1)
-	}
-	defer firestoreClient.Close()
 
 	// Auth
 	authSvc := auth.NewService(
@@ -228,8 +219,8 @@ func main() {
 		slog.Warn("web_search tool registered as stub — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set; tool will return 'no_web_access' to the AI")
 	}
 
-	// Chat store
-	chatStr := chatstore.New(firestoreClient)
+	// Chat store (Postgres-backed)
+	chatStr := chatstore.New(pool)
 
 	// Personas — composer generates expert identities via AI, falls back to templates
 	var identityGen persona.IdentityGenerator
@@ -247,7 +238,7 @@ func main() {
 	}
 
 	if aiProvider == nil {
-		slog.Error("no AI provider available — neither ANTHROPIC_API_KEY nor Vertex AI credentials are configured")
+		slog.Error("no AI provider available — set GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY (+ OPENAI_BASE_URL for OpenAI-compatible endpoints)")
 		os.Exit(1)
 	}
 
@@ -579,24 +570,6 @@ func main() {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}
-}
-
-func newFirestoreClient(ctx context.Context, cfg *config.Config) (*firestore.Client, error) {
-	if cfg.FirestoreEmulatorHost != "" {
-		os.Setenv("FIRESTORE_EMULATOR_HOST", cfg.FirestoreEmulatorHost)
-	}
-	if cfg.FirestoreDatabaseID != "" {
-		client, err := firestore.NewClientWithDatabase(ctx, cfg.FirestoreProjectID, cfg.FirestoreDatabaseID)
-		if err != nil {
-			return nil, fmt.Errorf("create firestore client (database %s): %w", cfg.FirestoreDatabaseID, err)
-		}
-		return client, nil
-	}
-	client, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("create firestore client: %w", err)
-	}
-	return client, nil
 }
 
 // newAIIdentityGenerator creates an IdentityGenerator that uses the AI provider

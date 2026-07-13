@@ -1090,7 +1090,7 @@ func (h *ChatHandler) GetChatHistory(ctx context.Context, req *connect.Request[t
 	}
 
 	// Filter out tool-loop intermediates so clients never see empty-content
-	// bubbles. These messages are retained in Firestore because they are
+	// bubbles. These messages are retained in the chat store because they are
 	// required to reconstruct tool_call/tool_result context when the AI
 	// continues a conversation, but they must not leak into the user-facing
 	// history view (Run 4 #N-02 P0).

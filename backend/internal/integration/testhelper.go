@@ -8,7 +8,6 @@ import (
 	"os"
 	"testing"
 
-	"cloud.google.com/go/firestore"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -17,8 +16,7 @@ import (
 
 // TestEnv holds shared resources for integration tests.
 type TestEnv struct {
-	Pool      *pgxpool.Pool
-	Firestore *firestore.Client
+	Pool *pgxpool.Pool
 }
 
 func NewTestEnv(t *testing.T) *TestEnv {
@@ -45,24 +43,11 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("create pool: %v", err)
 	}
 
-	// Firestore emulator
-	emulatorHost := os.Getenv("FIRESTORE_EMULATOR_HOST")
-	if emulatorHost == "" {
-		t.Skip("FIRESTORE_EMULATOR_HOST not set — skipping integration test")
-	}
-	os.Setenv("FIRESTORE_EMULATOR_HOST", emulatorHost)
-
-	fsClient, err := firestore.NewClient(ctx, "toqui-test")
-	if err != nil {
-		t.Fatalf("create firestore client: %v", err)
-	}
-
 	t.Cleanup(func() {
 		pool.Close()
-		fsClient.Close()
 	})
 
-	return &TestEnv{Pool: pool, Firestore: fsClient}
+	return &TestEnv{Pool: pool}
 }
 
 // CleanDB truncates all tables for test isolation.
@@ -72,12 +57,8 @@ func (e *TestEnv) CleanDB(t *testing.T) {
 
 	tables := []string{
 		"export_requests", "deletion_requests",
+		"chat_messages", "chat_sessions",
 		"trip_collaborators", "trip_themes", "bookings", "itinerary_items", "trips", "users",
-		// under_age_blocks survives user deletion (no FK to users) so it
-		// must be truncated explicitly between tests, otherwise the
-		// per-email UNIQUE constraint will fail tests that reuse a
-		// fixture email.
-		"under_age_blocks",
 	}
 	for _, table := range tables {
 		if _, err := e.Pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)); err != nil {

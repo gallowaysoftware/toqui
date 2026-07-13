@@ -107,7 +107,7 @@ func TestChatOwnerOnlyToolGate(t *testing.T) {
 
 	// Minimal ChatHandler — only tripSvc and pool are needed for the
 	// planning/companion tool-registration path.
-	h := handlers.NewChatHandler(nil, tripSvc, nil, nil, nil, nil, nil, nil, env.Pool, nil)
+	h := handlers.NewChatHandler(nil, tripSvc, nil, nil, nil, env.Pool)
 
 	const createName = "create_itinerary_items"
 	const deleteName = "delete_itinerary_items"
@@ -216,7 +216,7 @@ func TestChatOwnerOnlyToolGate(t *testing.T) {
 	//
 	// update_trip is NOT wrapped by the gate (it is not an itinerary
 	// mutation), so it's excluded from this assertion.
-	hh := handlers.NewChatHandler(nil, tripSvc, nil, nil, nil, nil, nil, nil, env.Pool, nil)
+	hh := handlers.NewChatHandler(nil, tripSvc, nil, nil, nil, env.Pool)
 	hh.WithAIProvider(stubAIProvider{})
 	wrapCases := []struct {
 		name        string

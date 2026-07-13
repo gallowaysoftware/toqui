@@ -58,10 +58,11 @@ type Config struct {
 	// Expressed in cents (e.g. 50000 = $500/day). 0 = unlimited.
 	AIDailyBudgetCents int
 
-	// Firestore
-	FirestoreProjectID    string
-	FirestoreDatabaseID   string
-	FirestoreEmulatorHost string
+	// GCP project ID used for Secret Manager resolution, telemetry, and as
+	// the Vertex AI project fallback. Historically named after Firestore,
+	// which no longer stores anything (chat moved to Postgres); the env var
+	// name is kept for deploy compatibility.
+	FirestoreProjectID string
 
 	// Frontend URL for CORS (primary origin)
 	FrontendURL string
@@ -122,8 +123,6 @@ func Load() (*Config, error) {
 		DailyAITokenBudget:       getEnvInt("DAILY_AI_TOKEN_BUDGET", 0),
 		AIDailyBudgetCents:       getEnvInt("AI_DAILY_BUDGET_CENTS", 0),
 		FirestoreProjectID:       getEnv("FIRESTORE_PROJECT_ID", "toqui-dev"),
-		FirestoreDatabaseID:      getEnv("FIRESTORE_DATABASE_ID", ""),
-		FirestoreEmulatorHost:    os.Getenv("FIRESTORE_EMULATOR_HOST"),
 		FrontendURL:              getEnv("FRONTEND_URL", "http://localhost:3000"),
 		GoogleCustomSearchAPIKey: os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
 		GoogleCustomSearchCX:     os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),

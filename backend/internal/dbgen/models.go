@@ -36,6 +36,31 @@ type Booking struct {
 	UpdatedAt         time.Time          `json:"updated_at"`
 }
 
+type ChatMessage struct {
+	ID          uuid.UUID   `json:"id"`
+	SessionID   uuid.UUID   `json:"session_id"`
+	Seq         pgtype.Int8 `json:"seq"`
+	Role        string      `json:"role"`
+	Content     string      `json:"content"`
+	Metadata    []byte      `json:"metadata"`
+	ToolCalls   []byte      `json:"tool_calls"`
+	ToolResults []byte      `json:"tool_results"`
+	CreatedAt   time.Time   `json:"created_at"`
+}
+
+type ChatSession struct {
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.UUID          `json:"user_id"`
+	TripID              string             `json:"trip_id"`
+	Mode                string             `json:"mode"`
+	CreatedAt           time.Time          `json:"created_at"`
+	LastMessageAt       time.Time          `json:"last_message_at"`
+	MessageCount        int32              `json:"message_count"`
+	ExpireAt            pgtype.Timestamptz `json:"expire_at"`
+	Summary             string             `json:"summary"`
+	SummaryMessageCount int32              `json:"summary_message_count"`
+}
+
 type CheckoutSession struct {
 	ID            uuid.UUID          `json:"id"`
 	UserID        uuid.UUID          `json:"user_id"`

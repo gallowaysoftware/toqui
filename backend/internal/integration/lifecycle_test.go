@@ -18,7 +18,7 @@ func TestDeleteUser(t *testing.T) {
 	env.CleanDB(t)
 	ctx := context.Background()
 	queries := dbgen.New(env.Pool)
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	tripSvc := trip.NewService(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
@@ -62,7 +62,7 @@ func TestDeleteUser(t *testing.T) {
 		t.Errorf("expected 0 trips, got %d (count %d)", len(trips), count)
 	}
 
-	// Verify Firestore data is gone
+	// Verify chat data is gone
 	sessions, err := store.ListSessions(ctx, user.ID.String(), created.ID.String(), 10)
 	if err != nil {
 		t.Fatalf("list sessions after delete: %v", err)

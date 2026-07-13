@@ -1,6 +1,6 @@
 # Toqui Backend
 
-AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, Firestore, and Claude/Gemini.
+AI-powered travel companion platform. Go backend with ConnectRPC, PostgreSQL, and Claude/Gemini.
 
 ## Core Principles
 
@@ -48,8 +48,7 @@ root.
 ```mermaid
 graph TB
     FE[Frontend - Expo React Native] -->|ConnectRPC| BE[Backend - Go :8090]
-    BE --> PG[(PostgreSQL + PostGIS)]
-    BE --> FS[(Firestore)]
+    BE --> PG[(PostgreSQL + PostGIS — all data incl. chat)]
     BE --> AI[Gemini / Claude API]
 
     subgraph Backend Services
@@ -74,7 +73,7 @@ graph TB
 | `internal/persona/`     | Persona composition — 43 locations × 23 themes = 989 expert combos                        |
 | `internal/ai/`          | AI provider abstraction (Gemini primary, Claude fallback)                                 |
 | `internal/ai/tools/`    | LLM-callable tool registry (WebSearch, Places)                                            |
-| `internal/chatstore/`   | Firestore chat message persistence                                                        |
+| `internal/chatstore/`   | Postgres chat session/message persistence                                                 |
 | `internal/lifecycle/`   | GDPR deletion, archival, data export                                                      |
 | `internal/exportstorage/` | Export storage abstraction (GCS in prod, local filesystem for dev)                        |
 | `internal/auth/`        | Local email+password (bcrypt) + optional Google OAuth + JWT + auth interceptor + refresh token rotation (JTI/family). Facebook/Apple OAuth were removed when the project transitioned to self-hostable OSS. |
@@ -118,7 +117,7 @@ graph TB
 - **Logging**: Use `log/slog` for all Go logging. Structured key-value pairs, not `log.Printf` or `fmt.Printf`.
 - **Imports**: Alias proto types as `toquiv1`, connect stubs as `toquiv1connect`.
 - **ConnectRPC routes**: `/toqui.v1.ServiceName/MethodName`
-- **Firestore paths**: `users/{uid}/trips/{tripId}/chatSessions/{sessionId}/messages`
+- **Chat tables**: `chat_sessions` (scoped by user_id + trip_id; trip_id is TEXT — `_lobby` for selection mode) and `chat_messages` (FK to session, ordered by `seq`)
 - **SQL**: Use `sqlc.arg(name)` named parameters (not positional `$N`) for COALESCE-heavy queries.
 
 ## Request Pipeline
@@ -147,7 +146,7 @@ make test             # Run unit tests
 make lint             # Run golangci-lint
 make proto            # Generate Go proto code + lint
 make sqlc             # Generate Go from SQL queries
-make docker-up        # Start Postgres + Firestore emulator
+make docker-up        # Start Postgres
 make docker-down      # Tear down
 ```
 
@@ -252,7 +251,6 @@ Config loads in three layers via `internal/config/`:
 ```bash
 make run                                            # TARGET_ENV=local (default)
 TARGET_ENV=staging make run                         # Uses staging infra + secrets
-FIRESTORE_EMULATOR_HOST=localhost:8080 TARGET_ENV=staging make run  # Hybrid: staging DB, local Firestore
 ```
 
 Env files: `env/.env.local`, `env/.env.staging`, `env/.env.prod`. All environments use `gcsm://secret-name` references resolved at startup via GCP Secret Manager (requires `gcloud auth application-default login`).
@@ -279,7 +277,6 @@ Required: `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). `
 | `ADMIN_EMAILS` | (none) | Comma-separated admin emails — used only to **seed** `is_admin` on first login (bootstrap). Primary auth uses `users.is_admin` DB column. |
 | `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
-| `FIRESTORE_DATABASE_ID` | (none) | Firestore database ID (uses default if unset) |
 | `EMAIL_WEBHOOK_SECRET` | (none) | Resend webhook signing secret in `whsec_<base64>` form. Used to verify Svix-style signatures on POST /webhooks/email/inbound. |
 | `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
 | `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
@@ -521,7 +518,7 @@ Orchestrator (Claude Code session)
 
 ```bash
 # 1. Start infrastructure
-make docker-up          # Postgres + Firestore emulator
+make docker-up          # Postgres
 make migrate-up         # Apply migrations
 make run &              # Start backend on :8090 (env/.env.local sets CORS_ALLOWED_ORIGINS for :3000 and :8081)
 # Wait for: curl -s http://localhost:8090/healthz → {"status":"ok"}
@@ -614,7 +611,7 @@ GCP infrastructure is managed in the [toqui-terraform](https://github.com/gallow
 - **toqui-staging** — Runtime kept running (~$32/mo) for continuous testing. Can be torn down if needed. Pulls images from `toqui-infra` AR.
 - **toqui-prod** — LIVE. Cloud Run (backend + frontend) + Global HTTPS LB + Cloud Armor WAF + Certificate Manager SSL. Cloud SQL `db-g1-small` (private IP, HA, backups). Domains: `api.toqui.travel`, `app.toqui.travel`. Marketing site + admin on Cloudflare Pages.
 
-Prod uses Cloud SQL PostgreSQL 16 (private IP), Firestore (native mode), Secret Manager, Resend (email), Stripe (payments). Images pulled from `toqui-infra` Artifact Registry.
+Prod uses Cloud SQL PostgreSQL 16 (private IP), Secret Manager, and Resend (email). Images pulled from `toqui-infra` Artifact Registry.
 
 **Company**: Galloway Software Solutions Inc., Prince Edward Island, Canada.
 
@@ -1029,6 +1026,6 @@ Token counts are accumulated across tool loop iterations. Usage is parsed from C
 ## Data Lifecycle
 
 - **Location data**: Ephemeral in-memory cache (30 min TTL), never persisted to database
-- **Trip archival**: 90 days after completion, chat messages purged from Firestore
-- **User deletion**: GDPR Article 17 — CASCADE deletes in Postgres + Firestore purge, within 30 days
+- **Trip archival**: 90 days after completion, chat sessions purged from Postgres (hourly lifecycle job deletes rows past `expire_at`)
+- **User deletion**: GDPR Article 17 — CASCADE deletes in Postgres (chat included), within 30 days
 - **Data export**: GDPR Article 20 — async job generates downloadable archive

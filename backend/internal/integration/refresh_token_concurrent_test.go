@@ -31,7 +31,7 @@ func TestRefreshTokenConcurrentRotation(t *testing.T) {
 	env.CleanDB(t)
 	ctx := context.Background()
 	queries := dbgen.New(env.Pool)
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	// 32+ char JWT secret (config rejects shorter in non-local envs; keeps

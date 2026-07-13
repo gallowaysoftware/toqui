@@ -1,6 +1,6 @@
 # Toqui Backend
 
-Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, PostgreSQL + PostGIS, Firestore, and Claude.
+Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, PostgreSQL + PostGIS, and Gemini/Claude/OpenAI-compatible AI providers.
 
 > **Status:** This repo is part of Toqui's transition from a hosted SaaS to a
 > self-hostable open source project under [AGPL-3.0-or-later](./LICENSE).
@@ -15,7 +15,7 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 
 - Go 1.26+
 - [buf](https://buf.build/docs/installation) (proto generation)
-- Docker & Docker Compose (local Postgres + Firestore emulator)
+- Docker & Docker Compose (local Postgres)
 - [sqlc](https://sqlc.dev/) (SQL code generation)
 - [golangci-lint](https://golangci-lint.run/) (optional, for linting)
 - [gcloud CLI](https://cloud.google.com/sdk/docs/install) — required for Secret Manager resolution (`gcloud auth application-default login`)
@@ -23,7 +23,7 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 ## Quick Start
 
 ```bash
-# 1. Start Postgres + Firestore emulator
+# 1. Start Postgres
 make docker-up
 
 # 2. Run database migrations
@@ -70,11 +70,10 @@ All env files use `gcsm://` prefixed values which are resolved from GCP Secret M
 | `DATABASE_URL`            | No       | `postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable` | PostgreSQL connection                       |
 | `PORT`                    | No       | `8090`                                                        | Server port                                 |
 | `JWT_SECRET`              | No       | dev default                                                   | JWT signing secret                          |
-| `FIRESTORE_PROJECT_ID`    | No       | `toqui-dev`                                                   | Firestore project                           |
-| `FIRESTORE_EMULATOR_HOST` | No       | —                                                             | Firestore emulator address                  |
+| `FIRESTORE_PROJECT_ID`    | No       | `toqui-dev`                                                   | GCP project (Secret Manager, Vertex fallback) |
 | `FRONTEND_URL`            | No       | `http://localhost:3000`                                       | CORS origin                                 |
 
-\*At least one AI provider is required. If `ANTHROPIC_API_KEY` is set, Claude is used. Otherwise, Gemini via Vertex AI is used (requires `gcloud auth application-default login` and `VERTEX_AI_PROJECT_ID` or `FIRESTORE_PROJECT_ID`).
+\*At least one AI provider is required: `GEMINI_API_KEY` (default primary), `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` (+ `OPENAI_BASE_URL` for OpenAI-compatible endpoints — set `AI_PROVIDER=openai`). Vertex AI works via ADC + `VERTEX_AI_PROJECT_ID`.
 
 ## Make Targets
 
@@ -87,7 +86,7 @@ make test               # Run unit tests
 make lint               # Run golangci-lint
 make proto              # Generate Go proto code + lint
 make sqlc               # Generate Go from SQL queries
-make docker-up          # Start Postgres + Firestore emulator
+make docker-up          # Start Postgres
 make docker-down        # Stop Docker services
 make migrate-up         # Apply pending migrations
 make migrate-down       # Rollback one migration
@@ -107,7 +106,7 @@ make test
 
 ### Integration Tests
 
-Uses a dedicated Docker setup with Postgres and Firestore emulator:
+Runs against the dev-compose Postgres:
 
 ```bash
 make integration-test
@@ -118,7 +117,7 @@ make integration-test
 End-to-end tests that exercise the full trip lifecycle through the AI with real LLM calls. Requires Docker services running and an AI provider (`ANTHROPIC_API_KEY` for Claude, or `VERTEX_AI_PROJECT_ID` for Gemini via Vertex AI).
 
 ```bash
-docker compose up -d    # Start Postgres + Firestore emulator
+docker compose up -d    # Start Postgres
 make ai-test            # Run 7 regression scenarios
 make ai-test-generative # Run regression + LLM-generated exploratory scenarios
 ```
@@ -253,7 +252,6 @@ docker build --platform linux/amd64 -t toqui-backend .
 # Test locally
 docker run -p 8090:8090 \
   -e DATABASE_URL=postgres://toqui:toqui@host.docker.internal:5432/toqui?sslmode=disable \
-  -e FIRESTORE_EMULATOR_HOST=host.docker.internal:8080 \
   toqui-backend
 ```
 
@@ -269,7 +267,7 @@ internal/
   persona/          # Persona composition (24 locations × 15 themes)
   ai/               # AI provider abstraction (Claude, Gemini/Vertex AI)
   ai/tools/         # LLM-callable tool registry (WebSearch, Places)
-  chatstore/        # Firestore chat message persistence
+  chatstore/        # Postgres chat session/message persistence
   auth/             # Google OAuth + JWT + auth interceptor
   trip/             # Trip CRUD, status transitions
   booking/          # Booking ingestion + AI parsing
