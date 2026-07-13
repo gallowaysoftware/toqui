@@ -247,9 +247,10 @@ func (h *TripHandler) UpdateTrip(ctx context.Context, req *connect.Request[toqui
 		return nil, mapTripErr(ctx, "trip operation", err)
 	}
 
-	// When trip is completed, stamp TTL on chat data (90-day retention)
+	// When trip is completed, stamp the retention TTL on its chat data
+	// (CHAT_RETENTION_DAYS; no-op when retention is disabled).
 	if status == "completed" {
-		h.lifecycleSvc.SetChatTTLAsync(userID, tripID, 90)
+		h.lifecycleSvc.SetChatTTLAsync(userID, tripID)
 	}
 
 	return connect.NewResponse(&toquiv1.UpdateTripResponse{Trip: tripToProto(t)}), nil

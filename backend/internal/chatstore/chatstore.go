@@ -434,6 +434,24 @@ func (s *Store) SetTTL(ctx context.Context, userID, tripID string, expireAt time
 	return nil
 }
 
+// SetTTLIfMissing stamps expireAt only on the trip's sessions that don't
+// have one yet. Used by the archival job as a safety net for sessions that
+// missed the stamp at trip completion — it never extends an existing TTL.
+func (s *Store) SetTTLIfMissing(ctx context.Context, userID, tripID string, expireAt time.Time) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("set ttl if missing: parse user id: %w", err)
+	}
+	if err := s.queries.SetChatTTLForTripIfMissing(ctx, dbgen.SetChatTTLForTripIfMissingParams{
+		UserID:   uid,
+		TripID:   tripID,
+		ExpireAt: pgtype.Timestamptz{Time: expireAt, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("set ttl if missing: %w", err)
+	}
+	return nil
+}
+
 // DeleteAllForTrip deletes all chat sessions and messages for a trip.
 // Used for trip deletion and data lifecycle archival.
 func (s *Store) DeleteAllForTrip(ctx context.Context, userID, tripID string) error {

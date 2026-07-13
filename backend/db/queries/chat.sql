@@ -84,6 +84,14 @@ UPDATE chat_sessions
 SET expire_at = $3
 WHERE user_id = $1 AND trip_id = $2;
 
+-- SetChatTTLForTripIfMissing stamps only sessions that have no expire_at
+-- yet — used by the archival job as a safety net for sessions that missed
+-- the stamp at trip completion, without extending TTLs already set.
+-- name: SetChatTTLForTripIfMissing :exec
+UPDATE chat_sessions
+SET expire_at = $3
+WHERE user_id = $1 AND trip_id = $2 AND expire_at IS NULL;
+
 -- name: DeleteChatForTrip :exec
 DELETE FROM chat_sessions
 WHERE user_id = $1 AND trip_id = $2;
@@ -94,3 +102,12 @@ WHERE user_id = $1 AND trip_id = $2;
 -- name: PurgeExpiredChatSessions :execrows
 DELETE FROM chat_sessions
 WHERE expire_at IS NOT NULL AND expire_at < NOW();
+
+-- PurgeStaleLobbyChatSessions deletes selection-mode ("_lobby") sessions
+-- idle longer than the retention window. Lobby sessions never belong to a
+-- trip, so they never get an expire_at stamp at trip completion — without
+-- this they would live until account deletion.
+-- name: PurgeStaleLobbyChatSessions :execrows
+DELETE FROM chat_sessions
+WHERE trip_id = '_lobby'
+  AND last_message_at < NOW() - make_interval(days => sqlc.arg(retention_days)::int);

@@ -264,6 +264,12 @@ func main() {
 	locationSvc := location.NewService(cfg.GooglePlacesAPIKey)
 	locationCache := location.NewCache(location.DefaultCacheTTL)
 	lifecycleSvc := lifecycle.NewService(pool, chatStr)
+	lifecycleSvc.SetChatRetentionDays(cfg.ChatRetentionDays)
+	if cfg.ChatRetentionDays == 0 {
+		slog.Info("chat retention disabled — chat history kept until trip/account deletion")
+	} else {
+		slog.Info("chat retention configured", "days", cfg.ChatRetentionDays)
+	}
 
 	// GDPR export storage — GCS in production, local filesystem for development.
 	if cfg.GCSExportBucket != "" {

@@ -29,7 +29,7 @@ Toqui exists to help travelers, not to exploit them. These rules are absolute an
 
 **Data Lifecycle:**
 - GDPR Article 17 (right to deletion) and Article 20 (data portability) are implemented and must remain functional.
-- Chat data is purged 90 days after trip completion; trips are archived on the same schedule.
+- Chat data is purged after the configured retention window (`CHAT_RETENTION_DAYS`, default 90 days after trip completion; 0 = keep until trip/account deletion); trips are archived 90 days after completion.
 - Account deletion must be complete — no shadow profiles, no retained analytics, no "soft delete" that keeps data.
 
 These principles are not aspirational. They are engineering requirements. Code that violates them must not be merged.
@@ -251,6 +251,7 @@ Config loads in three layers via `internal/config/`:
 | `FRONTEND_URL` | `http://localhost:3000` | Primary CORS origin + OAuth redirect target + guide CTA URL |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowlist |
 | `ALLOWED_EMAIL_DOMAINS` | (none = allow all) | Comma-separated signup domain allowlist |
+| `CHAT_RETENTION_DAYS` | `90` | Chat retention window after trip completion (also purges idle `_lobby` chats). `0` = keep forever |
 | `LLM_CACHE_ENABLED` | `true` | LLM response cache for popular destination intros |
 | `LLM_CACHE_TTL` | `1h` | Response cache TTL |
 | `RESEND_API_KEY` | (none) | Outbound transactional email (welcome, collab invites). Unset = emails skipped |
@@ -611,7 +612,7 @@ Background jobs (`internal/lifecycle/jobs.go`, started from `main.go`, stopped o
 Policies:
 
 - **Location data**: ephemeral in-memory cache (30 min TTL), never persisted.
-- **Chat retention**: completing a trip stamps `expire_at = now + 90 days` on its chat sessions (`SetChatTTLAsync` in the trip handler); the hourly purge enforces it. This replaces the old Firestore TTL.
-- **Trip archival**: `archive_after = completion + 90 days` (`db/queries/lifecycle.sql`); the daily job purges chat and marks the trip archived.
+- **Chat retention**: completing a trip stamps `expire_at = now + CHAT_RETENTION_DAYS` (default 90; 0 disables retention) on its chat sessions (`SetChatTTLAsync` in the trip handler); the hourly purge enforces it and also drops `_lobby` sessions idle past the window. This replaces the old Firestore TTL.
+- **Trip archival**: `archive_after = completion + 90 days` (`db/queries/lifecycle.sql`); the daily job stamps any missing chat TTLs (never deletes directly, so long retention windows are honoured) and marks the trip archived.
 - **User deletion** (GDPR Art. 17): `DeleteAccount` RPC → async purge with retry job; Postgres CASCADE covers trips, itinerary, bookings, chat.
 - **Data export** (GDPR Art. 20): `ExportData` RPC → archive in GCS (`GCS_EXPORT_BUCKET`) or local dir, downloadable via `GET /api/export/` with a 7-day expiry.

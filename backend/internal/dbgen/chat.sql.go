@@ -354,6 +354,24 @@ func (q *Queries) PurgeExpiredChatSessions(ctx context.Context) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const purgeStaleLobbyChatSessions = `-- name: PurgeStaleLobbyChatSessions :execrows
+DELETE FROM chat_sessions
+WHERE trip_id = '_lobby'
+  AND last_message_at < NOW() - make_interval(days => $1::int)
+`
+
+// PurgeStaleLobbyChatSessions deletes selection-mode ("_lobby") sessions
+// idle longer than the retention window. Lobby sessions never belong to a
+// trip, so they never get an expire_at stamp at trip completion — without
+// this they would live until account deletion.
+func (q *Queries) PurgeStaleLobbyChatSessions(ctx context.Context, retentionDays int32) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeStaleLobbyChatSessions, retentionDays)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setChatTTLForTrip = `-- name: SetChatTTLForTrip :exec
 UPDATE chat_sessions
 SET expire_at = $3
@@ -368,6 +386,26 @@ type SetChatTTLForTripParams struct {
 
 func (q *Queries) SetChatTTLForTrip(ctx context.Context, arg SetChatTTLForTripParams) error {
 	_, err := q.db.Exec(ctx, setChatTTLForTrip, arg.UserID, arg.TripID, arg.ExpireAt)
+	return err
+}
+
+const setChatTTLForTripIfMissing = `-- name: SetChatTTLForTripIfMissing :exec
+UPDATE chat_sessions
+SET expire_at = $3
+WHERE user_id = $1 AND trip_id = $2 AND expire_at IS NULL
+`
+
+type SetChatTTLForTripIfMissingParams struct {
+	UserID   uuid.UUID          `json:"user_id"`
+	TripID   string             `json:"trip_id"`
+	ExpireAt pgtype.Timestamptz `json:"expire_at"`
+}
+
+// SetChatTTLForTripIfMissing stamps only sessions that have no expire_at
+// yet — used by the archival job as a safety net for sessions that missed
+// the stamp at trip completion, without extending TTLs already set.
+func (q *Queries) SetChatTTLForTripIfMissing(ctx context.Context, arg SetChatTTLForTripIfMissingParams) error {
+	_, err := q.db.Exec(ctx, setChatTTLForTripIfMissing, arg.UserID, arg.TripID, arg.ExpireAt)
 	return err
 }
 

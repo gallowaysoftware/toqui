@@ -54,6 +54,7 @@ var _ lifecycleQueries = (*dbgen.Queries)(nil)
 type lifecycleChatStore interface {
 	DeleteAllForTrip(ctx context.Context, userID, tripID string) error
 	SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error
+	SetTTLIfMissing(ctx context.Context, userID, tripID string, expireAt time.Time) error
 	ExportChatData(ctx context.Context, userID string, tripIDs []string) (map[string][]chatstore.ExportedSession, error)
 }
 
@@ -65,14 +66,34 @@ type Service struct {
 	pool        *pgxpool.Pool
 	chatStore   lifecycleChatStore
 	exportStore exportstorage.Store
+
+	// chatRetentionDays is how long chat history survives after a trip
+	// completes (CHAT_RETENTION_DAYS). 0 disables the retention purge —
+	// chat lives until the trip or account is deleted.
+	chatRetentionDays int
 }
 
 func NewService(pool *pgxpool.Pool, chatStore *chatstore.Store) *Service {
 	return &Service{
-		queries:   dbgen.New(pool),
-		pool:      pool,
-		chatStore: chatStore,
+		queries:           dbgen.New(pool),
+		pool:              pool,
+		chatStore:         chatStore,
+		chatRetentionDays: 90,
 	}
+}
+
+// SetChatRetentionDays overrides the default 90-day chat retention window.
+// 0 disables retention-based purging entirely.
+func (s *Service) SetChatRetentionDays(days int) {
+	if days < 0 {
+		days = 0
+	}
+	s.chatRetentionDays = days
+}
+
+// ChatRetentionDays returns the configured retention window (0 = keep forever).
+func (s *Service) ChatRetentionDays() int {
+	return s.chatRetentionDays
 }
 
 // SetExportStore configures durable storage for GDPR data exports.
@@ -140,10 +161,16 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 
 	archived := 0
 	for _, t := range trips {
-		// Purge chat messages
-		if err := s.chatStore.DeleteAllForTrip(ctx, t.UserID.String(), t.ID.String()); err != nil {
-			slog.Warn("failed to purge chat for trip", "trip_id", t.ID, "error", err)
-			continue
+		// Safety net: sessions that missed their retention stamp at trip
+		// completion get one now. Chat deletion itself is driven purely by
+		// the expire_at purge job, so a retention window longer than the
+		// archival delay is honoured — and retention 0 keeps chat forever.
+		if s.chatRetentionDays > 0 {
+			expireAt := time.Now().AddDate(0, 0, s.chatRetentionDays)
+			if err := s.chatStore.SetTTLIfMissing(ctx, t.UserID.String(), t.ID.String(), expireAt); err != nil {
+				slog.Warn("failed to stamp chat TTL for archived trip", "trip_id", t.ID, "error", err)
+				continue
+			}
 		}
 
 		// Mark as archived in Postgres
@@ -158,10 +185,14 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 	return archived, nil
 }
 
-// SetChatTTL stamps an expireAt time on all chat data for a trip.
-// Call this when a trip is marked completed to start the retention countdown.
-func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.UUID, retentionDays int) error {
-	expireAt := time.Now().AddDate(0, 0, retentionDays)
+// SetChatTTL stamps an expireAt time on all chat data for a trip, using the
+// configured retention window. Call this when a trip is marked completed to
+// start the retention countdown. No-op when retention is disabled (0).
+func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) error {
+	if s.chatRetentionDays <= 0 {
+		return nil
+	}
+	expireAt := time.Now().AddDate(0, 0, s.chatRetentionDays)
 	if err := s.chatStore.SetTTL(ctx, userID.String(), tripID.String(), expireAt); err != nil {
 		return fmt.Errorf("set chat TTL: %w", err)
 	}
@@ -171,11 +202,14 @@ func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.
 // SetChatTTLAsync fires TTL stamping in a background goroutine.
 // This intentionally uses a detached context with a 60-second timeout because
 // TTL stamping must complete even after the originating request ends.
-func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID, retentionDays int) {
+func (s *Service) SetChatTTLAsync(userID uuid.UUID, tripID uuid.UUID) {
+	if s.chatRetentionDays <= 0 {
+		return
+	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		if err := s.SetChatTTL(ctx, userID, tripID, retentionDays); err != nil {
+		if err := s.SetChatTTL(ctx, userID, tripID); err != nil {
 			slog.Warn("failed to set chat TTL for trip", "trip_id", tripID, "error", err)
 		}
 	}()

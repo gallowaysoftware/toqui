@@ -106,11 +106,18 @@ func (j *Jobs) cleanupExpiredTokens(ctx context.Context) {
 }
 
 // purgeExpiredChat deletes chat sessions whose expire_at has passed
-// (messages cascade). This is what enforces the chat retention window
-// now that chat lives in Postgres instead of Firestore.
+// (messages cascade), plus selection-mode ("_lobby") sessions idle longer
+// than the retention window — those never belong to a trip so they never
+// get an expire_at stamp. This is what enforces the chat retention window
+// now that chat lives in Postgres instead of Firestore. Skipped entirely
+// when retention is disabled (CHAT_RETENTION_DAYS=0).
 func (j *Jobs) purgeExpiredChat(ctx context.Context) {
-	// Defensive nil-guard — see archiveTrips for the rationale.
-	if j.queries == nil {
+	// Defensive nil-guards — see archiveTrips for the rationale.
+	if j.queries == nil || j.lifecycleSvc == nil {
+		return
+	}
+	retention := j.lifecycleSvc.ChatRetentionDays()
+	if retention <= 0 {
 		return
 	}
 	purged, err := j.queries.PurgeExpiredChatSessions(ctx)
@@ -118,8 +125,13 @@ func (j *Jobs) purgeExpiredChat(ctx context.Context) {
 		slog.Error("lifecycle: failed to purge expired chat sessions", "error", err)
 		return
 	}
-	if purged > 0 {
-		slog.Info("lifecycle: purged expired chat sessions", "count", purged)
+	stale, err := j.queries.PurgeStaleLobbyChatSessions(ctx, int32(retention))
+	if err != nil {
+		slog.Error("lifecycle: failed to purge stale lobby chat sessions", "error", err)
+		return
+	}
+	if purged+stale > 0 {
+		slog.Info("lifecycle: purged chat sessions", "expired", purged, "stale_lobby", stale)
 	}
 }
 
