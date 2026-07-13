@@ -712,15 +712,17 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerI
 	itemType := itineraryItemTypeForBooking(b.Type)
 
 	// Map the booking's start time to an itinerary day via the trip's
-	// start date. Falls back to day 1 when either date is missing — the
-	// user can reorder later.
-	dayNumber := int32(1)
-	if trip, tripErr := h.queries.GetTripByIDOrCollaborator(ctx, dbgen.GetTripByIDOrCollaboratorParams{
+	// start date. The user can reorder later.
+	trip, tripErr := h.queries.GetTripByIDOrCollaborator(ctx, dbgen.GetTripByIDOrCollaboratorParams{
 		ID:     tripID,
 		UserID: callerID,
-	}); tripErr == nil {
-		dayNumber = dayNumberForBooking(trip, b.StartTime)
+	})
+	if tripErr != nil {
+		slog.Warn("auto-link: trip fetch failed, day mapping falls back",
+			"error", tripErr, "booking_id", b.ID, "trip_id", tripID)
+		trip = dbgen.Trip{} // zero StartDate → helper fallback paths
 	}
+	dayNumber := dayNumberForBooking(trip, b.StartTime, b.Timezone)
 
 	_, createErr := h.queries.CreateItineraryItemFromBookingForOwnerOrEditor(ctx, dbgen.CreateItineraryItemFromBookingForOwnerOrEditorParams{
 		TripID:     tripID,
@@ -747,18 +749,26 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerI
 
 // dayNumberForBooking maps a booking's start time to a 1-based itinerary
 // day number relative to the trip's start date. Calendar dates are compared
-// in the trip's timezone when one is set (an evening arrival must not slip
-// to the next day just because the server runs in UTC). Returns 1 when the
-// trip has no start date, the booking has no start time, or the booking
-// starts before the trip.
-func dayNumberForBooking(trip dbgen.Trip, startTime pgtype.Timestamptz) int32 {
-	if !startTime.Valid || !trip.StartDate.Valid {
+// in the booking's own timezone when the parser extracted one (a flight
+// departs on the day printed on the ticket), then the trip's timezone,
+// then UTC — an evening departure must not slip a day just because the
+// server runs in UTC. Returns 0 ("Unscheduled" bucket) when the booking
+// has no start time, and clamps to day 1 when the trip has no start date
+// or the booking predates it.
+func dayNumberForBooking(trip dbgen.Trip, startTime pgtype.Timestamptz, bookingTZ pgtype.Text) int32 {
+	if !startTime.Valid {
+		return 0
+	}
+	if !trip.StartDate.Valid {
 		return 1
 	}
 	loc := time.UTC
-	if trip.Timezone.Valid && trip.Timezone.String != "" {
-		if l, err := time.LoadLocation(trip.Timezone.String); err == nil {
-			loc = l
+	for _, tz := range []pgtype.Text{bookingTZ, trip.Timezone} {
+		if tz.Valid && tz.String != "" {
+			if l, err := time.LoadLocation(tz.String); err == nil {
+				loc = l
+				break
+			}
 		}
 	}
 	sy, sm, sd := trip.StartDate.Time.Date()

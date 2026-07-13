@@ -35,11 +35,19 @@ func mkStart(rfc3339 string) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: ts, Valid: true}
 }
 
+func mkTZ(tz string) pgtype.Text {
+	if tz == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: tz, Valid: true}
+}
+
 func TestDayNumberForBooking(t *testing.T) {
 	cases := []struct {
 		name      string
 		trip      dbgen.Trip
 		startTime pgtype.Timestamptz
+		bookingTZ pgtype.Text
 		want      int32
 	}{
 		{
@@ -61,10 +69,12 @@ func TestDayNumberForBooking(t *testing.T) {
 			want:      1,
 		},
 		{
-			name:      "no booking start time falls back to day 1",
+			// No parsed start time → the "Unscheduled" (day 0) bucket
+			// that itineraryToProto renders, not an asserted day.
+			name:      "no booking start time stays unscheduled",
 			trip:      mkTrip("2026-09-10", ""),
 			startTime: mkStart(""),
-			want:      1,
+			want:      0,
 		},
 		{
 			name:      "booking before trip start clamps to day 1",
@@ -89,10 +99,29 @@ func TestDayNumberForBooking(t *testing.T) {
 			want:      2,
 		},
 		{
+			// The booking's own timezone wins over the trip's: a flight
+			// leaving Toronto at 20:00 EDT (= next morning JST) belongs
+			// on the Toronto calendar day printed on the ticket, even
+			// for a Tokyo trip.
+			name:      "booking timezone wins over trip timezone",
+			trip:      mkTrip("2026-09-10", "Asia/Tokyo"),
+			startTime: mkStart("2026-09-11T00:00:00Z"), // Sep 10 20:00 EDT, Sep 11 09:00 JST
+			bookingTZ: mkTZ("America/Toronto"),
+			want:      1,
+		},
+		{
 			name:      "invalid timezone falls back to UTC",
 			trip:      mkTrip("2026-09-10", "Not/AZone"),
 			startTime: mkStart("2026-09-12T02:00:00Z"),
 			want:      3,
+		},
+		{
+			// Invalid booking tz falls through to the trip tz, not UTC.
+			name:      "invalid booking timezone falls back to trip timezone",
+			trip:      mkTrip("2026-09-10", "America/Vancouver"),
+			startTime: mkStart("2026-09-12T02:00:00Z"),
+			bookingTZ: mkTZ("Not/AZone"),
+			want:      2,
 		},
 		{
 			// Offsets in the booking timestamp itself must not matter —
@@ -103,11 +132,27 @@ func TestDayNumberForBooking(t *testing.T) {
 			startTime: mkStart("2026-09-12T08:00:00+09:00"),
 			want:      2,
 		},
+		{
+			// Exactly local midnight belongs to the day that starts.
+			name:      "booking at local midnight in trip timezone",
+			trip:      mkTrip("2026-09-10", "Asia/Tokyo"),
+			startTime: mkStart("2026-09-12T00:00:00+09:00"),
+			want:      3,
+		},
+		{
+			// DST fall-back (America/Vancouver leaves DST 2026-11-01):
+			// day math must count calendar days, not 24h blocks — the
+			// 25-hour day between start and booking must not skew it.
+			name:      "trip spanning a DST transition counts calendar days",
+			trip:      mkTrip("2026-10-31", "America/Vancouver"),
+			startTime: mkStart("2026-11-02T10:00:00-08:00"),
+			want:      3,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := dayNumberForBooking(tc.trip, tc.startTime); got != tc.want {
+			if got := dayNumberForBooking(tc.trip, tc.startTime, tc.bookingTZ); got != tc.want {
 				t.Errorf("dayNumberForBooking() = %d, want %d", got, tc.want)
 			}
 		})
