@@ -391,7 +391,7 @@ const (
 	// maxToolLoopIterations prevents infinite tool call loops.
 	// Selection mode needs more headroom because a single turn can
 	// trigger create_trip + suggest_expert + create_itinerary_items +
-	// recommend_booking (Run 16 R-02 P2: exhausted at 5).
+	// web_search (Run 16 R-02 P2: exhausted at 5).
 	maxToolLoopIterations = 7
 
 	// turnTimeout is the per-turn deadline for the AI provider channel. If the
