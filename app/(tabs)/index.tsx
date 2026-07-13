@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
+import { needsServerSetup } from "@/lib/config";
 import { useAuthProviders } from "@/lib/hooks/useAuthProviders";
 import { useTheme } from "@/lib/theme";
 import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
@@ -106,6 +107,14 @@ export default function TripsScreen() {
   // operators without Google credentials get the email-only experience.
   const googleEnabled = authProviders?.googleOauth === true;
 
+  // Bring-your-own-server first run (native): no server configured yet —
+  // nothing else can work until one is chosen.
+  useEffect(() => {
+    if (needsServerSetup()) {
+      router.replace("/server-setup" as never);
+    }
+  }, [router]);
+
   // Redirect to onboarding if user is authenticated but hasn't completed it
   useEffect(() => {
     if (accessToken && !authLoading && !onboardingLoading && isOnboardingComplete === false) {
@@ -178,6 +187,7 @@ export default function TripsScreen() {
     },
     secondaryButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: "600" },
     createAccountLink: { color: colors.accent, fontSize: 14, fontWeight: "600", marginTop: 16 },
+    changeServerLink: { color: colors.textTertiary, fontSize: 13, marginTop: 20, textDecorationLine: "underline" },
     authSeparator: {
       flexDirection: "row",
       alignItems: "center",
@@ -287,6 +297,20 @@ export default function TripsScreen() {
         </Pressable>
 
         <Text style={styles.signInNote}>{t("home.signInNote")}</Text>
+
+        {/* Escape hatch: a saved-but-now-dead server URL would otherwise
+            strand a signed-out user here with no way to fix it (the
+            first-run gate only fires when NO server is configured, and
+            Settings requires auth). Native-only, like server setup. */}
+        {Platform.OS !== "web" && (
+          <Pressable
+            onPress={() => router.push("/server-setup" as never)}
+            accessibilityRole="link"
+            testID="signin-change-server"
+          >
+            <Text style={styles.changeServerLink}>{t("serverSetup.changeServer")}</Text>
+          </Pressable>
+        )}
       </ScrollView>
     );
   }

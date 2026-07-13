@@ -1,14 +1,15 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Platform } from "react-native";
 import { confirmDestructive } from "@/lib/confirm";
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@connectrpc/connect";
-import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, MessageSquare } from "lucide-react-native";
+import { LogOut, Download, Trash2, User, FileText, Shield, Sun, Moon, Monitor, MessageSquare, Server } from "lucide-react-native";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import { useAuth } from "@/lib/auth";
 import { useTransport } from "@/lib/transport";
+import { getConfig } from "@/lib/config";
 import { useTheme } from "@/lib/theme";
 import { AuthService } from "@gen/toqui/v1/auth_pb";
 
@@ -75,6 +76,7 @@ export default function SettingsScreen() {
       borderTopColor: colors.surfaceTertiary,
     },
     actionText: { fontSize: 15, color: colors.accent, fontWeight: "500" },
+    serverUrl: { fontSize: 13, color: colors.textSecondary, marginBottom: 8 },
     linkText: { fontSize: 15, color: colors.textSecondary },
     outlineButton: {
       borderWidth: 1,
@@ -145,6 +147,26 @@ export default function SettingsScreen() {
           <Text style={styles.actionText}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
+
+      {/* Server (native bring-your-own-server) */}
+      {Platform.OS !== "web" && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Server color={colors.textSecondary} size={20} />
+            <Text style={styles.sectionTitle}>{t("serverSetup.settingsTitle")}</Text>
+          </View>
+          <Text style={styles.serverUrl} numberOfLines={1}>
+            {getConfig().apiUrl}
+          </Text>
+          <Pressable
+            style={styles.actionRow}
+            onPress={() => router.push("/server-setup" as never)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionText}>{t("serverSetup.changeServer")}</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Data */}
       <View style={styles.section}>
