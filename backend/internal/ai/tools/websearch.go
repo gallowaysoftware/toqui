@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -83,33 +84,44 @@ func (w *WebSearch) Definition() ai.ToolDefinition {
 }
 
 func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	// IMPORTANT: no failure path here may return a Go error or an
+	// "error"-keyed payload. The chat loop turns a Go error into
+	// {"error": ...}, and Gemini treats ANY tool result with an "error" key
+	// as a genuine failure — it retries pointlessly and can abandon
+	// follow-up side-effect tools like create_itinerary_items (#194, Run 4
+	// R-16). So both "not configured" and "backend failed at runtime"
+	// degrade to the same success-shaped no_web_access result, letting the
+	// AI fall back to parametric knowledge with a clear caveat.
 	if !w.configured() {
-		// IMPORTANT: this response MUST NOT contain an "error" field.
-		// Gemini interprets any tool result with an "error" key as a genuine
-		// failure and either retries the call or apologises to the user,
-		// which cascades into follow-up tools (e.g. create_itinerary_items) never
-		// being invoked (Run 4 R-16). A plain status/message payload tells
-		// the AI "the call succeeded, there's just no web access" and lets
-		// it gracefully fall back to parametric knowledge.
-		return json.Marshal(map[string]any{
-			"status":  "no_web_access",
-			"results": []any{},
-			"message": "Real-time web search is not configured in this environment. Proceed using your existing knowledge and tell the user you cannot verify time-sensitive details (current opening hours, prices, closures) without web access. Then continue answering their question with the information you have.",
-		})
+		return webSearchUnavailable("Real-time web search is not configured in this environment.")
 	}
 
 	var input struct {
 		Query string `json:"query"`
 	}
 	if err := json.Unmarshal(args, &input); err != nil {
-		return nil, fmt.Errorf("unmarshal args: %w", err)
+		// Malformed args from the model — treat as a no-op search, not a failure.
+		slog.Warn("web_search: bad arguments, returning no_web_access", "error", err)
+		return webSearchUnavailable("Real-time web search could not run (bad query).")
 	}
 
 	results, err := w.backend.search(ctx, input.Query)
 	if err != nil {
-		return nil, err
+		slog.Warn("web_search: backend failed, returning no_web_access", "error", err)
+		return webSearchUnavailable("Real-time web search is temporarily unavailable.")
 	}
 	return json.Marshal(map[string]any{"results": results})
+}
+
+// webSearchUnavailable builds the success-shaped no_web_access payload. The
+// message tells the AI to proceed from its own knowledge and caveat that
+// time-sensitive details can't be verified.
+func webSearchUnavailable(reason string) (json.RawMessage, error) {
+	return json.Marshal(map[string]any{
+		"status":  "no_web_access",
+		"results": []any{},
+		"message": reason + " Proceed using your existing knowledge and tell the user you cannot verify time-sensitive details (current opening hours, prices, closures) without web access. Then continue answering their question with the information you have.",
+	})
 }
 
 // googleSearch queries the Google Custom Search JSON API.

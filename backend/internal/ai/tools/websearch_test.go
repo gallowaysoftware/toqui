@@ -115,15 +115,28 @@ func TestWebSearch_SearXNGTrailingSlashTrimmed(t *testing.T) {
 	}
 }
 
-func TestWebSearch_BackendHTTPErrorPropagates(t *testing.T) {
+func TestWebSearch_BackendFailureDegradesGracefully(t *testing.T) {
+	// A backend 5xx/429 MUST NOT surface as a Go error or an "error"-keyed
+	// payload — that would make Gemini treat the tool as failed and abandon
+	// follow-up tools (#194). It degrades to no_web_access instead.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer srv.Close()
 
-	_, err := NewWebSearchSearXNG(srv.URL).Execute(context.Background(), json.RawMessage(`{"query":"x"}`))
-	if err == nil {
-		t.Error("expected an error on a 500 from the backend")
+	raw, err := NewWebSearchSearXNG(srv.URL).Execute(context.Background(), json.RawMessage(`{"query":"x"}`))
+	if err != nil {
+		t.Fatalf("backend failure returned a Go error: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, hasErr := payload["error"]; hasErr {
+		t.Error("backend-failure payload contains an 'error' key")
+	}
+	if payload["status"] != "no_web_access" {
+		t.Errorf("status = %v, want no_web_access", payload["status"])
 	}
 }
 
@@ -170,6 +183,30 @@ func TestPlaceLookup_StubReturnsNoErrorPayload(t *testing.T) {
 	}
 	if _, hasErr := payload["error"]; hasErr {
 		t.Error("place_lookup stub payload contains an 'error' key")
+	}
+	if payload["status"] != "no_place_data" {
+		t.Errorf("status = %v, want no_place_data", payload["status"])
+	}
+}
+
+func TestPlaceLookup_BackendFailureDegradesGracefully(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	p := &PlaceLookup{apiKey: "k", client: srv.Client()}
+	p.client.Transport = rewriteTransport{to: srv.URL}
+	raw, err := p.Execute(context.Background(), json.RawMessage(`{"query":"eiffel"}`))
+	if err != nil {
+		t.Fatalf("backend failure returned a Go error: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, hasErr := payload["error"]; hasErr {
+		t.Error("place_lookup backend-failure payload contains an 'error' key")
 	}
 	if payload["status"] != "no_place_data" {
 		t.Errorf("status = %v, want no_place_data", payload["status"])
