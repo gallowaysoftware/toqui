@@ -196,6 +196,40 @@ Notes:
 
 ---
 
+## Optional: web search for the AI
+
+The chat AI can look up current information (opening hours, closures, events)
+via a `web_search` tool. With no backend configured it degrades gracefully —
+it tells the user it can't verify live details and answers from its own
+knowledge. Two backends:
+
+**SearXNG (self-hostable, recommended).** The compose file ships an optional
+`searxng` service (off by default):
+
+```bash
+docker compose --profile search up -d      # starts searxng alongside the stack
+```
+
+Then, because SearXNG disables its JSON API by default, enable it once: edit
+the settings file in the `searxng_data` volume to add `json` under
+`search.formats` (`[html, json]`) and restart the `searxng` service. Finally
+set in `.env`:
+
+```
+SEARCH_PROVIDER=searxng
+SEARXNG_URL=http://searxng:8080
+```
+
+Point `SEARXNG_URL` at an existing instance (e.g. one already on your server)
+instead if you have one.
+
+**Google Custom Search (hosted).** Set `GOOGLE_CUSTOM_SEARCH_API_KEY` +
+`GOOGLE_CUSTOM_SEARCH_CX` (and `SEARCH_PROVIDER=google`, or leave it blank to
+auto-select). Optionally set `GOOGLE_PLACES_API_KEY` for the `place_lookup`
+tool (ratings/hours/coordinates); it degrades gracefully when unset.
+
+---
+
 ## Backups
 
 Postgres holds ALL user data — users, trips, bookings, itinerary,

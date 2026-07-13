@@ -96,6 +96,14 @@ services:
       IMAP_MAILBOX: "${IMAP_MAILBOX:-}"
       IMAP_POLL_INTERVAL: "${IMAP_POLL_INTERVAL:-}"
       IMAP_TLS: "${IMAP_TLS:-}"
+      # Optional web search for the chat AI. Uncomment the `searxng` service
+      # below (or point at your own instance) and set SEARXNG_URL, or supply
+      # Google Custom Search keys. Blank = graceful "no web access".
+      SEARCH_PROVIDER: "${SEARCH_PROVIDER:-}"
+      SEARXNG_URL: "${SEARXNG_URL:-}"
+      GOOGLE_CUSTOM_SEARCH_API_KEY: "${GOOGLE_CUSTOM_SEARCH_API_KEY:-}"
+      GOOGLE_CUSTOM_SEARCH_CX: "${GOOGLE_CUSTOM_SEARCH_CX:-}"
+      GOOGLE_PLACES_API_KEY: "${GOOGLE_PLACES_API_KEY:-}"
       # Optional Google OAuth — leave unset for email+password only.
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
@@ -121,5 +129,24 @@ services:
     depends_on:
       - backend
 
+  # Optional self-hosted metasearch for the chat AI's web_search tool.
+  # Off by default — start it with `docker compose --profile search up -d`,
+  # then set SEARCH_PROVIDER=searxng + SEARXNG_URL=http://searxng:8080 in .env.
+  #
+  # IMPORTANT: the backend calls /search?format=json, which SearXNG disables
+  # by default. After the first start, edit the generated settings file in the
+  # searxng_data volume (search.formats: add `json`) and restart this service:
+  #   search:
+  #     formats: [html, json]
+  searxng:
+    image: searxng/searxng:latest
+    profiles: ["search"]
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: "http://searxng:8080/"
+    volumes:
+      - searxng_data:/etc/searxng
+
 volumes:
   postgres_data:
+  searxng_data:

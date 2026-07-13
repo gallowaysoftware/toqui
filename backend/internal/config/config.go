@@ -76,6 +76,12 @@ type Config struct {
 	GoogleCustomSearchCX     string
 	GooglePlacesAPIKey       string
 
+	// Web search backend for the web_search tool: "google" | "searxng" |
+	// "" (auto: SearXNG if SEARXNG_URL is set, else Google if its keys are
+	// set, else a graceful stub).
+	SearchProvider string
+	SearXNGURL     string
+
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
 
@@ -145,6 +151,8 @@ func Load() (*Config, error) {
 		GoogleCustomSearchAPIKey: os.Getenv("GOOGLE_CUSTOM_SEARCH_API_KEY"),
 		GoogleCustomSearchCX:     os.Getenv("GOOGLE_CUSTOM_SEARCH_CX"),
 		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
+		SearchProvider:           strings.ToLower(os.Getenv("SEARCH_PROVIDER")),
+		SearXNGURL:               os.Getenv("SEARXNG_URL"),
 		AIProvider:               getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),

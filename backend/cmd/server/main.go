@@ -206,18 +206,46 @@ func main() {
 	}
 
 	// Tool registry — register global tools available in all chat modes.
-	// web_search is ALWAYS registered: when configured it hits Google Custom
-	// Search; when keys are missing it returns a success-shaped
-	// "no_web_access" response (NOT an error) so the AI never treats it as
-	// a failure, never retries, and falls back to parametric knowledge with
-	// a clear caveat (#194, Run 4 R-16).
+	// web_search and place_lookup are ALWAYS registered: when configured they
+	// hit their backend; when not, they return a success-shaped "unavailable"
+	// response (NOT an error) so the AI never treats it as a failure, never
+	// retries, and falls back to parametric knowledge with a clear caveat
+	// (#194, Run 4 R-16). Both tools are advertised in the persona prompt, so
+	// they must exist in the registry regardless of configuration.
 	toolRegistry := tools.NewRegistry()
-	if cfg.GoogleCustomSearchAPIKey != "" && cfg.GoogleCustomSearchCX != "" {
-		toolRegistry.Register(tools.NewWebSearch(cfg.GoogleCustomSearchAPIKey, cfg.GoogleCustomSearchCX))
-		slog.Info("web_search tool registered (Google Custom Search backend)")
-	} else {
+
+	// web_search backend selection: SEARCH_PROVIDER picks explicitly, else
+	// auto (SearXNG if SEARXNG_URL set, else Google if its keys are set).
+	googleSearchConfigured := cfg.GoogleCustomSearchAPIKey != "" && cfg.GoogleCustomSearchCX != ""
+	switch {
+	case cfg.SearchProvider == "searxng" || (cfg.SearchProvider == "" && cfg.SearXNGURL != ""):
+		if cfg.SearXNGURL != "" {
+			toolRegistry.Register(tools.NewWebSearchSearXNG(cfg.SearXNGURL))
+			slog.Info("web_search tool registered (SearXNG backend)", "url", cfg.SearXNGURL)
+		} else {
+			toolRegistry.Register(tools.NewWebSearchStub())
+			slog.Warn("web_search: SEARCH_PROVIDER=searxng but SEARXNG_URL not set — registered as stub")
+		}
+	case cfg.SearchProvider == "google" || (cfg.SearchProvider == "" && googleSearchConfigured):
+		if googleSearchConfigured {
+			toolRegistry.Register(tools.NewWebSearch(cfg.GoogleCustomSearchAPIKey, cfg.GoogleCustomSearchCX))
+			slog.Info("web_search tool registered (Google Custom Search backend)")
+		} else {
+			toolRegistry.Register(tools.NewWebSearchStub())
+			slog.Warn("web_search: SEARCH_PROVIDER=google but GOOGLE_CUSTOM_SEARCH_API_KEY/CX not set — registered as stub")
+		}
+	default:
 		toolRegistry.Register(tools.NewWebSearchStub())
-		slog.Warn("web_search tool registered as stub — GOOGLE_CUSTOM_SEARCH_API_KEY or GOOGLE_CUSTOM_SEARCH_CX not set; tool will return 'no_web_access' to the AI")
+		slog.Warn("web_search tool registered as stub — no search backend configured (set SEARXNG_URL, or GOOGLE_CUSTOM_SEARCH_API_KEY + CX); tool returns 'no_web_access' to the AI")
+	}
+
+	// place_lookup: Google Places when a key is set, else a graceful stub.
+	if cfg.GooglePlacesAPIKey != "" {
+		toolRegistry.Register(tools.NewPlaceLookup(cfg.GooglePlacesAPIKey))
+		slog.Info("place_lookup tool registered (Google Places backend)")
+	} else {
+		toolRegistry.Register(tools.NewPlaceLookupStub())
+		slog.Warn("place_lookup tool registered as stub — GOOGLE_PLACES_API_KEY not set; tool returns 'no_place_data' to the AI")
 	}
 
 	// Chat store (Postgres-backed)

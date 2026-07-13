@@ -28,6 +28,18 @@ func NewPlaceLookup(apiKey string) *PlaceLookup {
 	}
 }
 
+// NewPlaceLookupStub returns a registered place_lookup tool with no API key —
+// it responds with a graceful "unavailable" message rather than erroring, so
+// the AI (which is told about place_lookup in the system prompt) falls back to
+// its own knowledge. Same rationale as NewWebSearchStub (#194): an unknown
+// tool would make Gemini retry pointlessly. Used when GOOGLE_PLACES_API_KEY
+// isn't set — the common self-host case.
+func NewPlaceLookupStub() *PlaceLookup {
+	return &PlaceLookup{}
+}
+
+func (p *PlaceLookup) configured() bool { return p.apiKey != "" }
+
 func (p *PlaceLookup) Definition() ai.ToolDefinition {
 	return ai.ToolDefinition{
 		Name:        "place_lookup",
@@ -46,6 +58,17 @@ func (p *PlaceLookup) Definition() ai.ToolDefinition {
 }
 
 func (p *PlaceLookup) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	if !p.configured() {
+		// No "error" key — see NewWebSearchStub's rationale. Tells the AI the
+		// call succeeded but place data is unavailable, so it uses its own
+		// knowledge and flags that details can't be verified.
+		return json.Marshal(map[string]any{
+			"status":  "no_place_data",
+			"places":  []any{},
+			"message": "Place lookup is not configured in this environment. Answer from your existing knowledge and tell the user you cannot verify live details (current hours, ratings, exact address) without it.",
+		})
+	}
+
 	var input struct {
 		Query string `json:"query"`
 	}
