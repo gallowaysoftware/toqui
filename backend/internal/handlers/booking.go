@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,6 +19,8 @@ import (
 	"github.com/gallowaysoftware/toqui/backend/internal/auth"
 	"github.com/gallowaysoftware/toqui/backend/internal/booking"
 	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
+	"github.com/gallowaysoftware/toqui/backend/internal/email"
+	"github.com/gallowaysoftware/toqui/backend/internal/emailimport"
 	"github.com/gallowaysoftware/toqui/backend/internal/requestid"
 	"github.com/gallowaysoftware/toqui/backend/internal/trip"
 
@@ -109,8 +112,44 @@ func coverageGapToProto(gap *booking.CoverageGap) *toquiv1.CoverageGap {
 	}
 }
 
+// IngestEmail parses a forwarded/pasted booking confirmation email for the
+// authenticated user: it extracts the plain-text body, resolves which trip
+// the booking belongs to from the subject + the user's trips, runs the
+// same AI parse + dedup + auto-link pipeline as IngestBooking, and returns
+// the resulting booking. The whole raw message (headers included) is
+// accepted — a bare body works too.
 func (h *BookingHandler) IngestEmail(ctx context.Context, req *connect.Request[toquiv1.IngestEmailRequest]) (*connect.Response[toquiv1.IngestEmailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("email ingestion not yet implemented"))
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+
+	parsed := email.Parse(req.Msg.RawEmail)
+	if strings.TrimSpace(parsed.Body) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no readable text found in the email"))
+	}
+
+	tripID := ""
+	if h.queries != nil {
+		tripID = emailimport.ResolveTrip(ctx, h.queries, userID, parsed.Subject)
+	}
+
+	result, err := h.bookingSvc.IngestEmail(ctx, userID, tripID, "", parsed.Body)
+	if err != nil {
+		if errors.Is(err, trip.ErrNotOwnerOrEditor) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("editor access required to add bookings to this trip"))
+		}
+		return nil, aiAwareError(ctx, "email ingest", err)
+	}
+
+	b := result.Booking
+	if h.queries != nil && b.TripID.Valid && !result.WasUpdated {
+		h.autoLinkBookingToItinerary(ctx, userID, uuid.UUID(b.TripID.Bytes), b)
+	}
+
+	return connect.NewResponse(&toquiv1.IngestEmailResponse{
+		Bookings: []*toquiv1.Booking{bookingToProto(b)},
+	}), nil
 }
 
 func (h *BookingHandler) UpdateBooking(ctx context.Context, req *connect.Request[toquiv1.UpdateBookingRequest]) (*connect.Response[toquiv1.UpdateBookingResponse], error) {

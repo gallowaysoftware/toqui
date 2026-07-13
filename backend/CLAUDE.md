@@ -89,7 +89,8 @@ There is no Firestore. Chat persistence moved to Postgres (`internal/chatstore`,
 | `internal/middleware/`  | Cookie-to-header auth bridge for web browser sessions (`cookieauth.go`)                   |
 | `internal/requestid/`   | Request ID middleware — generates unique IDs, sets `X-Request-ID`                         |
 | `internal/telemetry/`   | Optional OpenTelemetry init + HTTP metrics middleware (no-op without OTLP endpoint)       |
-| `internal/email/`       | Resend API client — outbound transactional email only (welcome email, collaboration invites). Skipped when `RESEND_API_KEY` unset. |
+| `internal/email/`       | Resend API client — outbound transactional email (welcome, collaboration invites; skipped when `RESEND_API_KEY` unset) — plus `Parse()`, an inbound RFC 822 / MIME → plain-text extractor (multipart, quoted-printable/base64, HTML-strip) used by `IngestEmail`. |
+| `internal/emailimport/` | Resolves which trip an imported booking email attaches to: subject title-match → most-recent planning trip → most-recent any trip → unattached. |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
 | `tests/agentic/`        | Agentic test personas, booking artifacts, baselines, report schema                        |
 | `tests/bruno/`          | Bruno HTTP client collections for manual API testing                                      |
@@ -103,7 +104,7 @@ Deleted in the SaaS-to-OSS transition (do not reference): `internal/payment`, `i
 - **AuthService** (8 RPCs) — `EmailRegister` / `EmailLogin` (always available), optional `GoogleLogin` (gated on `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), `GetAuthProviders` discovery, `RefreshToken`, `GetCurrentUser`, `DeleteAccount`, `ExportData`. Facebook and Apple OAuth were removed.
 - **TripService** (10 RPCs) — Trip CRUD, `CloneTrip`, itinerary get/update, `ReorderItineraryItem`, `ListTripTemplates`
 - **ChatService** (3 RPCs) — `SendMessage` (server-streaming), `GetChatHistory`, `ListChatSessions`
-- **BookingService** (9 RPCs) — `IngestBooking`, `IngestEmail`, CRUD, `GetTripCostSummary`, `LinkBookingToTrip`, `ExtractBookingField`
+- **BookingService** (9 RPCs) — `IngestBooking` (paste), `IngestEmail` (a full/forwarded email — MIME-parsed to plain text via `internal/email`, trip resolved from the subject via `internal/emailimport`), CRUD, `GetTripCostSummary`, `LinkBookingToTrip`, `ExtractBookingField`
 - **PersonaService** (4 RPCs) — List/get/resolve/set default persona
 - **LocationService** (2 RPCs) — `UpdateLocation`, `GetNearby`
 
