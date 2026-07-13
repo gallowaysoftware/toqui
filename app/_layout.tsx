@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform, View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

@@ -111,10 +111,9 @@ export default function PrivacyScreen() {
 
       <Text style={styles.subsectionTitle}>Booking Import</Text>
       <Text style={styles.text}>
-        If you import a booking by pasting a confirmation email (or via an
-        email import mailbox, when your server operator has configured one),
-        the content is processed only to extract booking details and is not
-        retained beyond that.
+        If you import a booking by pasting a confirmation email, the content
+        is processed only to extract booking details and is not retained
+        beyond that.
       </Text>
 
       <Text style={styles.subsectionTitle}>Usage and Device Information</Text>
@@ -141,11 +140,10 @@ export default function PrivacyScreen() {
       </Bullet>
       <Bullet>Manage your account</Bullet>
       <Bullet>
-        Send transactional emails (account verification, booking confirmations,
-        trip-related notifications)
+        Send transactional emails (welcome and collaboration invites)
       </Bullet>
       <Bullet>
-        Parse forwarded booking emails to populate your trip details
+        Parse pasted booking confirmations to populate your trip details
       </Bullet>
       <Bullet>Detect and prevent fraud or abuse</Bullet>
       <Bullet>Comply with legal obligations</Bullet>
@@ -154,11 +152,12 @@ export default function PrivacyScreen() {
         3. AI Processing and Third-Party AI Services
       </Text>
       <Text style={styles.text}>
-        Toqui uses third-party AI models from Anthropic (Claude) and Google
-        (Gemini) to power the travel planning features. When you interact with
-        the AI companion, your messages and relevant trip context are sent to
-        these providers for processing. These providers process data according
-        to their own privacy policies and data processing agreements.
+        Toqui sends your chat messages and relevant trip context to the AI
+        provider configured by your server operator (e.g. Google Gemini,
+        Anthropic Claude, or a self-hosted model) to power the travel planning
+        features. Third-party providers process data according to their own
+        privacy policies and data processing agreements; a self-hosted model
+        keeps this data on infrastructure the operator controls.
       </Text>
       <Text style={styles.text}>
         We also use Google Places API and Google Custom Search API to provide
@@ -197,14 +196,14 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>5. Data Storage and Security</Text>
       <Text style={styles.text}>
-        Your data is stored on Google Cloud Platform infrastructure located in
-        the United States. Account data and trip information are stored in
-        PostgreSQL databases. Chat history is stored in Google Firestore.
+        All of your data — account, trips, bookings, and chat history — is
+        stored in a PostgreSQL database on the infrastructure chosen by the
+        operator of your Toqui server.
       </Text>
       <Text style={styles.text}>
         Authentication tokens are stored securely on your device: in the
         system keychain (iOS) or keystore (Android) on native platforms, and
-        in session storage on web. We use encrypted connections (TLS) for all
+        in browser local storage on web. We use encrypted connections (TLS) for all
         data in transit. We do not use cookies for authentication.
       </Text>
       <Text style={styles.text}>
@@ -215,10 +214,11 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>6. Data Retention</Text>
       <Text style={styles.text}>
-        We retain your data for as long as your account is active. Completed
-        trips are archived after 90 days of completion but remain accessible in
-        your account. If you delete your account, we will delete your personal
-        data in accordance with our obligations, subject to any legal retention
+        We retain your data for as long as your account is active, with one
+        exception: chat history for a completed trip is permanently deleted 90
+        days after the trip completes. Completed trips themselves are archived
+        but remain accessible in your account. If you delete your account, all
+        of your personal data is deleted, subject to any legal retention
         requirements.
       </Text>
 
@@ -250,9 +250,8 @@ export default function PrivacyScreen() {
 
       <Text style={styles.sectionTitle}>8. Children's Privacy</Text>
       <Text style={styles.text}>
-        Toqui is not intended for users under the age of 18. We enforce an age
-        gate that requires users to verify they are 18 or older before accessing
-        the Service. We do not knowingly collect personal information from
+        Toqui is not intended for users under the age of 18. We do not
+        knowingly collect personal information from
         anyone under 18. If we learn that we have collected personal data from a
         user under 18, we will delete that information promptly. If you believe
         a child under 18 has provided us with personal information, please
@@ -273,11 +272,10 @@ export default function PrivacyScreen() {
         10. International Data Transfers
       </Text>
       <Text style={styles.text}>
-        Your data is processed and stored in the United States. If you are
-        located outside the United States, your information will be transferred
-        to and processed in the United States. By using the Service, you consent
-        to this transfer. We take steps to ensure your data is treated securely
-        and in accordance with this Privacy Policy regardless of where it is
+        Your data is processed and stored wherever the operator of your Toqui
+        server hosts it, and by the configured AI provider per their own
+        policies. We take steps to ensure your data is treated securely and in
+        accordance with this Privacy Policy regardless of where it is
         processed.
       </Text>
 

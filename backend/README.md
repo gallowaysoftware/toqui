@@ -6,8 +6,7 @@ Go backend for Toqui, an AI-powered travel companion. Built with ConnectRPC, Pos
 > self-hostable open source project under [AGPL-3.0-or-later](./LICENSE).
 > SaaS surfaces (Stripe, subscription, referral, analytics, age gate, etc.)
 > are actively being stripped; AI orchestration is moving to a BYO-API-key
-> model. The repo is still private while that work lands. See
-> [toqui.travel](https://toqui.travel) for context.
+> model. See [toqui.travel](https://toqui.travel) for context.
 >
 > Copyright (C) 2026 Galloway Software Solutions Inc.
 

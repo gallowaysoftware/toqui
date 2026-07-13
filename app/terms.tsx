@@ -80,14 +80,15 @@ export default function TermsScreen() {
       <Text style={styles.text}>
         You must be at least 18 years old to use Toqui. By using the Service,
         you represent and warrant that you are at least 18 years of age. We
-        enforce age verification through an in-app age gate, and we reserve the
-        right to terminate accounts that do not meet this requirement.
+        reserve the right to terminate accounts that do not meet this
+        requirement.
       </Text>
 
       <Text style={styles.sectionTitle}>2. Account Registration</Text>
       <Text style={styles.text}>
-        You must create an account using Google OAuth to use Toqui. You are
-        responsible for maintaining the security of your account credentials and
+        You must create an account (email + password, or Google OAuth where
+        your server has it enabled) to use Toqui. You are responsible for
+        maintaining the security of your account credentials and
         for all activity that occurs under your account. You agree to notify us
         immediately at support@toqui.travel if you suspect unauthorized access
         to your account.
@@ -104,9 +105,10 @@ export default function TermsScreen() {
         4. AI-Generated Content Disclaimer
       </Text>
       <Text style={styles.text}>
-        Toqui uses artificial intelligence (including models from Anthropic and
-        Google) to generate travel suggestions, itineraries, recommendations,
-        and other content. You acknowledge and agree that:
+        Toqui uses artificial intelligence (the AI provider configured by
+        your server operator — e.g. Google Gemini, Anthropic Claude, or a
+        self-hosted model) to generate travel suggestions, itineraries,
+        recommendations, and other content. You acknowledge and agree that:
       </Text>
       <Bullet>
         AI-generated content is provided for informational and planning purposes
@@ -199,9 +201,9 @@ export default function TermsScreen() {
 
       <Text style={styles.sectionTitle}>9. Third-Party Services</Text>
       <Text style={styles.text}>
-        The Service integrates with and may link to third-party services
-        including Google (OAuth, Places API, Gemini), Anthropic (Claude AI),
-        and various travel booking platforms. We are not
+        The Service integrates with and may link to third-party services,
+        including the configured AI provider, optional Google services
+        (OAuth, Places API), and various travel booking platforms. We are not
         responsible for the content, accuracy, or practices of these third-party
         services. Your use of third-party services is subject to their
         respective terms and privacy policies.
@@ -252,11 +254,12 @@ export default function TermsScreen() {
 
       <Text style={styles.sectionTitle}>13. Governing Law and Disputes</Text>
       <Text style={styles.text}>
-        These Terms are governed by the laws of the State of Washington, United
-        States, without regard to conflict of law principles. Any disputes
-        arising from these Terms or the Service shall be resolved in the state
-        or federal courts located in Washington. You consent to the personal
-        jurisdiction of such courts.
+        These Terms are governed by the laws of the Province of Prince Edward
+        Island and the federal laws of Canada applicable therein, without
+        regard to conflict of law principles. Any disputes arising from these
+        Terms or the Service shall be resolved in the courts of Prince Edward
+        Island, Canada. You consent to the personal jurisdiction of such
+        courts.
       </Text>
 
       <Text style={styles.sectionTitle}>14. Changes to These Terms</Text>
