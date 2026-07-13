@@ -69,7 +69,7 @@ WHERE m.session_id = $1 AND s.user_id = $2 AND s.trip_id = $3
 ORDER BY m.seq ASC
 LIMIT $4;
 
--- name: UpdateChatSessionSummary :exec
+-- name: UpdateChatSessionSummary :execrows
 UPDATE chat_sessions
 SET summary = $4, summary_message_count = $5
 WHERE id = $1 AND user_id = $2 AND trip_id = $3;

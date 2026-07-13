@@ -140,6 +140,11 @@ docker compose up -d --build
 `docker compose up` rebuilds images and rolls services. Migrations run
 automatically via the `migrate` one-shot service.
 
+> **Upgrading from a pre-Postgres-chat version:** chat history used to
+> live in Firestore (the bundled emulator kept it in memory only). There
+> is no automated migration — chat now starts fresh in Postgres. Trips,
+> bookings, and itineraries are unaffected.
+
 ---
 
 ## Backups

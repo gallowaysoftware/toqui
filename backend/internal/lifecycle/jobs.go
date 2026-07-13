@@ -93,6 +93,11 @@ func (j *Jobs) Start(ctx context.Context) {
 }
 
 func (j *Jobs) cleanupExpiredTokens(ctx context.Context) {
+	// Defensive nil-guard — see archiveTrips for the rationale (the test
+	// harness constructs &Jobs{} with nil deps).
+	if j.queries == nil {
+		return
+	}
 	if err := j.queries.DeleteExpiredRefreshTokens(ctx); err != nil {
 		slog.Error("lifecycle: failed to cleanup expired refresh tokens", "error", err)
 		return
@@ -104,6 +109,10 @@ func (j *Jobs) cleanupExpiredTokens(ctx context.Context) {
 // (messages cascade). This is what enforces the chat retention window
 // now that chat lives in Postgres instead of Firestore.
 func (j *Jobs) purgeExpiredChat(ctx context.Context) {
+	// Defensive nil-guard — see archiveTrips for the rationale.
+	if j.queries == nil {
+		return
+	}
 	purged, err := j.queries.PurgeExpiredChatSessions(ctx)
 	if err != nil {
 		slog.Error("lifecycle: failed to purge expired chat sessions", "error", err)

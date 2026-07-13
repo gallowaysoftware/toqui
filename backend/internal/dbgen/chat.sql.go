@@ -371,7 +371,7 @@ func (q *Queries) SetChatTTLForTrip(ctx context.Context, arg SetChatTTLForTripPa
 	return err
 }
 
-const updateChatSessionSummary = `-- name: UpdateChatSessionSummary :exec
+const updateChatSessionSummary = `-- name: UpdateChatSessionSummary :execrows
 UPDATE chat_sessions
 SET summary = $4, summary_message_count = $5
 WHERE id = $1 AND user_id = $2 AND trip_id = $3
@@ -385,15 +385,18 @@ type UpdateChatSessionSummaryParams struct {
 	SummaryMessageCount int32     `json:"summary_message_count"`
 }
 
-func (q *Queries) UpdateChatSessionSummary(ctx context.Context, arg UpdateChatSessionSummaryParams) error {
-	_, err := q.db.Exec(ctx, updateChatSessionSummary,
+func (q *Queries) UpdateChatSessionSummary(ctx context.Context, arg UpdateChatSessionSummaryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateChatSessionSummary,
 		arg.ID,
 		arg.UserID,
 		arg.TripID,
 		arg.Summary,
 		arg.SummaryMessageCount,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertChatSessionForMessage = `-- name: UpsertChatSessionForMessage :one

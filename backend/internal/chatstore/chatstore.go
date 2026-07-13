@@ -339,14 +339,20 @@ func (s *Store) UpdateSummary(ctx context.Context, userID, tripID, sessionID, su
 	if err != nil {
 		return fmt.Errorf("update summary: %w", err)
 	}
-	if err := s.queries.UpdateChatSessionSummary(ctx, dbgen.UpdateChatSessionSummaryParams{
+	rows, err := s.queries.UpdateChatSessionSummary(ctx, dbgen.UpdateChatSessionSummaryParams{
 		ID:                  sid,
 		UserID:              uid,
 		TripID:              tripID,
 		Summary:             summary,
 		SummaryMessageCount: int32(messageCount),
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("update summary: %w", err)
+	}
+	if rows == 0 {
+		// Session deleted mid-request (or wrong scope) — surface it so the
+		// summarizer doesn't log a false "saved".
+		return fmt.Errorf("update summary: %w", ErrNotFound)
 	}
 	return nil
 }
