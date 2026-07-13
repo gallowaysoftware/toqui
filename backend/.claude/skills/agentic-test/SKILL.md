@@ -98,7 +98,7 @@ buf curl --schema . --protocol connect --http2-prior-knowledge \
 - `"tripCreated"` → extract trip `id` from the nested trip object
 - `"tripSelected"` → existing trip was matched
 - `"textDelta"` → AI response text chunks
-- `"toolCall"` → AI calling a tool (create_trip, create_itinerary_items, suggest_expert, recommend_booking)
+- `"toolCall"` → AI calling a tool (create_trip, create_itinerary_items, suggest_expert, web_search)
 - `"toolResult"` → Tool execution result
 - `"personaSwitch"` → Expert persona handoff
 - `"itineraryUpdate"` → Itinerary items created

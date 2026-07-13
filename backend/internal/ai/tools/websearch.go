@@ -61,7 +61,7 @@ func (w *WebSearch) Execute(ctx context.Context, args json.RawMessage) (json.Raw
 		// IMPORTANT: this response MUST NOT contain an "error" field.
 		// Gemini interprets any tool result with an "error" key as a genuine
 		// failure and either retries the call or apologises to the user,
-		// which cascades into follow-up tools (e.g. recommend_booking) never
+		// which cascades into follow-up tools (e.g. create_itinerary_items) never
 		// being invoked (Run 4 R-16). A plain status/message payload tells
 		// the AI "the call succeeded, there's just no web access" and lets
 		// it gracefully fall back to parametric knowledge.

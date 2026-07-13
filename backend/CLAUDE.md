@@ -81,7 +81,6 @@ graph TB
 | `internal/booking/`     | Booking ingestion + AI parsing (email, paste, manual)                                     |
 | `internal/location/`    | Location service — ephemeral location cache (30 min TTL), nearby places (Google Places)   |
 | `internal/theme/`       | Trip theme tagging (AI-driven classification)                                             |
-| `internal/affiliate/`   | Affiliate link builder + scored fit ranker — generates partner URLs (Skyscanner, Booking.com, GetYourGuide, etc.) and ranks the candidate pool by tier-aware fit signals (#386). |
 | `internal/config/`      | Three-layer config: env file → os.Getenv → GCP Secret Manager                             |
 | `internal/db/`          | PostgreSQL connection pool + transaction helpers                                          |
 | `internal/validate/`    | ConnectRPC interceptor for buf.validate constraints                                       |
@@ -278,8 +277,6 @@ Required: `ANTHROPIC_API_KEY` (or `VERTEX_AI_PROJECT_ID` for Gemini fallback). `
 | `ALLOWED_EMAILS` | (none) | Comma-separated allowlist bypassing capacity cap entirely |
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowed origins |
 | `EMAIL_WEBHOOK_SECRET` | (none) | Resend webhook signing secret in `whsec_<base64>` form. Used to verify Svix-style signatures on POST /webhooks/email/inbound. |
-| `DISCOVERCARS_AFFILIATE_ID` | (none) | DiscoverCars affiliate partner ID |
-| `SAFETYWING_REFERENCE_ID` | (none) | SafetyWing affiliate reference ID |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | (none) | OpenTelemetry collector endpoint |
 | `OTEL_EXPORTER_OTLP_HEADERS` | (none) | OpenTelemetry exporter auth headers |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | (none) | OpenTelemetry protocol (grpc/http) |
@@ -352,7 +349,6 @@ The AI in chat mode has access to tools injected by the handler layer. Tools are
 | `delete_itinerary_items` | planning, companion | AI removes specific items from the itinerary by ID or fuzzy title match. Enables "cut Venice from my plan" workflows.                           | —                      |
 | `update_trip`            | planning, companion | AI updates the current trip's title, description, or destination countries when the user requests changes.                                       | `TripUpdated`          |
 | `suggest_expert`         | all modes | Toqui hands off to a composed expert persona. **Free-tier gate**: limited to 5 expert handoffs per trip (DB-persisted), then returns an upgrade prompt directing the user to Trip Pro. | `PersonaSwitch`        |
-| `recommend_booking`      | all modes | Generate affiliate-linked booking recommendations (flights, hotels, activities). AI sees result via tool loop and includes FTC disclosure in response. | — (inline in response) |
 | `nearby_places`          | companion | Find nearby places using user's cached location (location-aware)                                                                                       | —                      |
 | `reorder_itinerary_items`| planning, companion | AI moves itinerary items to different days/positions (e.g. "swap day 2 and day 3"). Owner-or-editor gated.                                       | `ItineraryUpdate`      |
 | `get_weather`            | all modes | Current weather + 7-day forecast for a destination (lat/lng or city). Backed by Open-Meteo (no key required).                                          | —                      |
@@ -403,10 +399,10 @@ The chat service implements an agentic tool loop (`processEventsWithToolLoop` in
 
 1. Tool is executed immediately and `tool_call`/`tool_result` events are emitted to the frontend
 2. The AI's stop reason is checked — if `"tool_use"`, the tool results are sent back to the AI
-3. The AI continues generating with access to the tool results (e.g., including FTC disclosure text from `recommend_booking`)
+3. The AI continues generating with access to the tool results
 4. This loops up to `maxToolLoopIterations` (5) until the AI produces a final response (`"end_turn"`)
 
-This is critical for tools like `recommend_booking` where the AI must see the tool result to include disclosure text in its response. Side-effect tools (like `create_trip`, `create_itinerary_items`) also benefit — the AI can confirm what was created.
+This lets side-effect tools (like `create_trip`, `create_itinerary_items`) get confirmed in the AI's response — the AI sees what was created before writing its reply.
 
 Both providers parse streaming events to extract stop reasons and serialize tool call/result content blocks for continuation. The Claude provider uses `message_delta` events; the Gemini provider uses `finishReason` in `candidates[]`.
 
@@ -557,11 +553,11 @@ go run ./cmd/testctl cleanup-user --user-id "uuid"
 | R-02 | Family w/ kids | Costa Rica 10d | Context injection, safety, accessibility, companion mode |
 | R-03 | Returning user | Multi-trip | select_trip matching, trip switching, multi-trip management |
 | R-05 | Craft beer + hiker | CZ + Iceland | Extended profiles, niche themes, 2 trips |
-| R-06 | Booking-heavy | Barcelona 5d | IngestBooking (3 types), ExtractBookingField, FTC disclosure |
+| R-06 | Booking-heavy | Barcelona 5d | IngestBooking (3 types), ExtractBookingField, no fabricated booking links |
 | R-07 | Update regression | Structural | COALESCE partial updates (no AI, deterministic) |
-| R-11 | Food blogger | Mexico City | Expert handoff (food), tour booking, recommend_booking |
+| R-11 | Food blogger | Mexico City | Expert handoff (food), tour booking |
 | R-16 | History professor | Greece + Turkey | Academic depth, 3 expert handoffs, multi-country |
-| R-20 | Luxury traveler | Maldives + Dubai | Luxury calibration, recommend_booking |
+| R-20 | Luxury traveler | Maldives + Dubai | Luxury calibration |
 
 **Edge case & gap coverage (N-*)** — Target untested features and boundaries:
 
@@ -906,28 +902,6 @@ The `internal/payment/` package handles Stripe payment integration for Trip Pro 
 - `GET /api/checkout/status` lets the frontend poll unlock status
 - Unlocked trips have access to unlimited messages, all personas, and export features
 
-### Affiliate Link Builder + Scored Fit Ranker
-
-The `internal/affiliate/` package owns booking-recommendation URL construction and selection. The `recommend_booking` chat tool is its only caller (`internal/handlers/tool_recommend_booking.go`). Three layers, all stateless:
-
-1. **`sources.go` — per-category candidate pools.** `FlightSources`, `HotelSources`, `VacationRentalSources`, `ActivitySources`, `CarRentalSources`, `InsuranceSources`. Each takes `includePro bool` controlling whether the Pro-tier-only sources (ITA Matrix, Momondo, Hotellook, Atlas Obscura, Time Out, Squaremouth, InsureMyTrip, Turo, Auto Europe, Airbnb) are appended. Free-tier callers pass `false` and get the original pool unchanged.
-
-2. **`ranking.go` — `ScoreSources(ctx ScoreContext, sources []Source) []ScoredSource`.** Linear ranker (no learning) that returns sources sorted highest-fit-first with a per-source `Rationale` string. Score components:
-   - **Affiliate-status (dominant):** Pro non-affiliate +1.5, free affiliate +0.5
-   - **Dated-aggregator boost:** +0.3 when `HasSpecificDates && isSearchAggregator(partner)` (Skyscanner, Google, ITA Matrix, Booking.com, etc.)
-   - **City-curated boost:** +0.4 when `HasSpecificCity && isCityCurated(partner)` (Atlas Obscura, Time Out, Wikivoyage)
-   - **Scaffolded penalty:** -0.2 when `isScaffolded(partner)` (today only Airbnb, until Impact.com partnership lands)
-   - **Pro-pool addition tiebreak:** +0.05 when `isProAddition(partner)` so the marketed Pro additions outrank free-pool Google when scores would otherwise tie
-
-   Stable sort: equal scores preserve input order, so the affiliate-first ordering inside `sources.go` acts as the deterministic tiebreaker on free tier.
-
-3. **`SelectForPreference` + `DisclosureFor`.** `SelectForPreference` is a thin wrapper around `ScoreSources` that returns the top pick — preserved for legacy call sites. `DisclosureFor` keys disclosure text purely off `Source.IsAffiliate` (NEVER user tier, per #190 LB-4 regression test). The `recommend_booking` tool calls `ScoreSources` directly so it can surface the rationale to the AI in the tool result.
-
-**Tool result rationale.** The `Recommendation.Rationale` field (added #386 PR 3) carries the comma-separated reason fragments from the ranker — e.g. `"non-affiliate (Pro), dated query fits aggregator, Pro-pool addition"`. The `recommend_booking` tool description tells the AI to paraphrase the rationale ("I picked ITA Matrix because it's commission-free and your dates fit a deep-search engine best") rather than quote it raw.
-
-**Tier policy summary** (the marketed Pro value):
-- Free: affiliate-first ordering preserved → top pick is the affiliate (Skyscanner / Booking.com / GetYourGuide / DiscoverCars / SafetyWing) with FTC disclosure.
-- Pro: non-affiliate preference dominates → top pick is the marketed Pro addition (ITA Matrix for flights, Hotellook for hotels, Atlas Obscura/Time Out for activities, Squaremouth/InsureMyTrip for insurance) with Independent disclosure. Falls back to the affiliate candidate only if no non-affiliate exists, and in that case carries FTC disclosure (the same label free-tier users see — never softened, per #190 LB-4).
 
 ### Referral System
 Users get a referral code via `GET /api/referral`. Codes can be redeemed at `POST /api/referral/redeem`. Redemption is audit-logged. Referral stats (count of referred users) are returned with the code.
