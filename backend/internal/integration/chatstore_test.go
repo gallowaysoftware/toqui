@@ -112,7 +112,7 @@ func TestChatStoreSessionAndMessages(t *testing.T) {
 	}
 
 	// Delete all for trip
-	if err := store.DeleteAllForTrip(ctx, userID, tripID); err != nil {
+	if err := store.DeleteAllForTrip(ctx, tripID); err != nil {
 		t.Fatalf("delete all: %v", err)
 	}
 
@@ -393,10 +393,10 @@ func TestChatStoreTTLAndPurge(t *testing.T) {
 	}
 
 	// Stamp one trip as already expired, the other 90 days out.
-	if err := store.SetTTL(ctx, userID, expiredTripID, time.Now().Add(-time.Hour)); err != nil {
+	if err := store.SetTTL(ctx, expiredTripID, time.Now().Add(-time.Hour)); err != nil {
 		t.Fatalf("set expired TTL: %v", err)
 	}
-	if err := store.SetTTL(ctx, userID, keptTripID, time.Now().AddDate(0, 0, 90)); err != nil {
+	if err := store.SetTTL(ctx, keptTripID, time.Now().AddDate(0, 0, 90)); err != nil {
 		t.Fatalf("set future TTL: %v", err)
 	}
 
@@ -478,11 +478,12 @@ func TestChatStoreSummary(t *testing.T) {
 	}
 }
 
-// TestChatStoreLobbyPurgeAndTTLIfMissing covers the two retention paths
-// added with CHAT_RETENTION_DAYS: stale selection-mode ("_lobby") sessions
-// are purged after the retention window, and the archival safety-net stamp
-// never overwrites an existing expire_at.
-func TestChatStoreLobbyPurgeAndTTLIfMissing(t *testing.T) {
+// TestChatStoreRetentionSafetyNets covers the retention paths added with
+// CHAT_RETENTION_DAYS: stale selection-mode ("_lobby") sessions are purged
+// after the retention window, and the hourly stamp pass gives unstamped
+// sessions of ended trips an expire_at without touching existing stamps or
+// active trips.
+func TestChatStoreRetentionSafetyNets(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
@@ -521,15 +522,41 @@ func TestChatStoreLobbyPurgeAndTTLIfMissing(t *testing.T) {
 		t.Errorf("fresh lobby session was purged: %v", err)
 	}
 
-	// SetTTLIfMissing: stamps unstamped sessions, never extends existing TTLs.
-	tripID := uuid.NewString()
-	stamped, err := store.CreateSession(ctx, userID, tripID, "planning")
+	// StampMissingChatTTLForEndedTrips: sessions of a completed trip get a
+	// stamp if (and only if) they don't already have one; sessions of an
+	// active trip are untouched.
+	uid := uuid.MustParse(userID)
+	completedTrip, err := queries.CreateTrip(ctx, dbgen.CreateTripParams{
+		UserID: uid,
+		Title:  "Completed trip",
+	})
+	if err != nil {
+		t.Fatalf("create completed trip: %v", err)
+	}
+	if _, err := env.Pool.Exec(ctx,
+		"UPDATE trips SET status = 'completed' WHERE id = $1", completedTrip.ID,
+	); err != nil {
+		t.Fatalf("complete trip: %v", err)
+	}
+	activeTrip, err := queries.CreateTrip(ctx, dbgen.CreateTripParams{
+		UserID: uid,
+		Title:  "Active trip",
+	})
+	if err != nil {
+		t.Fatalf("create active trip: %v", err)
+	}
+
+	stamped, err := store.CreateSession(ctx, userID, completedTrip.ID.String(), "planning")
 	if err != nil {
 		t.Fatalf("create stamped session: %v", err)
 	}
-	unstamped, err := store.CreateSession(ctx, userID, tripID, "planning")
+	unstamped, err := store.CreateSession(ctx, userID, completedTrip.ID.String(), "planning")
 	if err != nil {
 		t.Fatalf("create unstamped session: %v", err)
+	}
+	activeSession, err := store.CreateSession(ctx, userID, activeTrip.ID.String(), "planning")
+	if err != nil {
+		t.Fatalf("create active-trip session: %v", err)
 	}
 	original := time.Now().AddDate(0, 0, 10)
 	if _, err := env.Pool.Exec(ctx,
@@ -538,23 +565,34 @@ func TestChatStoreLobbyPurgeAndTTLIfMissing(t *testing.T) {
 		t.Fatalf("pre-stamp session: %v", err)
 	}
 
-	later := time.Now().AddDate(0, 0, 90)
-	if err := store.SetTTLIfMissing(ctx, userID, tripID, later); err != nil {
-		t.Fatalf("SetTTLIfMissing: %v", err)
+	stampedCount, err := queries.StampMissingChatTTLForEndedTrips(ctx, 30)
+	if err != nil {
+		t.Fatalf("StampMissingChatTTLForEndedTrips: %v", err)
+	}
+	if stampedCount != 1 {
+		t.Errorf("stamped %d sessions, want 1 (only the unstamped completed-trip session)", stampedCount)
 	}
 
-	got, err := store.GetSession(ctx, userID, tripID, stamped.ID)
+	got, err := store.GetSession(ctx, userID, completedTrip.ID.String(), stamped.ID)
 	if err != nil {
 		t.Fatalf("get stamped session: %v", err)
 	}
 	if got.ExpireAt == nil || got.ExpireAt.Sub(original).Abs() > time.Second {
-		t.Errorf("SetTTLIfMissing overwrote an existing expire_at: got %v, want ~%v", got.ExpireAt, original)
+		t.Errorf("stamp overwrote an existing expire_at: got %v, want ~%v", got.ExpireAt, original)
 	}
-	got, err = store.GetSession(ctx, userID, tripID, unstamped.ID)
+	got, err = store.GetSession(ctx, userID, completedTrip.ID.String(), unstamped.ID)
 	if err != nil {
 		t.Fatalf("get unstamped session: %v", err)
 	}
-	if got.ExpireAt == nil || got.ExpireAt.Sub(later).Abs() > time.Second {
-		t.Errorf("SetTTLIfMissing did not stamp the unstamped session: got %v, want ~%v", got.ExpireAt, later)
+	want := time.Now().AddDate(0, 0, 30)
+	if got.ExpireAt == nil || got.ExpireAt.Sub(want).Abs() > time.Minute {
+		t.Errorf("unstamped completed-trip session not stamped ~30d out: got %v, want ~%v", got.ExpireAt, want)
+	}
+	got, err = store.GetSession(ctx, userID, activeTrip.ID.String(), activeSession.ID)
+	if err != nil {
+		t.Fatalf("get active-trip session: %v", err)
+	}
+	if got.ExpireAt != nil {
+		t.Errorf("active-trip session must not be stamped, got %v", got.ExpireAt)
 	}
 }

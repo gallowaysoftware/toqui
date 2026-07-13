@@ -79,22 +79,31 @@ UPDATE chat_sessions
 SET trip_id = sqlc.arg(to_trip_id)
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND trip_id = sqlc.arg(from_trip_id);
 
+-- SetChatTTLForTrip stamps the retention deadline on ALL of a trip's
+-- sessions, across every participant — collaborators' chat is trip data
+-- and follows the trip's retention, not just the owner's sessions.
 -- name: SetChatTTLForTrip :exec
 UPDATE chat_sessions
-SET expire_at = $3
-WHERE user_id = $1 AND trip_id = $2;
+SET expire_at = $2
+WHERE trip_id = $1;
 
--- SetChatTTLForTripIfMissing stamps only sessions that have no expire_at
--- yet — used by the archival job as a safety net for sessions that missed
--- the stamp at trip completion, without extending TTLs already set.
--- name: SetChatTTLForTripIfMissing :exec
-UPDATE chat_sessions
-SET expire_at = $3
-WHERE user_id = $1 AND trip_id = $2 AND expire_at IS NULL;
+-- StampMissingChatTTLForEndedTrips is the hourly safety net: any session
+-- belonging to a completed/archived trip that has no expire_at yet gets
+-- one. Catches sessions created after the completion stamp, collaborator
+-- sessions, and stamps that failed at completion time.
+-- name: StampMissingChatTTLForEndedTrips :execrows
+UPDATE chat_sessions cs
+SET expire_at = NOW() + make_interval(days => sqlc.arg(retention_days)::int)
+FROM trips t
+WHERE t.id::text = cs.trip_id
+  AND t.status IN ('completed', 'archived')
+  AND cs.expire_at IS NULL;
 
+-- DeleteChatForTrip removes ALL chat for a trip, across every participant.
+-- Used when the trip itself is deleted.
 -- name: DeleteChatForTrip :exec
 DELETE FROM chat_sessions
-WHERE user_id = $1 AND trip_id = $2;
+WHERE trip_id = $1;
 
 -- PurgeExpiredChatSessions enforces chat retention: sessions past their
 -- expire_at are deleted (messages cascade). Run periodically by the

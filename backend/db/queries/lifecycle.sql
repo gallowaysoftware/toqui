@@ -1,10 +1,13 @@
+-- CompleteTrip stamps the completion + archival timestamps. The
+-- completed_at IS NULL guard makes it idempotent — re-completing a trip
+-- doesn't reset its archival clock.
 -- name: CompleteTrip :exec
 UPDATE trips
 SET status = 'completed',
     completed_at = NOW(),
     archive_after = NOW() + INTERVAL '90 days',
     updated_at = NOW()
-WHERE id = $1 AND user_id = $2;
+WHERE id = $1 AND user_id = $2 AND completed_at IS NULL;
 
 -- name: ArchiveTrip :exec
 UPDATE trips
@@ -19,7 +22,7 @@ WHERE status = 'completed'
   AND archive_after < NOW()
   AND archived_at IS NULL;
 
--- name: DeleteTripByUser :exec
+-- name: DeleteTripByUser :execrows
 DELETE FROM trips WHERE id = $1 AND user_id = $2;
 
 -- name: DeleteUserByID :exec

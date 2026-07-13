@@ -120,6 +120,14 @@ func (j *Jobs) purgeExpiredChat(ctx context.Context) {
 	if retention <= 0 {
 		return
 	}
+	// Safety net first: sessions of completed/archived trips that never
+	// got a retention stamp (created after completion, collaborator
+	// sessions, failed stamps) get one now, then expired sessions purge.
+	stamped, err := j.queries.StampMissingChatTTLForEndedTrips(ctx, int32(retention))
+	if err != nil {
+		slog.Error("lifecycle: failed to stamp chat TTLs for ended trips", "error", err)
+		return
+	}
 	purged, err := j.queries.PurgeExpiredChatSessions(ctx)
 	if err != nil {
 		slog.Error("lifecycle: failed to purge expired chat sessions", "error", err)
@@ -130,8 +138,8 @@ func (j *Jobs) purgeExpiredChat(ctx context.Context) {
 		slog.Error("lifecycle: failed to purge stale lobby chat sessions", "error", err)
 		return
 	}
-	if purged+stale > 0 {
-		slog.Info("lifecycle: purged chat sessions", "expired", purged, "stale_lobby", stale)
+	if stamped+purged+stale > 0 {
+		slog.Info("lifecycle: chat retention pass", "stamped", stamped, "expired_purged", purged, "stale_lobby_purged", stale)
 	}
 }
 

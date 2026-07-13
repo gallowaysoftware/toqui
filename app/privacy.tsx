@@ -215,11 +215,13 @@ export default function PrivacyScreen() {
       <Text style={styles.sectionTitle}>6. Data Retention</Text>
       <Text style={styles.text}>
         We retain your data for as long as your account is active, with one
-        exception: chat history for a completed trip is permanently deleted 90
-        days after the trip completes. Completed trips themselves are archived
-        but remain accessible in your account. If you delete your account, all
-        of your personal data is deleted, subject to any legal retention
-        requirements.
+        exception: chat history for a completed trip is permanently deleted
+        after your server's configured retention period — 90 days by default;
+        your server operator may configure a longer period or retain chat
+        until the trip or account is deleted. Completed trips themselves are
+        archived but remain accessible in your account. If you delete your
+        account, all of your personal data is deleted, subject to any legal
+        retention requirements.
       </Text>
 
       <Text style={styles.sectionTitle}>7. Your Rights</Text>
