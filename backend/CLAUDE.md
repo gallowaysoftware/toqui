@@ -90,7 +90,7 @@ There is no Firestore. Chat persistence moved to Postgres (`internal/chatstore`,
 | `internal/requestid/`   | Request ID middleware — generates unique IDs, sets `X-Request-ID`                         |
 | `internal/telemetry/`   | Optional OpenTelemetry init + HTTP metrics middleware (no-op without OTLP endpoint)       |
 | `internal/email/`       | Resend API client — outbound transactional email (welcome, collaboration invites; skipped when `RESEND_API_KEY` unset) — plus `Parse()`, an inbound RFC 822 / MIME → plain-text extractor (multipart, quoted-printable/base64, HTML-strip) used by `IngestEmail`. |
-| `internal/emailimport/` | Resolves which trip an imported booking email attaches to: subject title-match → most-recent planning trip → most-recent any trip → unattached. |
+| `internal/emailimport/` | (1) `ResolveTrip` — which trip an imported booking email attaches to (subject title-match → most-recent planning → most-recent any → unattached); (2) `Poller` — opt-in in-process IMAP background job (mirrors `internal/lifecycle` Jobs) that watches a forwarding mailbox, matches each message to its sender's account, and ingests via the `IngestEmail` handler. Enabled only when `IMAP_HOST`+`IMAP_USERNAME`+`IMAP_PASSWORD` are set. |
 | `internal/integration/` | Integration test suite (build tag: `integration`)                                         |
 | `tests/agentic/`        | Agentic test personas, booking artifacts, baselines, report schema                        |
 | `tests/bruno/`          | Bruno HTTP client collections for manual API testing                                      |
@@ -253,6 +253,8 @@ Config loads in three layers via `internal/config/`:
 | `CORS_ALLOWED_ORIGINS` | (falls back to FRONTEND_URL) | Comma-separated CORS allowlist |
 | `ALLOWED_EMAIL_DOMAINS` | (none = allow all) | Comma-separated signup domain allowlist |
 | `CHAT_RETENTION_DAYS` | `90` | Chat retention window after trip completion (also purges idle `_lobby` chats). `0` = keep forever |
+| `IMAP_HOST` / `IMAP_PORT` / `IMAP_USERNAME` / `IMAP_PASSWORD` | (none) / `993` / (none) / (none) | Email booking-import poller. All of host+username+password required to enable it. |
+| `IMAP_MAILBOX` / `IMAP_POLL_INTERVAL` / `IMAP_TLS` | `INBOX` / `60s` / `true` | Poller mailbox, cadence, and TLS toggle (`false` only for a local plaintext test server). |
 | `LLM_CACHE_ENABLED` | `true` | LLM response cache for popular destination intros |
 | `LLM_CACHE_TTL` | `1h` | Response cache TTL |
 | `RESEND_API_KEY` | (none) | Outbound transactional email (welcome, collab invites). Unset = emails skipped |

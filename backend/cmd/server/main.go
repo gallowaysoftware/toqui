@@ -32,6 +32,7 @@ import (
 	"github.com/gallowaysoftware/toqui/backend/internal/db"
 	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 	"github.com/gallowaysoftware/toqui/backend/internal/email"
+	"github.com/gallowaysoftware/toqui/backend/internal/emailimport"
 	"github.com/gallowaysoftware/toqui/backend/internal/exportstorage"
 	"github.com/gallowaysoftware/toqui/backend/internal/handlers"
 	"github.com/gallowaysoftware/toqui/backend/internal/lifecycle"
@@ -553,6 +554,25 @@ func main() {
 	defer jobsCancel()
 	lifecycleJobs := lifecycle.NewJobs(lifecycleSvc, pool)
 	go lifecycleJobs.Start(jobsCtx)
+
+	// IMAP booking-import poller — opt-in, enabled only when IMAP creds are
+	// configured. Watches a mailbox users forward booking confirmations to
+	// and ingests each against its sender's account (same pipeline as the
+	// IngestEmail RPC).
+	if cfg.IMAPHost != "" && cfg.IMAPUsername != "" && cfg.IMAPPassword != "" {
+		poller := emailimport.NewPoller(emailimport.IMAPConfig{
+			Host:         cfg.IMAPHost,
+			Port:         cfg.IMAPPort,
+			Username:     cfg.IMAPUsername,
+			Password:     cfg.IMAPPassword,
+			Mailbox:      cfg.IMAPMailbox,
+			PollInterval: cfg.IMAPPollInterval,
+			TLS:          cfg.IMAPTLS,
+		}, queries, bookingHandler)
+		go poller.Start(jobsCtx)
+	} else {
+		slog.Info("imap booking-import poller disabled (IMAP_HOST/USERNAME/PASSWORD not all set)")
+	}
 
 	// Graceful shutdown
 	go func() {

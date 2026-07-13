@@ -111,9 +111,10 @@ export default function PrivacyScreen() {
 
       <Text style={styles.subsectionTitle}>Booking Import</Text>
       <Text style={styles.text}>
-        If you import a booking by pasting a confirmation email, the content
-        is processed only to extract booking details and is not retained
-        beyond that.
+        If you import a booking by pasting a confirmation email — or, when
+        your server operator has enabled it, by forwarding one to the
+        server's import mailbox — the content is processed only to extract
+        booking details and is not retained beyond that.
       </Text>
 
       <Text style={styles.subsectionTitle}>Usage and Device Information</Text>

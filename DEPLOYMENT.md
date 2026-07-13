@@ -147,6 +147,55 @@ automatically via the `migrate` one-shot service.
 
 ---
 
+## Optional: email booking import
+
+Let users forward booking confirmations to a mailbox and have Toqui import
+them automatically. Point the backend at a **dedicated** IMAP mailbox — the
+poller processes every message in it, matches each to the Toqui account
+whose email is the sender (`From:`), and ingests it as a booking (same
+AI parse + itinerary auto-link as the in-app paste flow).
+
+Set these on the backend (see [`.env.example`](.env.example)); the poller
+is enabled only when host, username, and password are all present:
+
+```
+IMAP_HOST=imap.example.com
+IMAP_PORT=993
+IMAP_USERNAME=bookings@example.com
+IMAP_PASSWORD=...
+IMAP_MAILBOX=INBOX          # default INBOX
+IMAP_POLL_INTERVAL=60s      # default 60s
+IMAP_TLS=true               # default true
+```
+
+Notes:
+- **Matching is by the `From` address**, which — when a user forwards a
+  confirmation — is the user's own address (mail clients set `From` to the
+  forwarder; the original airline/hotel email is quoted in the body, which
+  is what gets parsed). So the user simply forwards from the email account
+  they signed up with. A message whose `From` has no Toqui account is
+  skipped (and marked read so it isn't retried).
+- **Trust boundary:** the `From` header is not authenticated (no SPF/DKIM
+  check), so anyone able to deliver mail to this mailbox with a forged
+  `From` could get content ingested into that user's account. For a
+  single-operator self-host where you control the mailbox this is fine;
+  on a shared instance, treat the mailbox address as a semi-secret and/or
+  restrict who can deliver to it at the mail-server layer.
+- Messages are marked `\Seen` after processing, so only unread messages are
+  ever picked up. Use a mailbox reserved for this.
+- **Delivery is at-least-once.** A message is marked read only after it's
+  processed; if that mark fails (rare IMAP hiccup) the message is
+  reprocessed. Duplicate confirmations attached to a trip are deduped by
+  confirmation code, so re-processing a normal booking email is a no-op.
+- A message that keeps failing (e.g. your AI provider is down or the email
+  isn't parseable) is retried a few times, then marked read and skipped, so
+  a stuck message can't re-hit the AI on every cycle.
+- A common setup is a plus-address or alias (e.g. `bookings+you@example.com`)
+  that users forward to, filtered into a dedicated folder — set
+  `IMAP_MAILBOX` to that folder.
+
+---
+
 ## Backups
 
 Postgres holds ALL user data — users, trips, bookings, itinerary,
