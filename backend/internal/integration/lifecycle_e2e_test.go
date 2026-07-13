@@ -6,30 +6,22 @@
 // Scope notes for future readers:
 //
 // These tests cover the *currently wired* deletion + export fan-out:
-//   - Postgres CASCADE across all user-keyed tables.
-//   - Firestore chat purge under users/{uid}.
-//   - The under_age_blocks anti-evasion preservation invariant.
+//   - Postgres CASCADE across all user-keyed tables (chat included, now
+//     that chat lives in Postgres).
 //   - The export round-trip and multi-tenant isolation.
 //
 // Running:
 //
 //	make docker-up
 //	make migrate-up
-//	DATABASE_URL=postgres://... \
-//	  FIRESTORE_EMULATOR_HOST=localhost:8080 \
-//	  go test -tags=integration ./internal/integration/...
+//	DATABASE_URL=postgres://... go test -tags=integration ./internal/integration/...
 //
-// TestEnv.CleanDB truncates every table touched here (see testhelper.go);
-// it explicitly truncates `under_age_blocks` because lifecycle.DeleteUser
-// must NOT cascade into that table — preserving rows across the test
-// fixture would defeat the anti-evasion invariant we assert below.
+// TestEnv.CleanDB truncates every table touched here (see testhelper.go).
 package integration
 
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,9 +39,9 @@ import (
 )
 
 // e2eFixture stages a "fully populated user" — a row in every
-// user-keyed Postgres table plus a Firestore chat session — so deletion
-// fan-out has something to actually delete from each store. Returns the
-// user, the trip, and the chat session for the caller to assert against.
+// user-keyed Postgres table including a chat session — so deletion
+// fan-out has something to actually delete. Returns the user, the trip,
+// and the chat session for the caller to assert against.
 type e2eFixture struct {
 	user    dbgen.User
 	trip    dbgen.Trip
@@ -66,7 +58,7 @@ type e2eFixture struct {
 func stageUserFixture(t *testing.T, ctx context.Context, env *TestEnv, label string) e2eFixture {
 	t.Helper()
 	queries := dbgen.New(env.Pool)
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 
 	user, err := queries.UpsertUserByGoogleID(ctx, dbgen.UpsertUserByGoogleIDParams{
 		GoogleID: pgtype.Text{String: "g_e2e_" + label, Valid: true},
@@ -127,29 +119,6 @@ func stageUserFixture(t *testing.T, ctx context.Context, env *TestEnv, label str
 		t.Fatalf("[%s] create feedback: %v", label, err)
 	}
 
-	// referrals.code is VARCHAR(16) UNIQUE — keep the prefix short and
-	// truncate the label so a long fixture label (e.g. "exportthendelete")
-	// doesn't silently overflow.
-	refCode := "R-" + strings.ToUpper(label)
-	if len(refCode) > 16 {
-		refCode = refCode[:16]
-	}
-	if _, err := queries.CreateReferral(ctx, dbgen.CreateReferralParams{
-		ReferrerID: user.ID,
-		Code:       refCode,
-	}); err != nil {
-		t.Fatalf("[%s] create referral: %v", label, err)
-	}
-
-	if _, err := queries.RecordConsent(ctx, dbgen.RecordConsentParams{
-		UserID:      user.ID,
-		ConsentType: "terms",
-		IpAddress:   pgtype.Text{String: "127.0.0.1", Valid: true},
-		UserAgent:   pgtype.Text{String: "test/1.0", Valid: true},
-	}); err != nil {
-		t.Fatalf("[%s] record consent: %v", label, err)
-	}
-
 	if _, err := queries.UpsertPreference(ctx, dbgen.UpsertPreferenceParams{
 		UserID: user.ID,
 		Key:    "language",
@@ -167,14 +136,7 @@ func stageUserFixture(t *testing.T, ctx context.Context, env *TestEnv, label str
 		t.Fatalf("[%s] create refresh token: %v", label, err)
 	}
 
-	if _, err := queries.IncrementDailyUsage(ctx, dbgen.IncrementDailyUsageParams{
-		UserID:   user.ID,
-		MaxCount: 100,
-	}); err != nil {
-		t.Fatalf("[%s] increment daily usage: %v", label, err)
-	}
-
-	// Firestore chat fixture under users/{uid}/trips/{tripId}/...
+	// Chat fixture scoped to (user, trip).
 	session, err := store.CreateSession(ctx, user.ID.String(), trip.ID.String(), "planning")
 	if err != nil {
 		t.Fatalf("[%s] create chat session: %v", label, err)
@@ -214,17 +176,8 @@ func countRows(t *testing.T, ctx context.Context, env *TestEnv, table, userColum
 	return count
 }
 
-// hashEmailE2E mirrors handlers.sha256OfEmail. Inlined to keep this file
-// from importing internal/handlers (and dragging in connect, audit, etc.).
-// See under_age_blocks_test.go for the same inlining rationale.
-func hashEmailE2E(email string) string {
-	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
-	return hex.EncodeToString(sum[:])
-}
-
 // TestE2E_DeleteUser_FullPostgresFanout verifies that DeleteUser leaves
-// no rows behind in any user-keyed Postgres table, and clears the
-// Firestore subtree under users/{uid}/trips/{tripId}.
+// no rows behind in any user-keyed Postgres table, chat included.
 //
 // This is the GDPR Article 17 ground-truth check — every table that
 // inherits the user's lifetime should be empty after deletion.
@@ -232,7 +185,7 @@ func TestE2E_DeleteUser_FullPostgresFanout(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	fix := stageUserFixture(t, ctx, env, "fanout")
@@ -250,11 +203,9 @@ func TestE2E_DeleteUser_FullPostgresFanout(t *testing.T) {
 		{"trips", "user_id"},
 		{"bookings", "user_id"},
 		{"feedback", "user_id"},
-		{"referrals", "referrer_id"},
-		{"user_consents", "user_id"},
 		{"user_preferences", "user_id"},
 		{"refresh_tokens", "user_id"},
-		{"daily_usage", "user_id"},
+		{"chat_sessions", "user_id"},
 	}
 	for _, tbl := range tables {
 		if got := countRows(t, ctx, env, tbl.name, tbl.column, fix.user.ID); got != 0 {
@@ -283,66 +234,14 @@ func TestE2E_DeleteUser_FullPostgresFanout(t *testing.T) {
 		t.Errorf("expected 0 trip_themes for deleted trip, got %d", themeCount)
 	}
 
-	// Firestore subtree: ListSessions on the deleted user's trip path
-	// must return empty. (DeleteAllForTrip drops sessions and messages
-	// under users/{uid}/trips/{tripId}.)
+	// Chat: ListSessions on the deleted user's trip scope must return
+	// empty, and the session's messages must have cascaded away.
 	sessions, err := store.ListSessions(ctx, fix.user.ID.String(), fix.trip.ID.String(), 100)
 	if err != nil {
 		t.Fatalf("list sessions after delete: %v", err)
 	}
 	if len(sessions) != 0 {
 		t.Errorf("expected 0 chat sessions for deleted user, got %d", len(sessions))
-	}
-}
-
-// TestE2E_DeleteUser_PreservesUnderAgeBlocks pins the most subtle
-// correctness invariant in the file: the under_age_blocks table has NO
-// foreign key to users (deliberate — it's anti-evasion data keyed on the
-// SHA-256 of an email so refused users can't re-sign-up). DeleteUser
-// must NOT touch it.
-//
-// If this test fails, that's a P1 GDPR/compliance bug — the refusal
-// audit trail would silently disappear when a user submitted a deletion
-// request, defeating the point of recording it in the first place.
-func TestE2E_DeleteUser_PreservesUnderAgeBlocks(t *testing.T) {
-	env := NewTestEnv(t)
-	env.CleanDB(t)
-	ctx := context.Background()
-	queries := dbgen.New(env.Pool)
-	store := chatstore.New(env.Firestore)
-	lifecycleSvc := lifecycle.NewService(env.Pool, store)
-
-	const blockedEmail = "preserved@e2e.toqui-test.local"
-	emailHash := hashEmailE2E(blockedEmail)
-
-	// Stage: under_age_blocks row exists (simulating a refused sign-up
-	// from earlier — the email_sha256 is a stable identifier even after
-	// the underlying user row is gone).
-	if _, err := queries.RecordUnderAgeBlock(ctx, dbgen.RecordUnderAgeBlockParams{
-		EmailSha256:   emailHash,
-		OauthProvider: "google",
-	}); err != nil {
-		t.Fatalf("seed under_age_blocks: %v", err)
-	}
-
-	// Stage: a totally different user (different email) goes through the
-	// normal create + delete flow. The block row above MUST be untouched.
-	fix := stageUserFixture(t, ctx, env, "preserve")
-
-	if err := lifecycleSvc.DeleteUser(ctx, fix.user.ID); err != nil {
-		t.Fatalf("DeleteUser: %v", err)
-	}
-
-	// THE invariant.
-	blocked, err := queries.IsEmailUnderAgeBlocked(ctx, emailHash)
-	if err != nil {
-		t.Fatalf("IsEmailUnderAgeBlocked: %v", err)
-	}
-	if !blocked {
-		t.Fatal("under_age_blocks row was wiped by DeleteUser — this is a P1 compliance bug. " +
-			"The table has no FK to users by design (it's anti-evasion data keyed by SHA-256 " +
-			"of email, retained beyond the user's lifetime). If the deletion fan-out grew a " +
-			"manual DELETE FROM under_age_blocks step, revert it.")
 	}
 }
 
@@ -355,7 +254,7 @@ func TestE2E_DeleteUser_Idempotent(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	fix := stageUserFixture(t, ctx, env, "idempotent")
@@ -382,7 +281,7 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	fix := stageUserFixture(t, ctx, env, "roundtrip")
@@ -404,17 +303,11 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	if len(export.Bookings) != 1 {
 		t.Errorf("expected 1 booking in export, got %d", len(export.Bookings))
 	}
-	if len(export.Referrals) != 1 {
-		t.Errorf("expected 1 referral in export, got %d", len(export.Referrals))
-	}
 	// Feedback the user submitted IS their own personal data and per
 	// GDPR Art. 20 must appear in their export. Wired in #438 — the
 	// fixture writes one feedback row, the export must include it.
 	if len(export.Feedback) != 1 {
 		t.Errorf("expected 1 feedback row in export.Feedback (Art. 20 includes user-submitted feedback), got %d", len(export.Feedback))
-	}
-	if len(export.Consents) != 1 {
-		t.Errorf("expected 1 consent in export, got %d", len(export.Consents))
 	}
 	if len(export.Preferences) != 1 {
 		t.Errorf("expected 1 preference in export, got %d", len(export.Preferences))
@@ -428,8 +321,7 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 		t.Errorf("expected 1 theme on trip[0], got %d", got)
 	}
 
-	// Chat data: the staged Firestore session must appear keyed by
-	// trip ID.
+	// Chat data: the staged session must appear keyed by trip ID.
 	chatForTrip, ok := export.ChatData[fix.trip.ID.String()]
 	if !ok {
 		t.Errorf("expected chat data for trip %s in export.ChatData, got keys %v",
@@ -439,9 +331,9 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	}
 
 	// JSON round-trip: the export must marshal cleanly and parse back to
-	// a generic map. The chatstore types now carry json: tags alongside
-	// their firestore: tags (#438), so the chat slice serialises in the
-	// same snake_case shape as the rest of the export.
+	// a generic map. The chatstore types carry json: tags (#438), so the
+	// chat slice serialises in the same snake_case shape as the rest of
+	// the export.
 	raw, err := json.Marshal(export)
 	if err != nil {
 		t.Fatalf("json.Marshal export: %v", err)
@@ -453,7 +345,7 @@ func TestE2E_ExportUserData_RoundTrip(t *testing.T) {
 	if err := json.Unmarshal(raw, &parsed); err != nil {
 		t.Fatalf("json.Unmarshal export: %v", err)
 	}
-	for _, key := range []string{"exported_at", "user", "trips", "bookings", "referrals", "feedback", "consents", "preferences", "chat_data"} {
+	for _, key := range []string{"exported_at", "user", "trips", "bookings", "feedback", "preferences", "chat_data"} {
 		if _, ok := parsed[key]; !ok {
 			t.Errorf("parsed export missing top-level key %q (have: %v)", key, keysOf(parsed))
 		}
@@ -480,7 +372,7 @@ func TestE2E_ExportUserData_MultiTenantIsolation(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	a := stageUserFixture(t, ctx, env, "tenantA")
@@ -500,7 +392,7 @@ func TestE2E_ExportUserData_MultiTenantIsolation(t *testing.T) {
 	// User B identifiers must not appear in user A's export, in any
 	// form. We check every primary identifier we can reach for from B's
 	// fixture: user id, trip id, booking id, itinerary item id, chat
-	// session id, email, and the referral code (which embeds the label).
+	// session id, and email.
 	type leak struct {
 		field, value string
 	}
@@ -511,7 +403,6 @@ func TestE2E_ExportUserData_MultiTenantIsolation(t *testing.T) {
 		{"B item_id", b.item.ID.String()},
 		{"B chat session_id", b.session.ID},
 		{"B email", b.user.Email},
-		{"B referral code", "R-TENANTB"},
 	}
 	for _, l := range leaks {
 		if strings.Contains(rawStr, l.value) {
@@ -537,7 +428,7 @@ func TestE2E_ExportThenDelete(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CleanDB(t)
 	ctx := context.Background()
-	store := chatstore.New(env.Firestore)
+	store := chatstore.New(env.Pool)
 	lifecycleSvc := lifecycle.NewService(env.Pool, store)
 
 	fix := stageUserFixture(t, ctx, env, "expdel")

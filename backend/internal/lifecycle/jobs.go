@@ -13,6 +13,8 @@ import (
 
 // Jobs runs periodic background maintenance tasks:
 //   - DeleteExpiredRefreshTokens every hour
+//   - PurgeExpiredChatSessions every hour (chat retention — replaces the
+//     Firestore TTL policy the original chatstore relied on)
 //   - ArchiveCompletedTrips every 24 hours (with random offset)
 //   - RetryFailedDeletions every hour
 type Jobs struct {
@@ -51,10 +53,11 @@ func (j *Jobs) Start(ctx context.Context) {
 	deletionRetryTicker := time.NewTicker(1 * time.Hour)
 	defer deletionRetryTicker.Stop()
 
-	// Run token cleanup immediately on startup (expired tokens may have
-	// accumulated while the server was down).
+	// Run token cleanup and chat purge immediately on startup (expired
+	// rows may have accumulated while the server was down).
 	if j.queries != nil {
 		j.cleanupExpiredTokens(ctx)
+		j.purgeExpiredChat(ctx)
 	}
 
 	// Delay first archival run by the random offset.
@@ -69,6 +72,7 @@ func (j *Jobs) Start(ctx context.Context) {
 
 		case <-tokenTicker.C:
 			j.cleanupExpiredTokens(ctx)
+			j.purgeExpiredChat(ctx)
 
 		case <-archiveReady:
 			// First archival run after random offset, then use the ticker.
@@ -94,6 +98,20 @@ func (j *Jobs) cleanupExpiredTokens(ctx context.Context) {
 		return
 	}
 	slog.Info("lifecycle: expired refresh tokens cleaned up")
+}
+
+// purgeExpiredChat deletes chat sessions whose expire_at has passed
+// (messages cascade). This is what enforces the chat retention window
+// now that chat lives in Postgres instead of Firestore.
+func (j *Jobs) purgeExpiredChat(ctx context.Context) {
+	purged, err := j.queries.PurgeExpiredChatSessions(ctx)
+	if err != nil {
+		slog.Error("lifecycle: failed to purge expired chat sessions", "error", err)
+		return
+	}
+	if purged > 0 {
+		slog.Info("lifecycle: purged expired chat sessions", "count", purged)
+	}
 }
 
 func (j *Jobs) archiveTrips(ctx context.Context) {

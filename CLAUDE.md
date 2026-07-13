@@ -179,8 +179,8 @@ The app connects to the backend API via `EXPO_PUBLIC_API_URL` (default: `http://
 To run the backend locally (from the repo root):
 ```bash
 cd backend
-docker compose up -d postgres firestore   # Start Postgres + Firestore emulator
-make migrate-up                            # Run migrations
+docker compose up -d postgres   # Start Postgres
+make migrate-up                 # Run migrations
 CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8081" make run
 ```
 

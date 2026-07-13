@@ -60,14 +60,11 @@ migrate-create:
 	touch $$(date +%Y%m%d%H%M%S)_$$name.down.sql && \
 	echo "Created migration files for $$name"
 
-# Integration tests
+# Integration tests — needs the dev Postgres from `make docker-up`.
 integration-test:
-	docker compose -f .devcontainer/docker-compose.yml up -d --wait
-	DATABASE_URL=postgres://toqui:toqui@localhost:5433/toqui?sslmode=disable \
-	FIRESTORE_EMULATOR_HOST=localhost:8081 \
-	FIRESTORE_PROJECT_ID=toqui-test \
+	docker compose up -d --wait postgres
+	DATABASE_URL=postgres://toqui:toqui@localhost:5432/toqui?sslmode=disable \
 	go test -tags=integration -count=1 -v ./internal/integration/...
-	docker compose -f .devcontainer/docker-compose.yml down
 
 # Agentic tests — Claude agents test the running backend via buf curl.
 # Requires: docker-up, migrate-up, server running on :8090.

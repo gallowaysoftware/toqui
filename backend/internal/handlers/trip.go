@@ -274,7 +274,7 @@ func (h *TripHandler) DeleteTrip(ctx context.Context, req *connect.Request[toqui
 		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("trip not found"))
 	}
 
-	// Use lifecycle service to purge Firestore chat data + Postgres
+	// Use lifecycle service to purge chat data + trip rows
 	if err := h.lifecycleSvc.DeleteTrip(ctx, userID, tripID); err != nil {
 		return nil, internalError(ctx, "trip operation", err)
 	}

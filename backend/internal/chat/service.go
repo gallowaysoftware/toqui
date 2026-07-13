@@ -102,7 +102,7 @@ type SendMessageParams struct {
 
 	// LocationContext is the user's current lat/lng for companion mode.
 	// PRIVACY: This is ephemeral — injected into the AI request as context
-	// but NEVER stored in chat messages, Firestore, or any persistent storage.
+	// but NEVER stored in chat messages or any persistent storage.
 	LocationLat float64
 	LocationLng float64
 
@@ -132,14 +132,14 @@ type Attachment struct {
 func (s *Service) SendMessage(ctx context.Context, params SendMessageParams) (<-chan StreamEvent, string, error) {
 	sessionID := params.SessionID
 
-	// Use "_lobby" as the Firestore trip path for selection mode (no trip)
+	// Use "_lobby" as the chat-store trip scope for selection mode (no trip)
 	storeTripID := params.TripID
 	if storeTripID == "" {
 		storeTripID = "_lobby"
 	}
 
 	// Check daily token budget BEFORE creating any state. If the budget is
-	// exhausted we must bail out before touching Firestore — otherwise we'd
+	// exhausted we must bail out before touching the chat store — otherwise we’d
 	// leave an orphaned session and an orphaned user message behind (#N-01,
 	// #N-02 from Run 4).
 	if s.budget != nil {
@@ -1441,7 +1441,7 @@ func (s *Service) GetHistory(ctx context.Context, userID uuid.UUID, tripID, sess
 	}
 
 	// If no session ID specified, fetch the latest session for the trip.
-	// This prevents passing an empty string to Firestore Doc("") which has
+	// This also avoids querying the store with an empty session ID, which has
 	// undefined behavior.
 	if sessionID == "" {
 		sessions, err := s.chatStore.ListSessions(ctx, userID.String(), tripID, 1)

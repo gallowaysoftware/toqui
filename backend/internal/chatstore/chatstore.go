@@ -1,222 +1,190 @@
+// Package chatstore persists chat sessions and messages in Postgres.
+// It replaced the original Firestore implementation when the project
+// became self-hostable — the public API (method signatures, struct
+// JSON shapes) is unchanged so callers and the GDPR export format are
+// unaffected.
 package chatstore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"github.com/google/uuid"
-	"google.golang.org/api/iterator"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/gallowaysoftware/toqui/backend/internal/dbgen"
 )
 
-// ChatSession carries both `firestore:` and `json:` struct tags so the
-// type round-trips losslessly through both Firestore (operational) and
-// JSON (GDPR Art. 20 export). Without explicit json tags, Go's default
-// PascalCase field-name serialisation would leak through ExportedSession
-// and break the export's snake_case wire-shape contract.
+// ErrNotFound is returned when a session or message doesn't exist under
+// the given (user, trip) scope. A session that exists but belongs to a
+// different user or trip is deliberately indistinguishable from one that
+// doesn't exist.
+var ErrNotFound = errors.New("chatstore: not found")
+
+// ChatSession's json tags define the GDPR Article 20 export wire shape
+// (snake_case) — do not change them.
 type ChatSession struct {
-	ID            string     `firestore:"id" json:"id"`
-	TripID        string     `firestore:"tripId" json:"trip_id"`
-	Mode          string     `firestore:"mode" json:"mode"` // planning, companion
-	CreatedAt     time.Time  `firestore:"createdAt" json:"created_at"`
-	LastMessageAt time.Time  `firestore:"lastMessageAt" json:"last_message_at"`
-	MessageCount  int        `firestore:"messageCount" json:"message_count"`
-	ExpireAt      *time.Time `firestore:"expireAt,omitempty" json:"expire_at,omitempty"`
+	ID            string     `json:"id"`
+	TripID        string     `json:"trip_id"`
+	Mode          string     `json:"mode"` // planning, companion
+	CreatedAt     time.Time  `json:"created_at"`
+	LastMessageAt time.Time  `json:"last_message_at"`
+	MessageCount  int        `json:"message_count"`
+	ExpireAt      *time.Time `json:"expire_at,omitempty"`
 
 	// Summary holds an AI-generated summary of older messages that fall
 	// outside the 50-message recent window. Injected into the system prompt
 	// so the AI retains context from earlier in the conversation.
-	Summary string `firestore:"summary,omitempty" json:"summary,omitempty"`
+	Summary string `json:"summary,omitempty"`
 
 	// SummaryMessageCount records the session's MessageCount at the time the
 	// summary was last generated. A new summary is triggered when
 	// MessageCount - SummaryMessageCount > SummaryRefreshThreshold.
-	SummaryMessageCount int `firestore:"summaryMessageCount,omitempty" json:"summary_message_count,omitempty"`
+	SummaryMessageCount int `json:"summary_message_count,omitempty"`
 }
 
 type ChatMessage struct {
-	ID        string            `firestore:"id" json:"id"`
-	SessionID string            `firestore:"sessionId" json:"session_id"`
-	Role      string            `firestore:"role" json:"role"` // user, assistant, system
-	Content   string            `firestore:"content" json:"content"`
-	Metadata  map[string]string `firestore:"metadata" json:"metadata"`
-	CreatedAt time.Time         `firestore:"createdAt" json:"created_at"`
-	ExpireAt  *time.Time        `firestore:"expireAt,omitempty" json:"expire_at,omitempty"`
+	ID        string            `json:"id"`
+	SessionID string            `json:"session_id"`
+	Role      string            `json:"role"` // user, assistant, system
+	Content   string            `json:"content"`
+	Metadata  map[string]string `json:"metadata"`
+	CreatedAt time.Time         `json:"created_at"`
 
 	// ToolCalls stores tool calls made by the assistant in this message.
 	// Each entry has ID, Name, and Arguments (JSON string).
-	ToolCalls []StoredToolCall `firestore:"toolCalls,omitempty" json:"tool_calls,omitempty"`
+	ToolCalls []StoredToolCall `json:"tool_calls,omitempty"`
 
 	// ToolResults stores tool execution results returned to the AI.
 	// Each entry has ToolCallID, Name, and Content (JSON string).
-	ToolResults []StoredToolResult `firestore:"toolResults,omitempty" json:"tool_results,omitempty"`
+	ToolResults []StoredToolResult `json:"tool_results,omitempty"`
 }
 
-// StoredToolCall is a Firestore-friendly representation of an AI tool call.
+// StoredToolCall is the persisted representation of an AI tool call.
 type StoredToolCall struct {
-	ID        string `firestore:"id" json:"id"`
-	Name      string `firestore:"name" json:"name"`
-	Arguments string `firestore:"arguments" json:"arguments"` // JSON string
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"` // JSON string
 	// ThoughtSignature is a Gemini 3 opaque token for reasoning continuity
 	// across tool-call turns. Empty for Gemini 2.5 and Claude.
-	ThoughtSignature string `firestore:"thoughtSignature,omitempty" json:"thought_signature,omitempty"`
+	ThoughtSignature string `json:"thought_signature,omitempty"`
 }
 
-// StoredToolResult is a Firestore-friendly representation of a tool execution result.
+// StoredToolResult is the persisted representation of a tool execution result.
 type StoredToolResult struct {
-	ToolCallID string `firestore:"toolCallId" json:"tool_call_id"`
-	Name       string `firestore:"name" json:"name"`
-	Content    string `firestore:"content" json:"content"` // JSON string
+	ToolCallID string `json:"tool_call_id"`
+	Name       string `json:"name"`
+	Content    string `json:"content"` // JSON string
 }
 
 type Store struct {
-	client *firestore.Client
+	pool    *pgxpool.Pool
+	queries *dbgen.Queries
 }
 
-func New(client *firestore.Client) *Store {
-	return &Store{client: client}
-}
-
-func (s *Store) sessionsCol(userID string, tripID string) *firestore.CollectionRef {
-	return s.client.Collection("users").Doc(userID).Collection("trips").Doc(tripID).Collection("chatSessions")
-}
-
-func (s *Store) messagesCol(userID, tripID, sessionID string) *firestore.CollectionRef {
-	return s.sessionsCol(userID, tripID).Doc(sessionID).Collection("messages")
+func New(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool, queries: dbgen.New(pool)}
 }
 
 func (s *Store) CreateSession(ctx context.Context, userID, tripID, mode string) (*ChatSession, error) {
-	session := &ChatSession{
-		ID:            uuid.New().String(),
-		TripID:        tripID,
-		Mode:          mode,
-		CreatedAt:     time.Now(),
-		LastMessageAt: time.Now(),
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("create session: parse user id: %w", err)
 	}
-
-	_, err := s.sessionsCol(userID, tripID).Doc(session.ID).Set(ctx, session)
+	row, err := s.queries.CreateChatSession(ctx, dbgen.CreateChatSessionParams{
+		ID:        uuid.New(),
+		UserID:    uid,
+		TripID:    tripID,
+		Mode:      mode,
+		CreatedAt: time.Now(),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
-	return session, nil
-}
-
-// getSessionRaw loads a session document without applying any read-time
-// fallbacks for CreatedAt. Used internally by MoveSessionToTrip, which
-// re-writes the struct to a new Firestore path — if it used the public
-// GetSession, the backfill would persist the synthesised CreatedAt to
-// the destination doc. ID is still populated from doc.Ref.ID (the
-// authoritative source) because MoveSessionToTrip's destination write
-// depends on session.ID being correct.
-func (s *Store) getSessionRaw(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
-	doc, err := s.sessionsCol(userID, tripID).Doc(sessionID).Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get session: %w", err)
-	}
-	var session ChatSession
-	if err := doc.DataTo(&session); err != nil {
-		return nil, fmt.Errorf("decode session: %w", err)
-	}
-	// Firestore's doc path components are the authoritative identifiers;
-	// the "id" / "tripId" data fields are denormalisations. Defend against
-	// any write path that ever forgot to include them in the doc body
-	// (#335 for ID; extended to TripID as defence-in-depth — the session
-	// doc path is users/{uid}/trips/{tripId}/chatSessions/{sessionId}).
-	session.ID = doc.Ref.ID
-	session.TripID = parentDocID(doc.Ref)
-	return &session, nil
-}
-
-// parentDocID returns the ID of the document that owns the given doc's
-// parent collection — i.e. walks up two levels from ref. For a
-// chatSessions doc (users/{uid}/trips/{tripId}/chatSessions/{sessionId})
-// that's the trip ID; for a messages doc
-// (.../chatSessions/{sessionId}/messages/{messageId}) that's the session
-// ID. Returns "" if the ref is malformed or points at a root collection,
-// so callers fall back to the decoded data field instead of panicking.
-func parentDocID(ref *firestore.DocumentRef) string {
-	if ref == nil || ref.Parent == nil || ref.Parent.Parent == nil {
-		return ""
-	}
-	return ref.Parent.Parent.ID
+	return sessionFromRow(row), nil
 }
 
 func (s *Store) GetSession(ctx context.Context, userID, tripID, sessionID string) (*ChatSession, error) {
-	session, err := s.getSessionRaw(ctx, userID, tripID, sessionID)
+	uid, sid, err := parseIDs(userID, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get session: %w", err)
 	}
-	backfillCreatedAt(session)
-	return session, nil
+	row, err := s.queries.GetChatSession(ctx, dbgen.GetChatSessionParams{
+		ID:     sid,
+		UserID: uid,
+		TripID: tripID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("get session: %w", ErrNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get session: %w", err)
+	}
+	return sessionFromRow(row), nil
 }
 
-// backfillCreatedAt replaces a zero-valued CreatedAt with LastMessageAt so
-// session docs that were created implicitly by AddMessage (without going
-// through CreateSession) don't return 0001-01-01T00:00:00Z to clients
-// (Run 5 R-03/R-16 P2). This is a read-time fallback applied by the public
-// GetSession and ListSessions functions. Code paths that write the struct
-// back to Firestore (MoveSessionToTrip) MUST use getSessionRaw instead so
-// the synthesised timestamp never reaches persistent storage.
-func backfillCreatedAt(session *ChatSession) {
-	if session == nil {
-		return
-	}
-	if session.CreatedAt.IsZero() && !session.LastMessageAt.IsZero() {
-		session.CreatedAt = session.LastMessageAt
-	}
-}
-
-// DeleteSession deletes a single session document (no messages).
+// DeleteSession deletes a single session (its messages cascade).
 // Used to clean up orphaned sessions that were created but never received messages.
 func (s *Store) DeleteSession(ctx context.Context, userID, tripID, sessionID string) error {
-	_, err := s.sessionsCol(userID, tripID).Doc(sessionID).Delete(ctx)
+	uid, sid, err := parseIDs(userID, sessionID)
 	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	if err := s.queries.DeleteChatSession(ctx, dbgen.DeleteChatSessionParams{
+		ID:     sid,
+		UserID: uid,
+		TripID: tripID,
+	}); err != nil {
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
 }
 
-// DeleteMessage deletes a single message document.
+// DeleteMessage deletes a single message.
 // Used to roll back a persisted user message when the AI response fails,
 // preventing orphaned messages from appearing in chat history.
 func (s *Store) DeleteMessage(ctx context.Context, userID, tripID, sessionID, messageID string) error {
-	_, err := s.messagesCol(userID, tripID, sessionID).Doc(messageID).Delete(ctx)
+	uid, sid, err := parseIDs(userID, sessionID)
 	if err != nil {
+		return fmt.Errorf("delete message: %w", err)
+	}
+	mid, err := uuid.Parse(messageID)
+	if err != nil {
+		return fmt.Errorf("delete message: parse message id: %w", err)
+	}
+	if err := s.queries.DeleteChatMessage(ctx, dbgen.DeleteChatMessageParams{
+		ID:        mid,
+		SessionID: sid,
+		UserID:    uid,
+		TripID:    tripID,
+	}); err != nil {
 		return fmt.Errorf("delete message: %w", err)
 	}
 	return nil
 }
 
 func (s *Store) ListSessions(ctx context.Context, userID, tripID string, limit int) ([]*ChatSession, error) {
-	iter := s.sessionsCol(userID, tripID).OrderBy("lastMessageAt", firestore.Desc).Limit(limit).Documents(ctx)
-	defer iter.Stop()
-
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: parse user id: %w", err)
+	}
+	rows, err := s.queries.ListChatSessions(ctx, dbgen.ListChatSessionsParams{
+		UserID: uid,
+		TripID: tripID,
+		Limit:  int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
 	var sessions []*ChatSession
-	for {
-		doc, err := iter.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("list sessions: %w", err)
-		}
-
-		var session ChatSession
-		if err := doc.DataTo(&session); err != nil {
-			return nil, fmt.Errorf("decode session: %w", err)
-		}
-		// The authoritative session ID and trip ID are the doc path
-		// components, not the denormalised data fields. Populate from the
-		// ref so clients always receive the correct identifiers even if a
-		// write path ever forgot to include them in the doc body
-		// (Run 22 R-11 P2 / #335; TripID added as defence-in-depth).
-		session.ID = doc.Ref.ID
-		session.TripID = parentDocID(doc.Ref)
-		backfillCreatedAt(&session)
-		sessions = append(sessions, &session)
+	for _, row := range rows {
+		sessions = append(sessions, sessionFromRow(row))
 	}
 	return sessions, nil
 }
@@ -229,132 +197,158 @@ func (s *Store) AddMessage(ctx context.Context, userID, tripID, sessionID string
 	return s.AddMessageWithMode(ctx, userID, tripID, sessionID, msg, "")
 }
 
-// AddMessageWithMode stores a message and updates the session metadata.
-// If mode is non-empty, it also updates the session's mode field — this
-// ensures that a session originally created in "selection" mode gets
-// updated to "planning" or "companion" when subsequent messages use a
-// different mode (Run 8 R-05, N-12 P2).
+// AddMessageWithMode stores a message and updates the session metadata in a
+// single transaction. If the session doesn't exist yet (client passed an
+// unknown session ID), it is created implicitly. If mode is non-empty, the
+// session's mode field is updated — this ensures that a session originally
+// created in "selection" mode gets updated to "planning" or "companion"
+// when subsequent messages use a different mode (Run 8 R-05, N-12 P2).
 func (s *Store) AddMessageWithMode(ctx context.Context, userID, tripID, sessionID string, msg *ChatMessage, mode string) error {
+	uid, sid, err := parseIDs(userID, sessionID)
+	if err != nil {
+		return fmt.Errorf("add message: %w", err)
+	}
+
 	msg.ID = uuid.New().String()
 	msg.SessionID = sessionID
 	msg.CreatedAt = time.Now()
 
-	batch := s.client.Batch()
-	batch.Set(s.messagesCol(userID, tripID, sessionID).Doc(msg.ID), msg)
-	// Upsert session with core identity fields. MergeAll preserves existing
-	// fields not named in the map, including createdAt from a prior
-	// CreateSession. We deliberately do NOT write createdAt here — if the
-	// session doc was created implicitly (client passed an unknown session
-	// ID), the persisted doc will have an absent createdAt and the read-side
-	// backfillCreatedAt() will substitute lastMessageAt for it. Writing
-	// createdAt on every AddMessage would silently clobber the real
-	// creation time on the happy path (Run 5 R-03/R-16 P2).
-	sessionRef := s.sessionsCol(userID, tripID).Doc(sessionID)
-	sessionUpdate := map[string]interface{}{
-		"id":            sessionID,
-		"tripId":        tripID,
-		"lastMessageAt": msg.CreatedAt,
+	metadata, toolCalls, toolResults, err := marshalMessageJSON(msg)
+	if err != nil {
+		return fmt.Errorf("add message: %w", err)
 	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("add message: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	q := s.queries.WithTx(tx)
+
 	// Only count user/assistant messages with content — not tool-loop
 	// intermediates (empty assistant with tool_calls, user with tool_results).
 	// This makes messageCount match what GetChatHistory returns after
 	// isToolLoopIntermediate filtering (Run 17 N-02 P2).
-	if msg.Content != "" && (msg.Role == "user" || msg.Role == "assistant") {
-		sessionUpdate["messageCount"] = firestore.Increment(1)
-	}
-	if mode != "" {
-		sessionUpdate["mode"] = mode
-	}
-	batch.Set(sessionRef, sessionUpdate, firestore.MergeAll)
+	countMessage := msg.Content != "" && (msg.Role == "user" || msg.Role == "assistant")
 
-	_, err := batch.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("add message: %w", err)
+	if _, err := q.UpsertChatSessionForMessage(ctx, dbgen.UpsertChatSessionForMessageParams{
+		ID:            sid,
+		UserID:        uid,
+		TripID:        tripID,
+		Mode:          mode,
+		LastMessageAt: msg.CreatedAt,
+		CountMessage:  countMessage,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The session ID exists under a different user or trip. Firestore's
+			// path-keyed layout made this collision structurally impossible;
+			// here we refuse rather than attach messages across scopes.
+			return fmt.Errorf("add message: %w", ErrNotFound)
+		}
+		return fmt.Errorf("add message: upsert session: %w", err)
+	}
+
+	if err := q.InsertChatMessage(ctx, dbgen.InsertChatMessageParams{
+		ID:          uuid.MustParse(msg.ID),
+		SessionID:   sid,
+		Role:        msg.Role,
+		Content:     msg.Content,
+		Metadata:    metadata,
+		ToolCalls:   toolCalls,
+		ToolResults: toolResults,
+		CreatedAt:   msg.CreatedAt,
+	}); err != nil {
+		return fmt.Errorf("add message: insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("add message: commit: %w", err)
 	}
 	return nil
 }
 
+// GetMessages returns the newest `limit` messages in chronological order.
+// Fetching the NEWEST messages ensures that in tool-heavy conversations
+// (where each tool call generates multiple intermediate messages), the
+// most recent user messages are never silently dropped.
 func (s *Store) GetMessages(ctx context.Context, userID, tripID, sessionID string, limit int) ([]*ChatMessage, error) {
-	// Fetch the NEWEST messages by ordering DESC, then reverse to restore
-	// chronological order. This ensures that in tool-heavy conversations
-	// (where each tool call generates multiple intermediate messages), the
-	// most recent user messages are never silently dropped.
-	iter := s.messagesCol(userID, tripID, sessionID).OrderBy("createdAt", firestore.Desc).Limit(limit).Documents(ctx)
-	defer iter.Stop()
+	uid, sid, err := parseIDs(userID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get messages: %w", err)
+	}
+	rows, err := s.queries.GetNewestChatMessages(ctx, dbgen.GetNewestChatMessagesParams{
+		SessionID: sid,
+		UserID:    uid,
+		TripID:    tripID,
+		Limit:     int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get messages: %w", err)
+	}
 
-	var messages []*ChatMessage
-	for {
-		doc, err := iter.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
+	messages := make([]*ChatMessage, 0, len(rows))
+	for _, row := range rows {
+		msg, err := messageFromRow(row)
 		if err != nil {
 			return nil, fmt.Errorf("get messages: %w", err)
 		}
-
-		var msg ChatMessage
-		if err := doc.DataTo(&msg); err != nil {
-			return nil, fmt.Errorf("decode message: %w", err)
-		}
-		// The doc path components are authoritative. Repopulate ID and
-		// SessionID from the ref so any write path that ever forgot to
-		// include the denormalised fields in the doc body still produces
-		// a correctly-identified message (#341, follows the pattern
-		// established in #339/#340 for sessions).
-		msg.ID = doc.Ref.ID
-		msg.SessionID = parentDocID(doc.Ref)
-		messages = append(messages, &msg)
+		messages = append(messages, msg)
 	}
 
 	// Reverse to chronological order (oldest first) for the AI provider.
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
-
 	return messages, nil
-}
-
-// UpdateSummary writes a conversation summary and the messageCount at which
-// it was generated to the session document. The summary is used to retain
-// context from older messages that fall outside the 50-message window.
-func (s *Store) UpdateSummary(ctx context.Context, userID, tripID, sessionID, summary string, messageCount int) error {
-	_, err := s.sessionsCol(userID, tripID).Doc(sessionID).Update(ctx, []firestore.Update{
-		{Path: "summary", Value: summary},
-		{Path: "summaryMessageCount", Value: messageCount},
-	})
-	if err != nil {
-		return fmt.Errorf("update summary: %w", err)
-	}
-	return nil
 }
 
 // GetOldestMessages returns the oldest messages in a session, ordered
 // chronologically. Used to fetch the messages that fall outside the
 // recent-message window for summarization.
 func (s *Store) GetOldestMessages(ctx context.Context, userID, tripID, sessionID string, limit int) ([]*ChatMessage, error) {
-	iter := s.messagesCol(userID, tripID, sessionID).OrderBy("createdAt", firestore.Asc).Limit(limit).Documents(ctx)
-	defer iter.Stop()
-
-	var messages []*ChatMessage
-	for {
-		doc, err := iter.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
+	uid, sid, err := parseIDs(userID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get oldest messages: %w", err)
+	}
+	rows, err := s.queries.GetOldestChatMessages(ctx, dbgen.GetOldestChatMessagesParams{
+		SessionID: sid,
+		UserID:    uid,
+		TripID:    tripID,
+		Limit:     int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get oldest messages: %w", err)
+	}
+	messages := make([]*ChatMessage, 0, len(rows))
+	for _, row := range rows {
+		msg, err := messageFromRow(row)
 		if err != nil {
 			return nil, fmt.Errorf("get oldest messages: %w", err)
 		}
-
-		var msg ChatMessage
-		if err := doc.DataTo(&msg); err != nil {
-			return nil, fmt.Errorf("decode message: %w", err)
-		}
-		// Path-authoritative ID/SessionID, same as GetMessages (#341).
-		msg.ID = doc.Ref.ID
-		msg.SessionID = parentDocID(doc.Ref)
-		messages = append(messages, &msg)
+		messages = append(messages, msg)
 	}
 	return messages, nil
+}
+
+// UpdateSummary writes a conversation summary and the messageCount at which
+// it was generated to the session. The summary is used to retain context
+// from older messages that fall outside the 50-message window.
+func (s *Store) UpdateSummary(ctx context.Context, userID, tripID, sessionID, summary string, messageCount int) error {
+	uid, sid, err := parseIDs(userID, sessionID)
+	if err != nil {
+		return fmt.Errorf("update summary: %w", err)
+	}
+	if err := s.queries.UpdateChatSessionSummary(ctx, dbgen.UpdateChatSessionSummaryParams{
+		ID:                  sid,
+		UserID:              uid,
+		TripID:              tripID,
+		Summary:             summary,
+		SummaryMessageCount: int32(messageCount),
+	}); err != nil {
+		return fmt.Errorf("update summary: %w", err)
+	}
+	return nil
 }
 
 // ExportChatData exports all chat sessions and messages for a user across
@@ -394,159 +388,133 @@ func (s *Store) ExportChatData(ctx context.Context, userID string, tripIDs []str
 	return result, nil
 }
 
-// MoveSessionToTrip moves a session (and all its messages) from one trip path
-// to another. Used when a selection-mode session needs to be retroactively
-// linked to a trip that was created mid-conversation.
-//
-// The session is written to the new path first, then the old documents are
-// deleted. On partial failure (write succeeds, delete fails), the session
-// may exist at both paths — this is safe since the new path takes precedence
-// for ListSessions queries.
+// MoveSessionToTrip moves a session (and, implicitly, all its messages) from
+// one trip scope to another. Used when a selection-mode session needs to be
+// retroactively linked to a trip that was created mid-conversation.
 func (s *Store) MoveSessionToTrip(ctx context.Context, userID, fromTripID, toTripID, sessionID string) error {
-	// Load the raw session (without read-time createdAt backfill) so we
-	// don't persist a synthesised timestamp to the destination doc.
-	session, err := s.getSessionRaw(ctx, userID, fromTripID, sessionID)
+	uid, sid, err := parseIDs(userID, sessionID)
 	if err != nil {
-		return fmt.Errorf("get session for move: %w", err)
+		return fmt.Errorf("move session: %w", err)
 	}
-	messages, err := s.GetMessages(ctx, userID, fromTripID, sessionID, 1000)
+	rows, err := s.queries.MoveChatSessionToTrip(ctx, dbgen.MoveChatSessionToTripParams{
+		ToTripID:   toTripID,
+		ID:         sid,
+		UserID:     uid,
+		FromTripID: fromTripID,
+	})
 	if err != nil {
-		return fmt.Errorf("get messages for move: %w", err)
+		return fmt.Errorf("move session: %w", err)
 	}
-
-	// Write session + messages to the destination path in a batch.
-	session.TripID = toTripID
-	batch := s.client.Batch()
-	batch.Set(s.sessionsCol(userID, toTripID).Doc(sessionID), session)
-	for _, msg := range messages {
-		batch.Set(s.messagesCol(userID, toTripID, sessionID).Doc(msg.ID), msg)
-	}
-	if _, err := batch.Commit(ctx); err != nil {
-		return fmt.Errorf("write session to new trip path: %w", err)
-	}
-
-	// Delete messages from the old path, then the old session document.
-	if err := s.deleteCollection(ctx, s.messagesCol(userID, fromTripID, sessionID)); err != nil {
-		slog.Warn("failed to delete messages from old session path after move",
-			"from_trip", fromTripID, "session_id", sessionID, "error", err)
-	}
-	if _, err := s.sessionsCol(userID, fromTripID).Doc(sessionID).Delete(ctx); err != nil {
-		slog.Warn("failed to delete session from old path after move",
-			"from_trip", fromTripID, "session_id", sessionID, "error", err)
+	if rows == 0 {
+		return fmt.Errorf("move session: %w", ErrNotFound)
 	}
 	return nil
 }
 
-// SetTTL stamps an expireAt time on all sessions and messages for a trip.
-// Firestore's TTL policy will automatically delete expired documents.
-// Configure the TTL policy: gcloud firestore fields ttls update expireAt --collection-group=messages
-// and: gcloud firestore fields ttls update expireAt --collection-group=chatSessions
+// SetTTL stamps an expireAt time on all sessions for a trip. The lifecycle
+// background purge job deletes expired sessions (messages cascade).
 func (s *Store) SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error {
-	sessions, err := s.ListSessions(ctx, userID, tripID, 1000)
+	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return fmt.Errorf("list sessions for TTL: %w", err)
+		return fmt.Errorf("set ttl: parse user id: %w", err)
 	}
-
-	for _, session := range sessions {
-		batch := s.client.Batch()
-		batchCount := 0
-
-		// Stamp session
-		batch.Update(s.sessionsCol(userID, tripID).Doc(session.ID), []firestore.Update{
-			{Path: "expireAt", Value: expireAt},
-		})
-		batchCount++
-
-		// Stamp messages
-		iter := s.messagesCol(userID, tripID, session.ID).Documents(ctx)
-		for {
-			doc, iterErr := iter.Next()
-			if errors.Is(iterErr, iterator.Done) {
-				break
-			}
-			if iterErr != nil {
-				iter.Stop()
-				return fmt.Errorf("iterate messages for TTL: %w", iterErr)
-			}
-			batch.Update(doc.Ref, []firestore.Update{
-				{Path: "expireAt", Value: expireAt},
-			})
-			batchCount++
-
-			// Firestore batch limit is 500
-			if batchCount >= 490 {
-				if _, commitErr := batch.Commit(ctx); commitErr != nil {
-					iter.Stop()
-					return fmt.Errorf("batch TTL update: %w", commitErr)
-				}
-				batch = s.client.Batch()
-				batchCount = 0
-			}
-		}
-		iter.Stop()
-
-		if batchCount > 0 {
-			if _, commitErr := batch.Commit(ctx); commitErr != nil {
-				return fmt.Errorf("batch TTL update: %w", commitErr)
-			}
-		}
+	if err := s.queries.SetChatTTLForTrip(ctx, dbgen.SetChatTTLForTripParams{
+		UserID:   uid,
+		TripID:   tripID,
+		ExpireAt: pgtype.Timestamptz{Time: expireAt, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("set ttl: %w", err)
 	}
-
 	return nil
 }
 
 // DeleteAllForTrip deletes all chat sessions and messages for a trip.
 // Used for trip deletion and data lifecycle archival.
 func (s *Store) DeleteAllForTrip(ctx context.Context, userID, tripID string) error {
-	sessions, err := s.ListSessions(ctx, userID, tripID, 1000)
+	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return fmt.Errorf("list sessions for deletion: %w", err)
+		return fmt.Errorf("delete all for trip: parse user id: %w", err)
 	}
-
-	for _, session := range sessions {
-		// Delete all messages in this session
-		if err := s.deleteCollection(ctx, s.messagesCol(userID, tripID, session.ID)); err != nil {
-			return fmt.Errorf("delete messages for session %s: %w", session.ID, err)
-		}
-
-		// Delete the session document
-		if _, err := s.sessionsCol(userID, tripID).Doc(session.ID).Delete(ctx); err != nil {
-			return fmt.Errorf("delete session %s: %w", session.ID, err)
-		}
+	if err := s.queries.DeleteChatForTrip(ctx, dbgen.DeleteChatForTripParams{
+		UserID: uid,
+		TripID: tripID,
+	}); err != nil {
+		return fmt.Errorf("delete all for trip: %w", err)
 	}
-
 	return nil
 }
 
-// deleteCollection deletes all documents in a Firestore collection in batches.
-func (s *Store) deleteCollection(ctx context.Context, col *firestore.CollectionRef) error {
-	const batchSize = 100
+func parseIDs(userID, sessionID string) (uuid.UUID, uuid.UUID, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("parse user id: %w", err)
+	}
+	sid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("parse session id: %w", err)
+	}
+	return uid, sid, nil
+}
 
-	for {
-		iter := col.Limit(batchSize).Documents(ctx)
-		batch := s.client.Batch()
-		count := 0
+func sessionFromRow(row dbgen.ChatSession) *ChatSession {
+	session := &ChatSession{
+		ID:                  row.ID.String(),
+		TripID:              row.TripID,
+		Mode:                row.Mode,
+		CreatedAt:           row.CreatedAt,
+		LastMessageAt:       row.LastMessageAt,
+		MessageCount:        int(row.MessageCount),
+		Summary:             row.Summary,
+		SummaryMessageCount: int(row.SummaryMessageCount),
+	}
+	if row.ExpireAt.Valid {
+		t := row.ExpireAt.Time
+		session.ExpireAt = &t
+	}
+	return session
+}
 
-		for {
-			doc, err := iter.Next()
-			if errors.Is(err, iterator.Done) {
-				break
-			}
-			if err != nil {
-				iter.Stop()
-				return fmt.Errorf("iterate for deletion: %w", err)
-			}
-			batch.Delete(doc.Ref)
-			count++
-		}
-		iter.Stop()
-
-		if count == 0 {
-			return nil
-		}
-
-		if _, err := batch.Commit(ctx); err != nil {
-			return fmt.Errorf("batch delete: %w", err)
+func marshalMessageJSON(msg *ChatMessage) (metadata, toolCalls, toolResults []byte, err error) {
+	if len(msg.Metadata) > 0 {
+		if metadata, err = json.Marshal(msg.Metadata); err != nil {
+			return nil, nil, nil, fmt.Errorf("marshal metadata: %w", err)
 		}
 	}
+	if len(msg.ToolCalls) > 0 {
+		if toolCalls, err = json.Marshal(msg.ToolCalls); err != nil {
+			return nil, nil, nil, fmt.Errorf("marshal tool calls: %w", err)
+		}
+	}
+	if len(msg.ToolResults) > 0 {
+		if toolResults, err = json.Marshal(msg.ToolResults); err != nil {
+			return nil, nil, nil, fmt.Errorf("marshal tool results: %w", err)
+		}
+	}
+	return metadata, toolCalls, toolResults, nil
+}
+
+func messageFromRow(row dbgen.ChatMessage) (*ChatMessage, error) {
+	msg := &ChatMessage{
+		ID:        row.ID.String(),
+		SessionID: row.SessionID.String(),
+		Role:      row.Role,
+		Content:   row.Content,
+		CreatedAt: row.CreatedAt,
+	}
+	if len(row.Metadata) > 0 {
+		if err := json.Unmarshal(row.Metadata, &msg.Metadata); err != nil {
+			return nil, fmt.Errorf("unmarshal metadata for message %s: %w", msg.ID, err)
+		}
+	}
+	if len(row.ToolCalls) > 0 {
+		if err := json.Unmarshal(row.ToolCalls, &msg.ToolCalls); err != nil {
+			return nil, fmt.Errorf("unmarshal tool calls for message %s: %w", msg.ID, err)
+		}
+	}
+	if len(row.ToolResults) > 0 {
+		if err := json.Unmarshal(row.ToolResults, &msg.ToolResults); err != nil {
+			return nil, fmt.Errorf("unmarshal tool results for message %s: %w", msg.ID, err)
+		}
+	}
+	return msg, nil
 }

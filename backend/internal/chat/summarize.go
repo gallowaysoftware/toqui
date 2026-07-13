@@ -204,7 +204,7 @@ func (s *Service) MaybeRefreshSummary(ctx context.Context, userID, tripID, sessi
 	}
 
 	// Update the in-memory session so the caller can use the summary
-	// immediately without re-reading from Firestore.
+	// immediately without re-reading from the store.
 	session.Summary = summary
 	session.SummaryMessageCount = session.MessageCount
 

@@ -33,7 +33,7 @@ sign in with email + password only.
 ## Pattern 1: docker-compose on a single host
 
 The repo ships with a top-level `docker-compose.yml` that runs the
-backend, the Expo web frontend, Postgres, and a Firestore emulator.
+backend, the Expo web frontend, and Postgres.
 
 ```bash
 git clone https://github.com/gallowaysoftware/toqui
@@ -52,38 +52,8 @@ That's it. Frontend on `http://localhost:3000`, backend on
 |---|---|---|
 | `frontend` | built from `./Dockerfile` (multi-stage; Expo web → nginx) | port 3000 |
 | `backend` | built from `./backend/Dockerfile` (distroless static Go) | port 8090 |
-| `postgres` | `postgis/postgis:16-3.4` | data in named volume `postgres_data` |
-| `firestore` | Google Cloud SDK emulator | chat history; **emulator data is ephemeral** |
+| `postgres` | `postgis/postgis:16-3.4` | ALL data (trips, bookings, chat) in named volume `postgres_data` |
 | `migrate` | one-shot run of `./backend/cmd/migrate` | applies SQL migrations on startup |
-
-### Pointing at a real Firestore (recommended for production)
-
-The bundled Firestore emulator is fine for trying it out, but it loses
-all chat history on restart. For production, point the backend at a
-managed Firestore database:
-
-1. Create a Firestore database in any GCP project.
-2. Create a service account with `roles/datastore.user`, download its
-   JSON key.
-3. Mount the key into the backend container and set
-   `GOOGLE_APPLICATION_CREDENTIALS`. Then unset
-   `FIRESTORE_EMULATOR_HOST` so the SDK uses the real endpoint.
-
-A drop-in compose override:
-
-```yaml
-# docker-compose.override.yml
-services:
-  backend:
-    environment:
-      FIRESTORE_EMULATOR_HOST: ""
-      FIRESTORE_PROJECT_ID: "your-gcp-project-id"
-      GOOGLE_APPLICATION_CREDENTIALS: "/run/secrets/gcp-sa.json"
-    volumes:
-      - ./secrets/gcp-sa.json:/run/secrets/gcp-sa.json:ro
-  firestore:
-    profiles: ["never"]   # don't start the emulator
-```
 
 ### TLS
 
@@ -123,9 +93,6 @@ fly secrets set --app your-toqui-frontend \
 fly deploy --app your-toqui-frontend
 ```
 
-Firestore: see "real Firestore" section above. Fly doesn't have a
-managed equivalent; you'll plug in a GCP Firestore + ADC.
-
 ---
 
 ## Pattern 3: Render
@@ -142,8 +109,6 @@ Frontend: New > Web Service > same repo
   - Dockerfile path: ./Dockerfile
   - Set EXPO_PUBLIC_API_URL to the backend service URL
 ```
-
-Same Firestore note as Fly.
 
 ---
 
@@ -179,15 +144,13 @@ automatically via the `migrate` one-shot service.
 
 ## Backups
 
-Two databases hold user data:
+Postgres holds ALL user data — users, trips, bookings, itinerary,
+refresh tokens, and chat history. `pg_dump` it however you'd back up
+any Postgres database. For docker-compose:
 
-- **Postgres** — users, trips, bookings, itinerary, refresh tokens.
-  `pg_dump` it however you'd back up any Postgres database. For
-  docker-compose: `docker compose exec postgres pg_dump -U toqui toqui > backup.sql`
-- **Firestore** — chat history. Use `gcloud firestore export` for the
-  managed-Firestore case. The bundled emulator keeps its data in memory
-  only — there is nothing to back up, and chat history is lost whenever
-  the container restarts.
+```bash
+docker compose exec postgres pg_dump -U toqui toqui > backup.sql
+```
 
 ---
 

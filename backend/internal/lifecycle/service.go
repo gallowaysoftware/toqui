@@ -50,7 +50,7 @@ var _ lifecycleQueries = (*dbgen.Queries)(nil)
 
 // lifecycleChatStore is the slice of *chatstore.Store that Service
 // depends on. Same rationale as lifecycleQueries — unit tests inject
-// a stub instead of standing up the Firestore emulator.
+// a stub instead of standing up Postgres.
 type lifecycleChatStore interface {
 	DeleteAllForTrip(ctx context.Context, userID, tripID string) error
 	SetTTL(ctx context.Context, userID, tripID string, expireAt time.Time) error
@@ -85,7 +85,7 @@ func (s *Service) SetExportStore(store exportstorage.Store) {
 // DeleteUser performs a full user data purge (GDPR Article 17) on the
 // data-of-record stores.
 //  1. Get all trip IDs for the user
-//  2. Delete all Firestore chat data for each trip
+//  2. Delete all chat data for each trip
 //  3. Delete user from Postgres (CASCADE handles trips, bookings, itinerary, themes)
 func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	userIDStr := userID.String()
@@ -96,11 +96,11 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 		return fmt.Errorf("get trip IDs: %w", err)
 	}
 
-	// Delete all Firestore chat data
+	// Delete all chat data
 	for _, tripID := range tripIDs {
 		if err := s.chatStore.DeleteAllForTrip(ctx, userIDStr, tripID.String()); err != nil {
-			slog.Warn("failed to delete Firestore chat data", "trip_id", tripID, "error", err)
-			// Continue — don't fail the whole deletion for Firestore issues
+			slog.Warn("failed to delete chat data", "trip_id", tripID, "error", err)
+			// Continue — don't fail the whole deletion for chat-store issues
 		}
 	}
 
@@ -114,9 +114,9 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 
 // DeleteTrip purges a specific trip and all its associated data.
 func (s *Service) DeleteTrip(ctx context.Context, userID uuid.UUID, tripID uuid.UUID) error {
-	// Delete Firestore chat data
+	// Delete chat data
 	if err := s.chatStore.DeleteAllForTrip(ctx, userID.String(), tripID.String()); err != nil {
-		slog.Warn("failed to delete Firestore chat", "trip_id", tripID, "error", err)
+		slog.Warn("failed to delete chat data", "trip_id", tripID, "error", err)
 	}
 
 	// Delete from Postgres — CASCADE handles itinerary, bookings, themes
@@ -140,7 +140,7 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 
 	archived := 0
 	for _, t := range trips {
-		// Purge chat messages from Firestore
+		// Purge chat messages
 		if err := s.chatStore.DeleteAllForTrip(ctx, t.UserID.String(), t.ID.String()); err != nil {
 			slog.Warn("failed to purge chat for trip", "trip_id", t.ID, "error", err)
 			continue
@@ -158,7 +158,7 @@ func (s *Service) ArchiveCompletedTrips(ctx context.Context) (int, error) {
 	return archived, nil
 }
 
-// SetChatTTL stamps an expireAt time on all Firestore chat data for a trip.
+// SetChatTTL stamps an expireAt time on all chat data for a trip.
 // Call this when a trip is marked completed to start the retention countdown.
 func (s *Service) SetChatTTL(ctx context.Context, userID uuid.UUID, tripID uuid.UUID, retentionDays int) error {
 	expireAt := time.Now().AddDate(0, 0, retentionDays)
@@ -320,7 +320,7 @@ type TripExport struct {
 	Themes    []any `json:"themes"`
 }
 
-// ExportUserData collects all user data from Postgres and Firestore
+// ExportUserData collects all user data
 // into a portable JSON-serializable struct. GDPR Article 20.
 func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserExport, error) {
 	export := &UserExport{
@@ -366,7 +366,7 @@ func (s *Service) ExportUserData(ctx context.Context, userID uuid.UUID) (*UserEx
 			tripIDs = append(tripIDs, t.ID.String())
 		}
 
-		// Chat data from Firestore
+		// Chat data
 		if s.chatStore != nil && len(tripIDs) > 0 {
 			chatData, err := s.chatStore.ExportChatData(ctx, userID.String(), tripIDs)
 			if err != nil {
