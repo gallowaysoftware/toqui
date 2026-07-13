@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -710,11 +711,15 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerI
 	// Map booking type to itinerary item type.
 	itemType := itineraryItemTypeForBooking(b.Type)
 
-	// Determine day number from start_time if available.
-	var dayNumber int32
-	// Default to day 1 if no start_time — the user can reorder later.
-	if b.StartTime.Valid {
-		dayNumber = 1 // Will be placed on day 1; proper date→day mapping requires trip start_date
+	// Map the booking's start time to an itinerary day via the trip's
+	// start date. Falls back to day 1 when either date is missing — the
+	// user can reorder later.
+	dayNumber := int32(1)
+	if trip, tripErr := h.queries.GetTripByIDOrCollaborator(ctx, dbgen.GetTripByIDOrCollaboratorParams{
+		ID:     tripID,
+		UserID: callerID,
+	}); tripErr == nil {
+		dayNumber = dayNumberForBooking(trip, b.StartTime)
 	}
 
 	_, createErr := h.queries.CreateItineraryItemFromBookingForOwnerOrEditor(ctx, dbgen.CreateItineraryItemFromBookingForOwnerOrEditorParams{
@@ -737,5 +742,34 @@ func (h *BookingHandler) autoLinkBookingToItinerary(ctx context.Context, callerI
 		slog.Warn("auto-link booking to itinerary failed", "error", createErr, "booking_id", b.ID, "trip_id", tripID)
 		return
 	}
-	slog.Info("auto-linked booking to itinerary", "booking_id", b.ID, "trip_id", tripID, "type", itemType)
+	slog.Info("auto-linked booking to itinerary", "booking_id", b.ID, "trip_id", tripID, "type", itemType, "day", dayNumber)
+}
+
+// dayNumberForBooking maps a booking's start time to a 1-based itinerary
+// day number relative to the trip's start date. Calendar dates are compared
+// in the trip's timezone when one is set (an evening arrival must not slip
+// to the next day just because the server runs in UTC). Returns 1 when the
+// trip has no start date, the booking has no start time, or the booking
+// starts before the trip.
+func dayNumberForBooking(trip dbgen.Trip, startTime pgtype.Timestamptz) int32 {
+	if !startTime.Valid || !trip.StartDate.Valid {
+		return 1
+	}
+	loc := time.UTC
+	if trip.Timezone.Valid && trip.Timezone.String != "" {
+		if l, err := time.LoadLocation(trip.Timezone.String); err == nil {
+			loc = l
+		}
+	}
+	sy, sm, sd := trip.StartDate.Time.Date()
+	by, bm, bd := startTime.Time.In(loc).Date()
+	// Re-anchor both calendar dates in a common location so the
+	// subtraction counts whole days.
+	startDay := time.Date(sy, sm, sd, 0, 0, 0, 0, time.UTC)
+	bookingDay := time.Date(by, bm, bd, 0, 0, 0, 0, time.UTC)
+	day := int32(bookingDay.Sub(startDay)/(24*time.Hour)) + 1
+	if day < 1 {
+		return 1
+	}
+	return day
 }
