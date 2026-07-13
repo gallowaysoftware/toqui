@@ -1,17 +1,23 @@
 # Self-host docker-compose for Toqui.
 #
 # Usage:
-#   cp .env.example .env       # then fill in at least ANTHROPIC_API_KEY
+#   cp .env.example .env       # then set JWT_SECRET + one AI provider key
 #   docker compose up -d       # frontend on :3000, backend on :8090
 #
-# Provider options:
-#   - Claude only (default): set ANTHROPIC_API_KEY.
-#   - OpenAI / OpenAI-compatible: set OPENAI_API_KEY (+ optional OPENAI_BASE_URL).
-#   - Gemini via Vertex AI: set GOOGLE_APPLICATION_CREDENTIALS to a mounted
-#     service account key path, plus VERTEX_AI_PROJECT_ID. Vertex is GCP-only.
+# Provider options (AI_PROVIDER selects the primary: gemini | claude | openai):
+#   - Gemini (default primary): set GEMINI_API_KEY (Developer API), or
+#     VERTEX_AI_PROJECT_ID + mounted GOOGLE_APPLICATION_CREDENTIALS for Vertex.
+#   - Claude: set ANTHROPIC_API_KEY.
+#   - OpenAI / any OpenAI-compatible endpoint (Ollama, llama-swap, vLLM,
+#     LM Studio, OpenRouter, ...): set OPENAI_API_KEY (any non-empty value for
+#     local servers) + OPENAI_BASE_URL, set AI_PROVIDER=openai, and map
+#     OPENAI_MODEL_FAST/SMART/BEST to models your endpoint serves.
 #
 # Optional Google OAuth: set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET. Leaving
 # them unset means email+password sign-in is the only path (which is fine).
+#
+# Internet-facing? Set ALLOWED_EMAIL_DOMAINS — registration is otherwise open
+# to anyone who can reach the backend (and your AI key pays for their chats).
 
 services:
   postgres:
@@ -36,13 +42,11 @@ services:
 
   migrate:
     build: ./backend
-    command:
-      - "/migrate"
-      - "-dir"
-      - "/migrations"
-      - "-db"
-      - "postgres://toqui:${POSTGRES_PASSWORD:-toqui}@postgres:5432/toqui?sslmode=disable"
-      - "up"
+    # The image's ENTRYPOINT is /server; override it to run the migrator.
+    entrypoint: ["/migrate"]
+    command: ["-direction", "up"]
+    environment:
+      DATABASE_URL: "postgres://toqui:${POSTGRES_PASSWORD:-toqui}@postgres:5432/toqui?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,15 +64,34 @@ services:
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
       CORS_ALLOWED_ORIGINS: "${FRONTEND_URL:-http://localhost:3000}"
       # AI providers — at least one of these must be set.
+      AI_PROVIDER: "${AI_PROVIDER:-}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
       VERTEX_AI_PROJECT_ID: "${VERTEX_AI_PROJECT_ID:-}"
       VERTEX_AI_LOCATION: "${VERTEX_AI_LOCATION:-us-central1}"
+      # Per-tier model overrides (mainly for OpenAI-compatible local endpoints).
+      OPENAI_MODEL_FAST: "${OPENAI_MODEL_FAST:-}"
+      OPENAI_MODEL_SMART: "${OPENAI_MODEL_SMART:-}"
+      OPENAI_MODEL_BEST: "${OPENAI_MODEL_BEST:-}"
+      AI_GEMINI_MODEL_FAST: "${AI_GEMINI_MODEL_FAST:-}"
+      AI_GEMINI_MODEL_SMART: "${AI_GEMINI_MODEL_SMART:-}"
+      AI_GEMINI_MODEL_BEST: "${AI_GEMINI_MODEL_BEST:-}"
+      AI_MODEL_FAST: "${AI_MODEL_FAST:-}"
+      AI_MODEL_SMART: "${AI_MODEL_SMART:-}"
+      AI_MODEL_BEST: "${AI_MODEL_BEST:-}"
+      # Registration gate — comma-separated email domains allowed to sign up.
+      # Empty = open registration. Set this on internet-facing deploys.
+      ALLOWED_EMAIL_DOMAINS: "${ALLOWED_EMAIL_DOMAINS:-}"
       # Optional Google OAuth — leave unset for email+password only.
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
       GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI:-http://localhost:3000/auth/callback}"
+    # Lets the container reach an LLM server on the host (Ollama, llama-swap)
+    # via host.docker.internal on native Linux, not just Docker Desktop.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

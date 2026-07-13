@@ -14,9 +14,15 @@ All three need the same env vars (see [`.env.example`](.env.example)).
 At minimum you need:
 
 - `JWT_SECRET` — generate with `openssl rand -hex 32`
-- One AI provider key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (with
-  optional `OPENAI_BASE_URL` to point at OpenRouter/Ollama/LM Studio/etc.),
-  or Vertex AI credentials.
+- One AI provider key: `GEMINI_API_KEY` (the default primary),
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (with optional `OPENAI_BASE_URL`
+  to point at OpenRouter/Ollama/llama-swap/LM Studio/etc. — set
+  `AI_PROVIDER=openai` and the `OPENAI_MODEL_FAST/SMART/BEST` tier names
+  too), or Vertex AI credentials.
+
+If the backend is reachable from the internet, also set
+`ALLOWED_EMAIL_DOMAINS` — registration is otherwise open to anyone,
+and every account chats on your AI key.
 
 Google OAuth is **optional**. Without `GOOGLE_CLIENT_ID` +
 `GOOGLE_CLIENT_SECRET`, the frontend hides the Google button and users
@@ -150,7 +156,9 @@ The docker-compose flow runs `migrate up` once at startup
 (`migrate` service depends on `postgres`, `backend` depends on
 `migrate` completing). For Fly / Render, you can either:
 
-- Run `fly ssh console --app your-toqui-backend -C "/migrate -dir /migrations -db $DATABASE_URL up"` once after each deploy, or
+- Run `fly ssh console --app your-toqui-backend -C "/migrate -direction up"`
+  once after each deploy (the binary reads `DATABASE_URL` from the app
+  environment and auto-detects `/migrations` inside the image), or
 - Add a release command that runs the migrate binary.
 
 ---
@@ -177,9 +185,9 @@ Two databases hold user data:
   `pg_dump` it however you'd back up any Postgres database. For
   docker-compose: `docker compose exec postgres pg_dump -U toqui toqui > backup.sql`
 - **Firestore** — chat history. Use `gcloud firestore export` for the
-  managed-Firestore case. The emulator's data is not meant to survive
-  restarts; back it up by `cp`'ing the emulator's volume if you really
-  need to.
+  managed-Firestore case. The bundled emulator keeps its data in memory
+  only — there is nothing to back up, and chat history is lost whenever
+  the container restarts.
 
 ---
 
