@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
 import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
+import { needsServerSetup } from "@/lib/config";
 import { useAuthProviders } from "@/lib/hooks/useAuthProviders";
 import { useTheme } from "@/lib/theme";
 import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
@@ -105,6 +106,14 @@ export default function TripsScreen() {
   // flash a button that fails as soon as the user taps it. Self-hosted
   // operators without Google credentials get the email-only experience.
   const googleEnabled = authProviders?.googleOauth === true;
+
+  // Bring-your-own-server first run (native): no server configured yet —
+  // nothing else can work until one is chosen.
+  useEffect(() => {
+    if (needsServerSetup()) {
+      router.replace("/server-setup" as never);
+    }
+  }, [router]);
 
   // Redirect to onboarding if user is authenticated but hasn't completed it
   useEffect(() => {

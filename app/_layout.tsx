@@ -10,7 +10,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { AIDisclaimerGate } from "@/components/auth/AIDisclaimerGate";
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { loadConfig } from "@/lib/config";
+import { loadConfig, onConfigChange } from "@/lib/config";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +44,7 @@ function ThemedStack() {
         <Stack.Screen name="privacy" options={{ title: "Privacy Policy" }} />
         <Stack.Screen name="terms" options={{ title: "Terms of Service" }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="server-setup" options={{ headerShown: false }} />
       </Stack>
     </>
   );
@@ -51,6 +52,10 @@ function ThemedStack() {
 
 export default function RootLayout() {
   const [configLoaded, setConfigLoaded] = useState(false);
+  // Bumped when the user switches servers (native bring-your-own-server).
+  // Keying the provider tree on it remounts everything, so the ConnectRPC
+  // transports are rebuilt against the new API URL.
+  const [configEpoch, setConfigEpoch] = useState(0);
 
   useEffect(() => {
     loadConfig().then(() => {
@@ -58,10 +63,12 @@ export default function RootLayout() {
     });
   }, []);
 
+  useEffect(() => onConfigChange(() => setConfigEpoch((n) => n + 1)), []);
+
   if (!configLoaded) return null;
 
   return (
-    <ThemeProvider>
+    <ThemeProvider key={configEpoch}>
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>

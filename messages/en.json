@@ -629,5 +629,15 @@
         "suggestedPrompt": "Plan a week-long trip through Morocco covering Marrakech, Fes, the Sahara Desert, and the Atlas Mountains. Include riad recommendations, food tours, and cultural experiences."
       }
     }
+  },
+  "serverSetup": {
+    "headline": "Connect to your server",
+    "subtitle": "Toqui is self-hosted: enter the address of the Toqui server you (or your server operator) run. You can change this later in Settings.",
+    "invalidUrl": "That doesn't look like a valid server address. Enter something like https://toqui.example.com",
+    "unreachable": "Couldn't reach a Toqui server at that address. Check the URL and that the server is running.",
+    "connect": "Connect",
+    "settingsTitle": "Server",
+    "changeServer": "Change server",
+    "switchWarning": "Switching servers signs you out of the current one."
   }
 }
