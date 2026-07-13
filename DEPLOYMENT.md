@@ -175,8 +175,21 @@ Notes:
   is what gets parsed). So the user simply forwards from the email account
   they signed up with. A message whose `From` has no Toqui account is
   skipped (and marked read so it isn't retried).
+- **Trust boundary:** the `From` header is not authenticated (no SPF/DKIM
+  check), so anyone able to deliver mail to this mailbox with a forged
+  `From` could get content ingested into that user's account. For a
+  single-operator self-host where you control the mailbox this is fine;
+  on a shared instance, treat the mailbox address as a semi-secret and/or
+  restrict who can deliver to it at the mail-server layer.
 - Messages are marked `\Seen` after processing, so only unread messages are
   ever picked up. Use a mailbox reserved for this.
+- **Delivery is at-least-once.** A message is marked read only after it's
+  processed; if that mark fails (rare IMAP hiccup) the message is
+  reprocessed. Duplicate confirmations attached to a trip are deduped by
+  confirmation code, so re-processing a normal booking email is a no-op.
+- A message that keeps failing (e.g. your AI provider is down or the email
+  isn't parseable) is retried a few times, then marked read and skipped, so
+  a stuck message can't re-hit the AI on every cycle.
 - A common setup is a plus-address or alias (e.g. `bookings+you@example.com`)
   that users forward to, filtered into a dedicated folder — set
   `IMAP_MAILBOX` to that folder.

@@ -2,9 +2,11 @@ package emailimport
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
-	"fmt"
 	"log/slog"
+	"net"
+	"strconv"
 	"time"
 
 	"connectrpc.com/connect"
@@ -47,6 +49,20 @@ type emailIngester interface {
 // parser / AI. Matches the IngestEmail proto's raw_email ceiling.
 const maxRawMessageBytes = 500_000
 
+// imapOpTimeout bounds each individual IMAP network command so a server that
+// completes the handshake but then stops answering can't wedge PollOnce
+// permanently (the .Wait() calls aren't context-aware). Refreshed before
+// every command, so slow AI processing between fetch and store doesn't eat
+// into it.
+const imapOpTimeout = 60 * time.Second
+
+// maxIngestAttempts caps how many times a single message is re-submitted
+// after transient failures before it's dead-lettered (marked \Seen and
+// abandoned). Without this, a poison message or a provider outage would
+// re-submit every unseen message to the AI every cycle forever, silently
+// draining a metered key.
+const maxIngestAttempts = 5
+
 // Poller watches an IMAP mailbox that users forward booking confirmations
 // to. Each UNSEEN message is matched to its sender's account and ingested
 // via the same pipeline as the IngestEmail RPC. It is an in-process
@@ -56,6 +72,12 @@ type Poller struct {
 	cfg      IMAPConfig
 	users    userLookup
 	ingester emailIngester
+
+	// attempts tracks transient-failure counts per message UID across
+	// cycles, so a message that never succeeds is eventually dead-lettered.
+	// PollOnce runs serially (single goroutine from Start), so no lock is
+	// needed. Entries are cleared once a message is marked seen.
+	attempts map[imap.UID]int
 }
 
 // NewPoller builds a Poller. Mailbox defaults to INBOX and PollInterval to
@@ -67,7 +89,7 @@ func NewPoller(cfg IMAPConfig, users userLookup, ingester emailIngester) *Poller
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = 60 * time.Second
 	}
-	return &Poller{cfg: cfg, users: users, ingester: ingester}
+	return &Poller{cfg: cfg, users: users, ingester: ingester, attempts: map[imap.UID]int{}}
 }
 
 // Start runs the poll loop until ctx is cancelled. Callers run it in a
@@ -76,6 +98,9 @@ func NewPoller(cfg IMAPConfig, users userLookup, ingester emailIngester) *Poller
 func (p *Poller) Start(ctx context.Context) {
 	slog.Info("imap booking-import poller starting",
 		"host", p.cfg.Host, "mailbox", p.cfg.Mailbox, "interval", p.cfg.PollInterval.String(), "tls", p.cfg.TLS)
+	if !p.cfg.TLS {
+		slog.Warn("imap: TLS disabled (IMAP_TLS=false) — credentials and mailbox content are sent in cleartext; use this only for a local test server")
+	}
 
 	ticker := time.NewTicker(p.cfg.PollInterval)
 	defer ticker.Stop()
@@ -101,22 +126,29 @@ func (p *Poller) Start(ctx context.Context) {
 // it each tick; exported so a manual poll (and end-to-end tests) can drive
 // a single cycle.
 func (p *Poller) PollOnce(ctx context.Context) {
-	c, err := p.dial()
+	c, conn, err := p.dial()
 	if err != nil {
 		slog.Error("imap: dial failed", "error", err)
 		return
 	}
-	defer func() { _ = c.Logout().Wait(); _ = c.Close() }()
+	defer func() {
+		setDeadline(conn)
+		_ = c.Logout().Wait()
+		_ = c.Close()
+	}()
 
+	setDeadline(conn)
 	if err := c.Login(p.cfg.Username, p.cfg.Password).Wait(); err != nil {
 		slog.Error("imap: login failed", "error", err)
 		return
 	}
+	setDeadline(conn)
 	if _, err := c.Select(p.cfg.Mailbox, nil).Wait(); err != nil {
 		slog.Error("imap: select mailbox failed", "mailbox", p.cfg.Mailbox, "error", err)
 		return
 	}
 
+	setDeadline(conn)
 	searchData, err := c.UIDSearch(&imap.SearchCriteria{
 		NotFlag: []imap.Flag{imap.FlagSeen},
 	}, nil).Wait()
@@ -134,15 +166,19 @@ func (p *Poller) PollOnce(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		p.fetchAndProcess(ctx, c, uid)
+		p.fetchAndProcess(ctx, c, conn, uid)
 	}
 }
 
-// fetchAndProcess fetches one message's raw bytes, ingests it, and marks it
-// \Seen unless the failure was transient (so a later cycle retries).
-func (p *Poller) fetchAndProcess(ctx context.Context, c *imapclient.Client, uid imap.UID) {
+// fetchAndProcess fetches one message's raw bytes, ingests it, and decides
+// whether to mark it \Seen: on success or a permanent outcome it's marked;
+// on a transient failure it's left unseen for retry, unless it has already
+// failed maxIngestAttempts times, in which case it's dead-lettered (marked
+// seen and abandoned) so it stops re-hitting the AI every cycle.
+func (p *Poller) fetchAndProcess(ctx context.Context, c *imapclient.Client, conn net.Conn, uid imap.UID) {
 	uidSet := imap.UIDSetNum(uid)
 	section := &imap.FetchItemBodySection{} // empty section = whole message
+	setDeadline(conn)
 	msgs, err := c.Fetch(uidSet, &imap.FetchOptions{
 		BodySection: []*imap.FetchItemBodySection{section},
 	}).Collect()
@@ -153,19 +189,37 @@ func (p *Poller) fetchAndProcess(ctx context.Context, c *imapclient.Client, uid 
 	raw := msgs[0].FindBodySection(section)
 	if len(raw) == 0 {
 		slog.Warn("imap: empty message body, marking seen", "uid", uid)
-		p.markSeen(c, uid)
+		p.finish(c, conn, uid, true)
 		return
 	}
 	if len(raw) > maxRawMessageBytes {
 		slog.Warn("imap: message exceeds size cap, skipping", "uid", uid, "bytes", len(raw))
-		p.markSeen(c, uid)
+		p.finish(c, conn, uid, true)
 		return
 	}
 
-	markSeen := p.processMessage(ctx, raw)
-	if markSeen {
-		p.markSeen(c, uid)
+	if p.processMessage(ctx, raw) {
+		p.finish(c, conn, uid, true)
+		return
 	}
+
+	// Transient failure — retry unless we've exhausted the attempt budget.
+	p.attempts[uid]++
+	if p.attempts[uid] >= maxIngestAttempts {
+		slog.Error("imap: message failed repeatedly, dead-lettering (marking seen)",
+			"uid", uid, "attempts", p.attempts[uid])
+		p.finish(c, conn, uid, true)
+	}
+}
+
+// finish marks a message \Seen (when seen is true) and clears its attempt
+// counter. Only ever called with seen=true today — kept as a single choke
+// point so the counter is always cleared alongside the STORE.
+func (p *Poller) finish(c *imapclient.Client, conn net.Conn, uid imap.UID, seen bool) {
+	if seen {
+		p.markSeen(c, conn, uid)
+	}
+	delete(p.attempts, uid)
 }
 
 // processMessage routes one raw message to its sender's account and ingests
@@ -211,7 +265,8 @@ func (p *Poller) processMessage(ctx context.Context, raw []byte) (markSeen bool)
 	}
 }
 
-func (p *Poller) markSeen(c *imapclient.Client, uid imap.UID) {
+func (p *Poller) markSeen(c *imapclient.Client, conn net.Conn, uid imap.UID) {
+	setDeadline(conn)
 	if err := c.Store(imap.UIDSetNum(uid), &imap.StoreFlags{
 		Op:    imap.StoreFlagsAdd,
 		Flags: []imap.Flag{imap.FlagSeen},
@@ -220,12 +275,31 @@ func (p *Poller) markSeen(c *imapclient.Client, uid imap.UID) {
 	}
 }
 
-func (p *Poller) dial() (*imapclient.Client, error) {
-	addr := fmt.Sprintf("%s:%d", p.cfg.Host, p.cfg.Port)
+// dial connects and returns both the client and the underlying net.Conn so
+// callers can refresh a read/write deadline before each command.
+func (p *Poller) dial() (*imapclient.Client, net.Conn, error) {
+	addr := net.JoinHostPort(p.cfg.Host, strconv.Itoa(p.cfg.Port))
+	dialer := &net.Dialer{Timeout: 30 * time.Second}
 	if p.cfg.TLS {
-		return imapclient.DialTLS(addr, nil)
+		conn, err := tls.DialWithDialer(dialer, "tcp", addr, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		return imapclient.New(conn, nil), conn, nil
 	}
-	return imapclient.DialInsecure(addr, nil)
+	conn, err := dialer.Dial("tcp", addr)
+	if err != nil {
+		return nil, nil, err
+	}
+	return imapclient.New(conn, nil), conn, nil
+}
+
+// setDeadline refreshes the per-command I/O deadline. Called before every
+// IMAP network op so a black-hole server (handshake completes, commands
+// hang) can't wedge the poll loop, and so slow AI processing between fetch
+// and store never consumes another command's budget.
+func setDeadline(conn net.Conn) {
+	_ = conn.SetDeadline(time.Now().Add(imapOpTimeout))
 }
 
 // pseudonymize reduces an email address to a non-identifying hint for logs
