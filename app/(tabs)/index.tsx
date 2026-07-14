@@ -293,7 +293,7 @@ export default function TripsScreen() {
           </>
         ) : null}
 
-        {oidcEnabled ? <OIDCSignInButton /> : null}
+        {oidcEnabled ? <OIDCSignInButton showSeparator={!googleEnabled} /> : null}
 
         <Pressable
           onPress={() => router.push("/auth/email-register" as never)}

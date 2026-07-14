@@ -25,16 +25,26 @@ export default function AuthCallbackScreen() {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+
+    // Google and OIDC share this callback URI; a marker set before the OIDC
+    // redirect tells us which exchange to run. Read AND clear it up front —
+    // even when there's no code (consent denied / errored) — so an abandoned
+    // OIDC attempt can't misroute a subsequent Google login on this tab.
+    let oidcPending = false;
+    try {
+      oidcPending = sessionStorage.getItem(OIDC_PENDING_KEY) === "1";
+      sessionStorage.removeItem(OIDC_PENDING_KEY);
+    } catch {
+      /* sessionStorage unavailable (private mode / disabled) */
+    }
+
     if (!code) return;
 
     // If maybeCompleteAuthSession() already handled it (popup closed), this
     // page won't be visible anyway. So it's safe to always attempt login.
     const redirectUri = `${window.location.origin}/auth/callback`;
 
-    // Google and OIDC share this callback URI; a marker set before the OIDC
-    // redirect tells us which exchange to run. No PKCE on web (see useOIDCAuth).
-    const oidcPending = sessionStorage.getItem(OIDC_PENDING_KEY) === "1";
-    sessionStorage.removeItem(OIDC_PENDING_KEY);
+    // No PKCE on web (see useOIDCAuth).
     const completeLogin = oidcPending
       ? loginWithOIDC(code, redirectUri, "")
       : login(code, redirectUri);

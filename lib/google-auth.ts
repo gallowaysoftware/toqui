@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "./auth";
 import { getConfig } from "./config";
+import { OIDC_PENDING_KEY } from "./oidc-auth";
 
 // Complete the auth session for native popup flows.
 WebBrowser.maybeCompleteAuthSession();
@@ -46,6 +47,14 @@ export function useGoogleAuth() {
       // flow. Redirecting the whole page avoids cross-window communication.
       // The /auth/callback page handles the code exchange on return.
       if (request?.url) {
+        // Clear any stale OIDC marker (e.g. an abandoned SSO attempt on this
+        // tab) so the shared callback doesn't misroute this Google code to
+        // the OIDC exchange.
+        try {
+          sessionStorage.removeItem(OIDC_PENDING_KEY);
+        } catch {
+          /* sessionStorage unavailable */
+        }
         window.location.href = request.url;
       }
       return;

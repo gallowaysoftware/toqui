@@ -66,7 +66,13 @@ export function useOIDCAuth() {
       // Full-page redirect (Google-style) to avoid COOP severing the popup.
       // The /auth/callback page completes the code exchange on return.
       if (request.url) {
-        sessionStorage.setItem(OIDC_PENDING_KEY, "1");
+        try {
+          sessionStorage.setItem(OIDC_PENDING_KEY, "1");
+        } catch {
+          // sessionStorage unavailable (private mode / disabled). The
+          // callback falls back to the Google exchange; still redirect so the
+          // user isn't stranded (login just fails clearly instead of silently).
+        }
         window.location.href = request.url;
       }
       return;

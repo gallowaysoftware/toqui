@@ -10,7 +10,12 @@ import { useOIDCAuth } from "@/lib/oidc-auth";
  * `authProviders?.oidc?.enabled` and the discovery request never fires when
  * SSO is disabled.
  */
-export function OIDCSignInButton() {
+/**
+ * @param showSeparator render the "or" divider above the button. Pass false
+ * when another alternative (e.g. the Google button) already shows one, to
+ * avoid a redundant second divider.
+ */
+export function OIDCSignInButton({ showSeparator = true }: { showSeparator?: boolean }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { signIn, isReady, name } = useOIDCAuth();
@@ -18,11 +23,13 @@ export function OIDCSignInButton() {
 
   return (
     <>
-      <View style={styles.separator}>
-        <View style={styles.separatorLine} />
-        <Text style={styles.separatorText}>{t("common.or")}</Text>
-        <View style={styles.separatorLine} />
-      </View>
+      {showSeparator ? (
+        <View style={styles.separator}>
+          <View style={styles.separatorLine} />
+          <Text style={styles.separatorText}>{t("common.or")}</Text>
+          <View style={styles.separatorLine} />
+        </View>
+      ) : null}
       <Pressable
         style={[styles.button, !isReady && styles.disabled]}
         onPress={signIn}

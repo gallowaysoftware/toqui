@@ -61,7 +61,27 @@ describe("OIDCSignInButton", () => {
 
     await renderButton();
 
-    // react-native-web maps a disabled Pressable to aria-disabled.
+    // react-native-web maps a disabled Pressable to aria-disabled...
     expect(screen.getByTestId("signin-oidc").getAttribute("aria-disabled")).toBe("true");
+    // ...and clicking it must be inert.
+    fireEvent.click(screen.getByTestId("signin-oidc"));
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it("omits its own 'or' separator when showSeparator is false", async () => {
+    mockUseOIDCAuth.mockReturnValue({ signIn: vi.fn(), isReady: true, name: "SSO", enabled: true });
+
+    await act(async () => {
+      render(
+        createElement(
+          ThemeProvider,
+          null,
+          createElement(OIDCSignInButton, { showSeparator: false }),
+        ),
+      );
+    });
+
+    expect(screen.queryByText("or")).toBeNull();
+    expect(screen.getByTestId("signin-oidc")).toBeTruthy();
   });
 });
