@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "@/lib/auth";
+import { OIDC_PENDING_KEY } from "@/lib/oidc-auth";
 
 // Attempt to complete the auth session via the popup postMessage flow.
 // If window.opener is available (popup not severed by COOP), this resolves
@@ -11,7 +12,7 @@ import { useAuth } from "@/lib/auth";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthCallbackScreen() {
-  const { login } = useAuth();
+  const { login, loginWithOIDC } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -24,13 +25,31 @@ export default function AuthCallbackScreen() {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+
+    // Google and OIDC share this callback URI; a marker set before the OIDC
+    // redirect tells us which exchange to run. Read AND clear it up front —
+    // even when there's no code (consent denied / errored) — so an abandoned
+    // OIDC attempt can't misroute a subsequent Google login on this tab.
+    let oidcPending = false;
+    try {
+      oidcPending = sessionStorage.getItem(OIDC_PENDING_KEY) === "1";
+      sessionStorage.removeItem(OIDC_PENDING_KEY);
+    } catch {
+      /* sessionStorage unavailable (private mode / disabled) */
+    }
+
     if (!code) return;
 
     // If maybeCompleteAuthSession() already handled it (popup closed), this
     // page won't be visible anyway. So it's safe to always attempt login.
     const redirectUri = `${window.location.origin}/auth/callback`;
 
-    login(code, redirectUri)
+    // No PKCE on web (see useOIDCAuth).
+    const completeLogin = oidcPending
+      ? loginWithOIDC(code, redirectUri, "")
+      : login(code, redirectUri);
+
+    completeLogin
       .then(() => {
         // signup_completed / signin_completed analytics events removed —
         // the backend's trackNativeSignup fires signup_completed server-side
@@ -48,7 +67,7 @@ export default function AuthCallbackScreen() {
         console.error("OAuth callback login failed:", err);
         setError("Sign-in failed. Please try again.");
       });
-  }, [login, router]);
+  }, [login, loginWithOIDC, router]);
 
   if (error) {
     return (

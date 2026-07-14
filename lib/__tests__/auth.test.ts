@@ -9,6 +9,7 @@ import React from "react";
 
 // Mock ConnectRPC: createConnectTransport and createClient
 const mockGoogleLogin = vi.fn();
+const mockOIDCLogin = vi.fn();
 const mockEmailLogin = vi.fn();
 const mockEmailRegister = vi.fn();
 const mockRefreshToken = vi.fn();
@@ -20,6 +21,7 @@ vi.mock("@connectrpc/connect-web", () => ({
 vi.mock("@connectrpc/connect", () => ({
   createClient: vi.fn(() => ({
     googleLogin: mockGoogleLogin,
+    oIDCLogin: mockOIDCLogin,
     emailLogin: mockEmailLogin,
     emailRegister: mockEmailRegister,
     refreshToken: mockRefreshToken,
@@ -210,6 +212,48 @@ describe("AuthProvider", () => {
     expect(mockGoogleLogin).toHaveBeenCalledWith({
       code: "code-only",
       redirectUri: "",
+    });
+  });
+
+  // ── OIDC / SSO flow ───────────────────────────────────────────────────
+  it("loginWithOIDC stores tokens and user and passes code+redirect+verifier", async () => {
+    mockOIDCLogin.mockResolvedValueOnce({
+      accessToken: "oidc-at",
+      refreshToken: "oidc-rt",
+      user: { id: "u9", email: "sso@corp.com", name: "Esso" },
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.loginWithOIDC("sso-code", "https://app.example.com/auth/callback", "verifier-123");
+    });
+
+    expect(mockOIDCLogin).toHaveBeenCalledWith({
+      code: "sso-code",
+      redirectUri: "https://app.example.com/auth/callback",
+      codeVerifier: "verifier-123",
+    });
+    expect(result.current.accessToken).toBe("oidc-at");
+    expect(result.current.user).toEqual({ id: "u9", email: "sso@corp.com", name: "Esso" });
+    expect(localStorage.getItem("toqui_refresh_token")).toBe("oidc-rt");
+  });
+
+  it("loginWithOIDC defaults codeVerifier to empty string when omitted (web flow)", async () => {
+    mockOIDCLogin.mockResolvedValueOnce({ accessToken: "at", refreshToken: "rt" });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.loginWithOIDC("code", "https://app.example.com/auth/callback");
+    });
+
+    expect(mockOIDCLogin).toHaveBeenCalledWith({
+      code: "code",
+      redirectUri: "https://app.example.com/auth/callback",
+      codeVerifier: "",
     });
   });
 

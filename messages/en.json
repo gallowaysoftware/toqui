@@ -5,6 +5,7 @@
     "signIn": "Sign In",
     "getStarted": "Sign In with Google",
     "signInWithEmail": "Sign in with email",
+    "signInWithSSO": "Sign in with {{provider}}",
     "createAccount": "Create account",
     "or": "or",
     "signOut": "Sign Out",

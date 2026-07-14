@@ -10,6 +10,7 @@ import { useTrips } from "@/lib/hooks/useTrips";
 import { useOnboarding } from "@/lib/hooks/useOnboarding";
 import { needsServerSetup } from "@/lib/config";
 import { useAuthProviders } from "@/lib/hooks/useAuthProviders";
+import { OIDCSignInButton } from "@/components/auth/OIDCSignInButton";
 import { useTheme } from "@/lib/theme";
 import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
@@ -106,6 +107,10 @@ export default function TripsScreen() {
   // flash a button that fails as soon as the user taps it. Self-hosted
   // operators without Google credentials get the email-only experience.
   const googleEnabled = authProviders?.googleOauth === true;
+  // Same guard for the operator's OIDC/SSO provider (Authelia et al.). The
+  // button lives in its own component so its discovery hook only runs when
+  // enabled here.
+  const oidcEnabled = authProviders?.oidc?.enabled === true;
 
   // Bring-your-own-server first run (native): no server configured yet —
   // nothing else can work until one is chosen.
@@ -287,6 +292,8 @@ export default function TripsScreen() {
             </Pressable>
           </>
         ) : null}
+
+        {oidcEnabled ? <OIDCSignInButton showSeparator={!googleEnabled} /> : null}
 
         <Pressable
           onPress={() => router.push("/auth/email-register" as never)}
