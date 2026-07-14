@@ -9,6 +9,11 @@ import "google/protobuf/timestamp.proto";
 
 service AuthService {
   rpc GoogleLogin(GoogleLoginRequest) returns (GoogleLoginResponse);
+  // Generic OpenID Connect login (Authelia, Authentik, Keycloak, ...). The
+  // client runs the authorization-code + PKCE flow against the configured
+  // issuer and hands the code here; the backend exchanges + verifies the ID
+  // token and finds-or-creates the user by verified email.
+  rpc OIDCLogin(OIDCLoginRequest) returns (OIDCLoginResponse);
   // Note: FacebookLogin and AppleLogin RPCs were removed when the project
   // transitioned to self-hostable OSS (email+password default, Google OAuth
   // optional). Do not reuse those names. Proto3 doesn't support `reserved`
@@ -40,6 +45,18 @@ message GoogleLoginResponse {
   User user = 3;
   reserved 4, 5;
   reserved "consent_pending", "age_verification_required";
+}
+
+message OIDCLoginRequest {
+  string code = 1 [(buf.validate.field).string.min_len = 1];
+  string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
+  string code_verifier = 3;  // PKCE code verifier (S256)
+}
+
+message OIDCLoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
 }
 
 // FacebookLoginRequest / FacebookLoginResponse / AppleLoginRequest /
@@ -75,6 +92,17 @@ message GetAuthProvidersRequest {}
 message GetAuthProvidersResponse {
   bool email_password = 1;  // always true
   bool google_oauth = 2;    // env-gated (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET set)
+  OIDCProviderInfo oidc = 3;  // env-gated (OIDC_ISSUER + OIDC_CLIENT_ID + OIDC_CLIENT_SECRET set)
+}
+
+// OIDCProviderInfo tells the frontend how to run the OIDC authorization-code
+// + PKCE flow: it does discovery against `issuer`, uses the public
+// `client_id`, and labels the button with `name`.
+message OIDCProviderInfo {
+  bool enabled = 1;
+  string issuer = 2;
+  string client_id = 3;
+  string name = 4;
 }
 
 message RefreshTokenRequest {

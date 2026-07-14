@@ -38,6 +38,11 @@ type AuthHandler struct {
 	// GOOGLE_CLIENT_SECRET don't see Google as a sign-in option.
 	googleOAuthEnabled bool
 
+	// oidcProvider backs the OIDCLogin RPC. nil when OIDC is not configured
+	// (OIDC_ISSUER + OIDC_CLIENT_ID + OIDC_CLIENT_SECRET) — then OIDCLogin
+	// returns Unimplemented and GetAuthProviders reports oidc.enabled=false.
+	oidcProvider *auth.OIDCProvider
+
 	// testEmailQueries is a test-only override for the dbgen query
 	// surface used by EmailRegister / EmailLogin. Production code never
 	// sets this — it stays nil and emailQueries() falls through to the
@@ -61,6 +66,13 @@ func NewAuthHandler(authSvc *auth.Service, pool *pgxpool.Pool, lifecycleSvc *lif
 // google_oauth=false.
 func (h *AuthHandler) WithGoogleOAuthEnabled(enabled bool) *AuthHandler {
 	h.googleOAuthEnabled = enabled
+	return h
+}
+
+// WithOIDC wires a generic OIDC provider (Authelia, Authentik, ...). A nil
+// provider leaves OIDC disabled.
+func (h *AuthHandler) WithOIDC(provider *auth.OIDCProvider) *AuthHandler {
+	h.oidcProvider = provider
 	return h
 }
 

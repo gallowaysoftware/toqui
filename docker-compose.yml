@@ -104,6 +104,18 @@ services:
       GOOGLE_CUSTOM_SEARCH_API_KEY: "${GOOGLE_CUSTOM_SEARCH_API_KEY:-}"
       GOOGLE_CUSTOM_SEARCH_CX: "${GOOGLE_CUSTOM_SEARCH_CX:-}"
       GOOGLE_PLACES_API_KEY: "${GOOGLE_PLACES_API_KEY:-}"
+      # Optional single sign-on via any OpenID Connect provider (Authelia,
+      # Authentik, Keycloak, ...). Enabled when issuer + client id + secret
+      # are all set; adds a "Sign in with <name>" button. Independent of
+      # Google — you can run either, both, or neither.
+      OIDC_ISSUER: "${OIDC_ISSUER:-}"
+      OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-}"
+      OIDC_CLIENT_SECRET: "${OIDC_CLIENT_SECRET:-}"
+      OIDC_PROVIDER_NAME: "${OIDC_PROVIDER_NAME:-}"
+      OIDC_REDIRECT_URI: "${OIDC_REDIRECT_URI:-}"
+      # Only if your IdP omits email_verified AND you trust its email
+      # namespace — otherwise an unverified email can hijack an account.
+      OIDC_ALLOW_UNVERIFIED_EMAIL: "${OIDC_ALLOW_UNVERIFIED_EMAIL:-}"
       # Optional Google OAuth — leave unset for email+password only.
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"

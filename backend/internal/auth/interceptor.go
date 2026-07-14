@@ -11,6 +11,7 @@ import (
 
 var publicMethods = map[string]bool{
 	"/toqui.v1.AuthService/GoogleLogin":      true,
+	"/toqui.v1.AuthService/OIDCLogin":        true,
 	"/toqui.v1.AuthService/EmailRegister":    true,
 	"/toqui.v1.AuthService/EmailLogin":       true,
 	"/toqui.v1.AuthService/GetAuthProviders": true,

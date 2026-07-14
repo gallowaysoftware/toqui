@@ -35,6 +35,8 @@ const (
 const (
 	// AuthServiceGoogleLoginProcedure is the fully-qualified name of the AuthService's GoogleLogin RPC.
 	AuthServiceGoogleLoginProcedure = "/toqui.v1.AuthService/GoogleLogin"
+	// AuthServiceOIDCLoginProcedure is the fully-qualified name of the AuthService's OIDCLogin RPC.
+	AuthServiceOIDCLoginProcedure = "/toqui.v1.AuthService/OIDCLogin"
 	// AuthServiceEmailRegisterProcedure is the fully-qualified name of the AuthService's EmailRegister
 	// RPC.
 	AuthServiceEmailRegisterProcedure = "/toqui.v1.AuthService/EmailRegister"
@@ -59,6 +61,11 @@ const (
 // AuthServiceClient is a client for the toqui.v1.AuthService service.
 type AuthServiceClient interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
+	// Generic OpenID Connect login (Authelia, Authentik, Keycloak, ...). The
+	// client runs the authorization-code + PKCE flow against the configured
+	// issuer and hands the code here; the backend exchanges + verifies the ID
+	// token and finds-or-creates the user by verified email.
+	OIDCLogin(context.Context, *connect.Request[v1.OIDCLoginRequest]) (*connect.Response[v1.OIDCLoginResponse], error)
 	EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error)
 	EmailLogin(context.Context, *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error)
 	GetAuthProviders(context.Context, *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error)
@@ -84,6 +91,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceGoogleLoginProcedure,
 			connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
+			connect.WithClientOptions(opts...),
+		),
+		oIDCLogin: connect.NewClient[v1.OIDCLoginRequest, v1.OIDCLoginResponse](
+			httpClient,
+			baseURL+AuthServiceOIDCLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("OIDCLogin")),
 			connect.WithClientOptions(opts...),
 		),
 		emailRegister: connect.NewClient[v1.EmailRegisterRequest, v1.EmailRegisterResponse](
@@ -134,6 +147,7 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
 	googleLogin      *connect.Client[v1.GoogleLoginRequest, v1.GoogleLoginResponse]
+	oIDCLogin        *connect.Client[v1.OIDCLoginRequest, v1.OIDCLoginResponse]
 	emailRegister    *connect.Client[v1.EmailRegisterRequest, v1.EmailRegisterResponse]
 	emailLogin       *connect.Client[v1.EmailLoginRequest, v1.EmailLoginResponse]
 	getAuthProviders *connect.Client[v1.GetAuthProvidersRequest, v1.GetAuthProvidersResponse]
@@ -146,6 +160,11 @@ type authServiceClient struct {
 // GoogleLogin calls toqui.v1.AuthService.GoogleLogin.
 func (c *authServiceClient) GoogleLogin(ctx context.Context, req *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error) {
 	return c.googleLogin.CallUnary(ctx, req)
+}
+
+// OIDCLogin calls toqui.v1.AuthService.OIDCLogin.
+func (c *authServiceClient) OIDCLogin(ctx context.Context, req *connect.Request[v1.OIDCLoginRequest]) (*connect.Response[v1.OIDCLoginResponse], error) {
+	return c.oIDCLogin.CallUnary(ctx, req)
 }
 
 // EmailRegister calls toqui.v1.AuthService.EmailRegister.
@@ -186,6 +205,11 @@ func (c *authServiceClient) ExportData(ctx context.Context, req *connect.Request
 // AuthServiceHandler is an implementation of the toqui.v1.AuthService service.
 type AuthServiceHandler interface {
 	GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error)
+	// Generic OpenID Connect login (Authelia, Authentik, Keycloak, ...). The
+	// client runs the authorization-code + PKCE flow against the configured
+	// issuer and hands the code here; the backend exchanges + verifies the ID
+	// token and finds-or-creates the user by verified email.
+	OIDCLogin(context.Context, *connect.Request[v1.OIDCLoginRequest]) (*connect.Response[v1.OIDCLoginResponse], error)
 	EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error)
 	EmailLogin(context.Context, *connect.Request[v1.EmailLoginRequest]) (*connect.Response[v1.EmailLoginResponse], error)
 	GetAuthProviders(context.Context, *connect.Request[v1.GetAuthProvidersRequest]) (*connect.Response[v1.GetAuthProvidersResponse], error)
@@ -207,6 +231,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceGoogleLoginProcedure,
 		svc.GoogleLogin,
 		connect.WithSchema(authServiceMethods.ByName("GoogleLogin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceOIDCLoginHandler := connect.NewUnaryHandler(
+		AuthServiceOIDCLoginProcedure,
+		svc.OIDCLogin,
+		connect.WithSchema(authServiceMethods.ByName("OIDCLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceEmailRegisterHandler := connect.NewUnaryHandler(
@@ -255,6 +285,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case AuthServiceGoogleLoginProcedure:
 			authServiceGoogleLoginHandler.ServeHTTP(w, r)
+		case AuthServiceOIDCLoginProcedure:
+			authServiceOIDCLoginHandler.ServeHTTP(w, r)
 		case AuthServiceEmailRegisterProcedure:
 			authServiceEmailRegisterHandler.ServeHTTP(w, r)
 		case AuthServiceEmailLoginProcedure:
@@ -280,6 +312,10 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) GoogleLogin(context.Context, *connect.Request[v1.GoogleLoginRequest]) (*connect.Response[v1.GoogleLoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.GoogleLogin is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) OIDCLogin(context.Context, *connect.Request[v1.OIDCLoginRequest]) (*connect.Response[v1.OIDCLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("toqui.v1.AuthService.OIDCLogin is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) EmailRegister(context.Context, *connect.Request[v1.EmailRegisterRequest]) (*connect.Response[v1.EmailRegisterResponse], error) {

@@ -101,7 +101,7 @@ Deleted in the SaaS-to-OSS transition (do not reference): `internal/payment`, `i
 
 ### Services (proto/toqui/v1/)
 
-- **AuthService** (8 RPCs) — `EmailRegister` / `EmailLogin` (always available), optional `GoogleLogin` (gated on `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), `GetAuthProviders` discovery, `RefreshToken`, `GetCurrentUser`, `DeleteAccount`, `ExportData`. Facebook and Apple OAuth were removed.
+- **AuthService** (9 RPCs) — `EmailRegister` / `EmailLogin` (always available), optional `GoogleLogin` (gated on `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`) and `OIDCLogin` (generic OIDC/SSO — Authelia/Authentik/Keycloak — gated on `OIDC_ISSUER` + `OIDC_CLIENT_ID` + `OIDC_CLIENT_SECRET`), `GetAuthProviders` discovery, `RefreshToken`, `GetCurrentUser`, `DeleteAccount`, `ExportData`. Facebook and Apple OAuth were removed.
 - **TripService** (10 RPCs) — Trip CRUD, `CloneTrip`, itinerary get/update, `ReorderItineraryItem`, `ListTripTemplates`
 - **ChatService** (3 RPCs) — `SendMessage` (server-streaming), `GetChatHistory`, `ListChatSessions`
 - **BookingService** (9 RPCs) — `IngestBooking` (paste), `IngestEmail` (a full/forwarded email — MIME-parsed to plain text via `internal/email`, trip resolved from the subject via `internal/emailimport`), CRUD, `GetTripCostSummary`, `LinkBookingToTrip`, `ExtractBookingField`
@@ -125,7 +125,7 @@ Request → validate.Interceptor → auth.Interceptor → ratelimit.Interceptor 
 ```
 
 - **validate**: Enforces `buf.validate` constraints on request protos (string lengths, UUID format, lat/lng bounds). Returns `InvalidArgument` on failure.
-- **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure. Public (no-auth) methods: `GoogleLogin`, `EmailRegister`, `EmailLogin`, `GetAuthProviders`, `RefreshToken`.
+- **auth**: Extracts JWT from `Authorization` header, validates, injects user ID into context. Returns `Unauthenticated` on failure. Public (no-auth) methods: `GoogleLogin`, `OIDCLogin`, `EmailRegister`, `EmailLogin`, `GetAuthProviders`, `RefreshToken`.
 - **ratelimit**: Per-user token bucket (10 requests / 60 seconds). Returns `ResourceExhausted` when exceeded.
 
 The age-verification and consent interceptors from the SaaS era are gone. There are no per-user usage caps or tiers — the only AI throttles are the per-user rate limiter and the optional global `DAILY_AI_TOKEN_BUDGET`.
@@ -246,6 +246,10 @@ Config loads in three layers via `internal/config/`:
 | `DAILY_AI_TOKEN_BUDGET` | `0` (unlimited) | Global daily token cap across all AI calls (in-memory) |
 | `AI_DAILY_BUDGET_CENTS` | `0` | **Dead knob** — parsed into config but consumed nowhere (the `ai_usage` table it depended on was dropped) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (none) | Optional. When either is unset, `GoogleLogin` returns `Unimplemented` and `/auth/google/*` returns 501 — email+password only |
+| `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | (none) | Optional generic OIDC/SSO (Authelia, Authentik, Keycloak). All three enable `OIDCLogin`; discovery is lazy (IdP may boot after toqui). Account keyed on the verified email |
+| `OIDC_PROVIDER_NAME` | `SSO` | Display name for the SSO sign-in button |
+| `OIDC_REDIRECT_URI` | (none) | Fallback redirect URI for the code exchange; clients normally send their own (validated against the same `AllowedRedirectURIs` allowlist as Google) |
+| `OIDC_ALLOW_UNVERIFIED_EMAIL` | `false` | When false, `OIDCLogin` rejects an ID token that doesn't assert `email_verified:true` (an unverified email is an account-takeover vector since identity is the email). Enable only for an IdP that omits the claim but owns its email namespace |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8090/auth/google/callback` | OAuth redirect URI |
 | `SEARCH_PROVIDER` | (auto) | `web_search` backend: `searxng` \| `google` \| blank (auto: SearXNG if `SEARXNG_URL` set, else Google if its keys set, else stub) |
 | `SEARXNG_URL` | (none) | SearXNG instance URL for `web_search` (needs its JSON format enabled) |
@@ -493,11 +497,12 @@ The Dockerfile produces a distroless image with two binaries:
 
 - `AuthService/EmailRegister` — `{email, password (>=12 chars), name}`. bcrypt cost 12. Duplicate email → `AlreadyExists`; domain-allowlist failure → `PermissionDenied`.
 - `AuthService/EmailLogin` — All failure modes (unknown email, OAuth-only user, wrong password) collapse to `Unauthenticated` "invalid email or password" to prevent enumeration; a dummy bcrypt comparison keeps timing equivalent. Per-IP lockout applies (see Auth Lockout).
-- `AuthService/GetAuthProviders` (public) — frontends call before render; returns `{email_password: true, google_oauth: <env-gated>}`.
+- `AuthService/GetAuthProviders` (public) — frontends call before render; returns `{email_password: true, google_oauth: <env-gated>, oidc: {enabled, issuer, client_id, name}}`. The frontend runs OIDC discovery + PKCE against `issuer`/`client_id` and labels the button `name`.
 
 ### Google OAuth (optional)
 
 - `AuthService/GoogleLogin` — native code-for-token exchange (PKCE). Returns `Unimplemented` when `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` unset.
+- `AuthService/OIDCLogin` — generic OIDC. Client runs authorization-code + PKCE against the configured issuer, hands the code here; backend exchanges + verifies the ID token (`internal/auth/oidc.go`, go-oidc discovery + signature + issuer/audience check), then finds-or-creates the user by email (`UpsertUserByEmail`) and issues toqui tokens. Identity is the email, so a matching login links to a pre-existing email+password or Google account — for that reason the ID token **must** assert `email_verified:true` by default (rejected otherwise; `OIDC_ALLOW_UNVERIFIED_EMAIL` relaxes it). Domain allowlist applies. `Unimplemented` when OIDC unset.
 - `GET /auth/google/login` / `GET /auth/google/callback` — web redirect flow; both return 501 when Google OAuth is not configured. Callback sets the `toqui_oauth_result` cookie (base64url-encoded — Go strips `"` from cookie values per RFC 6265) and redirects to the frontend `/auth/callback`. A welcome email is sent on first OAuth signup when Resend is configured.
 
 ### Shared cookie/HTTP routes
