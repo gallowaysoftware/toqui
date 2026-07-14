@@ -90,6 +90,12 @@ type Config struct {
 	OIDCClientSecret string
 	OIDCProviderName string // display name for the sign-in button (default "SSO")
 	OIDCRedirectURI  string // fallback redirect; clients normally send their own
+	// When false (default), a login is rejected unless the ID token asserts
+	// email_verified:true. Set OIDC_ALLOW_UNVERIFIED_EMAIL=true only for an
+	// IdP that omits the claim AND that you trust to own its email namespace
+	// — otherwise an unverified email is an account-takeover vector, since
+	// identity is keyed on the email.
+	OIDCAllowUnverifiedEmail bool
 
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
@@ -164,9 +170,10 @@ func Load() (*Config, error) {
 		SearXNGURL:               strings.TrimSpace(os.Getenv("SEARXNG_URL")),
 		OIDCIssuer:               strings.TrimSpace(os.Getenv("OIDC_ISSUER")),
 		OIDCClientID:             strings.TrimSpace(os.Getenv("OIDC_CLIENT_ID")),
-		OIDCClientSecret:         os.Getenv("OIDC_CLIENT_SECRET"),
+		OIDCClientSecret:         strings.TrimSpace(os.Getenv("OIDC_CLIENT_SECRET")),
 		OIDCProviderName:         strings.TrimSpace(os.Getenv("OIDC_PROVIDER_NAME")),
 		OIDCRedirectURI:          strings.TrimSpace(os.Getenv("OIDC_REDIRECT_URI")),
+		OIDCAllowUnverifiedEmail: strings.EqualFold(strings.TrimSpace(os.Getenv("OIDC_ALLOW_UNVERIFIED_EMAIL")), "true"),
 		AIProvider:               getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),

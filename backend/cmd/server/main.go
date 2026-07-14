@@ -349,8 +349,8 @@ func main() {
 	// Discovery is lazy, so a nil-check on config is all we need at boot.
 	var oidcProvider *auth.OIDCProvider
 	if cfg.OIDCIssuer != "" && cfg.OIDCClientID != "" && cfg.OIDCClientSecret != "" {
-		oidcProvider = auth.NewOIDCProvider(cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURI, cfg.OIDCProviderName)
-		slog.Info("oidc sso enabled", "issuer", cfg.OIDCIssuer, "provider", oidcProvider.Name())
+		oidcProvider = auth.NewOIDCProvider(cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURI, cfg.OIDCProviderName, cfg.OIDCAllowUnverifiedEmail)
+		slog.Info("oidc sso enabled", "issuer", cfg.OIDCIssuer, "provider", oidcProvider.Name(), "allow_unverified_email", cfg.OIDCAllowUnverifiedEmail)
 	} else {
 		slog.Info("oidc sso disabled — OIDC_ISSUER/CLIENT_ID/CLIENT_SECRET not all set")
 	}

@@ -4,10 +4,16 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
+
+// oidcDiscoveryTimeout bounds a single discovery round-trip so a hung or
+// unreachable IdP can't tie up a login request (discovery is lazy and
+// retried, so an unauthenticated caller must not be able to block on it).
+const oidcDiscoveryTimeout = 10 * time.Second
 
 // OIDCUserInfo is the identity extracted from a verified ID token.
 type OIDCUserInfo struct {
@@ -31,6 +37,9 @@ type OIDCProvider struct {
 	redirectURI  string
 	name         string // display name for the sign-in button
 	scopes       []string
+	// allowUnverifiedEmail relaxes the default requirement that the ID token
+	// assert email_verified:true. See config.OIDCAllowUnverifiedEmail.
+	allowUnverifiedEmail bool
 
 	mu       sync.Mutex
 	provider *oidc.Provider
@@ -40,17 +49,19 @@ type OIDCProvider struct {
 
 // NewOIDCProvider builds a provider from config. It performs no network I/O;
 // discovery happens on first ExchangeAndVerify. name defaults to "SSO".
-func NewOIDCProvider(issuer, clientID, clientSecret, redirectURI, name string) *OIDCProvider {
+// allowUnverifiedEmail should almost always be false — see ExchangeAndVerify.
+func NewOIDCProvider(issuer, clientID, clientSecret, redirectURI, name string, allowUnverifiedEmail bool) *OIDCProvider {
 	if name == "" {
 		name = "SSO"
 	}
 	return &OIDCProvider{
-		issuer:       issuer,
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		redirectURI:  redirectURI,
-		name:         name,
-		scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
+		issuer:               issuer,
+		clientID:             clientID,
+		clientSecret:         clientSecret,
+		redirectURI:          redirectURI,
+		name:                 name,
+		scopes:               []string{oidc.ScopeOpenID, "email", "profile"},
+		allowUnverifiedEmail: allowUnverifiedEmail,
 	}
 }
 
@@ -66,7 +77,9 @@ func (p *OIDCProvider) ensure(ctx context.Context) error {
 	if p.provider != nil {
 		return nil
 	}
-	provider, err := oidc.NewProvider(ctx, p.issuer)
+	dctx, cancel := context.WithTimeout(ctx, oidcDiscoveryTimeout)
+	defer cancel()
+	provider, err := oidc.NewProvider(dctx, p.issuer)
 	if err != nil {
 		return fmt.Errorf("oidc discovery for %s: %w", p.issuer, err)
 	}
@@ -129,11 +142,22 @@ func (p *OIDCProvider) ExchangeAndVerify(ctx context.Context, code, redirectURI,
 	if claims.Email == "" {
 		return nil, fmt.Errorf("id_token has no email claim (grant the email scope on the OIDC client)")
 	}
-	// Reject only an *explicit* email_verified:false. Many self-host IdPs
-	// (Authelia) omit the claim entirely; the operator vouches for those
-	// accounts by provisioning them, so absence is treated as trusted.
+	// Identity is keyed on this email (see UpsertUserByEmail), and a login
+	// with a matching email is allowed to resolve to a pre-existing
+	// email+password or Google account. An *unverified* email is therefore
+	// an account-takeover vector: at an IdP with self-service registration
+	// and no email verification, an attacker could register a victim's
+	// address and inherit their toqui account.
+	//
+	// An explicit email_verified:false is a positive "not verified" assertion
+	// and is always rejected. An omitted claim is rejected too, unless the
+	// operator has opted in via OIDC_ALLOW_UNVERIFIED_EMAIL (for an IdP that
+	// doesn't emit the claim but owns its email namespace).
 	if claims.EmailVerified != nil && !*claims.EmailVerified {
-		return nil, fmt.Errorf("email is not verified at the identity provider")
+		return nil, fmt.Errorf("id_token asserts email_verified:false")
+	}
+	if claims.EmailVerified == nil && !p.allowUnverifiedEmail {
+		return nil, fmt.Errorf("id_token omits email_verified (set OIDC_ALLOW_UNVERIFIED_EMAIL=true only if you trust this IdP's email namespace)")
 	}
 
 	return &OIDCUserInfo{Subject: claims.Subject, Email: claims.Email, Name: claims.Name}, nil

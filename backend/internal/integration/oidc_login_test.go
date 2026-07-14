@@ -65,7 +65,7 @@ func startMockOIDC(t *testing.T, email, name string) (issuer, clientID string) {
 	mux.HandleFunc("/token", func(w http.ResponseWriter, _ *http.Request) {
 		tok := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 			"iss": srv.URL, "aud": clientID, "sub": "sub-" + email,
-			"email": email, "name": name,
+			"email": email, "email_verified": true, "name": name,
 			"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
 		})
 		tok.Header["kid"] = "k"
@@ -90,7 +90,7 @@ func TestOIDCLogin_EndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	issuer, clientID := startMockOIDC(t, "traveler@example.com", "Traveler")
-	provider := auth.NewOIDCProvider(issuer, clientID, "secret", "", "Authelia")
+	provider := auth.NewOIDCProvider(issuer, clientID, "secret", "", "Authelia", false)
 	authSvc := auth.NewService("", "", "", "test-jwt-secret-oidc-32chars-min!!")
 	h := handlers.NewAuthHandler(authSvc, env.Pool, nil, nil, nil).WithOIDC(provider)
 
@@ -168,12 +168,61 @@ func TestOIDCLogin_DomainAllowlist(t *testing.T) {
 	ctx := context.Background()
 
 	issuer, clientID := startMockOIDC(t, "outsider@evil.com", "Outsider")
-	provider := auth.NewOIDCProvider(issuer, clientID, "secret", "", "Authelia")
+	provider := auth.NewOIDCProvider(issuer, clientID, "secret", "", "Authelia", false)
 	authSvc := auth.NewService("", "", "", "test-jwt-secret-oidc-32chars-min!!")
 	h := handlers.NewAuthHandler(authSvc, env.Pool, nil, []string{"example.com"}, nil).WithOIDC(provider)
 
 	_, err := h.OIDCLogin(ctx, connect.NewRequest(&toquiv1.OIDCLoginRequest{Code: "x"}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Errorf("got %v, want CodePermissionDenied for a disallowed domain", err)
+	}
+}
+
+// TestOIDCLogin_LinksExistingEmailPasswordAccount documents the intended
+// (and, with the email_verified gate, safe) identity model: an SSO login
+// whose *verified* email matches a pre-existing email+password account
+// resolves to that same account and leaves the password intact — so a user
+// can add SSO later without creating a duplicate or losing password login.
+func TestOIDCLogin_LinksExistingEmailPasswordAccount(t *testing.T) {
+	env := NewTestEnv(t)
+	env.CleanDB(t)
+	ctx := context.Background()
+
+	const email = "dual@example.com"
+	const password = "a-long-enough-password"
+
+	issuer, clientID := startMockOIDC(t, email, "Dual User")
+	provider := auth.NewOIDCProvider(issuer, clientID, "secret", "", "Authelia", false)
+	authSvc := auth.NewService("", "", "", "test-jwt-secret-oidc-32chars-min!!")
+	h := handlers.NewAuthHandler(authSvc, env.Pool, nil, nil, nil).WithOIDC(provider)
+
+	reg, err := h.EmailRegister(ctx, connect.NewRequest(&toquiv1.EmailRegisterRequest{
+		Email: email, Password: password, Name: "Dual User",
+	}))
+	if err != nil {
+		t.Fatalf("EmailRegister: %v", err)
+	}
+
+	oidc, err := h.OIDCLogin(ctx, connect.NewRequest(&toquiv1.OIDCLoginRequest{Code: "any"}))
+	if err != nil {
+		t.Fatalf("OIDCLogin: %v", err)
+	}
+	if oidc.Msg.User.Id != reg.Msg.User.Id {
+		t.Errorf("OIDC login created a new account (%s) instead of linking to %s", oidc.Msg.User.Id, reg.Msg.User.Id)
+	}
+
+	// Password login still works — OIDC upsert preserved password_hash.
+	if _, err := h.EmailLogin(ctx, connect.NewRequest(&toquiv1.EmailLoginRequest{
+		Email: email, Password: password,
+	})); err != nil {
+		t.Errorf("password login broke after OIDC link: %v", err)
+	}
+
+	var count int
+	if err := env.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE email = $1", email).Scan(&count); err != nil {
+		t.Fatalf("count users: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 user row after linking, got %d", count)
 	}
 }

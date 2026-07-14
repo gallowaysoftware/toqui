@@ -248,6 +248,8 @@ Config loads in three layers via `internal/config/`:
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (none) | Optional. When either is unset, `GoogleLogin` returns `Unimplemented` and `/auth/google/*` returns 501 — email+password only |
 | `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | (none) | Optional generic OIDC/SSO (Authelia, Authentik, Keycloak). All three enable `OIDCLogin`; discovery is lazy (IdP may boot after toqui). Account keyed on the verified email |
 | `OIDC_PROVIDER_NAME` | `SSO` | Display name for the SSO sign-in button |
+| `OIDC_REDIRECT_URI` | (none) | Fallback redirect URI for the code exchange; clients normally send their own (validated against the same `AllowedRedirectURIs` allowlist as Google) |
+| `OIDC_ALLOW_UNVERIFIED_EMAIL` | `false` | When false, `OIDCLogin` rejects an ID token that doesn't assert `email_verified:true` (an unverified email is an account-takeover vector since identity is the email). Enable only for an IdP that omits the claim but owns its email namespace |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8090/auth/google/callback` | OAuth redirect URI |
 | `SEARCH_PROVIDER` | (auto) | `web_search` backend: `searxng` \| `google` \| blank (auto: SearXNG if `SEARXNG_URL` set, else Google if its keys set, else stub) |
 | `SEARXNG_URL` | (none) | SearXNG instance URL for `web_search` (needs its JSON format enabled) |
@@ -500,7 +502,7 @@ The Dockerfile produces a distroless image with two binaries:
 ### Google OAuth (optional)
 
 - `AuthService/GoogleLogin` — native code-for-token exchange (PKCE). Returns `Unimplemented` when `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` unset.
-- `AuthService/OIDCLogin` — generic OIDC. Client runs authorization-code + PKCE against the configured issuer, hands the code here; backend exchanges + verifies the ID token (`internal/auth/oidc.go`, go-oidc discovery + signature check), finds-or-creates the user by verified email (`UpsertUserByEmail`), issues toqui tokens. Domain allowlist applies. `Unimplemented` when OIDC unset.
+- `AuthService/OIDCLogin` — generic OIDC. Client runs authorization-code + PKCE against the configured issuer, hands the code here; backend exchanges + verifies the ID token (`internal/auth/oidc.go`, go-oidc discovery + signature + issuer/audience check), then finds-or-creates the user by email (`UpsertUserByEmail`) and issues toqui tokens. Identity is the email, so a matching login links to a pre-existing email+password or Google account — for that reason the ID token **must** assert `email_verified:true` by default (rejected otherwise; `OIDC_ALLOW_UNVERIFIED_EMAIL` relaxes it). Domain allowlist applies. `Unimplemented` when OIDC unset.
 - `GET /auth/google/login` / `GET /auth/google/callback` — web redirect flow; both return 501 when Google OAuth is not configured. Callback sets the `toqui_oauth_result` cookie (base64url-encoded — Go strips `"` from cookie values per RFC 6265) and redirects to the frontend `/auth/callback`. A welcome email is sent on first OAuth signup when Resend is configured.
 
 ### Shared cookie/HTTP routes
