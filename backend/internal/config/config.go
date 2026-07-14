@@ -82,6 +82,15 @@ type Config struct {
 	SearchProvider string
 	SearXNGURL     string
 
+	// Generic OIDC / SSO login (Authelia, Authentik, Keycloak, ...). Enabled
+	// when Issuer + ClientID + ClientSecret are all set. Google stays a
+	// separate, independent option.
+	OIDCIssuer       string
+	OIDCClientID     string
+	OIDCClientSecret string
+	OIDCProviderName string // display name for the sign-in button (default "SSO")
+	OIDCRedirectURI  string // fallback redirect; clients normally send their own
+
 	// AI provider priority: "gemini" (default) or "claude"
 	AIProvider string
 
@@ -153,6 +162,11 @@ func Load() (*Config, error) {
 		GooglePlacesAPIKey:       os.Getenv("GOOGLE_PLACES_API_KEY"),
 		SearchProvider:           strings.ToLower(strings.TrimSpace(os.Getenv("SEARCH_PROVIDER"))),
 		SearXNGURL:               strings.TrimSpace(os.Getenv("SEARXNG_URL")),
+		OIDCIssuer:               strings.TrimSpace(os.Getenv("OIDC_ISSUER")),
+		OIDCClientID:             strings.TrimSpace(os.Getenv("OIDC_CLIENT_ID")),
+		OIDCClientSecret:         os.Getenv("OIDC_CLIENT_SECRET"),
+		OIDCProviderName:         strings.TrimSpace(os.Getenv("OIDC_PROVIDER_NAME")),
+		OIDCRedirectURI:          strings.TrimSpace(os.Getenv("OIDC_REDIRECT_URI")),
 		AIProvider:               getEnv("AI_PROVIDER", "gemini"),
 		LLMCacheEnabled:          getEnvBool("LLM_CACHE_ENABLED", true),
 		LLMCacheTTL:              getEnvDuration("LLM_CACHE_TTL", time.Hour),

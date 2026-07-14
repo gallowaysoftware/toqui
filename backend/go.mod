@@ -9,6 +9,7 @@ require (
 	cloud.google.com/go/storage v1.62.1
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/grpcreflect v1.3.0
+	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/golang-jwt/jwt/v5 v5.3.1

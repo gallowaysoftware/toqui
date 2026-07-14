@@ -5,6 +5,20 @@ ON CONFLICT (google_id)
 DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url, updated_at = NOW()
 RETURNING *;
 
+-- UpsertUserByEmail finds-or-creates a user keyed on their (unique) email.
+-- Used by OIDC/SSO login: the identity provider's verified email is the
+-- account identity, so the same person signing in via SSO, Google, or
+-- email+password lands on one account. Never touches password_hash.
+-- name: UpsertUserByEmail :one
+INSERT INTO users (email, name, avatar_url)
+VALUES ($1, $2, $3)
+ON CONFLICT (email)
+DO UPDATE SET
+    name = COALESCE(NULLIF(EXCLUDED.name, ''), users.name),
+    avatar_url = COALESCE(NULLIF(EXCLUDED.avatar_url, ''), users.avatar_url),
+    updated_at = NOW()
+RETURNING *;
+
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = $1;
 

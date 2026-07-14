@@ -310,6 +310,46 @@ func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPass
 	return err
 }
 
+const upsertUserByEmail = `-- name: UpsertUserByEmail :one
+INSERT INTO users (email, name, avatar_url)
+VALUES ($1, $2, $3)
+ON CONFLICT (email)
+DO UPDATE SET
+    name = COALESCE(NULLIF(EXCLUDED.name, ''), users.name),
+    avatar_url = COALESCE(NULLIF(EXCLUDED.avatar_url, ''), users.avatar_url),
+    updated_at = NOW()
+RETURNING id, email, name, google_id, avatar_url, created_at, updated_at, default_persona_id, facebook_id, is_admin, password_hash
+`
+
+type UpsertUserByEmailParams struct {
+	Email     string      `json:"email"`
+	Name      pgtype.Text `json:"name"`
+	AvatarUrl pgtype.Text `json:"avatar_url"`
+}
+
+// UpsertUserByEmail finds-or-creates a user keyed on their (unique) email.
+// Used by OIDC/SSO login: the identity provider's verified email is the
+// account identity, so the same person signing in via SSO, Google, or
+// email+password lands on one account. Never touches password_hash.
+func (q *Queries) UpsertUserByEmail(ctx context.Context, arg UpsertUserByEmailParams) (User, error) {
+	row := q.db.QueryRow(ctx, upsertUserByEmail, arg.Email, arg.Name, arg.AvatarUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.GoogleID,
+		&i.AvatarUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DefaultPersonaID,
+		&i.FacebookID,
+		&i.IsAdmin,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
 const upsertUserByGoogleID = `-- name: UpsertUserByGoogleID :one
 INSERT INTO users (google_id, email, name, avatar_url)
 VALUES ($1, $2, $3, $4)

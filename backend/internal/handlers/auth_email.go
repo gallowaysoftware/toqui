@@ -175,9 +175,17 @@ func (h *AuthHandler) EmailLogin(ctx context.Context, req *connect.Request[toqui
 // Public — runs before the user has a token, hence listed in the
 // auth interceptor's allowlist.
 func (h *AuthHandler) GetAuthProviders(_ context.Context, _ *connect.Request[toquiv1.GetAuthProvidersRequest]) (*connect.Response[toquiv1.GetAuthProvidersResponse], error) {
+	oidc := &toquiv1.OIDCProviderInfo{}
+	if h.oidcProvider != nil {
+		oidc.Enabled = true
+		oidc.Issuer = h.oidcProvider.Issuer()
+		oidc.ClientId = h.oidcProvider.ClientID()
+		oidc.Name = h.oidcProvider.Name()
+	}
 	return connect.NewResponse(&toquiv1.GetAuthProvidersResponse{
 		EmailPassword: true,
 		GoogleOauth:   h.googleOAuthEnabled,
+		Oidc:          oidc,
 	}), nil
 }
 
