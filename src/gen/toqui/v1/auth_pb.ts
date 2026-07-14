@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file toqui/v1/auth.proto.
  */
 export const file_toqui_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ0ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCUoECAQQBVILYXR0cmlidXRpb24imAEKE0dvb2dsZUxvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJlChRFbWFpbFJlZ2lzdGVyUmVxdWVzdBIWCgVlbWFpbBgBIAEoCUIHukgEcgJgARIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQDBjIARIXCgRuYW1lGAMgASgJQgm6SAZyBBABGGQiYgoVRW1haWxSZWdpc3RlclJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJEhwKBHVzZXIYAyABKAsyDi50b3F1aS52MS5Vc2VyIkkKEUVtYWlsTG9naW5SZXF1ZXN0EhYKBWVtYWlsGAEgASgJQge6SARyAmABEhwKCHBhc3N3b3JkGAIgASgJQgq6SAdyBRABGMgBIl8KEkVtYWlsTG9naW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIZChdHZXRBdXRoUHJvdmlkZXJzUmVxdWVzdCJIChhHZXRBdXRoUHJvdmlkZXJzUmVzcG9uc2USFgoOZW1haWxfcGFzc3dvcmQYASABKAgSFAoMZ29vZ2xlX29hdXRoGAIgASgIIjUKE1JlZnJlc2hUb2tlblJlcXVlc3QSHgoNcmVmcmVzaF90b2tlbhgBIAEoCUIHukgEcgIQASJhChRSZWZyZXNoVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIXChVHZXRDdXJyZW50VXNlclJlcXVlc3QiNgoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIcCgR1c2VyGAEgASgLMg4udG9xdWkudjEuVXNlciKKAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBKBAgHEAhSD2FnZV92ZXJpZmllZF9hdCIwChREZWxldGVBY2NvdW50UmVxdWVzdBIYCgdjb25maXJtGAEgASgIQge6SARqAggBIjwKFURlbGV0ZUFjY291bnRSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiEwoRRXhwb3J0RGF0YVJlcXVlc3QiOQoSRXhwb3J0RGF0YVJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCTKOBQoLQXV0aFNlcnZpY2USSgoLR29vZ2xlTG9naW4SHC50b3F1aS52MS5Hb29nbGVMb2dpblJlcXVlc3QaHS50b3F1aS52MS5Hb29nbGVMb2dpblJlc3BvbnNlElAKDUVtYWlsUmVnaXN0ZXISHi50b3F1aS52MS5FbWFpbFJlZ2lzdGVyUmVxdWVzdBofLnRvcXVpLnYxLkVtYWlsUmVnaXN0ZXJSZXNwb25zZRJHCgpFbWFpbExvZ2luEhsudG9xdWkudjEuRW1haWxMb2dpblJlcXVlc3QaHC50b3F1aS52MS5FbWFpbExvZ2luUmVzcG9uc2USWQoQR2V0QXV0aFByb3ZpZGVycxIhLnRvcXVpLnYxLkdldEF1dGhQcm92aWRlcnNSZXF1ZXN0GiIudG9xdWkudjEuR2V0QXV0aFByb3ZpZGVyc1Jlc3BvbnNlEk0KDFJlZnJlc2hUb2tlbhIdLnRvcXVpLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaHi50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXNwb25zZRJTCg5HZXRDdXJyZW50VXNlchIfLnRvcXVpLnYxLkdldEN1cnJlbnRVc2VyUmVxdWVzdBogLnRvcXVpLnYxLkdldEN1cnJlbnRVc2VyUmVzcG9uc2USUAoNRGVsZXRlQWNjb3VudBIeLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXF1ZXN0Gh8udG9xdWkudjEuRGVsZXRlQWNjb3VudFJlc3BvbnNlEkcKCkV4cG9ydERhdGESGy50b3F1aS52MS5FeHBvcnREYXRhUmVxdWVzdBocLnRvcXVpLnYxLkV4cG9ydERhdGFSZXNwb25zZUJAWj5naXRodWIuY29tL2dhbGxvd2F5c29mdHdhcmUvdG9xdWktYmFja2VuZC9nZW4vdG9xdWkvdjE7dG9xdWl2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp]);
+  fileDesc("ChN0b3F1aS92MS9hdXRoLnByb3RvEgh0b3F1aS52MSJ0ChJHb29nbGVMb2dpblJlcXVlc3QSFQoEY29kZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFQoNY29kZV92ZXJpZmllchgDIAEoCUoECAQQBVILYXR0cmlidXRpb24imAEKE0dvb2dsZUxvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXJKBAgEEAVKBAgFEAZSD2NvbnNlbnRfcGVuZGluZ1IZYWdlX3ZlcmlmaWNhdGlvbl9yZXF1aXJlZCJfChBPSURDTG9naW5SZXF1ZXN0EhUKBGNvZGUYASABKAlCB7pIBHICEAESHQoMcmVkaXJlY3RfdXJpGAIgASgJQge6SARyAhABEhUKDWNvZGVfdmVyaWZpZXIYAyABKAkiXgoRT0lEQ0xvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXIiZQoURW1haWxSZWdpc3RlclJlcXVlc3QSFgoFZW1haWwYASABKAlCB7pIBHICYAESHAoIcGFzc3dvcmQYAiABKAlCCrpIB3IFEAwYyAESFwoEbmFtZRgDIAEoCUIJukgGcgQQARhkImIKFUVtYWlsUmVnaXN0ZXJSZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciJJChFFbWFpbExvZ2luUmVxdWVzdBIWCgVlbWFpbBgBIAEoCUIHukgEcgJgARIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQARjIASJfChJFbWFpbExvZ2luUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEhUKDXJlZnJlc2hfdG9rZW4YAiABKAkSHAoEdXNlchgDIAEoCzIOLnRvcXVpLnYxLlVzZXIiGQoXR2V0QXV0aFByb3ZpZGVyc1JlcXVlc3QicgoYR2V0QXV0aFByb3ZpZGVyc1Jlc3BvbnNlEhYKDmVtYWlsX3Bhc3N3b3JkGAEgASgIEhQKDGdvb2dsZV9vYXV0aBgCIAEoCBIoCgRvaWRjGAMgASgLMhoudG9xdWkudjEuT0lEQ1Byb3ZpZGVySW5mbyJUChBPSURDUHJvdmlkZXJJbmZvEg8KB2VuYWJsZWQYASABKAgSDgoGaXNzdWVyGAIgASgJEhEKCWNsaWVudF9pZBgDIAEoCRIMCgRuYW1lGAQgASgJIjUKE1JlZnJlc2hUb2tlblJlcXVlc3QSHgoNcmVmcmVzaF90b2tlbhgBIAEoCUIHukgEcgIQASJhChRSZWZyZXNoVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFQoNcmVmcmVzaF90b2tlbhgCIAEoCRIcCgR1c2VyGAMgASgLMg4udG9xdWkudjEuVXNlciIXChVHZXRDdXJyZW50VXNlclJlcXVlc3QiNgoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIcCgR1c2VyGAEgASgLMg4udG9xdWkudjEuVXNlciKKAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmF2YXRhcl91cmwYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBKBAgHEAhSD2FnZV92ZXJpZmllZF9hdCIwChREZWxldGVBY2NvdW50UmVxdWVzdBIYCgdjb25maXJtGAEgASgIQge6SARqAggBIjwKFURlbGV0ZUFjY291bnRSZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiEwoRRXhwb3J0RGF0YVJlcXVlc3QiOQoSRXhwb3J0RGF0YVJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDwoHbWVzc2FnZRgCIAEoCTLUBQoLQXV0aFNlcnZpY2USSgoLR29vZ2xlTG9naW4SHC50b3F1aS52MS5Hb29nbGVMb2dpblJlcXVlc3QaHS50b3F1aS52MS5Hb29nbGVMb2dpblJlc3BvbnNlEkQKCU9JRENMb2dpbhIaLnRvcXVpLnYxLk9JRENMb2dpblJlcXVlc3QaGy50b3F1aS52MS5PSURDTG9naW5SZXNwb25zZRJQCg1FbWFpbFJlZ2lzdGVyEh4udG9xdWkudjEuRW1haWxSZWdpc3RlclJlcXVlc3QaHy50b3F1aS52MS5FbWFpbFJlZ2lzdGVyUmVzcG9uc2USRwoKRW1haWxMb2dpbhIbLnRvcXVpLnYxLkVtYWlsTG9naW5SZXF1ZXN0GhwudG9xdWkudjEuRW1haWxMb2dpblJlc3BvbnNlElkKEEdldEF1dGhQcm92aWRlcnMSIS50b3F1aS52MS5HZXRBdXRoUHJvdmlkZXJzUmVxdWVzdBoiLnRvcXVpLnYxLkdldEF1dGhQcm92aWRlcnNSZXNwb25zZRJNCgxSZWZyZXNoVG9rZW4SHS50b3F1aS52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0Gh4udG9xdWkudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USUwoOR2V0Q3VycmVudFVzZXISHy50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlcXVlc3QaIC50b3F1aS52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlElAKDURlbGV0ZUFjY291bnQSHi50b3F1aS52MS5EZWxldGVBY2NvdW50UmVxdWVzdBofLnRvcXVpLnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJHCgpFeHBvcnREYXRhEhsudG9xdWkudjEuRXhwb3J0RGF0YVJlcXVlc3QaHC50b3F1aS52MS5FeHBvcnREYXRhUmVzcG9uc2VCQFo+Z2l0aHViLmNvbS9nYWxsb3dheXNvZnR3YXJlL3RvcXVpL2JhY2tlbmQvZ2VuL3RvcXVpL3YxO3RvcXVpdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message toqui.v1.GoogleLoginRequest
@@ -72,6 +72,62 @@ export const GoogleLoginResponseSchema: GenMessage<GoogleLoginResponse> = /*@__P
   messageDesc(file_toqui_v1_auth, 1);
 
 /**
+ * @generated from message toqui.v1.OIDCLoginRequest
+ */
+export type OIDCLoginRequest = Message<"toqui.v1.OIDCLoginRequest"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string redirect_uri = 2;
+   */
+  redirectUri: string;
+
+  /**
+   * PKCE code verifier (S256)
+   *
+   * @generated from field: string code_verifier = 3;
+   */
+  codeVerifier: string;
+};
+
+/**
+ * Describes the message toqui.v1.OIDCLoginRequest.
+ * Use `create(OIDCLoginRequestSchema)` to create a new message.
+ */
+export const OIDCLoginRequestSchema: GenMessage<OIDCLoginRequest> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 2);
+
+/**
+ * @generated from message toqui.v1.OIDCLoginResponse
+ */
+export type OIDCLoginResponse = Message<"toqui.v1.OIDCLoginResponse"> & {
+  /**
+   * @generated from field: string access_token = 1;
+   */
+  accessToken: string;
+
+  /**
+   * @generated from field: string refresh_token = 2;
+   */
+  refreshToken: string;
+
+  /**
+   * @generated from field: toqui.v1.User user = 3;
+   */
+  user?: User | undefined;
+};
+
+/**
+ * Describes the message toqui.v1.OIDCLoginResponse.
+ * Use `create(OIDCLoginResponseSchema)` to create a new message.
+ */
+export const OIDCLoginResponseSchema: GenMessage<OIDCLoginResponse> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 3);
+
+/**
  * @generated from message toqui.v1.EmailRegisterRequest
  */
 export type EmailRegisterRequest = Message<"toqui.v1.EmailRegisterRequest"> & {
@@ -96,7 +152,7 @@ export type EmailRegisterRequest = Message<"toqui.v1.EmailRegisterRequest"> & {
  * Use `create(EmailRegisterRequestSchema)` to create a new message.
  */
 export const EmailRegisterRequestSchema: GenMessage<EmailRegisterRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 2);
+  messageDesc(file_toqui_v1_auth, 4);
 
 /**
  * @generated from message toqui.v1.EmailRegisterResponse
@@ -123,7 +179,7 @@ export type EmailRegisterResponse = Message<"toqui.v1.EmailRegisterResponse"> & 
  * Use `create(EmailRegisterResponseSchema)` to create a new message.
  */
 export const EmailRegisterResponseSchema: GenMessage<EmailRegisterResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 3);
+  messageDesc(file_toqui_v1_auth, 5);
 
 /**
  * @generated from message toqui.v1.EmailLoginRequest
@@ -145,7 +201,7 @@ export type EmailLoginRequest = Message<"toqui.v1.EmailLoginRequest"> & {
  * Use `create(EmailLoginRequestSchema)` to create a new message.
  */
 export const EmailLoginRequestSchema: GenMessage<EmailLoginRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 4);
+  messageDesc(file_toqui_v1_auth, 6);
 
 /**
  * @generated from message toqui.v1.EmailLoginResponse
@@ -172,7 +228,7 @@ export type EmailLoginResponse = Message<"toqui.v1.EmailLoginResponse"> & {
  * Use `create(EmailLoginResponseSchema)` to create a new message.
  */
 export const EmailLoginResponseSchema: GenMessage<EmailLoginResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 5);
+  messageDesc(file_toqui_v1_auth, 7);
 
 /**
  * @generated from message toqui.v1.GetAuthProvidersRequest
@@ -185,7 +241,7 @@ export type GetAuthProvidersRequest = Message<"toqui.v1.GetAuthProvidersRequest"
  * Use `create(GetAuthProvidersRequestSchema)` to create a new message.
  */
 export const GetAuthProvidersRequestSchema: GenMessage<GetAuthProvidersRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 6);
+  messageDesc(file_toqui_v1_auth, 8);
 
 /**
  * @generated from message toqui.v1.GetAuthProvidersResponse
@@ -204,6 +260,13 @@ export type GetAuthProvidersResponse = Message<"toqui.v1.GetAuthProvidersRespons
    * @generated from field: bool google_oauth = 2;
    */
   googleOauth: boolean;
+
+  /**
+   * env-gated (OIDC_ISSUER + OIDC_CLIENT_ID + OIDC_CLIENT_SECRET set)
+   *
+   * @generated from field: toqui.v1.OIDCProviderInfo oidc = 3;
+   */
+  oidc?: OIDCProviderInfo | undefined;
 };
 
 /**
@@ -211,7 +274,43 @@ export type GetAuthProvidersResponse = Message<"toqui.v1.GetAuthProvidersRespons
  * Use `create(GetAuthProvidersResponseSchema)` to create a new message.
  */
 export const GetAuthProvidersResponseSchema: GenMessage<GetAuthProvidersResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 7);
+  messageDesc(file_toqui_v1_auth, 9);
+
+/**
+ * OIDCProviderInfo tells the frontend how to run the OIDC authorization-code
+ * + PKCE flow: it does discovery against `issuer`, uses the public
+ * `client_id`, and labels the button with `name`.
+ *
+ * @generated from message toqui.v1.OIDCProviderInfo
+ */
+export type OIDCProviderInfo = Message<"toqui.v1.OIDCProviderInfo"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string issuer = 2;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: string client_id = 3;
+   */
+  clientId: string;
+
+  /**
+   * @generated from field: string name = 4;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message toqui.v1.OIDCProviderInfo.
+ * Use `create(OIDCProviderInfoSchema)` to create a new message.
+ */
+export const OIDCProviderInfoSchema: GenMessage<OIDCProviderInfo> = /*@__PURE__*/
+  messageDesc(file_toqui_v1_auth, 10);
 
 /**
  * @generated from message toqui.v1.RefreshTokenRequest
@@ -228,7 +327,7 @@ export type RefreshTokenRequest = Message<"toqui.v1.RefreshTokenRequest"> & {
  * Use `create(RefreshTokenRequestSchema)` to create a new message.
  */
 export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 8);
+  messageDesc(file_toqui_v1_auth, 11);
 
 /**
  * @generated from message toqui.v1.RefreshTokenResponse
@@ -255,7 +354,7 @@ export type RefreshTokenResponse = Message<"toqui.v1.RefreshTokenResponse"> & {
  * Use `create(RefreshTokenResponseSchema)` to create a new message.
  */
 export const RefreshTokenResponseSchema: GenMessage<RefreshTokenResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 9);
+  messageDesc(file_toqui_v1_auth, 12);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserRequest
@@ -268,7 +367,7 @@ export type GetCurrentUserRequest = Message<"toqui.v1.GetCurrentUserRequest"> & 
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
 export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 10);
+  messageDesc(file_toqui_v1_auth, 13);
 
 /**
  * @generated from message toqui.v1.GetCurrentUserResponse
@@ -285,7 +384,7 @@ export type GetCurrentUserResponse = Message<"toqui.v1.GetCurrentUserResponse"> 
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
 export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 11);
+  messageDesc(file_toqui_v1_auth, 14);
 
 /**
  * @generated from message toqui.v1.User
@@ -322,7 +421,7 @@ export type User = Message<"toqui.v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 12);
+  messageDesc(file_toqui_v1_auth, 15);
 
 /**
  * Account deletion — GDPR Article 17 (Right to Erasure)
@@ -343,7 +442,7 @@ export type DeleteAccountRequest = Message<"toqui.v1.DeleteAccountRequest"> & {
  * Use `create(DeleteAccountRequestSchema)` to create a new message.
  */
 export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 13);
+  messageDesc(file_toqui_v1_auth, 16);
 
 /**
  * @generated from message toqui.v1.DeleteAccountResponse
@@ -367,7 +466,7 @@ export type DeleteAccountResponse = Message<"toqui.v1.DeleteAccountResponse"> & 
  * Use `create(DeleteAccountResponseSchema)` to create a new message.
  */
 export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 14);
+  messageDesc(file_toqui_v1_auth, 17);
 
 /**
  * Data export — GDPR Article 20 (Right to Data Portability)
@@ -382,7 +481,7 @@ export type ExportDataRequest = Message<"toqui.v1.ExportDataRequest"> & {
  * Use `create(ExportDataRequestSchema)` to create a new message.
  */
 export const ExportDataRequestSchema: GenMessage<ExportDataRequest> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 15);
+  messageDesc(file_toqui_v1_auth, 18);
 
 /**
  * @generated from message toqui.v1.ExportDataResponse
@@ -406,24 +505,37 @@ export type ExportDataResponse = Message<"toqui.v1.ExportDataResponse"> & {
  * Use `create(ExportDataResponseSchema)` to create a new message.
  */
 export const ExportDataResponseSchema: GenMessage<ExportDataResponse> = /*@__PURE__*/
-  messageDesc(file_toqui_v1_auth, 16);
+  messageDesc(file_toqui_v1_auth, 19);
 
 /**
  * @generated from service toqui.v1.AuthService
  */
 export const AuthService: GenService<{
   /**
-   * Note: FacebookLogin and AppleLogin RPCs were removed when the project
-   * transitioned to self-hostable OSS (email+password default, Google OAuth
-   * optional). Do not reuse those names. Proto3 doesn't support `reserved`
-   * inside services, so this comment is the contract.
-   *
    * @generated from rpc toqui.v1.AuthService.GoogleLogin
    */
   googleLogin: {
     methodKind: "unary";
     input: typeof GoogleLoginRequestSchema;
     output: typeof GoogleLoginResponseSchema;
+  },
+  /**
+   * Generic OpenID Connect login (Authelia, Authentik, Keycloak, ...). The
+   * client runs the authorization-code + PKCE flow against the configured
+   * issuer and hands the code here; the backend exchanges + verifies the ID
+   * token and finds-or-creates the user by verified email.
+   *
+   * Note: FacebookLogin and AppleLogin RPCs were removed when the project
+   * transitioned to self-hostable OSS (email+password default, Google OAuth
+   * optional). Do not reuse those names. Proto3 doesn't support `reserved`
+   * inside services, so this comment is the contract.
+   *
+   * @generated from rpc toqui.v1.AuthService.OIDCLogin
+   */
+  oIDCLogin: {
+    methodKind: "unary";
+    input: typeof OIDCLoginRequestSchema;
+    output: typeof OIDCLoginResponseSchema;
   },
   /**
    * @generated from rpc toqui.v1.AuthService.EmailRegister

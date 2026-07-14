@@ -84,6 +84,7 @@ components/                   Shared UI components
   ShareButton.tsx             Native/web share sheet integration
   auth/
     AIDisclaimerGate.tsx      One-time AI disclaimer acknowledgement modal
+    OIDCSignInButton.tsx      "Sign in with {provider}" SSO button (mounted only when OIDC enabled)
   chat/
     ChatInput.tsx             Message input with send button and typing state
     FollowUpSuggestions.tsx   AI-generated follow-up question chips
@@ -110,6 +111,7 @@ lib/                          Shared utilities
   i18n.tsx                    i18next configuration
   theme.tsx                   Light/dark/system theme with ThemeColors interface
   google-auth.ts              useGoogleAuth() hook — expo-auth-session PKCE wrapper
+  oidc-auth.ts                useOIDCAuth() hook — generic OIDC/SSO (Authelia et al.) via issuer discovery
   authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
   config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
@@ -124,7 +126,7 @@ lib/                          Shared utilities
     useCollaborators.ts       Trip collaborator management
     useOnboarding.ts          Onboarding flow state
     useNetworkStatus.ts       Online/offline detection, reconnection handling
-    useAuthProviders.ts       Fetch server's enabled auth providers (email+password always; Google env-gated)
+    useAuthProviders.ts       Fetch server's enabled auth providers (email+password always; Google + OIDC/SSO env-gated)
   data/
     tripTemplates.ts          Trip template data for onboarding
   export/
@@ -215,9 +217,9 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) at the repo root. Three patterns are document
 
 ## Auth Flow (Bearer Token)
 
-Toqui ships as self-hostable OSS with **email + password as the primary login** and **Google OAuth as an optional, env-gated extra**. Facebook and Apple sign-in have been removed; their backend RPCs no longer exist. Operators decide whether Google is enabled at deploy time by setting `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` on the backend.
+Toqui ships as self-hostable OSS with **email + password as the primary login** and **Google OAuth plus generic OIDC/SSO as optional, env-gated extras**. Facebook and Apple sign-in have been removed; their backend RPCs no longer exist. Operators decide whether Google is enabled by setting `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, and whether OIDC/SSO (Authelia, Authentik, Keycloak, ...) is enabled by setting `OIDC_ISSUER` + `OIDC_CLIENT_ID` + `OIDC_CLIENT_SECRET`, on the backend.
 
-The signed-out home screen (`app/(tabs)/index.tsx`) calls `useAuthProviders()` once on mount to learn which providers the server has enabled. The Google sign-in button is only rendered when `googleOauth === true` in the response; the email options are always shown.
+The signed-out home screen (`app/(tabs)/index.tsx`) calls `useAuthProviders()` once on mount to learn which providers the server has enabled. The Google sign-in button is only rendered when `googleOauth === true`, and the OIDC/SSO button only when `oidc.enabled === true`; the email options are always shown. Google and OIDC are independent — an operator can run either, both, or neither.
 
 **Email + password (always available):**
 
@@ -235,6 +237,15 @@ The screens map ConnectRPC error codes to user-facing messages: `Unauthenticated
 2. App sends the auth code to `AuthService.GoogleLogin`.
 3. Backend returns `{ access_token, refresh_token, user }`.
 4. Same persistence + redirect path as the email flow.
+
+**OIDC / SSO (optional, env-gated):**
+
+Generic OpenID Connect for self-hosters who front toqui with their own IdP (Authelia is the documented default; Authentik/Keycloak work identically). Enabled on the backend by `OIDC_ISSUER` + `OIDC_CLIENT_ID` + `OIDC_CLIENT_SECRET`.
+
+1. `useAuthProviders()` returns `oidc { enabled, issuer, clientId, name }`; the `<OIDCSignInButton>` ("Sign in with {name}") is rendered only when `oidc.enabled` — and, being a self-contained component, it only mounts the discovery hook when SSO is on.
+2. `useOIDCAuth()` (`lib/oidc-auth.ts`) runs OIDC discovery against `issuer` and an authorization-code + PKCE request with `clientId`. Web uses a full-page redirect with **no PKCE** (confidential-client backend holds the secret, and the redirect drops the in-memory verifier — same as Google); native keeps the PKCE verifier in the popup.
+3. App sends the code to `AuthService.OIDCLogin` (`loginWithOIDC` in `lib/auth.tsx`; the generated client method is `oIDCLogin`). On web, `app/auth/callback.tsx` reads a `toqui_oidc_pending` sessionStorage marker to route the returning code to `OIDCLogin` rather than `GoogleLogin` (both share the `/auth/callback` URI).
+4. Backend returns `{ access_token, refresh_token, user }`. Same persistence + redirect path as the other flows.
 
 **Shared (all flows):**
 
@@ -285,7 +296,7 @@ All hooks live in `lib/hooks/`. Transport pattern: ConnectRPC hooks use `useTran
 | `useNetworkStatus` | expo-network | Online/offline detection, reconnection handling |
 | `useFeedback` | REST | Submit user feedback (`POST /api/feedback`) |
 | `useDestinationGuide` | REST | Fetch destination guides (`GET /api/guides`) |
-| `useAuthProviders` | ConnectRPC | Fetch server's enabled auth providers (`AuthService.GetAuthProviders`) — `emailPassword` always true; `googleOauth` env-gated. Cached for the session (`staleTime: Infinity`). |
+| `useAuthProviders` | ConnectRPC | Fetch server's enabled auth providers (`AuthService.GetAuthProviders`) — `emailPassword` always true; `googleOauth` and `oidc { enabled, issuer, clientId, name }` env-gated. Cached for the session (`staleTime: Infinity`). |
 
 ## Security
 

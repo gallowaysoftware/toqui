@@ -56,6 +56,7 @@ interface AuthState {
   refreshToken: string | null;
   isLoading: boolean;
   login: (googleAuthCode: string, redirectUri?: string) => Promise<void>;
+  loginWithOIDC: (code: string, redirectUri: string, codeVerifier?: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string, name: string) => Promise<void>;
   user: AuthUser | null;
@@ -144,6 +145,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await applyAuthResponse(res);
   }, [applyAuthResponse]);
 
+  // Generic OIDC/SSO login. The client runs the authorization-code + PKCE
+  // flow against the operator's IdP (see useOIDCAuth) and hands the resulting
+  // code here; the backend exchanges + verifies the ID token. Same response
+  // shape and persistence path as the Google flow.
+  const loginWithOIDC = useCallback(async (code: string, redirectUri: string, codeVerifier?: string) => {
+    const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
+    const client = createClient(AuthService, transport);
+    const res = await client.oIDCLogin({
+      code,
+      redirectUri,
+      codeVerifier: codeVerifier ?? "",
+    });
+    await applyAuthResponse(res);
+  }, [applyAuthResponse]);
+
   const loginWithEmail = useCallback(async (email: string, password: string) => {
     const transport = createConnectTransport({ baseUrl: getConfig().apiUrl });
     const client = createClient(AuthService, transport);
@@ -215,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       login,
+      loginWithOIDC,
       loginWithEmail,
       registerWithEmail,
       logout,
@@ -227,6 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       login,
+      loginWithOIDC,
       loginWithEmail,
       registerWithEmail,
       logout,
