@@ -1,175 +1,144 @@
-# iOS App Store Submission Guide
+# iOS TestFlight & App Store Guide
 
-## Prerequisites
+Toqui is self-hostable OSS: you build and ship it under **your own** Apple
+Developer account. Bundle id is `travel.toqui.app` (already set in `app.json`,
+`fastlane/Appfile`, and `eas.json`).
 
-Before starting, you need:
-1. **Apple Developer Program membership** ($99/year) — enroll at https://developer.apple.com/programs/
-2. **App Store Connect access** — comes with the developer program
-3. **Xcode 16+** installed (you have 16.4)
-4. **Fastlane** installed (done: `/opt/homebrew/lib/ruby/gems/4.0.0/bin/fastlane`)
+**No server URL is baked into the build** — on first launch the app shows a
+server-setup screen where you enter your API URL (the HTTPS host in front of
+your backend); it verifies `/healthz` and you're in.
 
-## One-Time Setup
+There are two goals, with very different requirements:
 
-### 1. Create App ID in Apple Developer Portal
+- **Part 1 — TestFlight (get it on your own phone):** a build, an upload, and
+  adding yourself as a tester. **No screenshots, no listing metadata, no App
+  Review, no age rating, no privacy URL.** This is the fast path.
+- **Part 2 — Public App Store release (optional, later):** the full listing +
+  App Review.
 
-1. Go to https://developer.apple.com/account/resources/identifiers/list
-2. Click "+" to register a new identifier
-3. Select "App IDs" → "App"
-4. Description: "Toqui"
-5. Bundle ID: `travel.toqui.app` (Explicit)
-6. Capabilities: check "Associated Domains" (for deep links) and "Sign In with Apple" (if adding later)
-7. Click Register
+---
 
-### 2. Create App in App Store Connect
+## Part 1 — TestFlight
 
-1. Go to https://appstoreconnect.apple.com/apps
-2. Click "+" → "New App"
-3. Platform: iOS
-4. Name: "Toqui — AI Travel Companion"
-5. Primary Language: English (U.S.)
-6. Bundle ID: Select `travel.toqui.app`
-7. SKU: "toqui-ios-1"
-8. User Access: Full Access
+### Prerequisites (on the macOS build box)
 
-### 3. Configure Fastlane
+- Apple Developer Program membership (an org account works — e.g. Galloway
+  Software Solutions).
+- Xcode 16+ (the repo carries Xcode 16.4 compat patches in `patches/` +
+  `plugins/`; a newer Xcode may need them refreshed).
+- Node + `pnpm`, CocoaPods (`brew install cocoapods`), and Fastlane
+  (`brew install fastlane`).
+- The repo cloned, and you signed into your Apple account in **Xcode →
+  Settings → Accounts** (this is what lets automatic signing mint the
+  provisioning profile).
 
-Edit `ios/fastlane/Appfile` — uncomment and fill in:
-```ruby
-app_identifier("travel.toqui.app")
-apple_id("your@email.com")        # Your Apple ID email
-team_id("XXXXXXXXXX")             # Your Apple Developer Team ID
-itc_team_id("XXXXXXXXXX")         # App Store Connect Team ID (usually same)
-```
+### One-time: register the app with Apple
 
-Find your Team ID at: https://developer.apple.com/account/#/membership
+1. **App ID** — https://developer.apple.com/account/resources/identifiers/list
+   → **+** → App IDs → App → Bundle ID `travel.toqui.app` (Explicit) → enable
+   **Associated Domains** (for deep links) → Register.
+2. **App record** — https://appstoreconnect.apple.com/apps → **+** → New App →
+   iOS → Bundle ID `travel.toqui.app`, SKU `toqui-ios-1`, Full Access.
 
-### 4. Set Up Code Signing
+### One-time: identity for Fastlane
 
-Fastlane can manage certificates automatically:
+`fastlane/Appfile` reads your identity from the environment (so nothing
+personal is committed). Export these on the build box — e.g. in `~/.zshrc`:
 
 ```bash
-cd ios
-export PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/4.0.0/bin:/opt/homebrew/bin:$PATH"
-export LANG=en_US.UTF-8
-fastlane match init  # Choose "git" storage, point to a private repo for certs
-fastlane match appstore  # Creates/downloads App Store distribution cert + profile
+export APPLE_ID="you@example.com"       # your Apple Developer account email
+export APPLE_TEAM_ID="XXXXXXXXXX"       # Developer Team ID — developer.apple.com/account → Membership
+# export ITC_TEAM_ID="XXXXXXXXXX"       # only if your App Store Connect team id differs
 ```
 
-Or manage manually in Xcode:
-1. Open `ios/Toqui.xcworkspace` in Xcode
-2. Select the Toqui target → Signing & Capabilities
-3. Check "Automatically manage signing"
-4. Select your team
-5. Xcode will create the provisioning profile automatically
+`APPLE_TEAM_ID` is also used by the build lane to drive automatic signing.
 
-## Building for TestFlight
+### Build + upload
 
-### Option A: Fastlane (Recommended)
+From the **repo root** on the Mac (directly, or over SSH):
 
 ```bash
-cd ios
-export PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/4.0.0/bin:/opt/homebrew/bin:$PATH"
-export LANG=en_US.UTF-8
-fastlane beta
+./scripts/ios-testflight.sh
 ```
 
-This will:
-1. Increment the build number
-2. Build the Release archive
-3. Upload to TestFlight
-4. You'll get an email when processing is complete (~15-30 min)
+That script: installs JS deps → bumps `ios.buildNumber` in `app.json`
+(TestFlight rejects duplicate build numbers) → `expo prebuild --platform ios
+--clean` → `pod install` → `fastlane beta` (archive + upload). Commit the
+`app.json` build-number bump afterward so the next build increments from it.
 
-### Option B: Xcode (Manual)
-
-1. Open `ios/Toqui.xcworkspace` in Xcode
-2. Select "Toqui" scheme, destination "Any iOS Device (arm64)"
-3. Product → Archive (takes ~5 min)
-4. When done, the Organizer window opens
-5. Click "Distribute App" → "App Store Connect" → "Upload"
-6. Follow the prompts (Xcode handles signing)
-7. Wait for processing email (~15-30 min)
-
-## App Store Listing Info
-
-Fill these in App Store Connect:
-
-| Field | Value |
-|-------|-------|
-| App Name | Toqui — AI Travel Companion |
-| Subtitle | Plan smarter trips with expert AI personas |
-| Category | Travel |
-| Privacy Policy URL | https://toqui.travel/privacy |
-| Support URL | https://toqui.travel/support |
-| Marketing URL | https://toqui.travel |
-| Description | See `store-metadata.md` in repo root |
-| Keywords | travel,itinerary,ai,trip planner,vacation,travel companion,booking,travel guide |
-| Age Rating | 17+ (has in-app purchases, web browsing) |
-| Price | Free |
-| In-App Purchases | Trip Pro — $19 CAD per trip |
-
-### Screenshots Needed
-
-App Store requires screenshots for each device size:
-- **6.7" iPhone** (iPhone 15 Pro Max): 1290 x 2796
-- **6.5" iPhone** (iPhone 14 Plus): 1284 x 2778
-- **5.5" iPhone** (iPhone 8 Plus): 1242 x 2208 (optional)
-- **12.9" iPad** (optional, since we support tablet)
-
-You need 3-10 screenshots per device. Recommended:
-1. Trip list with templates
-2. Chat with AI planning a trip
-3. Day-by-day itinerary
-4. Weather card + trip detail
-5. Companion mode with suggestions
-
-### App Review Notes
-
-Add this in the review notes field:
-```
-Test Account: Contact support@toqui.travel for a test account.
-The app requires Google Sign-In for authentication.
-Location permission is optional — used only in Companion mode for nearby recommendations.
-```
-
-## After Submission
-
-1. TestFlight build processes in ~15-30 min
-2. Add internal testers in App Store Connect → TestFlight → Internal Testing
-3. External testing requires a brief Beta App Review (~24-48 hours)
-4. Full App Store submission review takes 24-48 hours typically
-
-## Updating the App
-
-After the first submission, the flow is:
+On the **first** `fastlane beta`, the TestFlight upload authenticates with your
+Apple ID and will ask for a 2FA code in the terminal. To make it fully
+non-interactive (needed for SSH-triggered builds), create an **App Store
+Connect API key** (App Store Connect → Users and Access → Integrations → App
+Store Connect API → **+**), download the `.p8`, and export:
 
 ```bash
-# 1. Make code changes on main
-# 2. Regenerate native project
-npx expo prebuild --platform ios --clean
-cd ios && pod install
+export ASC_KEY_ID="XXXXXXXXXX"
+export ASC_ISSUER_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export ASC_KEY_P8_PATH="$HOME/.appstoreconnect/AuthKey_XXXXXXXXXX.p8"
+```
 
-# 3. Build and upload
-cd ios
-fastlane beta
+The Fastfile picks these up automatically when present.
+
+> Running the lanes directly: run `fastlane beta` **from the repo root**, not
+> from `ios/` — the Fastfile lives at the repo root and its paths are
+> `ios/`-relative. Always `expo prebuild` + `pod install` first (the script
+> does this for you).
+
+### Install on your phone
+
+App Store Connect → your app → **TestFlight → Internal Testing** → add yourself
+(your Apple ID) as an internal tester (internal testing needs **no** Beta App
+Review). Install the **TestFlight** app from the App Store on your iPhone,
+accept the invite, install Toqui. On first launch, enter your API URL in the
+server-setup screen.
+
+---
+
+## Part 2 — Public App Store release (optional)
+
+Only if you want Toqui publicly listed. This path goes through App Review and
+additionally needs:
+
+- **Screenshots** per device size (6.7" = 1290×2796, 6.5" = 1284×2778), 3–10
+  each. Suggested: trip list, AI chat planning a trip, day-by-day itinerary,
+  weather + trip detail, companion suggestions.
+- **Listing metadata** — see `store-metadata.md` in the repo root.
+- A hosted **Privacy Policy URL**. (The app also ships in-app `/privacy` and
+  `/terms` screens; App Review still requires a reachable public URL.)
+- The **age-rating** questionnaire.
+- **Review notes.** Auth is **email + password** (Google and generic OIDC/SSO
+  are optional, operator-configured). Either provide a test account or note
+  that reviewers can self-register. The app is **free with no in-app
+  purchases**.
+
+Build + submit with the release lane instead:
+
+```bash
+npx expo prebuild --platform ios --clean && (cd ios && pod install)
+fastlane release
+```
+
+---
+
+## Updating (subsequent builds)
+
+```bash
+git pull                     # get the latest main
+./scripts/ios-testflight.sh  # bumps buildNumber, prebuilds, archives, uploads
+# commit the app.json buildNumber bump
 ```
 
 ## Troubleshooting
 
-### "No signing certificate" error
-Run: `fastlane match appstore` or enable automatic signing in Xcode.
-
-### "Bundle ID not available" error
-Someone already registered `travel.toqui.app`. Check your Apple Developer account.
-
-### Pod install fails
-```bash
-cd ios
-export LANG=en_US.UTF-8
-pod deintegrate && pod install
-```
-
-### Build fails after updating dependencies
-```bash
-npx expo prebuild --platform ios --clean
-cd ios && pod install
-```
+- **No signing certificate / profile** — confirm you're signed into your Apple
+  account in Xcode → Settings → Accounts and that `APPLE_TEAM_ID` is exported;
+  the lane passes `-allowProvisioningUpdates` so Xcode can create the profile.
+- **"Bundle ID not available"** — `travel.toqui.app` is registered under a
+  different team; register it under yours.
+- **Pod install fails** — `cd ios && pod deintegrate && pod install`.
+- **Build fails after a dependency change** — the script already runs
+  `expo prebuild --clean`; if you're building by hand, add `--clean` and
+  re-run `pod install`.
+- **Duplicate build number rejected** — the script bumps `app.json`; if you
+  built by hand, bump `expo.ios.buildNumber` in `app.json` before prebuild.
