@@ -194,6 +194,23 @@ export function useChat(
     toolActivityTimerRef.current = null;
   }, [tripId]);
 
+  // Clear pending work on UNMOUNT too. The tripId effect above only fires on a
+  // tripId change, so without this a lingering geocode / tool-activity
+  // setTimeout — or an in-flight stream still calling state setters — survives
+  // unmount and races teardown. In tests that throws `window is not defined`
+  // once jsdom is gone, failing the whole run even though every test passed.
+  // Aborting the stream drives its loop into the finally that clears the 90s
+  // timeout and nulls the controller (same as abortStream()).
+  useEffect(() => {
+    return () => {
+      for (const t of geocodeTimersRef.current) clearTimeout(t);
+      geocodeTimersRef.current = [];
+      if (toolActivityTimerRef.current) clearTimeout(toolActivityTimerRef.current);
+      toolActivityTimerRef.current = null;
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Hydrate sessionIdRef from persistent storage so remounts resume the same session.
   useEffect(() => {
     let cancelled = false;
