@@ -1,11 +1,14 @@
 # App identifier (bundle ID)
 app_identifier("travel.toqui.app")
 
-# Your Apple Developer account email
-# apple_id("your@email.com")
-
-# Your Apple Developer Team ID
-# team_id("XXXXXXXXXX")
-
-# App Store Connect Team ID (if different from Developer Team ID)
-# itc_team_id("XXXXXXXXXX")
+# Apple account + team are read from the environment so operators don't hardcode
+# their identity into this public repo. Set these on the build box (or in a
+# local, uncommitted shell profile) before running a signing lane:
+#   export APPLE_ID="you@example.com"          # your Apple Developer account email
+#   export APPLE_TEAM_ID="XXXXXXXXXX"          # Developer Team ID (Membership page)
+#   export ITC_TEAM_ID="XXXXXXXXXX"            # App Store Connect team id — only if you belong to several ASC teams
+apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+# Only set itc_team_id when explicitly provided — it's the ASC team id (an
+# internal numeric id), NOT the Developer Team ID, so don't fall back to it.
+itc_team_id(ENV["ITC_TEAM_ID"]) if ENV["ITC_TEAM_ID"]
