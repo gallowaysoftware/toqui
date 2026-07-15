@@ -194,6 +194,20 @@ export function useChat(
     toolActivityTimerRef.current = null;
   }, [tripId]);
 
+  // Clear pending timers on UNMOUNT too. The tripId effect above only fires on
+  // a tripId change, so without this a lingering geocode / tool-activity
+  // setTimeout survives unmount and its callback (a React state setter) races
+  // teardown — in tests that throws `window is not defined` once jsdom is gone,
+  // failing the whole run even though every test passed.
+  useEffect(() => {
+    return () => {
+      for (const t of geocodeTimersRef.current) clearTimeout(t);
+      geocodeTimersRef.current = [];
+      if (toolActivityTimerRef.current) clearTimeout(toolActivityTimerRef.current);
+      toolActivityTimerRef.current = null;
+    };
+  }, []);
+
   // Hydrate sessionIdRef from persistent storage so remounts resume the same session.
   useEffect(() => {
     let cancelled = false;
