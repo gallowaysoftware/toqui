@@ -13,16 +13,25 @@
 # (Xcode account, automatic signing, CocoaPods, Fastlane) is documented in
 # IOS_SUBMISSION_GUIDE.md.
 #
-# Optional non-interactive upload (e.g. when triggered over SSH): export an
-# App Store Connect API key so Fastlane doesn't prompt for your Apple ID + 2FA:
+# For a fully non-interactive run (e.g. triggered over SSH), export an App Store
+# Connect API key. It authenticates BOTH the provisioning-profile creation
+# during signing AND the TestFlight upload, so nothing prompts for your Apple ID
+# + 2FA. Without it, the first build signs via the Xcode GUI keychain session
+# (which periodically needs an interactive 2FA re-login) and the upload prompts.
 #   export ASC_KEY_ID=XXXXXXXXXX
 #   export ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 #   export ASC_KEY_P8_PATH=/path/to/AuthKey_XXXXXXXXXX.p8
-# And, so gym can create/refresh the provisioning profile without the Xcode UI:
+# APPLE_TEAM_ID selects the signing team (it is not itself a credential):
 #   export APPLE_TEAM_ID=XXXXXXXXXX
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# Guard against a wrong CWD (e.g. the script reached via a symlink): a clear
+# message beats a confusing failure deep in prebuild.
+if [[ ! -f app.json || ! -d scripts ]]; then
+  echo "error: run this from the toqui repo (couldn't find app.json here)." >&2
+  exit 1
+fi
 
 if [[ "$(uname)" != "Darwin" ]]; then
   echo "error: iOS builds must run on macOS (the M3 build box)." >&2
@@ -33,12 +42,18 @@ echo "==> Installing JS dependencies"
 pnpm install --frozen-lockfile
 
 echo "==> Bumping ios.buildNumber in app.json (TestFlight rejects duplicates)"
+# Edit the single buildNumber line in place (regex on the raw text) rather than
+# re-serializing the whole JSON, so the bump diff touches only that one line
+# and doesn't reformat unrelated fields.
 node -e '
   const fs = require("fs"), p = "app.json";
-  const j = JSON.parse(fs.readFileSync(p, "utf8"));
-  const next = String((parseInt(j.expo.ios.buildNumber || "0", 10) || 0) + 1);
-  j.expo.ios.buildNumber = next;
-  fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+  let s = fs.readFileSync(p, "utf8");
+  const re = /("buildNumber"\s*:\s*")(\d+)(")/;
+  const m = s.match(re);
+  if (!m) { console.error("could not find a numeric ios.buildNumber in app.json"); process.exit(1); }
+  const next = String((parseInt(m[2], 10) || 0) + 1);
+  s = s.replace(re, `$1${next}$3`);
+  fs.writeFileSync(p, s);
   console.log("    ios.buildNumber -> " + next);
 '
 

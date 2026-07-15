@@ -6,7 +6,9 @@ app_identifier("travel.toqui.app")
 # local, uncommitted shell profile) before running a signing lane:
 #   export APPLE_ID="you@example.com"          # your Apple Developer account email
 #   export APPLE_TEAM_ID="XXXXXXXXXX"          # Developer Team ID (Membership page)
-#   export ITC_TEAM_ID="XXXXXXXXXX"            # App Store Connect team (usually same; optional)
+#   export ITC_TEAM_ID="XXXXXXXXXX"            # App Store Connect team id — only if you belong to several ASC teams
 apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
 team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
-itc_team_id(ENV["ITC_TEAM_ID"] || ENV["APPLE_TEAM_ID"]) if (ENV["ITC_TEAM_ID"] || ENV["APPLE_TEAM_ID"])
+# Only set itc_team_id when explicitly provided — it's the ASC team id (an
+# internal numeric id), NOT the Developer Team ID, so don't fall back to it.
+itc_team_id(ENV["ITC_TEAM_ID"]) if ENV["ITC_TEAM_ID"]

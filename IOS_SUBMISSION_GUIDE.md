@@ -66,11 +66,15 @@ That script: installs JS deps → bumps `ios.buildNumber` in `app.json`
 --clean` → `pod install` → `fastlane beta` (archive + upload). Commit the
 `app.json` build-number bump afterward so the next build increments from it.
 
-On the **first** `fastlane beta`, the TestFlight upload authenticates with your
-Apple ID and will ask for a 2FA code in the terminal. To make it fully
-non-interactive (needed for SSH-triggered builds), create an **App Store
-Connect API key** (App Store Connect → Users and Access → Integrations → App
-Store Connect API → **+**), download the `.p8`, and export:
+On a fresh box, **two** steps need Apple auth: creating the distribution
+provisioning profile during signing, and the TestFlight upload. Run directly on
+the Mac with your Apple ID signed into Xcode, both use that session (the upload
+prompts for a 2FA code in the terminal the first time). To make the whole run
+**non-interactive** — required for SSH-triggered builds, where there's no Xcode
+GUI session to lean on — create an **App Store Connect API key** (App Store
+Connect → Users and Access → Integrations → App Store Connect API → **+**),
+download the `.p8`, and export the three vars below. The key authenticates both
+the signing step and the upload:
 
 ```bash
 export ASC_KEY_ID="XXXXXXXXXX"
@@ -83,7 +87,14 @@ The Fastfile picks these up automatically when present.
 > Running the lanes directly: run `fastlane beta` **from the repo root**, not
 > from `ios/` — the Fastfile lives at the repo root and its paths are
 > `ios/`-relative. Always `expo prebuild` + `pod install` first (the script
-> does this for you).
+> does this for you). The lane does **not** bump the build number — the script
+> owns that (it edits `app.json`), so if you invoke `fastlane beta` by hand,
+> bump `expo.ios.buildNumber` in `app.json` yourself first or TestFlight will
+> reject the upload as a duplicate.
+
+> The script runs `pnpm install --frozen-lockfile`, so it aborts if
+> `pnpm-lock.yaml` is out of sync with `package.json` — commit an up-to-date
+> lockfile before building.
 
 ### Install on your phone
 
