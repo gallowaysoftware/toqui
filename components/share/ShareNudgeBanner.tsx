@@ -45,7 +45,7 @@ export function ShareNudgeBanner({ onShare, onDismiss }: ShareNudgeBannerProps) 
 
   return (
     <View style={styles.container} testID="share-nudge-banner">
-      <Share2 color={colors.accent} size={18} style={styles.icon as object} />
+      <Share2 color={colors.accent} size={18} style={styles.icon} />
       <Pressable style={{ flex: 1 }} onPress={onShare} accessibilityRole="button">
         <Text style={styles.text}>{t("share.nudgeBanner")}</Text>
       </Pressable>

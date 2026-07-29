@@ -363,9 +363,9 @@ describe("buildICSContent - line folding", () => {
     const summaryIdx = rawLines.findIndex((l) => l.startsWith("SUMMARY:"));
     expect(summaryIdx).toBeGreaterThan(-1);
     // The SUMMARY line itself should be <= 75 chars
-    expect(rawLines[summaryIdx]!.length).toBeLessThanOrEqual(75);
+    expect(rawLines[summaryIdx].length).toBeLessThanOrEqual(75);
     // The next line should be a continuation (starts with space)
-    expect(rawLines[summaryIdx + 1]!.startsWith(" ")).toBe(true);
+    expect(rawLines[summaryIdx + 1].startsWith(" ")).toBe(true);
   });
 
   it("does not fold lines that are exactly 75 characters", () => {
@@ -377,9 +377,9 @@ describe("buildICSContent - line folding", () => {
     );
     const rawLines = ics.split("\r\n");
     const summaryIdx = rawLines.findIndex((l) => l.startsWith("SUMMARY:"));
-    expect(rawLines[summaryIdx]!.length).toBe(75);
+    expect(rawLines[summaryIdx].length).toBe(75);
     // Next line should NOT be a continuation
-    expect(rawLines[summaryIdx + 1]!.startsWith(" ")).toBe(false);
+    expect(rawLines[summaryIdx + 1].startsWith(" ")).toBe(false);
   });
 
   it("no unfolded line exceeds 75 octets", () => {

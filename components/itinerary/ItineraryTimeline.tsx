@@ -10,7 +10,7 @@ const dayColors = [
 ];
 
 function getDayColor(index: number): string {
-  return dayColors[index % dayColors.length]!;
+  return dayColors[index % dayColors.length];
 }
 
 const typeIcons: Record<string, typeof MapPin> = {

@@ -82,7 +82,7 @@ function getInterceptor() {
 }
 
 // Combined provider wrapper for transport tests
-function makeWrapper(overrides?: { accessToken?: string | null }) {
+function makeWrapper(_overrides?: { accessToken?: string | null }) {
   // We render AuthProvider + TransportProvider in the correct nesting.
   // To control the accessToken we prime localStorage before render.
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -211,7 +211,7 @@ describe("Transport interceptor", () => {
     const interceptor = getInterceptor();
 
     const callCount = { value: 0 };
-    const mockNext = vi.fn().mockImplementation(async (req: any) => {
+    const mockNext = vi.fn().mockImplementation(async (_req: any) => {
       callCount.value++;
       if (callCount.value === 1) {
         throw new ConnectError("token expired", Code.Unauthenticated);

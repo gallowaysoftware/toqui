@@ -90,7 +90,7 @@ function NativeDateTimePickerModal({
   onChange: (date: string) => void;
   onDismiss: () => void;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const DateTimePicker = require("@react-native-community/datetimepicker").default;
 
   return (

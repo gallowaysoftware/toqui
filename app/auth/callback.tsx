@@ -58,7 +58,7 @@ export default function AuthCallbackScreen() {
         const postLoginRedirect = sessionStorage.getItem("toqui_post_login_redirect");
         if (postLoginRedirect) {
           sessionStorage.removeItem("toqui_post_login_redirect");
-          router.replace(postLoginRedirect as never);
+          router.replace(postLoginRedirect);
         } else {
           router.replace("/");
         }

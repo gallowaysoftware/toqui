@@ -114,7 +114,6 @@ export function AIDisclaimerGate({ children }: AIDisclaimerGateProps) {
         // inside the modal — without it, swipe-to-explore can land on
         // the backgrounded children and screen-reader users can dismiss
         // the modal accidentally without acknowledging.
-        // eslint-disable-next-line react/no-unknown-property
         accessibilityViewIsModal
         onRequestClose={() => {
           // Android back button — ignored. The modal must be acknowledged.

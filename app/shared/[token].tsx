@@ -92,12 +92,12 @@ const destinationGradients: Record<string, [string, string]> = {
 };
 
 function getHeroColors(destination?: string): [string, string] {
-  if (!destination) return destinationGradients.default!;
+  if (!destination) return destinationGradients.default;
   const lower = destination.toLowerCase();
   for (const [key, colors] of Object.entries(destinationGradients)) {
     if (lower.includes(key)) return colors;
   }
-  return destinationGradients.default!;
+  return destinationGradients.default;
 }
 
 // ---------------------------------------------------------------------------
@@ -280,7 +280,7 @@ function HeroSection({
   colors: ThemeColors;
 }) {
   const styles = makeStyles(colors);
-  const [gradientStart, gradientEnd] = getHeroColors(trip.destination_country);
+  const [gradientStart] = getHeroColors(trip.destination_country);
   const dateStr = formatDateRange(trip.start_date, trip.end_date);
 
   return (
@@ -400,7 +400,7 @@ function DayCard({
   colors: ThemeColors;
 }) {
   const styles = makeStyles(colors);
-  const accent = dayAccentColors[dayIndex % dayAccentColors.length]!;
+  const accent = dayAccentColors[dayIndex % dayAccentColors.length];
 
   // Group items by time of day
   const grouped = useMemo(() => {
@@ -703,7 +703,7 @@ export default function SharedTripScreen() {
     queryKey: ["shared-trip", token],
     queryFn: async () => {
       const res = await fetch(
-        `${getConfig().apiUrl}/shared/${encodeURIComponent(token!)}`,
+        `${getConfig().apiUrl}/shared/${encodeURIComponent(token)}`,
       );
       if (!res.ok) throw new Error(`Failed to load shared trip (${res.status})`);
       return res.json();
@@ -727,13 +727,13 @@ export default function SharedTripScreen() {
 
   const handleCta = () => {
     if (accessToken) {
-      router.push("/trips/new" as never);
+      router.push("/trips/new");
     } else {
       // Store redirect so user returns to shared trip after sign-up
       if (Platform.OS === "web" && typeof window !== "undefined") {
         sessionStorage.setItem("toqui_post_login_redirect", `/shared/${token}`);
       }
-      router.push("/" as never);
+      router.push("/");
     }
   };
 
@@ -742,7 +742,7 @@ export default function SharedTripScreen() {
   }
 
   if (error || !data) {
-    return <ErrorState error={error as Error | null} colors={colors} />;
+    return <ErrorState error={error} colors={colors} />;
   }
 
   const { trip, itinerary } = data;

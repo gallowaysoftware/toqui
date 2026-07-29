@@ -92,7 +92,7 @@ export function buildICSContent(trip: Trip, itinerary: Itinerary): string {
   for (const day of itinerary.days) {
     const dayDate = getDayDate(trip.startDate, day.dayNumber);
     for (let i = 0; i < day.items.length; i++) {
-      events.push(buildVEvent(day.items[i]!, day, dayDate, trip.title, i));
+      events.push(buildVEvent(day.items[i], day, dayDate, trip.title, i));
     }
   }
   const calName = escapeICSText(`${trip.title} - Toqui Itinerary`);
@@ -121,9 +121,9 @@ export async function exportItineraryICal(trip: Trip, itinerary: Itinerary): Pro
   }
 
   // Native: write to temp file and share via expo-file-system + expo-sharing
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const FileSystem = require("expo-file-system");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const Sharing = require("expo-sharing");
   const fileUri = (FileSystem.cacheDirectory ?? "") + filename;
   await FileSystem.writeAsStringAsync(fileUri, icsContent);

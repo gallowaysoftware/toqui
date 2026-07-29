@@ -292,7 +292,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
         </Pressable>
         {Platform.OS === "web" && (
           <input
-            ref={fileInputRef as React.RefObject<HTMLInputElement>}
+            ref={fileInputRef}
             type="file"
             multiple
             accept={ALLOWED_TYPES.join(",")}
