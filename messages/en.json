@@ -45,7 +45,7 @@
     "step3Title": "Travel with confidence",
     "step3Desc": "Your itinerary and bookings are all in one place. Switch to companion mode for real-time help on the go.",
     "ctaTitle": "Ready to plan your next trip?",
-    "ctaDesc": "Join thousands of travelers planning smarter trips with Toqui. Free to start, no credit card required.",
+    "ctaDesc": "Plan smarter trips with Toqui — free, open source, and private by design.",
     "welcomeTitle": "Where do you want to go?",
     "welcomeSubtitle": "Pick a destination or create your own trip",
     "noDestination": "No destination",
@@ -54,7 +54,7 @@
       "experts": "800+ expert personas for every destination",
       "itineraries": "Day-by-day itineraries built from conversation",
       "export": "Export to calendar, share with friends",
-      "free": "Free to start — your first trip includes a Pro trial"
+      "free": "Free and open source — your data stays yours"
     },
     "destinations": {
       "tokyo": "Street food paradise",
@@ -129,9 +129,7 @@
     "newTrip": "New Trip",
     "empty": "No trips yet. Start planning your next adventure!",
     "createFirst": "Create Your First Trip",
-    "proBadge": "Pro",
     "sharedBadge": "Shared",
-    "trialBadge": "Trial",
     "loadError": "Couldn't load your trips",
     "loadErrorSubtitle": "Check your connection and try again.",
     "emptyTitle": "Where do you want to go?",
@@ -267,24 +265,7 @@
     "deleting": "Deleting...",
     "exportData": "Export My Data",
     "exporting": "Exporting...",
-    "exported": "Export Requested",
-    "billing": {
-      "title": "Plan & Billing",
-      "currentPlan": "Current Plan",
-      "plan": "Plan",
-      "free": "Free",
-      "pro": "Pro",
-      "freeDescription": "Basic travel planning with AI companion",
-      "proDescription": "Full access to expert personas and best-fit recommendations",
-      "learnMore": "Learn More"
-    }
-  },
-  "trial": {
-    "active": "Pro Trial Active",
-    "daysRemaining": "{{days}} days remaining",
-    "hoursRemaining": "Less than a day remaining",
-    "expired": "Trial ended",
-    "upgradePrompt": "Upgrade to keep Pro features"
+    "exported": "Export Requested"
   },
   "chat": {
     "planYourTrip": "Plan your trip",
@@ -296,31 +277,10 @@
     "messageFailed": "Message failed to send",
     "reportIssue": "Report issue",
     "retry": "Retry",
-    "upgrade": "Upgrade",
-    "dailyLimitReached": "Daily limit reached. Resets {{time}}",
-    "almostAtDailyLimit": "Almost at daily limit — {{remaining}} left",
-    "messagesUsage": "{{used}}/{{limit}} messages today",
     "planningPrompt": "Start planning your trip! Tell me where you want to go.",
     "companionPrompt": "I'm your travel companion. Ask me anything about your surroundings!",
     "inputPlaceholder": "Type a message...",
     "errorMessage": "Sorry, something went wrong. Please try again.",
-    "expertLimitReached": "You've used your 3 free persona switches for this trip.",
-    "expertLimitSoft": "You've used all 3 free expert personas. Unlock 800+ experts to get the best advice for your trip.",
-    "expertLimitCta": "Unlock experts for $19",
-    "subscriptionAlt": "Or save with a monthly plan",
-    "personaLimitReached": "You've reached the 3 persona switch limit for free trips.",
-    "personaLimitCta": "Upgrade to unlock all 800+ expert personas",
-    "dailyLimitReset": "Your messages reset at midnight UTC.",
-    "freePlanInfo": {
-      "message": "Free plan: 1 expert persona included, 10 messages/day.",
-      "upgradeLink": "Upgrade for unlimited."
-    },
-    "usageIndicator": {
-      "normal": "Messages: {{used}}/{{limit}} today",
-      "nearLimit": "Messages: {{used}}/{{limit}} today — running low",
-      "atLimit": "Daily message limit reached",
-      "upgradeCta": "Unlock unlimited"
-    },
     "suggestions": {
       "itinerary": "Build my day 1 itinerary",
       "restaurants": "Best restaurants",
@@ -388,8 +348,7 @@
     "membersButton": "Members",
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members",
-    "emptyState": "No members yet. Invite someone to start planning together.",
-    "proAppliesAll": "Trip Pro is unlocked for all members of this trip — every collaborator gets unlimited messages and full expert access."
+    "emptyState": "No members yet. Invite someone to start planning together."
   },
   "invite": {
     "title": "You're Invited!",
@@ -501,66 +460,6 @@
       "termsNoticeSeparator": " and ",
       "privacyLink": "Privacy Policy",
       "termsNoticeSuffix": "."
-    }
-  },
-  "subscription": {
-    "title": "Subscription Plans",
-    "currentTier": "Current",
-    "monthly": "Monthly",
-    "annual": "Annual",
-    "saveBadge": "Save 33%",
-    "subscribe": "Subscribe",
-    "upgrade": "Upgrade",
-    "cancel": "Cancel Subscription",
-    "manage": "Manage Billing",
-    "status": "Status",
-    "billingPeriod": "Billing",
-    "active": "Active",
-    "pastDue": "Past Due",
-    "renewsOn": "Renews on",
-    "endsOn": "Ends on",
-    "cancelingNote": "Your subscription will not renew at the end of the current period.",
-    "free": {
-      "name": "Free",
-      "description": "1 trip, 10 messages per day"
-    },
-    "explorer": {
-      "name": "Explorer",
-      "feature1": "3 active trips",
-      "feature2": "Unlimited messages",
-      "feature3": "All 800+ expert personas",
-      "annualPrice": "{{price}}/yr — save {{savings}}%",
-      "valueProp": "Best for frequent travelers — unlimited messages and experts across 3 trips"
-    },
-    "voyager": {
-      "name": "Voyager",
-      "feature1": "Unlimited active trips",
-      "feature2": "Unlimited messages",
-      "feature3": "Priority AI responses",
-      "annualPrice": "{{price}}/yr — save {{savings}}%",
-      "valueProp": "Best for power travelers — unlimited everything with priority responses"
-    },
-    "comparison": {
-      "title": "Which plan is right for me?",
-      "tripPro": {
-        "name": "Trip Pro",
-        "bestFor": "Best for occasional travelers. Pay once, unlock one trip with full expert access.",
-        "price": "$19 CAD / trip"
-      },
-      "explorer": {
-        "name": "Explorer",
-        "bestFor": "Best for frequent travelers. Unlimited messages and experts across 3 active trips.",
-        "price": "$9.99 CAD / month"
-      },
-      "voyager": {
-        "name": "Voyager",
-        "bestFor": "Best for power travelers. Unlimited everything with priority AI and no trip cap.",
-        "price": "$17.99 CAD / month"
-      }
-    },
-    "upsell": {
-      "title": "Save with Explorer",
-      "description": "Get unlimited trips for $9.99/mo instead of paying per trip"
     }
   },
   "templates": {

@@ -112,7 +112,7 @@ lib/                          Shared utilities
   theme.tsx                   Light/dark/system theme with ThemeColors interface
   google-auth.ts              useGoogleAuth() hook — expo-auth-session PKCE wrapper
   oidc-auth.ts                useOIDCAuth() hook — generic OIDC/SSO (Authelia et al.) via issuer discovery
-  authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (checkout, referral)
+  authFetch.ts                Bearer-auth fetch wrapper for REST endpoints (feedback, collaborator invites)
   config.ts                   Runtime config (EXPO_PUBLIC_* env vars)
   hooks/
     useTrips.ts               Trip CRUD via ConnectRPC TripService

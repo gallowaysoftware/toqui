@@ -84,7 +84,6 @@ vi.mock("lucide-react-native", () => {
     Plus: icon,
     MapPin: icon,
     ChevronRight: icon,
-    Crown: icon,
     Plane: icon,
     AlertCircle: icon,
     RefreshCw: icon,
