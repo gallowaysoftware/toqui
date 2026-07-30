@@ -160,7 +160,7 @@ cloud-sql-proxy \
   "$PROJECT:$REGION:$TARGET_INSTANCE" \
   &
 PROXY_PID=$!
-trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
+trap 'kill $PROXY_PID 2>/dev/null || true; rm -f "${OUTPUT_FILE:-}" 2>/dev/null || true' EXIT
 
 # Wait for proxy to be ready
 for _ in $(seq 1 30); do
@@ -187,11 +187,14 @@ SQL
 )
 
 OUTPUT_FILE="$(mktemp -t restore-verify.XXXXXX)"
-if PGPASSWORD="$DB_PASS" psql \
+# Feed the check via stdin, NOT --command: psql -c treats a string that
+# starts with a backslash meta-command as a single meta-command and
+# silently discards the rest, so the whole health check would be skipped
+# and "verify" would pass vacuously.
+if printf '%s\n' "$CHECK_SQL" | PGPASSWORD="$DB_PASS" psql \
   --host=localhost --port="$PROXY_PORT" \
   --username="$DB_USER" --dbname="$DB_NAME" \
   --no-psqlrc --quiet \
-  --command="$CHECK_SQL" \
   > "$OUTPUT_FILE" 2>&1
 then
   CHECK_STATUS="PASS"

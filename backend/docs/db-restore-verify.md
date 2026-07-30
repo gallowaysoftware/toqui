@@ -97,6 +97,15 @@ instance came up without our schema migrations applied. That's a
 known GCP behavior on cross-project clones; if it happens within the
 same project (which is what we do), it's a real bug — file a P1.
 
+### Health check fails on missing chat tables
+
+The table list is pinned to the current schema. Backups taken before
+migration `20260713120000_chat_postgres` (2026-07-13) predate
+`chat_sessions` / `chat_messages`, so restoring one via `--backup <ID>`
+fails the health check on the missing tables. Expected — old backups
+predate the schema the check verifies; note the cause and move on (or
+temporarily trim the table list if you genuinely need to verify one).
+
 ### Health check passes but row counts look wrong
 
 Compare against the source: `gcloud sql connect toqui-db ...` then run
