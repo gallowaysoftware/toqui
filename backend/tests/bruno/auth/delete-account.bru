@@ -16,7 +16,7 @@ auth:bearer {
 docs {
   GDPR Article 17 — Right to erasure. Initiates async account deletion.
   confirm must be true — validation enforces this to prevent accidental deletion.
-  Deletes: user record, all trips, all bookings, Firestore chat history.
+  Deletes: user record, all trips, all bookings, chat history.
   Returns a request_id for tracking. Deletion completes within 30 days.
 
   WARNING: This is irreversible. Do not use on test users you want to keep.
