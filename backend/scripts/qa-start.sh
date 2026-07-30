@@ -10,7 +10,7 @@
 # Prerequisites:
 #   - Docker running (for postgres)
 #   - gcloud auth application-default login (for GCP Secret Manager)
-#   - Run from toqui-backend repo root
+#   - Run from anywhere in the toqui monorepo (script cd's to backend/)
 
 set -euo pipefail
 
@@ -58,12 +58,11 @@ cd "$REPO_ROOT"
 # ─── 1. Check Docker containers ─────────────────────────────────────────────
 log_step "Checking Docker infra..."
 
-POSTGRES_UP=$(docker ps --filter "name=toqui-backend-postgres-1" --filter "status=running" --format "{{.Names}}" 2>/dev/null || true)
+POSTGRES_UP=$(docker compose ps --status=running --services 2>/dev/null | grep -x postgres || true)
 
 if [[ -z "$POSTGRES_UP" ]]; then
   log_warn "Postgres container not running. Starting..."
-  docker compose up -d postgres
-  sleep 3
+  docker compose up -d --wait postgres
   make migrate-up
   log_ok "Docker infra ready"
 else
