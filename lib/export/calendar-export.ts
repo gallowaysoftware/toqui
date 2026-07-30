@@ -121,9 +121,7 @@ export async function exportItineraryICal(trip: Trip, itinerary: Itinerary): Pro
   }
 
   // Native: write to temp file and share via expo-file-system + expo-sharing
-   
   const FileSystem = require("expo-file-system");
-   
   const Sharing = require("expo-sharing");
   const fileUri = (FileSystem.cacheDirectory ?? "") + filename;
   await FileSystem.writeAsStringAsync(fileUri, icsContent);

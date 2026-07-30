@@ -13,7 +13,6 @@
 
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@/lib/theme";
- 
 const MapLibre = require("@maplibre/maplibre-react-native");
 
 // MapLibre is free to use — no access token required. The native module still
