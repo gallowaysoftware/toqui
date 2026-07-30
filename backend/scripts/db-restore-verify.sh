@@ -34,7 +34,7 @@
 #      NOT touch toqui-db itself. Public IP only (saves us the VPC dance
 #      since this instance lives for 30 minutes).
 #   3. Connects via Cloud SQL Auth Proxy.
-#   4. Runs a health-check SQL query: counts rows in 6 critical tables,
+#   4. Runs a health-check SQL query: counts rows in 7 critical tables,
 #      verifies pgcrypto + postgis extensions are loaded, sanity-checks
 #      that recent (last-hour) rows exist in users + trips.
 #   5. Writes a timestamped result line to docs/restore-verify-log.md
@@ -177,7 +177,8 @@ SELECT 'users'              AS table_name, COUNT(*) AS rows FROM users
 UNION ALL SELECT 'trips',           COUNT(*) FROM trips
 UNION ALL SELECT 'itinerary_items', COUNT(*) FROM itinerary_items
 UNION ALL SELECT 'bookings',        COUNT(*) FROM bookings
-UNION ALL SELECT 'subscriptions',   COUNT(*) FROM subscriptions
+UNION ALL SELECT 'chat_sessions',   COUNT(*) FROM chat_sessions
+UNION ALL SELECT 'chat_messages',   COUNT(*) FROM chat_messages
 UNION ALL SELECT 'refresh_tokens',  COUNT(*) FROM refresh_tokens;
 \echo '--- recency probes ---'
 SELECT MAX(created_at) AS latest_user_created FROM users;
