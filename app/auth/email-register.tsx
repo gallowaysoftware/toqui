@@ -39,7 +39,7 @@ export default function EmailRegisterScreen() {
     setSubmitting(true);
     try {
       await registerWithEmail(trimmedEmail, password, trimmedName);
-      router.replace("/(tabs)" as never);
+      router.replace("/(tabs)");
     } catch (err) {
       if (err instanceof ConnectError && err.code === Code.AlreadyExists) {
         setError(t("auth.register.errors.alreadyExists"));

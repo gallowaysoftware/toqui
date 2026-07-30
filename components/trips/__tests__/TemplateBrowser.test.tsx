@@ -11,7 +11,7 @@ vi.mock("expo-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
-      if (key === "templates.duration") return `${opts?.count} days`;
+      if (key === "templates.duration") return `${String(opts?.count)} days`;
       // Return the full key so each template has a unique text
       return key;
     },

@@ -1,6 +1,6 @@
 // CLAIMED BY AGENT 2
 import { renderHook, act } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { ChatMode } from "@gen/toqui/v1/chat_pb";
 import type { SendMessageResponse } from "@gen/toqui/v1/chat_pb";
@@ -320,8 +320,6 @@ describe("useChat", () => {
 
   describe("tool events", () => {
     it("sets toolActivity on toolCall and clears it on messageComplete", async () => {
-      const toolActivities: Array<{ toolName: string; status: string } | null> = [];
-
       mockSendMessage.mockReturnValue(
         streamEvents([
           evt("toolCall", { toolName: "search_flights", inputJson: "{}" }),
@@ -1140,7 +1138,7 @@ describe("useChat", () => {
         historyResponse([{ id: "h1", role: "user", content: "cached" }]),
       );
 
-      const { result, rerender } = renderHook(
+      const { rerender } = renderHook(
         ({ tripId }: { tripId: string }) => useChat(tripId, "planning"),
         { initialProps: { tripId: "trip-1" } },
       );

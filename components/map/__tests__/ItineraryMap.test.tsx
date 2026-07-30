@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 
@@ -283,7 +283,7 @@ describe("ItineraryMap bounds edge cases", () => {
       }),
     ]);
     // Should not crash — bounds with sw===ne is valid
-    const { container } = render(<ItineraryMap itinerary={itinerary} />);
+    render(<ItineraryMap itinerary={itinerary} />);
     expect(screen.getByText("Map view (1 locations)")).toBeTruthy();
   });
 
@@ -297,7 +297,7 @@ describe("ItineraryMap bounds edge cases", () => {
         ],
       }),
     ]);
-    const { container } = render(<ItineraryMap itinerary={itinerary} />);
+    render(<ItineraryMap itinerary={itinerary} />);
     expect(screen.getByText("Map view (2 locations)")).toBeTruthy();
   });
 

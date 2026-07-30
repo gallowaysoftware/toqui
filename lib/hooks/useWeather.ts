@@ -110,7 +110,8 @@ function parseWeatherResponse(
   isClimate: boolean,
 ): WeatherDay[] {
   const { time, temperature_2m_max, temperature_2m_min, precipitation_sum } = data.daily;
-  const weathercodes = isClimate ? undefined : (data as ForecastApiResponse).daily.weathercode;
+  const weathercodes =
+    isClimate || !("weathercode" in data.daily) ? undefined : data.daily.weathercode;
 
   return time.map((date, i) => ({
     date,
@@ -139,7 +140,7 @@ export function useWeather(
     startDate != null &&
     endDate != null;
 
-  const isClimate = enabled ? shouldUseClimateApi(startDate!) : false;
+  const isClimate = enabled ? shouldUseClimateApi(startDate) : false;
 
   const { data: weather, isLoading, error } = useQuery<WeatherDay[]>({
     queryKey: ["weather", latitude, longitude, startDate, endDate, isClimate],

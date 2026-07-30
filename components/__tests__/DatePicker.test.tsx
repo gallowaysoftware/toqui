@@ -29,7 +29,7 @@ describe("DatePicker", () => {
 
   it("renders a date input with the provided value", () => {
     render(<DatePicker value="2025-06-15" onChange={vi.fn()} />);
-    const input = screen.getByDisplayValue("2025-06-15") as HTMLInputElement;
+    const input = screen.getByDisplayValue<HTMLInputElement>("2025-06-15");
     expect(input.type).toBe("date");
   });
 
@@ -53,10 +53,8 @@ describe("DatePicker", () => {
   });
 
   it("does not render label when not provided", () => {
-    const { container } = render(<DatePicker value="" onChange={vi.fn()} />);
+    render(<DatePicker value="" onChange={vi.fn()} />);
     // Only the input should be present, no label text
-    const texts = container.querySelectorAll("div");
-    // Just verify no "Start Date" text
     expect(screen.queryByText("Start Date")).toBeNull();
   });
 

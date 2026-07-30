@@ -19,11 +19,11 @@ export default function TripSettingsScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { trip, isLoading, error: tripError } = useTrip(tripId!);
+  const { trip, isLoading, error: tripError } = useTrip(tripId);
   const updateTrip = useUpdateTrip();
   const deleteTrip = useDeleteTrip();
 
-  const { collaborators, isLoading: collabLoading } = useCollaborators(tripId!);
+  const { collaborators, isLoading: collabLoading } = useCollaborators(tripId);
   const inviteCollaborator = useInviteCollaborator();
   const removeCollaborator = useRemoveCollaborator();
 
@@ -259,7 +259,7 @@ export default function TripSettingsScreen() {
     return (
       <View style={styles.errorContainer}>
         <View style={styles.errorCard}>
-          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon} />
           <Text style={styles.errorTitle}>{t("tripSettings.loadError")}</Text>
           <Text style={styles.errorSubtitle}>{t("tripSettings.loadErrorSubtitle")}</Text>
           <Pressable
@@ -279,7 +279,7 @@ export default function TripSettingsScreen() {
     setSaveError(null);
     try {
       await updateTrip.mutateAsync({
-        id: tripId!,
+        id: tripId,
         title: title.trim(),
         description: description.trim(),
         startDate,
@@ -301,8 +301,8 @@ export default function TripSettingsScreen() {
     });
     if (!confirmed) return;
     try {
-      await deleteTrip.mutateAsync(tripId!);
-      router.replace("/(tabs)" as never);
+      await deleteTrip.mutateAsync(tripId);
+      router.replace("/(tabs)");
     } catch {
       alertNotice({ title: t("common.error"), message: t("tripSettings.deleteError") });
     }
@@ -400,7 +400,7 @@ export default function TripSettingsScreen() {
                         cancelLabel: t("common.cancel"),
                       });
                       if (!confirmed) return;
-                      void removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
+                      void removeCollaborator.mutateAsync({ tripId: tripId, email: collab.email });
                     }}
                     accessibilityLabel={`Remove ${collab.email}`}
                     accessibilityRole="button"
@@ -449,7 +449,7 @@ export default function TripSettingsScreen() {
                       setLinkCopied(false);
                       try {
                         const result = await inviteCollaborator.mutateAsync({
-                          tripId: tripId!,
+                          tripId: tripId,
                           email: inviteEmail.trim(),
                           role: inviteRole,
                         });

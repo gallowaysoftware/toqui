@@ -16,14 +16,6 @@ import { TemplateBrowser } from "@/components/trips/TemplateBrowser";
 import { TripStatus } from "@gen/toqui/v1/trip_pb";
 import type { Trip } from "@gen/toqui/v1/trip_pb";
 
-const DESTINATIONS = [
-  { key: "tokyo", flag: "\u{1F1EF}\u{1F1F5}", title: "Tokyo" },
-  { key: "paris", flag: "\u{1F1EB}\u{1F1F7}", title: "Paris" },
-  { key: "rome", flag: "\u{1F1EE}\u{1F1F9}", title: "Rome" },
-  { key: "bali", flag: "\u{1F1EE}\u{1F1E9}", title: "Bali" },
-  { key: "newYork", flag: "\u{1F1FA}\u{1F1F8}", title: "New York" },
-] as const;
-
 function TripCard({ trip, onPress, isShared }: { trip: Trip; onPress: () => void; isShared?: boolean }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -116,14 +108,14 @@ export default function TripsScreen() {
   // nothing else can work until one is chosen.
   useEffect(() => {
     if (needsServerSetup()) {
-      router.replace("/server-setup" as never);
+      router.replace("/server-setup");
     }
   }, [router]);
 
   // Redirect to onboarding if user is authenticated but hasn't completed it
   useEffect(() => {
     if (accessToken && !authLoading && !onboardingLoading && isOnboardingComplete === false) {
-      router.replace("/onboarding" as never);
+      router.replace("/onboarding");
     }
   }, [accessToken, authLoading, onboardingLoading, isOnboardingComplete, router]);
 
@@ -267,7 +259,7 @@ export default function TripsScreen() {
 
         <Pressable
           style={styles.primaryButtonBlock}
-          onPress={() => router.push("/auth/email-login" as never)}
+          onPress={() => router.push("/auth/email-login")}
           accessibilityRole="button"
           testID="signin-email"
         >
@@ -296,7 +288,7 @@ export default function TripsScreen() {
         {oidcEnabled ? <OIDCSignInButton showSeparator={!googleEnabled} /> : null}
 
         <Pressable
-          onPress={() => router.push("/auth/email-register" as never)}
+          onPress={() => router.push("/auth/email-register")}
           accessibilityRole="link"
           testID="signin-create-account"
         >
@@ -311,7 +303,7 @@ export default function TripsScreen() {
             Settings requires auth). Native-only, like server setup. */}
         {Platform.OS !== "web" && (
           <Pressable
-            onPress={() => router.push("/server-setup" as never)}
+            onPress={() => router.push("/server-setup")}
             accessibilityRole="link"
             testID="signin-change-server"
           >
@@ -334,7 +326,7 @@ export default function TripsScreen() {
     return (
       <View style={styles.center}>
         <View style={styles.errorCard}>
-          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon} />
           <Text style={styles.errorTitle} accessibilityLiveRegion="assertive">{t("trips.loadError")}</Text>
           <Text style={styles.errorSubtitle}>{t("trips.loadErrorSubtitle")}</Text>
           <Pressable
@@ -363,7 +355,7 @@ export default function TripsScreen() {
               style={styles.destinationCard}
               onPress={() =>
                 router.push({
-                  pathname: "/trips/new" as never,
+                  pathname: "/trips/new",
                   params: { duration: String(card.duration) },
                 })
               }
@@ -397,7 +389,7 @@ export default function TripsScreen() {
 
         <Pressable
           style={styles.primaryButton}
-          onPress={() => router.push("/trips/new" as never)}
+          onPress={() => router.push("/trips/new")}
           accessibilityLabel={t("trips.quickStart.customTrip")}
           accessibilityRole="button"
         >
@@ -430,7 +422,7 @@ export default function TripsScreen() {
         ListHeaderComponent={
           <Pressable
             style={styles.newTripButton}
-            onPress={() => router.push("/trips/new" as never)}
+            onPress={() => router.push("/trips/new")}
             accessibilityLabel="New Trip"
             accessibilityRole="button"
           >

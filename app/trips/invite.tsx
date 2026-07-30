@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MapPin, AlertCircle, CheckCircle, Users } from "lucide-react-native";
+import { AlertCircle, CheckCircle, Users } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useAcceptInvite } from "@/lib/hooks/useCollaborators";
@@ -70,10 +70,10 @@ export default function AcceptInviteScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <AlertCircle color={colors.error} size={40} style={styles.icon as object} />
+          <AlertCircle color={colors.error} size={40} style={styles.icon} />
           <Text style={styles.title}>{t("invite.invalidTitle")}</Text>
           <Text style={styles.subtitle}>{t("invite.invalidSubtitle")}</Text>
-          <Pressable style={styles.secondaryButton} onPress={() => router.replace("/(tabs)" as never)}>
+          <Pressable style={styles.secondaryButton} onPress={() => router.replace("/(tabs)")}>
             <Text style={styles.secondaryButtonText}>{t("invite.goHome")}</Text>
           </Pressable>
         </View>
@@ -85,10 +85,10 @@ export default function AcceptInviteScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Users color={colors.accent} size={40} style={styles.icon as object} />
+          <Users color={colors.accent} size={40} style={styles.icon} />
           <Text style={styles.title}>{t("invite.title")}</Text>
           <Text style={styles.subtitle}>{t("invite.signInToAccept")}</Text>
-          <Pressable style={styles.acceptButton} onPress={() => router.replace("/(tabs)" as never)}>
+          <Pressable style={styles.acceptButton} onPress={() => router.replace("/(tabs)")}>
             <Text style={styles.acceptButtonText}>{t("invite.signIn")}</Text>
           </Pressable>
         </View>
@@ -120,7 +120,7 @@ export default function AcceptInviteScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <CheckCircle color={colors.success} size={40} style={styles.icon as object} />
+          <CheckCircle color={colors.success} size={40} style={styles.icon} />
           <Text style={styles.title}>{t("invite.successTitle")}</Text>
           <Text style={styles.subtitle}>{t("invite.successSubtitle", { tripTitle: tripData.title })}</Text>
           <Pressable style={styles.acceptButton} onPress={handleGoToTrip}>
@@ -142,7 +142,7 @@ export default function AcceptInviteScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Users color={colors.accent} size={40} style={styles.icon as object} />
+        <Users color={colors.accent} size={40} style={styles.icon} />
         <Text style={styles.title}>{t("invite.title")}</Text>
         <Text style={styles.subtitle}>{t("invite.subtitle")}</Text>
 
@@ -164,7 +164,7 @@ export default function AcceptInviteScreen() {
           )}
         </Pressable>
 
-        <Pressable style={styles.secondaryButton} onPress={() => router.replace("/(tabs)" as never)}>
+        <Pressable style={styles.secondaryButton} onPress={() => router.replace("/(tabs)")}>
           <Text style={styles.secondaryButtonText}>{t("invite.goHome")}</Text>
         </Pressable>
       </View>

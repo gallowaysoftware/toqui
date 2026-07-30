@@ -14,5 +14,5 @@ export const DAY_COLORS = [
 
 /** Get the marker color for a given day number (1-indexed), wraps around */
 export function getDayColor(dayNumber: number): string {
-  return DAY_COLORS[(dayNumber - 1) % DAY_COLORS.length]!;
+  return DAY_COLORS[(dayNumber - 1) % DAY_COLORS.length];
 }
