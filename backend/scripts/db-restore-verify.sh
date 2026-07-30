@@ -34,7 +34,7 @@
 #      NOT touch toqui-db itself. Public IP only (saves us the VPC dance
 #      since this instance lives for 30 minutes).
 #   3. Connects via Cloud SQL Auth Proxy.
-#   4. Runs a health-check SQL query: counts rows in 6 critical tables,
+#   4. Runs a health-check SQL query: counts rows in 7 critical tables,
 #      verifies pgcrypto + postgis extensions are loaded, sanity-checks
 #      that recent (last-hour) rows exist in users + trips.
 #   5. Writes a timestamped result line to docs/restore-verify-log.md
@@ -160,7 +160,7 @@ cloud-sql-proxy \
   "$PROJECT:$REGION:$TARGET_INSTANCE" \
   &
 PROXY_PID=$!
-trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
+trap 'kill $PROXY_PID 2>/dev/null || true; rm -f "${OUTPUT_FILE:-}" 2>/dev/null || true' EXIT
 
 # Wait for proxy to be ready
 for _ in $(seq 1 30); do
@@ -177,7 +177,8 @@ SELECT 'users'              AS table_name, COUNT(*) AS rows FROM users
 UNION ALL SELECT 'trips',           COUNT(*) FROM trips
 UNION ALL SELECT 'itinerary_items', COUNT(*) FROM itinerary_items
 UNION ALL SELECT 'bookings',        COUNT(*) FROM bookings
-UNION ALL SELECT 'subscriptions',   COUNT(*) FROM subscriptions
+UNION ALL SELECT 'chat_sessions',   COUNT(*) FROM chat_sessions
+UNION ALL SELECT 'chat_messages',   COUNT(*) FROM chat_messages
 UNION ALL SELECT 'refresh_tokens',  COUNT(*) FROM refresh_tokens;
 \echo '--- recency probes ---'
 SELECT MAX(created_at) AS latest_user_created FROM users;
@@ -186,11 +187,14 @@ SQL
 )
 
 OUTPUT_FILE="$(mktemp -t restore-verify.XXXXXX)"
-if PGPASSWORD="$DB_PASS" psql \
+# Feed the check via stdin, NOT --command: psql -c treats a string that
+# starts with a backslash meta-command as a single meta-command and
+# silently discards the rest, so the whole health check would be skipped
+# and "verify" would pass vacuously.
+if printf '%s\n' "$CHECK_SQL" | PGPASSWORD="$DB_PASS" psql \
   --host=localhost --port="$PROXY_PORT" \
   --username="$DB_USER" --dbname="$DB_NAME" \
   --no-psqlrc --quiet \
-  --command="$CHECK_SQL" \
   > "$OUTPUT_FILE" 2>&1
 then
   CHECK_STATUS="PASS"

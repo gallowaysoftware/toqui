@@ -23,8 +23,9 @@ read-only verification + teardown loop. End-to-end, ~15-25 minutes.
    no HA — meant to live ~30 min).
 3. Starts `cloud-sql-proxy`, connects via `psql`, and runs:
    - `pgcrypto` and `postgis` extension presence checks.
-   - Row counts on six critical tables (`users`, `trips`,
-     `itinerary_items`, `bookings`, `subscriptions`, `refresh_tokens`).
+   - Row counts on seven critical tables (`users`, `trips`,
+     `itinerary_items`, `bookings`, `chat_sessions`, `chat_messages`,
+     `refresh_tokens`).
    - Recency probes (`MAX(created_at)` on users, `MAX(updated_at)` on
      trips) so a backup that's stuck in time gets caught.
 4. Appends the result + timestamp to `docs/restore-verify-log.md`.
@@ -95,6 +96,15 @@ If `pgcrypto` or `postgis` isn't loaded after clone, the cloned
 instance came up without our schema migrations applied. That's a
 known GCP behavior on cross-project clones; if it happens within the
 same project (which is what we do), it's a real bug — file a P1.
+
+### Health check fails on missing chat tables
+
+The table list is pinned to the current schema. Backups taken before
+migration `20260713120000_chat_postgres` (2026-07-13) predate
+`chat_sessions` / `chat_messages`, so restoring one via `--backup <ID>`
+fails the health check on the missing tables. Expected — old backups
+predate the schema the check verifies; note the cause and move on (or
+temporarily trim the table list if you genuinely need to verify one).
 
 ### Health check passes but row counts look wrong
 
