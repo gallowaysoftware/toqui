@@ -567,8 +567,8 @@
     "title": "Popular Trips",
     "searchPlaceholder": "Search by destination...",
     "noResults": "No templates found. Try a different search.",
-    "duration": "{{count}} day",
-    "duration_plural": "{{count}} days",
+    "duration_one": "{{count}} day",
+    "duration_other": "{{count}} days",
     "fromTemplate": "Customized from template",
     "categories": {
       "weekend": "Weekend",
