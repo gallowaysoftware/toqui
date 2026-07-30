@@ -8,7 +8,7 @@
 #   ./scripts/qa-start.sh --name "Jane" --email "jane@toqui-test.local"
 #
 # Prerequisites:
-#   - Docker running (for postgres + firestore emulator)
+#   - Docker running (for postgres)
 #   - gcloud auth application-default login (for GCP Secret Manager)
 #   - Run from toqui-backend repo root
 
@@ -59,16 +59,15 @@ cd "$REPO_ROOT"
 log_step "Checking Docker infra..."
 
 POSTGRES_UP=$(docker ps --filter "name=toqui-backend-postgres-1" --filter "status=running" --format "{{.Names}}" 2>/dev/null || true)
-FIRESTORE_UP=$(docker ps --filter "name=toqui-backend-firestore-1" --filter "status=running" --format "{{.Names}}" 2>/dev/null || true)
 
-if [[ -z "$POSTGRES_UP" || -z "$FIRESTORE_UP" ]]; then
-  log_warn "Docker containers not running. Starting..."
-  make docker-up
+if [[ -z "$POSTGRES_UP" ]]; then
+  log_warn "Postgres container not running. Starting..."
+  docker compose up -d postgres
   sleep 3
   make migrate-up
   log_ok "Docker infra ready"
 else
-  log_ok "Docker containers running (postgres + firestore)"
+  log_ok "Docker containers running (postgres)"
 fi
 
 # ─── 2. Start backend (unless --user-only) ───────────────────────────────────

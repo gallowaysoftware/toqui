@@ -484,7 +484,7 @@ tool_failures[]:
 **DO NOT** attempt to restart, manage, or diagnose infrastructure:
 - Do NOT run `docker compose`, `docker`, `make docker-up`, `make run`, or any server management commands
 - Do NOT try to start, stop, or restart the backend server
-- Do NOT try to start or stop OrbStack, Docker, PostgreSQL, or Firestore
+- Do NOT try to start or stop OrbStack, Docker, or PostgreSQL
 - Do NOT run `pkill`, `kill`, or any process management commands
 - If the API is unreachable, report it as a P0 bug and produce your report with whatever steps you completed
 

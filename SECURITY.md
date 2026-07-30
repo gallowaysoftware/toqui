@@ -32,8 +32,7 @@ In scope:
 Out of scope:
 
 - Third-party services Toqui depends on at runtime (AI providers,
-  Google OAuth, Postgres, Firestore). Report those to the relevant
-  vendor.
+  Google OAuth, Postgres). Report those to the relevant vendor.
 - Issues in third-party dependencies — if you find one, report it
   upstream and let me know so I can pin / bump.
 - Vulnerabilities that require a malicious or compromised operator
