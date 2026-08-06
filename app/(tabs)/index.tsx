@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, ChevronRight, Crown, Plane, AlertCircle, RefreshCw, Users, Calendar, Globe, MapPinned } from "lucide-react-native";
+import { Plus, MapPin, ChevronRight, Plane, AlertCircle, RefreshCw, Users, Calendar, Globe, MapPinned } from "lucide-react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useGoogleAuth } from "@/lib/google-auth";
@@ -57,12 +57,6 @@ function TripCard({ trip, onPress, isShared }: { trip: Trip; onPress: () => void
           <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: statusColor }}>
             <Text style={{ fontSize: 11, fontWeight: "600", color: "#fff", textTransform: "capitalize" }}>{statusLabel}</Text>
           </View>
-          {trip.isUnlocked && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
-              <Crown color="#fff" size={10} />
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{t("trips.proBadge")}</Text>
-            </View>
-          )}
           {isShared && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.info, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
               <Users color="#fff" size={10} />

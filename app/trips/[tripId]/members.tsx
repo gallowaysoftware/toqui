@@ -13,7 +13,7 @@ import { confirmDestructive } from "@/lib/confirm";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, CheckCircle, Clock, Copy, Crown, Send, Users, X } from "lucide-react-native";
+import { AlertCircle, CheckCircle, Clock, Copy, Send, Users, X } from "lucide-react-native";
 import { useTrip } from "@/lib/hooks/useTrips";
 import {
   Collaborator,
@@ -50,7 +50,6 @@ export default function TripMembersScreen() {
 
   const isOwner = user != null && trip?.userId === user.id;
   const canInvite = isOwner && collaborators.length < MAX_COLLABORATORS;
-  const isUnlocked = trip?.isUnlocked ?? false;
 
   // Owner is implicit on the trip object — surface it as the first row so the
   // members screen always shows everyone, even before any invites go out.
@@ -151,22 +150,6 @@ export default function TripMembersScreen() {
     header: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
     headerTitle: { fontSize: 22, fontWeight: "700", color: colors.textPrimary, marginLeft: 10 },
     subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 20 },
-    proBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.accentSoft,
-      borderRadius: 10,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      marginBottom: 20,
-      gap: 10,
-    },
-    proBadgeText: {
-      flex: 1,
-      color: colors.textPrimary,
-      fontSize: 13,
-      lineHeight: 18,
-    },
     avatarStrip: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -360,13 +343,6 @@ export default function TripMembersScreen() {
       <Text style={styles.subtitle}>
         {trip.title}
       </Text>
-
-      {isUnlocked && allMembers.length > 1 && (
-        <View style={styles.proBadge}>
-          <Crown size={18} color={colors.accent} />
-          <Text style={styles.proBadgeText}>{t("collaborators.proAppliesAll")}</Text>
-        </View>
-      )}
 
       <View style={styles.avatarStrip}>
         {allMembers.map((m) => (

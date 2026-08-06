@@ -70,7 +70,6 @@ export interface OfflineTripBundle {
     endDate: string;
     status: number;
     destinationCountry?: string;
-    isUnlocked?: boolean;
     userId?: string;
   };
   itinerary: {
