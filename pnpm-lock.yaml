@@ -71,8 +71,8 @@ importers:
         specifier: ^55.0.13
         version: 55.0.13(expo@55.0.26)
       expo-file-system:
-        specifier: ^55.0.17
-        version: 55.0.17(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))
+        specifier: ^56.0.7
+        version: 56.0.7(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))
       expo-glass-effect:
         specifier: 55.0.8
         version: 55.0.8(patch_hash=2c8c480c63b07d19e3ed55624b58ab2df78772941ba159aa231b9d9ed8cbfa67)(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))(react@19.2.6)
@@ -204,6 +204,10 @@ packages:
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/code-frame@7.29.7':
+    resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/compat-data@7.29.3':
     resolution: {integrity: sha512-LIVqM46zQWZhj17qA8wb4nW/ixr2y1Nw+r1etiAWgRM6U1IqP+LNhL1yg440jYZR72jCWcWbLWzIosH+uP1fqg==}
     engines: {node: '>=6.9.0'}
@@ -289,6 +293,10 @@ packages:
 
   '@babel/helper-validator-identifier@7.28.5':
     resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/helper-validator-identifier@7.29.7':
+    resolution: {integrity: sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-validator-option@7.27.1':
@@ -681,6 +689,10 @@ packages:
 
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
@@ -2374,14 +2386,14 @@ packages:
     peerDependencies:
       expo: '*'
 
-  expo-file-system@55.0.17:
-    resolution: {integrity: sha512-d27K1cagUOt2BwxwPka9KW8Znu5kN1tnairozCzzCRZviZFtWnBxwFuJ3KU6MAbav/9UhSMkp5Ve/oZ+SR0UgQ==}
+  expo-file-system@55.0.22:
+    resolution: {integrity: sha512-T5Rfv3vqcFyhVrl/tEEeglc/J8LJbcZQgC3TMT5jxzIgUgWmIgJEgncGYqB/YNXFgUTL2LiuCvqrU51Dzp83NQ==}
     peerDependencies:
       expo: '*'
       react-native: '*'
 
-  expo-file-system@55.0.22:
-    resolution: {integrity: sha512-T5Rfv3vqcFyhVrl/tEEeglc/J8LJbcZQgC3TMT5jxzIgUgWmIgJEgncGYqB/YNXFgUTL2LiuCvqrU51Dzp83NQ==}
+  expo-file-system@56.0.7:
+    resolution: {integrity: sha512-dcKzo8ShPloM7jgfnMcJStgQebhP8owVjCkNI/aX6NMFV1CYB8bxKGMdnzJ3mXk5nfaiW+F/lSKr2UIJ02WAUA==}
     peerDependencies:
       expo: '*'
       react-native: '*'
@@ -4214,6 +4226,12 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
+  '@babel/code-frame@7.29.7':
+    dependencies:
+      '@babel/helper-validator-identifier': 7.29.7
+      js-tokens: 4.0.0
+      picocolors: 1.1.1
+
   '@babel/compat-data@7.29.3': {}
 
   '@babel/core@7.29.0':
@@ -4346,6 +4364,8 @@ snapshots:
   '@babel/helper-string-parser@7.27.1': {}
 
   '@babel/helper-validator-identifier@7.28.5': {}
+
+  '@babel/helper-validator-identifier@7.29.7': {}
 
   '@babel/helper-validator-option@7.27.1': {}
 
@@ -4782,6 +4802,8 @@ snapshots:
       - supports-color
 
   '@babel/runtime@7.29.2': {}
+
+  '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -5982,8 +6004,8 @@ snapshots:
 
   '@testing-library/dom@10.4.1':
     dependencies:
-      '@babel/code-frame': 7.29.0
-      '@babel/runtime': 7.29.2
+      '@babel/code-frame': 7.29.7
+      '@babel/runtime': 7.29.7
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -6788,12 +6810,12 @@ snapshots:
     dependencies:
       expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.8)(react-dom@19.2.6(react@19.2.6))(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
 
-  expo-file-system@55.0.17(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)):
+  expo-file-system@55.0.22(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)):
     dependencies:
       expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.8)(react-dom@19.2.6(react@19.2.6))(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
       react-native: 0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)
 
-  expo-file-system@55.0.22(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)):
+  expo-file-system@56.0.7(expo@55.0.26)(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)):
     dependencies:
       expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.8)(react-dom@19.2.6(react@19.2.6))(react-native@0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
       react-native: 0.83.9(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.6)
