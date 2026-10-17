@@ -127,6 +127,43 @@ describe("i18n - synchronous initialization", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Pluralization — i18next uses JSON v4 (no compatibilityJSON set), so plural
+// keys must use the _one/_other suffixes. The legacy v3 _plural suffix is
+// silently ignored, which made every count > 1 fall back to the singular
+// base key ("3 day" instead of "3 days").
+// ---------------------------------------------------------------------------
+describe("i18n - pluralization (JSON v4 _one/_other suffixes)", () => {
+  it("resolves templates.duration with count 1 to '1 day'", () => {
+    expect(i18n.t("templates.duration", { count: 1 })).toBe("1 day");
+  });
+
+  it("resolves templates.duration with count 3 to '3 days'", () => {
+    expect(i18n.t("templates.duration", { count: 3 })).toBe("3 days");
+  });
+
+  it("resolves collaborators.memberCount with count 1 to '1 member'", () => {
+    expect(i18n.t("collaborators.memberCount", { count: 1 })).toBe("1 member");
+  });
+
+  it("resolves collaborators.memberCount with count 5 to '5 members'", () => {
+    expect(i18n.t("collaborators.memberCount", { count: 5 })).toBe("5 members");
+  });
+
+  it("en.json contains no legacy v3 _plural keys", () => {
+    const findPluralKeys = (obj: Record<string, unknown>, prefix = ""): string[] =>
+      Object.entries(obj).flatMap(([key, value]) => {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          return findPluralKeys(value as Record<string, unknown>, path);
+        }
+        return key.endsWith("_plural") ? [path] : [];
+      });
+
+    expect(findPluralKeys(en as Record<string, unknown>)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // en.json structural sanity — no empty strings or null values that would
 // silently render blank UI.
 // ---------------------------------------------------------------------------
