@@ -9,7 +9,7 @@ Galloway Software Solutions Inc.
 ## Layout
 
 - **`/`** — Expo React Native app. Web + iOS + Android from one codebase. See [CLAUDE.md](CLAUDE.md).
-- **`/backend/`** — Go API (ConnectRPC, PostgreSQL + PostGIS, Firestore for chat). See [backend/CLAUDE.md](backend/CLAUDE.md).
+- **`/backend/`** — Go API (ConnectRPC, PostgreSQL + PostGIS — all data incl. chat). See [backend/CLAUDE.md](backend/CLAUDE.md).
 
 A separate transition page lives at [toqui.travel](https://toqui.travel)
 ([gallowaysoftware/toqui-site](https://github.com/gallowaysoftware/toqui-site)).
@@ -31,9 +31,9 @@ That's it — see [DEPLOYMENT.md](DEPLOYMENT.md) for Fly.io / Render / productio
 Run the two halves separately for fast iteration:
 
 ```bash
-# Shell 1 — backend (Postgres + Firestore emulator + Go server)
+# Shell 1 — backend (Postgres + Go server)
 cd backend
-docker compose up -d postgres firestore
+docker compose up -d postgres
 make migrate-up
 make run
 

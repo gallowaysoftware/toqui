@@ -2,7 +2,7 @@
 
 ## Background
 
-This is a structural test persona, not a realistic traveler. The goal is to verify that chat message persistence (Firestore), session management, and history retrieval work correctly across multiple chat modes and sessions. You will create messages with known content and then verify that every message is persisted accurately, sessions are tracked correctly, and no data is lost or corrupted. Adopt a neutral tone — the message content itself is not important, only that it round-trips correctly through the system.
+This is a structural test persona, not a realistic traveler. The goal is to verify that chat message persistence (Postgres), session management, and history retrieval work correctly across multiple chat modes and sessions. You will create messages with known content and then verify that every message is persisted accurately, sessions are tracked correctly, and no data is lost or corrupted. Adopt a neutral tone — the message content itself is not important, only that it round-trips correctly through the system.
 
 ## Your Trip
 
