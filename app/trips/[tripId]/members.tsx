@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { confirmDestructive } from "@/lib/confirm";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -36,8 +37,8 @@ export default function TripMembersScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { trip, isLoading: tripLoading } = useTrip(tripId!);
-  const { collaborators, isLoading: collabLoading, refetch } = useCollaborators(tripId!);
+  const { trip, isLoading: tripLoading } = useTrip(tripId);
+  const { collaborators, isLoading: collabLoading, refetch } = useCollaborators(tripId);
   const inviteCollaborator = useInviteCollaborator();
   const removeCollaborator = useRemoveCollaborator();
 
@@ -62,8 +63,8 @@ export default function TripMembersScreen() {
         id: `owner-${trip.userId}`,
         email: isOwner && user ? user.email : t("collaborators.role.owner"),
         role: "owner",
-        invitedAt: trip.createdAt?.toString() ?? "",
-        acceptedAt: trip.createdAt?.toString() ?? "",
+        invitedAt: trip.createdAt ? timestampDate(trip.createdAt).toISOString() : "",
+        acceptedAt: trip.createdAt ? timestampDate(trip.createdAt).toISOString() : "",
         userId: trip.userId,
       },
       ...collaborators,
@@ -81,7 +82,7 @@ export default function TripMembersScreen() {
     }
     try {
       const result = await inviteCollaborator.mutateAsync({
-        tripId: tripId!,
+        tripId: tripId,
         email: inviteEmail.trim(),
         role: inviteRole,
       });
@@ -137,7 +138,7 @@ export default function TripMembersScreen() {
     if (!confirmed) return;
 
     try {
-      await removeCollaborator.mutateAsync({ tripId: tripId!, email: collab.email });
+      await removeCollaborator.mutateAsync({ tripId: tripId, email: collab.email });
       void refetch();
     } catch {
       // Silently ignore — UI will refetch on next mount

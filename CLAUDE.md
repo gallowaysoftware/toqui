@@ -338,7 +338,7 @@ Native iOS builds use `expo prebuild` + Xcode:
 1. **Create a feature branch**: `git checkout -b feat/description` (or `fix/`, `chore/`, `docs/`)
 2. **Run all checks locally before pushing**:
    ```bash
-   pnpm typecheck && pnpm test
+   pnpm typecheck && pnpm lint && pnpm test
    ```
 3. **Push the branch and open a PR**:
    ```bash

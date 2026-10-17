@@ -57,9 +57,7 @@ describe("SuggestionChips", () => {
   });
 
   it("renders empty when suggestions array is empty", () => {
-    const { container } = render(
-      <SuggestionChips suggestions={[]} onSelect={vi.fn()} />,
-    );
+    render(<SuggestionChips suggestions={[]} onSelect={vi.fn()} />);
     // ScrollView is still rendered but no chips inside
     expect(screen.queryByText("Find restaurants")).toBeNull();
   });

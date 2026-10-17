@@ -262,7 +262,7 @@ describe("foldLine — ICS line folding safety", () => {
     // All newlines must be \r\n followed by a space (continuation)
     const lines = result.split("\r\n");
     for (let i = 1; i < lines.length; i++) {
-      expect(lines[i]![0]).toBe(" "); // continuation lines start with space
+      expect(lines[i][0]).toBe(" "); // continuation lines start with space
     }
     // No bare \n without preceding \r
     expect(result.replace(/\r\n/g, "")).not.toContain("\n");

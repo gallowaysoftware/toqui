@@ -160,7 +160,7 @@ export default function SettingsScreen() {
           </Text>
           <Pressable
             style={styles.actionRow}
-            onPress={() => router.push("/server-setup" as never)}
+            onPress={() => router.push("/server-setup")}
             accessibilityRole="button"
           >
             <Text style={styles.actionText}>{t("serverSetup.changeServer")}</Text>
@@ -223,11 +223,11 @@ export default function SettingsScreen() {
           <FileText color={colors.textSecondary} size={20} />
           <Text style={styles.sectionTitle}>Legal</Text>
         </View>
-        <Pressable style={styles.actionRow} onPress={() => router.push("/privacy" as never)}>
+        <Pressable style={styles.actionRow} onPress={() => router.push("/privacy")}>
           <Shield color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Privacy Policy</Text>
         </Pressable>
-        <Pressable style={styles.actionRow} onPress={() => router.push("/terms" as never)}>
+        <Pressable style={styles.actionRow} onPress={() => router.push("/terms")}>
           <FileText color={colors.textSecondary} size={16} />
           <Text style={styles.linkText}>Terms of Service</Text>
         </Pressable>

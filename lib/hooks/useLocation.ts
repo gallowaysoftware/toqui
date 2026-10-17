@@ -192,7 +192,7 @@ export function useLocation(): UseLocationReturn {
 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
+      if (status !== Location.PermissionStatus.GRANTED) {
         setPermissionState("denied");
         setError("Location permission denied");
         setIsTracking(false);

@@ -24,7 +24,7 @@ const typeConfig: Record<number, { i18nKey: string; color: string; Icon: typeof 
 
 function BookingCard({ booking, onDelete }: { booking: Booking; onDelete: () => void }) {
   const { t } = useTranslation();
-  const config = typeConfig[booking.type] ?? typeConfig[BookingType.OTHER]!;
+  const config = typeConfig[booking.type] ?? typeConfig[BookingType.OTHER];
   const { Icon } = config;
   const { colors } = useTheme();
 
@@ -75,7 +75,7 @@ export default function BookingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { bookings: networkBookings, isLoading: isNetworkLoading, error: bookingsError } = useBookings(tripId!);
+  const { bookings: networkBookings, isLoading: isNetworkLoading, error: bookingsError } = useBookings(tripId);
   const ingestBooking = useIngestBooking();
   const deleteBooking = useDeleteBooking();
   const { colors } = useTheme();
@@ -93,7 +93,7 @@ export default function BookingsScreen() {
   const handleIngest = useCallback(async () => {
     if (!rawText.trim()) return;
     await ingestBooking.mutateAsync({
-      tripId: tripId!,
+      tripId: tripId,
       type: BookingType.UNSPECIFIED,
       rawText: rawText.trim(),
     });
@@ -109,7 +109,7 @@ export default function BookingsScreen() {
       cancelLabel: t("common.cancel"),
     });
     if (!confirmed) return;
-    deleteBooking.mutate({ id, tripId: tripId! });
+    deleteBooking.mutate({ id, tripId: tripId });
   }, [t, tripId, deleteBooking]);
 
   const styles = StyleSheet.create({
@@ -197,7 +197,7 @@ export default function BookingsScreen() {
     return (
       <View style={styles.errorContainer}>
         <View style={styles.errorCard}>
-          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon} />
           <Text style={styles.errorTitle}>{t("bookings.loadError")}</Text>
           <Text style={styles.errorSubtitle}>{t("bookings.loadErrorSubtitle")}</Text>
           <Pressable
@@ -223,7 +223,7 @@ export default function BookingsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <ClipboardList color={colors.textTertiary} size={48} style={styles.emptyIcon as object} />
+            <ClipboardList color={colors.textTertiary} size={48} style={styles.emptyIcon} />
             <Text style={styles.emptyText}>{t("bookings.emptyTitle")}</Text>
             <Text style={styles.emptySubtext}>{t("bookings.emptySubtitle")}</Text>
           </View>

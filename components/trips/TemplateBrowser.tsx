@@ -48,7 +48,7 @@ function TemplateCard({ template, compact }: { template: TripTemplate; compact?:
 
   const handlePress = useCallback(() => {
     router.push({
-      pathname: "/trips/new" as never,
+      pathname: "/trips/new",
       params: { template: template.id },
     });
   }, [router, template.id]);

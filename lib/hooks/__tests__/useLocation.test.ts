@@ -14,6 +14,11 @@ vi.mock("expo-location", () => ({
   getCurrentPositionAsync: (...args: unknown[]) =>
     mockGetCurrentPositionAsync(...args),
   Accuracy: { Balanced: 3 },
+  PermissionStatus: {
+    GRANTED: "granted",
+    DENIED: "denied",
+    UNDETERMINED: "undetermined",
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -72,7 +77,7 @@ function simulateWebError(code: number) {
         PERMISSION_DENIED: 1,
         POSITION_UNAVAILABLE: 2,
         TIMEOUT: 3,
-      } as GeolocationPositionError);
+      });
     },
   );
 }
@@ -226,7 +231,7 @@ describe("useLocation (native)", () => {
 
     // Patch Platform.OS to simulate native
     const RN = await import("react-native");
-    platformSpy = vi.spyOn(RN.Platform, "OS", "get").mockReturnValue("ios" as never);
+    platformSpy = vi.spyOn(RN.Platform, "OS", "get").mockReturnValue("ios");
   });
 
   afterEach(() => {

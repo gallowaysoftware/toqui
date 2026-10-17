@@ -149,7 +149,7 @@ describe("i18n - en.json has no empty or null values", () => {
     return entries;
   }
 
-  const allEntries = flattenObject(en as Record<string, unknown>);
+  const allEntries = flattenObject(en);
 
   it.each(allEntries)(
     "key \"%s\" has a non-empty string value",

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 
@@ -119,7 +119,7 @@ describe("ItineraryTimeline", () => {
         makeDay({ dayNumber: 1, summary: "First day" }),
         makeDay({ dayNumber: 2, summary: "Second day" }),
       ]);
-      const { container } = render(<ItineraryTimeline itinerary={itinerary} />);
+      render(<ItineraryTimeline itinerary={itinerary} />);
       // Get all "Day N" badge texts in order
       const dayBadges = screen.getAllByText(/^Day \d+$/);
       expect(dayBadges.map((el) => el.textContent)).toEqual([
@@ -290,7 +290,7 @@ describe("ItineraryTimeline", () => {
         makeDay({ dayNumber: i + 1, summary: `Day ${i + 1} summary` })
       );
       const itinerary = makeItinerary(days);
-      const { container } = render(<ItineraryTimeline itinerary={itinerary} />);
+      render(<ItineraryTimeline itinerary={itinerary} />);
       expect(screen.getByText("Day 15")).toBeTruthy();
       expect(screen.getByText("Day 15 summary")).toBeTruthy();
     });

@@ -49,7 +49,7 @@ describe("ChatInput", () => {
       const onSend = vi.fn();
       render(<ChatInput onSend={onSend} />);
 
-      const input = screen.getByPlaceholderText("Type a message...") as HTMLInputElement;
+      const input = screen.getByPlaceholderText<HTMLInputElement>("Type a message...");
       fireEvent.change(input, { target: { value: "Hello" } });
       fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
@@ -116,7 +116,7 @@ describe("ChatInput", () => {
   describe("max length", () => {
     it("enforces maxLength of 10000 on the input", () => {
       render(<ChatInput onSend={vi.fn()} />);
-      const input = screen.getByPlaceholderText("Type a message...") as HTMLInputElement;
+      const input = screen.getByPlaceholderText<HTMLInputElement>("Type a message...");
       expect(input.maxLength).toBe(10000);
     });
   });

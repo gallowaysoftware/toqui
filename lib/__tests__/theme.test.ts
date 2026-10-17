@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import { createElement } from "react";
 
 // Mock useColorScheme before importing theme module
@@ -235,8 +235,8 @@ describe("Color palette correctness", () => {
     await act(async () => { captured.setMode("dark"); });
     palettes.dark = captured.colors;
 
-    const lightKeys = Object.keys(palettes.light!).sort();
-    const darkKeys = Object.keys(palettes.dark!).sort();
+    const lightKeys = Object.keys(palettes.light).sort();
+    const darkKeys = Object.keys(palettes.dark).sort();
     expect(lightKeys).toEqual(darkKeys);
   });
 

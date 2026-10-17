@@ -59,11 +59,11 @@ export default function OnboardingScreen() {
   // In-app screens — a self-hosted server shouldn't send users to
   // toqui.travel for its legal text.
   const openTerms = useCallback(() => {
-    router.push("/terms" as never);
+    router.push("/terms");
   }, [router]);
 
   const openPrivacy = useCallback(() => {
-    router.push("/privacy" as never);
+    router.push("/privacy");
   }, [router]);
 
   const handleStartPlanning = useCallback(async () => {
@@ -90,7 +90,7 @@ export default function OnboardingScreen() {
     } catch {
       // Fall back to new trip form on error
       router.replace({
-        pathname: "/trips/new" as never,
+        pathname: "/trips/new",
         params: { destination: destination.trim() },
       });
     }
@@ -99,7 +99,7 @@ export default function OnboardingScreen() {
   const handleBrowseIdeas = useCallback(async () => {
     // Implicit terms acceptance on secondary CTA press as well.
     await completeOnboarding();
-    router.replace("/(tabs)" as never);
+    router.replace("/(tabs)");
   }, [completeOnboarding, router]);
 
   const styles = StyleSheet.create({

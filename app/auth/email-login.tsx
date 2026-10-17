@@ -37,7 +37,7 @@ export default function EmailLoginScreen() {
     setSubmitting(true);
     try {
       await loginWithEmail(trimmed, password);
-      router.replace("/(tabs)" as never);
+      router.replace("/(tabs)");
     } catch (err) {
       // Map ConnectRPC error codes to friendly messages. Anything we don't
       // recognise falls back to the generic copy — we don't surface raw

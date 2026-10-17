@@ -44,14 +44,14 @@ function countDays(startDate: string, endDate: string): number {
 export default function TripDetailScreen() {
   const { t } = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { trip: networkTrip, isLoading: isNetworkLoading, error: tripError } = useTrip(tripId!);
-  const { collaborators } = useCollaborators(tripId!);
+  const { trip: networkTrip, isLoading: isNetworkLoading, error: tripError } = useTrip(tripId);
+  const { collaborators } = useCollaborators(tripId);
   const queryClient = useQueryClient();
-  const { itinerary: networkItinerary, coveredDays: networkCoveredDays, isLoading: isNetworkItineraryLoading } = useItinerary(tripId!);
+  const { itinerary: networkItinerary, coveredDays: networkCoveredDays, isLoading: isNetworkItineraryLoading } = useItinerary(tripId);
 
   // Offline support: sync bundle in background, fall back to cache when offline
   const { isOffline, bundle: offlineBundle, hasCachedData } = useOfflineTrip(tripId);
-  const { lastSyncedAt } = useOfflineSync(tripId);
+  useOfflineSync(tripId);
 
   // Use offline data as fallback when network is unavailable
   const trip = networkTrip ?? (isOffline && offlineBundle
@@ -355,7 +355,7 @@ export default function TripDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <View style={styles.errorCard}>
-          <AlertCircle color={colors.error} size={40} style={styles.errorIcon as object} />
+          <AlertCircle color={colors.error} size={40} style={styles.errorIcon} />
           <Text style={styles.errorTitle}>{t("tripDetail.loadError")}</Text>
           <Text style={styles.errorSubtitle}>{t("tripDetail.loadErrorSubtitle")}</Text>
           <Pressable
@@ -549,7 +549,7 @@ export default function TripDetailScreen() {
 
         <Pressable
           style={styles.companionCard}
-          onPress={() => router.push("/(tabs)/companion" as never)}
+          onPress={() => router.push("/(tabs)/companion")}
           accessibilityRole="button"
           accessibilityLabel={t("tripDetail.companion.title")}
           testID="companion-entry-card"
@@ -673,7 +673,7 @@ export default function TripDetailScreen() {
         {isPlannable && (
           <Pressable
             style={styles.statusButton}
-            onPress={() => updateTrip.mutate({ id: tripId!, status: TripStatus.ACTIVE })}
+            onPress={() => updateTrip.mutate({ id: tripId, status: TripStatus.ACTIVE })}
             disabled={updateTrip.isPending}
           >
             <Play color="#22c55e" size={18} />
@@ -684,7 +684,7 @@ export default function TripDetailScreen() {
         {isActive && (
           <Pressable
             style={styles.statusButton}
-            onPress={() => updateTrip.mutate({ id: tripId!, status: TripStatus.COMPLETED })}
+            onPress={() => updateTrip.mutate({ id: tripId, status: TripStatus.COMPLETED })}
             disabled={updateTrip.isPending}
           >
             <CheckCircle color="#3b82f6" size={18} />

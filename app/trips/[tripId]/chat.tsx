@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { alertNotice } from "@/lib/confirm";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MapPin, Utensils, Compass, Briefcase, Flag } from "lucide-react-native";
@@ -27,7 +27,7 @@ import { FollowUpSuggestions } from "@/components/chat/FollowUpSuggestions";
 import { SharePromptCard } from "@/components/chat/SharePromptCard";
 import { PersonaIntroCard } from "@/components/chat/PersonaIntroCard";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
-import type { ChatMessage, PersonaIntroData } from "@/lib/hooks/useChat";
+import type { ChatMessage } from "@/lib/hooks/useChat";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
@@ -60,10 +60,9 @@ export default function ChatScreen() {
     tripId: string;
     suggestedPrompt?: string;
   }>();
-  const router = useRouter();
   const { colors } = useTheme();
   const { accessToken } = useAuth();
-  const { trip } = useTrip(tripId!);
+  const { trip } = useTrip(tripId);
   const autoPersona = useMemo(
     () => getAutoPersona(trip?.title),
     [trip?.title],
@@ -75,7 +74,7 @@ export default function ChatScreen() {
 
   // Offline support
   const { isConnected } = useNetworkStatus();
-  const { bundle: offlineBundle, hasCachedData } = useOfflineTrip(tripId);
+  const { bundle: offlineBundle } = useOfflineTrip(tripId);
   const { lastSyncedAt } = useOfflineSync(tripId);
   const isOffline = !isConnected;
 
@@ -220,7 +219,7 @@ export default function ChatScreen() {
       );
     }
     return <MessageBubble message={item} showAvatar={showAvatar} />;
-  }, [colors.textTertiary]);
+  }, [colors.textTertiary, t]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.surfaceSecondary },
