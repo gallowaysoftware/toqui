@@ -29,6 +29,7 @@ buf.lock
 **/aitest-reports/
 .claude/worktrees/
 
-# Built binaries (build via `go build -o /tmp/testctl ./cmd/testctl` instead)
+# Built binaries (`make build` writes bin/server; build testctl via `go build -o /tmp/testctl ./cmd/testctl`)
+bin/
 /testctl
 /server
