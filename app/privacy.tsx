@@ -67,11 +67,11 @@ export default function PrivacyScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Privacy Policy</Text>
-      <Text style={styles.lastUpdated}>Last updated: April 2, 2026</Text>
+      <Text style={styles.lastUpdated}>Last updated: November 23, 2026</Text>
 
       <Text style={styles.text}>
-        Galloway Software ("we," "us," or "our") operates Toqui, an AI-powered
-        travel planning application available on web, iOS, and Android. This
+        Galloway Software Solutions Inc. ("we," "us," or "our") operates Toqui,
+        an AI-powered travel planning application available on web, iOS, and Android. This
         Privacy Policy explains how we collect, use, share, and protect your
         personal information when you use Toqui (the "Service").
       </Text>
@@ -308,7 +308,7 @@ export default function PrivacyScreen() {
         practices, contact us at:
       </Text>
       <Text style={styles.text}>
-        Galloway Software{"\n"}
+        Galloway Software Solutions Inc.{"\n"}
         Email: privacy@toqui.travel{"\n"}
         Website: https://toqui.travel
       </Text>
