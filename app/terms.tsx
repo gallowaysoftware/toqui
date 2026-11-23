@@ -67,12 +67,12 @@ export default function TermsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Terms of Service</Text>
-      <Text style={styles.lastUpdated}>Last updated: April 1, 2026</Text>
+      <Text style={styles.lastUpdated}>Last updated: November 23, 2026</Text>
 
       <Text style={styles.text}>
         These Terms of Service ("Terms") govern your use of Toqui, an
         AI-powered travel planning application operated by Galloway Software
-        ("we," "us," or "our"). By creating an account or using the Service,
+        Solutions Inc. ("we," "us," or "our"). By creating an account or using the Service,
         you agree to these Terms. If you do not agree, do not use the Service.
       </Text>
 
@@ -173,8 +173,8 @@ export default function TermsScreen() {
       <Text style={styles.sectionTitle}>7. Intellectual Property</Text>
       <Text style={styles.text}>
         The Service, including its design, features, code, and branding, is
-        owned by Galloway Software and is protected by intellectual property
-        laws. You may not copy, modify, distribute, or create derivative works
+        owned by Galloway Software Solutions Inc. and is protected by
+        intellectual property laws. You may not copy, modify, distribute, or create derivative works
         from the Service except as expressly permitted by these Terms.
       </Text>
       <Text style={styles.text}>
@@ -246,7 +246,7 @@ export default function TermsScreen() {
 
       <Text style={styles.sectionTitle}>12. Indemnification</Text>
       <Text style={styles.text}>
-        You agree to indemnify and hold harmless Galloway Software from any
+        You agree to indemnify and hold harmless Galloway Software Solutions Inc. from any
         claims, damages, losses, or expenses (including reasonable legal fees)
         arising out of your use of the Service, your violation of these Terms,
         or your violation of any third-party rights.
@@ -283,7 +283,7 @@ export default function TermsScreen() {
       </Bullet>
       <Bullet>
         Entire agreement: These Terms, together with our Privacy Policy,
-        constitute the entire agreement between you and Galloway Software
+        constitute the entire agreement between you and Galloway Software Solutions Inc.
         regarding the Service
       </Bullet>
       <Bullet>
@@ -296,7 +296,7 @@ export default function TermsScreen() {
         If you have questions about these Terms, contact us at:
       </Text>
       <Text style={styles.text}>
-        Galloway Software{"\n"}
+        Galloway Software Solutions Inc.{"\n"}
         Email: support@toqui.travel{"\n"}
         Website: https://toqui.travel
       </Text>
